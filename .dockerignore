@@ -1,0 +1,25 @@
+# Секреты и данные в образ не попадают: .env монтируется через env_file,
+# база живёт в томе. Копия .env внутри образа — это утечка при любой публикации.
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.db-wal
+*.db-shm
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+.git/
+.gitignore
+.codegraph/
+.omc/
+.claude/
+tests/
+README.md
+requirements-dev.txt

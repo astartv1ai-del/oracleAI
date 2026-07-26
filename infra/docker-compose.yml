@@ -1,0 +1,72 @@
+# Запуск на VPS:  docker compose -f infra/docker-compose.yml up -d --build
+# Домен в Caddyfile + WEBAPP_URL=https://домен в ../.env
+#
+# Процессов ровно два, и это принципиально: планировщик и рассылки живут ТОЛЬКО
+# в процессе бота. Если поднять второй бот, клиентки получат каждое сообщение
+# дважды. API масштабируется свободно — он ничего не рассылает.
+
+services:
+  bot:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    env_file: ../.env
+    volumes: [ oracle_data:/opt/oracle/data ]
+    restart: unless-stopped
+    stop_grace_period: 30s        # успеть закрыть WAL и сохранить прогресс рассылки
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  api:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    command: >
+      uvicorn app.api.main:app --host 0.0.0.0 --port 8080
+      --proxy-headers --forwarded-allow-ips='*'
+    env_file: ../.env
+    volumes: [ oracle_data:/opt/oracle/data ]
+    restart: unless-stopped
+    expose: [ "8080" ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  caddy:
+    image: caddy:2
+    ports: [ "80:80", "443:443" ]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Ежедневный бэкап базы. Данные рождения — чувствительные, и потерять их
+  # нельзя: `.backup` снимает консистентную копию прямо на живой БД.
+  backup:
+    image: alpine:3
+    volumes:
+      - oracle_data:/data
+      - oracle_backups:/backups
+    entrypoint: >
+      sh -c "apk add --no-cache sqlite tzdata >/dev/null &&
+             while true; do
+               ts=$$(date +%Y%m%d-%H%M);
+               sqlite3 /data/oracle.db \".backup '/backups/oracle-$$ts.db'\" &&
+               echo \"backup ok: oracle-$$ts.db\";
+               find /backups -name 'oracle-*.db' -mtime +14 -delete;
+               sleep 86400;
+             done"
+    restart: unless-stopped
+
+volumes:
+  oracle_data:
+  oracle_backups:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,27 @@
+aiogram>=3.13
+aiosqlite>=0.20
+aiohttp>=3.9
+python-dotenv>=1.0
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+
+# LLM-провайдеры. Нужен хотя бы один; без них продукт работает в офлайн-режиме
+# (шаблонные трактовки на реальных расчётах карты, Таро и Матрицы).
+anthropic>=0.40
+openai>=1.50
+
+# Астрология (полный режим). Без них — лайт-режим: знак Солнца + Матрица + Таро.
+# Нужна именно 5.x: в ней subject.model(), first_house..twelfth_house и NatalAspects.
+kerykeion>=5.0,<6
+geopy>=2.4
+timezonefinder>=6.5
+
+# Картинки-карточки для сторис. Без Pillow шеринг остаётся текстовым —
+# продукт не ломается, просто нет картинки.
+pillow>=10.0
+
+# PDF-разборы (товар для маркетплейсов). Тянет системные libcairo2 и
+# libpango-1.0-0 — они уже стоят в infra/Dockerfile. Без WeasyPrint
+# scripts/gen_pdf.py сохранит HTML и честно об этом скажет.
+weasyprint>=62.0

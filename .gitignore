@@ -1,0 +1,13 @@
+.env
+data/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.db
+*.db-wal
+*.db-shm
+# Local agent/index state — not project source
+.omc/
+.codegraph/
+.claude/

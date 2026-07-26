@@ -1,0 +1,87 @@
+"""Экран «Сегодня»: прогноз, карта дня, небо, лунная неделя."""
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from ...core import agent as agent_core
+from ...core import astro
+from ...repo import users
+from ...services import analytics, horoscopes
+from ..deps import active_user, current_user, get_db, rate_limit
+
+router = APIRouter(prefix="/api", tags=["today"])
+
+
+def _clean(text: str) -> str:
+    """Прогноз хранится с HTML-разметкой для бота; интерфейсу нужен чистый текст."""
+    return (text or "").replace("<b>", "").replace("</b>", "") \
+                       .replace("<i>", "").replace("</i>", "")
+
+
+@router.get("/today", dependencies=[Depends(rate_limit("llm"))])
+async def today(user=Depends(active_user), db=Depends(get_db)):
+    text = await agent_core.daily_forecast_cached(db, user)
+    card = agent_core.card_of_day(user)
+    sky = astro.today_sky()
+    await analytics.track(db, analytics.E_FORECAST, user["tg_id"],
+                          props={"channel": "miniapp"}, surface="miniapp")
+    return {
+        "forecast": _clean(text),
+        "card": {"name": card["name"], "emoji": card["emoji"],
+                 "meaning": card["meaning"], "num": card.get("num")},
+        "moon": sky["moon"],
+        "sun_season": sky["sun_season"],
+        "day": users.user_today(user),
+    }
+
+
+@router.get("/moon/week")
+async def moon_week(user=Depends(current_user), days: int = 7):
+    """Лунная лента: считаем на сервере, чтобы бот и приложение совпадали."""
+    today_date = date.today()
+    out = []
+    for i in range(max(1, min(days, 30))):
+        d = today_date + timedelta(days=i)
+        phase = astro.moon_phase(d)
+        out.append({"date": d.isoformat(), "weekday": d.weekday(),
+                    "day_num": d.day, **phase})
+    return out
+
+
+@router.get("/sky")
+async def sky(user=Depends(current_user)):
+    return astro.today_sky()
+
+
+@router.get("/horoscope")
+async def horoscope(sign: str | None = None, user=Depends(current_user),
+                    db=Depends(get_db)):
+    """Гороскоп по знаку. Без параметра — по её знаку Солнца.
+
+    Общий по знаку, в отличие от `/api/today`: он один на всех и потому
+    бесплатен даже без подписки — это витрина, ведущая к персональному.
+    """
+    chart = users.chart_of(user)
+    sign = sign or (chart.get("sun") or {}).get("sign")
+    if not sign:
+        from ...core.astro import sun_sign
+        if not user["birth_date"]:
+            raise HTTPException(400, "нет даты рождения")
+        sign = sun_sign(date.fromisoformat(user["birth_date"]))[0]
+    if sign not in horoscopes.SIGNS:
+        raise HTTPException(404, "неизвестный знак")
+    return {
+        "sign": sign,
+        "symbol": horoscopes.SIGN_SYMBOL[sign],
+        "element": horoscopes.SIGN_ELEMENT[sign],
+        "day": date.today().isoformat(),
+        "text": await horoscopes.get_or_build(db, sign),
+    }
+
+
+@router.get("/horoscope/all")
+async def horoscope_all(user=Depends(current_user), db=Depends(get_db)):
+    """Все двенадцать знаков на сегодня — витрина «а что у других»."""
+    return await horoscopes.all_for_day(db)

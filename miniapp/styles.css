@@ -1,0 +1,694 @@
+/* ══════ Оракул · «дорогая мистика» ══════ */
+:root {
+  --bg1: #0b0722;
+  --bg2: #1a0f3d;
+  --gold: #e8c56b;
+  --gold-soft: rgba(232, 197, 107, .35);
+  --ink: #f4efff;
+  --muted: #a99fc9;
+  --glass: rgba(255, 255, 255, .06);
+  --glass-br: rgba(255, 255, 255, .12);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg2) 0%, var(--bg1) 60%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+#app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto;
+       padding: 20px 16px 96px; }
+
+h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 600;
+     font-size: 26px; letter-spacing: .3px; }
+h2 { font-family: Georgia, serif; font-size: 20px; margin: 18px 0 10px; }
+.muted { color: var(--muted); font-size: 14px; line-height: 1.45; }
+.small { font-size: 12px; }
+.center { text-align: center; }
+.hidden { display: none !important; }
+
+/* Системная настройка «меньше движения»: гасим фоновые циклы, но оставляем
+   короткие переходы — иначе интерфейс начинает «прыгать» без объяснения. */
+.calm .moon-glow, .calm .cod-emoji, .calm .avatar,
+.calm .deck-card, .calm .tback { animation: none !important; }
+.calm .tcard { animation-duration: .01s !important; }
+.calm .tcard-inner { transition-duration: .2s !important; }
+.calm .spark { display: none; }
+
+/* ── вкладки ── */
+.tab { display: none; animation: fadein .35s ease; }
+.tab.active { display: block; }
+@keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+/* ── герой ── */
+.hero { position: relative; padding: 26px 0 18px; text-align: center; }
+.moon-glow {
+  position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+  width: 180px; height: 180px; border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-soft) 0%, transparent 65%);
+  animation: breathe 5s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100% { opacity: .55; transform: translateX(-50%) scale(1); }
+                     50% { opacity: 1; transform: translateX(-50%) scale(1.12); } }
+
+/* ── стекло ── */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-br);
+  border-radius: 18px;
+  padding: 16px;
+  margin: 12px 0;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .35);
+}
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+         color: var(--gold); margin-bottom: 8px; }
+
+/* карта дня */
+.cod-row { display: flex; gap: 14px; align-items: center; }
+.cod-emoji { font-size: 44px; filter: drop-shadow(0 0 12px var(--gold-soft));
+             animation: floaty 4s ease-in-out infinite; }
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.cod-name { font-family: Georgia, serif; font-size: 18px; }
+.forecast { line-height: 1.55; white-space: pre-line; }
+
+/* лимит-огоньки */
+.limits { text-align: center; }
+.flames { font-size: 26px; letter-spacing: 8px; margin: 8px 0 14px; }
+.flames .used { filter: grayscale(1); opacity: .35; }
+
+/* кнопки */
+.btn-gold {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 600; color: #241a05; cursor: pointer;
+  background: linear-gradient(135deg, #f3dc9a, var(--gold) 55%, #c9a24b);
+  box-shadow: 0 6px 22px var(--gold-soft);
+  transition: transform .15s ease;
+}
+.btn-gold:active { transform: scale(.97); }
+.btn-ghost {
+  width: 100%; padding: 13px; border-radius: 14px; font-size: 15px; cursor: pointer;
+  background: transparent; color: var(--gold); border: 1px solid var(--gold-soft);
+  margin-top: 10px;
+}
+
+/* ── натальное колесо ── */
+#wheel { display: block; margin: 6px auto; }
+.sun-badge { font-family: Georgia, serif; font-size: 17px; margin-top: 8px;
+             color: var(--gold); text-align: center; }
+.planet-line { display: flex; justify-content: space-between; padding: 7px 2px;
+               border-bottom: 1px dashed rgba(255,255,255,.08); font-size: 14.5px; }
+.planet-line:last-child { border-bottom: none; }
+.matrix-line { padding: 8px 2px; border-bottom: 1px dashed rgba(255,255,255,.08); }
+.matrix-line b { color: var(--gold); }
+.matrix-line:last-child { border-bottom: none; }
+
+/* ══════ ТАРО ══════ */
+
+/* чипы раскладов */
+.spread-chips { display: flex; gap: 8px; justify-content: center; margin: 10px 0 16px; }
+.chip {
+  padding: 8px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+  background: var(--glass); color: var(--muted); border: 1px solid var(--glass-br);
+  transition: all .25s ease;
+}
+.chip.active { color: #241a05; border-color: transparent;
+  background: linear-gradient(135deg, #f3dc9a, var(--gold));
+  box-shadow: 0 4px 14px var(--gold-soft); }
+
+/* ── колода ── */
+.deck-zone { text-align: center; margin: 6px 0 12px; min-height: 170px; }
+.deck { position: relative; width: 110px; height: 150px; margin: 0 auto 10px;
+        transition: opacity .4s ease, transform .4s ease; }
+.deck.dealt { opacity: 0; transform: translateY(-14px) scale(.9); pointer-events: none; }
+.deck-card {
+  position: absolute; inset: 0; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold); font-size: 26px;
+  border: 1px solid var(--gold-soft);
+  background:
+    radial-gradient(circle at 50% 32%, rgba(232,197,107,.28), transparent 62%),
+    repeating-conic-gradient(from 45deg at 50% 50%,
+      rgba(232,197,107,.07) 0deg 15deg, transparent 15deg 30deg),
+    linear-gradient(160deg, #251755, #110a2e);
+  box-shadow: 0 6px 16px rgba(0,0,0,.45);
+  transition: transform .5s cubic-bezier(.3,.7,.3,1.2);
+}
+.dc1 { transform: rotate(-9deg) translateX(-10px); }
+.dc2 { transform: rotate(-4deg) translateX(-5px); }
+.dc3 { transform: rotate(0deg); }
+.dc4 { transform: rotate(4deg) translateX(5px); }
+.dc5 { transform: rotate(9deg) translateX(10px); animation: deckbreathe 3.5s ease-in-out infinite; }
+@keyframes deckbreathe { 0%,100% { box-shadow: 0 6px 16px rgba(0,0,0,.45); }
+  50% { box-shadow: 0 6px 26px var(--gold-soft); } }
+
+/* тасовка: карты разлетаются и слетаются */
+.deck.shuffling .dc1 { animation: shf1 .46s ease-in-out 3; }
+.deck.shuffling .dc2 { animation: shf2 .46s ease-in-out 3 .05s; }
+.deck.shuffling .dc3 { animation: shf3 .46s ease-in-out 3 .1s; }
+.deck.shuffling .dc4 { animation: shf4 .46s ease-in-out 3 .15s; }
+.deck.shuffling .dc5 { animation: shf5 .46s ease-in-out 3 .2s; }
+@keyframes shf1 { 50% { transform: rotate(-30deg) translate(-56px, -16px); } }
+@keyframes shf2 { 50% { transform: rotate(-14deg) translate(-28px, 16px); } }
+@keyframes shf3 { 50% { transform: rotate(2deg) translate(0, -26px); } }
+@keyframes shf4 { 50% { transform: rotate(15deg) translate(28px, 14px); } }
+@keyframes shf5 { 50% { transform: rotate(32deg) translate(56px, -12px); } }
+
+/* ── слоты и 3D flip ── */
+.tarot-row { display: flex; gap: 10px; justify-content: center; margin: 18px 0 6px;
+             perspective: 1000px; flex-wrap: wrap; }
+.tcard { width: 92px; height: 146px; cursor: pointer;
+         animation: deal .5s cubic-bezier(.2,.8,.3,1.15) backwards; }
+.tcard:nth-child(2) { animation-delay: .12s; }
+.tcard:nth-child(3) { animation-delay: .24s; }
+.tcard:nth-child(4) { animation-delay: .36s; }
+@keyframes deal { from { opacity: 0; transform: translateY(-90px) rotate(-8deg) scale(.6); }
+                  to { opacity: 1; } }
+.tcard-inner {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d; transition: transform .8s cubic-bezier(.2,.7,.25,1);
+}
+.tcard.flipped .tcard-inner { transform: rotateY(180deg); }
+.tface {
+  position: absolute; inset: 0; border-radius: 12px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border: 1px solid var(--gold-soft);
+}
+.tback {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(232,197,107,.25), transparent 60%),
+    repeating-conic-gradient(from 45deg at 50% 50%,
+      rgba(232,197,107,.06) 0deg 15deg, transparent 15deg 30deg),
+    linear-gradient(160deg, #241650, #120a30);
+  color: var(--gold); font-size: 28px;
+  animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer { 0%,100% { box-shadow: 0 0 8px transparent; }
+                     50% { box-shadow: 0 0 18px var(--gold-soft); } }
+.tfront {
+  background: linear-gradient(165deg, #2c1f5e, #171040);
+  transform: rotateY(180deg);
+  padding: 7px 6px; text-align: center; justify-content: space-between;
+}
+.tfront::before { /* внутренняя золотая рамка */
+  content: ''; position: absolute; inset: 4px; border-radius: 9px;
+  border: 1px solid rgba(232,197,107,.35); pointer-events: none;
+}
+.tfront .num { font-family: Georgia, serif; font-size: 11px; color: var(--gold);
+               letter-spacing: 2px; padding-top: 4px; }
+.tfront .e { font-size: 36px; filter: drop-shadow(0 0 10px var(--gold-soft)); }
+.tfront .n { font-family: Georgia, serif; font-size: 12px; line-height: 1.2;
+             padding: 0 2px 6px; }
+.tfront .r { font-size: 9.5px; color: var(--muted); padding-bottom: 5px; }
+.tcard.rev .tfront .e, .tcard.rev .tfront .n { transform: rotate(180deg); }
+.tcard.glow .tface.tfront { box-shadow: 0 0 24px var(--gold-soft); }
+
+.pos-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 14px;
+           flex-wrap: wrap; }
+.pos-row span { font-size: 10.5px; color: var(--muted); letter-spacing: 1px;
+                text-transform: uppercase; width: 92px; text-align: center; }
+#tarot-result { line-height: 1.5; }
+#shuffle-btn { margin-bottom: 8px; }
+.btn-gold:disabled { opacity: .45; filter: grayscale(.4); }
+
+/* искры при перевороте */
+.spark {
+  position: fixed; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--gold); pointer-events: none; z-index: 50;
+  animation: spark-fly .7s ease-out forwards;
+}
+@keyframes spark-fly {
+  from { opacity: 1; transform: translate(0, 0) scale(1); }
+  to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.2); }
+}
+
+/* ══════ ЧАТ С ОРАКУЛОМ ══════ */
+.chat-log { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 12px;
+            min-height: 40vh; }
+.bubble {
+  max-width: 84%; padding: 12px 14px; border-radius: 18px; font-size: 15px;
+  line-height: 1.5; white-space: pre-line; animation: bubble-in .35s ease backwards;
+}
+@keyframes bubble-in { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.bubble.me {
+  align-self: flex-end; border-bottom-right-radius: 6px; color: #241a05;
+  background: linear-gradient(135deg, #f3dc9a, var(--gold));
+  box-shadow: 0 4px 16px var(--gold-soft);
+}
+.bubble.oracle {
+  align-self: flex-start; border-bottom-left-radius: 6px;
+  background: var(--glass); border: 1px solid var(--glass-br);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.bubble.oracle::before {
+  content: '🔮'; display: block; font-size: 13px; margin-bottom: 4px; opacity: .75;
+}
+/* «Оракул всматривается» — три пульсирующие звезды */
+.typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold);
+            display: block; animation: tw 1.1s ease-in-out infinite; }
+.typing i:nth-child(2) { animation-delay: .18s; }
+.typing i:nth-child(3) { animation-delay: .36s; }
+@keyframes tw { 0%,100% { opacity: .25; transform: scale(.8); }
+                50% { opacity: 1; transform: scale(1.25); } }
+
+.chat-bar { display: flex; gap: 8px; align-items: flex-end; margin-top: 4px; }
+.chat-bar textarea { margin-bottom: 0; max-height: 120px; }
+.chat-send {
+  flex: 0 0 48px; height: 48px; border: none; border-radius: 50%; cursor: pointer;
+  font-size: 20px; color: #241a05;
+  background: linear-gradient(135deg, #f3dc9a, var(--gold) 55%, #c9a24b);
+  box-shadow: 0 4px 18px var(--gold-soft);
+  transition: transform .15s ease, opacity .2s ease;
+}
+.chat-send:active { transform: scale(.9) rotate(90deg); }
+.chat-send:disabled { opacity: .4; }
+
+/* ── история раскладов ── */
+.hist { padding: 12px 14px; }
+.hist-head { display: flex; justify-content: space-between; align-items: baseline;
+             gap: 8px; cursor: pointer; }
+.hist-title { font-family: Georgia, serif; font-size: 15px; color: var(--gold); }
+.hist-date { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.hist-cards { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.hist-body { font-size: 14px; line-height: 1.55; margin-top: 10px;
+             white-space: pre-line; animation: fadein .3s ease; }
+
+/* ── всплывающее уведомление ── */
+#toast {
+  position: fixed; left: 50%; bottom: 84px; transform: translate(-50%, 20px);
+  z-index: 80; max-width: 88%; padding: 12px 18px; border-radius: 14px;
+  font-size: 14px; text-align: center; pointer-events: none;
+  background: rgba(28, 16, 62, .96); border: 1px solid var(--gold-soft);
+  color: var(--ink); box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  opacity: 0; transition: opacity .25s ease, transform .25s ease;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* луна на «Сегодня» */
+.moon-line { display: flex; align-items: center; gap: 10px; margin-top: 10px;
+             font-size: 14px; color: var(--muted); }
+.moon-line .m-emoji { font-size: 22px; }
+
+/* ── совместимость: гейдж ── */
+.compat-row { display: flex; gap: 10px; align-items: center; }
+.compat-row input[type=date] {
+  flex: 1; background: rgba(0,0,0,.25); border: 1px solid var(--glass-br);
+  border-radius: 12px; color: var(--ink); padding: 11px 12px; font-size: 15px;
+  color-scheme: dark;
+}
+.btn-inline { width: auto; padding: 11px 18px; font-size: 14px; }
+.compat-result { text-align: center; margin-top: 12px; }
+.gauge { display: block; margin: 0 auto; }
+#gauge-arc { stroke-dasharray: 251; stroke-dashoffset: 251;
+             transition: stroke-dashoffset 1.2s cubic-bezier(.3,.7,.3,1); }
+
+/* ── лунная лента ── */
+.moon-strip { display: flex; justify-content: space-between; gap: 4px; }
+.moon-day { text-align: center; flex: 1; padding: 6px 2px; border-radius: 10px; }
+.moon-day.today { background: rgba(232,197,107,.12);
+                  border: 1px solid var(--gold-soft); }
+.moon-day .md-e { font-size: 20px; }
+.moon-day .md-d { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+
+/* ── октаграмма матрицы ── */
+#matrix-star text { font-family: Georgia, serif; }
+.mx-circle { fill: rgba(20, 12, 48, .9); stroke: var(--gold-soft); }
+.mx-num { fill: #e8c56b; font-size: 15px; }
+.mx-lab { fill: #a99fc9; font-size: 8.5px; letter-spacing: .5px; }
+
+/* ── стрик дневника ── */
+.streak-badge {
+  font-size: 12px; color: #241a05; padding: 3px 10px; border-radius: 12px;
+  background: linear-gradient(135deg, #f3dc9a, var(--gold));
+  vertical-align: middle; margin-left: 6px; font-family: -apple-system, sans-serif;
+}
+
+/* ── дневник ── */
+textarea {
+  width: 100%; background: rgba(0,0,0,.25); border: 1px solid var(--glass-br);
+  border-radius: 12px; color: var(--ink); padding: 12px; font-size: 15px;
+  resize: none; margin-bottom: 10px; font-family: inherit;
+}
+textarea:focus { outline: 1px solid var(--gold-soft); }
+.diary-entry { animation: fadein .3s ease; }
+.diary-date { font-size: 11px; color: var(--gold); letter-spacing: 1px; }
+
+/* ── профиль ── */
+.profile-head { display: flex; align-items: center; gap: 14px; }
+.avatar { width: 58px; height: 58px; border-radius: 50%; font-size: 28px;
+          display: flex; align-items: center; justify-content: center;
+          background: radial-gradient(circle at 35% 30%, #3a2a72, #1c1244);
+          border: 1px solid var(--gold-soft);
+          animation: breathe 6s ease-in-out infinite; }
+.p-name { font-family: Georgia, serif; font-size: 19px; }
+.stat-row { display: flex; gap: 10px; }
+.stat { flex: 1; text-align: center; margin: 6px 0; padding: 12px 6px; }
+.stat-num { font-family: Georgia, serif; font-size: 22px; color: var(--gold); }
+.mem-list { list-style: none; }
+.mem-list li { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,.08);
+               font-size: 14px; line-height: 1.4; }
+.mem-list li::before { content: '✦ '; color: var(--gold); }
+.mem-list li:last-child { border-bottom: none; }
+
+/* ── таб-бар ── */
+#tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
+  display: flex; justify-content: space-around;
+  max-width: 480px; margin: 0 auto;
+  background: rgba(14, 8, 38, .82);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid var(--glass-br);
+  padding: 8px 4px calc(10px + env(safe-area-inset-bottom));
+}
+.nav-btn {
+  background: none; border: none; color: var(--muted); font-size: 11px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: pointer; padding: 4px 10px; border-radius: 12px;
+  transition: color .2s ease;
+}
+.nav-btn span { font-size: 20px; transition: transform .2s ease; }
+.nav-btn.active { color: var(--gold); }
+.nav-btn.active span { transform: translateY(-2px) scale(1.15);
+                       filter: drop-shadow(0 0 8px var(--gold-soft)); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Экраны второй версии: чаты с агентами, лавка, разборы, практики
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── быстрые действия на «Сегодня» ── */
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.quick {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 12px 4px; border-radius: 14px; cursor: pointer; font-size: 11.5px;
+  background: rgba(255, 255, 255, .04); border: 1px solid var(--glass-br);
+  color: var(--muted); transition: border-color .2s, color .2s;
+}
+.quick span { font-size: 22px; }
+.quick:active { border-color: var(--gold-soft); color: var(--ink); }
+
+/* ── список агентов ── */
+.agent-card {
+  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+  padding: 14px; margin: 10px 0; border-radius: 18px; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--glass-br);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  color: var(--ink); transition: border-color .2s, transform .15s;
+}
+.agent-card:active { transform: scale(.985); }
+.agent-emoji {
+  width: 46px; height: 46px; flex: 0 0 46px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 23px;
+  background: radial-gradient(circle at 35% 30%, #3a2a72, #1c1244);
+  border: 1px solid var(--agent-accent, var(--gold-soft));
+}
+.agent-body { min-width: 0; flex: 1; }
+.agent-name { font-family: Georgia, serif; font-size: 16px;
+              display: flex; align-items: baseline; gap: 7px; }
+.agent-role { font-size: 11px; color: var(--agent-accent, var(--gold)); }
+.agent-last { font-size: 13px; color: var(--muted); margin-top: 3px;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-count { font-size: 11px; color: var(--muted); flex: 0 0 auto; }
+
+/* ── шапка треда ── */
+.chat-head { display: flex; align-items: center; gap: 10px; padding: 4px 0 12px;
+             border-bottom: 1px solid var(--glass-br); margin-bottom: 10px; }
+.chat-back, .chat-clear {
+  flex: 0 0 34px; height: 34px; border-radius: 50%; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--glass-br);
+  color: var(--ink); font-size: 16px;
+}
+.chat-who { flex: 1; min-width: 0; }
+.chat-name { font-family: Georgia, serif; font-size: 16.5px; }
+
+/* ── подсказки вопросов ── */
+.suggestions { display: flex; gap: 7px; overflow-x: auto; padding: 4px 0 10px;
+               scrollbar-width: none; }
+.suggestions::-webkit-scrollbar { display: none; }
+.sugg {
+  flex: 0 0 auto; padding: 7px 13px; border-radius: 18px; font-size: 12.5px;
+  cursor: pointer; white-space: nowrap;
+  background: var(--glass); border: 1px solid var(--glass-br); color: var(--muted);
+}
+.sugg:active { border-color: var(--gold-soft); color: var(--ink); }
+
+/* ── переключатель разделов ── */
+.segmented {
+  display: flex; gap: 3px; padding: 3px; margin: 12px 0;
+  background: rgba(0, 0, 0, .25); border: 1px solid var(--glass-br);
+  border-radius: 13px;
+}
+.seg {
+  flex: 1; padding: 8px 6px; border: none; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--muted); font-size: 12.5px;
+  font-family: inherit; transition: background .2s, color .2s;
+}
+.seg.active { background: var(--glass); color: var(--gold); }
+
+/* ── дома и аспекты ── */
+.house-line, .aspect-line {
+  display: flex; justify-content: space-between; gap: 10px; padding: 7px 2px;
+  border-bottom: 1px dashed rgba(255, 255, 255, .08); font-size: 14px;
+}
+.house-line:last-child, .aspect-line:last-child { border-bottom: none; }
+.aspect-glyph { color: var(--gold); font-size: 15px; padding: 0 4px; }
+.orb { color: var(--muted); font-size: 12px; }
+
+/* ── лавка ── */
+.shop-item {
+  display: flex; align-items: center; gap: 11px; padding: 12px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, .08);
+}
+.shop-item:last-child { border-bottom: none; }
+.shop-body { flex: 1; min-width: 0; }
+.shop-title { font-size: 14.5px; }
+.shop-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.shop-buy { display: flex; flex-direction: column; gap: 5px; flex: 0 0 auto; }
+.btn-price {
+  padding: 7px 12px; border-radius: 11px; font-size: 12.5px; cursor: pointer;
+  white-space: nowrap; font-family: inherit;
+  background: linear-gradient(135deg, #f3dc9a, var(--gold) 60%, #c9a24b);
+  color: #241a05; border: none; font-weight: 600;
+}
+.btn-price.ghost { background: transparent; color: var(--gold);
+                   border: 1px solid var(--gold-soft); font-weight: 400; }
+.btn-price:disabled { opacity: .45; }
+
+.plan-card {
+  padding: 14px; border-radius: 16px; margin: 10px 0;
+  background: rgba(255, 255, 255, .04); border: 1px solid var(--glass-br);
+}
+.plan-card.current { border-color: var(--gold-soft);
+                     background: rgba(232, 197, 107, .07); }
+.plan-top { display: flex; align-items: baseline; justify-content: space-between;
+            gap: 10px; }
+.plan-title { font-family: Georgia, serif; font-size: 16px; }
+.plan-price { color: var(--gold); font-size: 15px; white-space: nowrap; }
+.plan-badge { display: inline-block; margin-top: 4px; padding: 2px 9px;
+              border-radius: 12px; font-size: 11px; color: var(--gold);
+              border: 1px solid var(--gold-soft); }
+.plan-tagline { font-size: 12.5px; color: var(--muted); margin: 5px 0 8px; }
+.plan-features { list-style: none; font-size: 13px; }
+.plan-features li { padding: 3px 0; }
+.plan-features li::before { content: '✦ '; color: var(--gold); }
+
+/* ── совместимость: разбор балла ── */
+.breakdown { margin: 10px 0; font-size: 12.5px; }
+.breakdown div { display: flex; justify-content: space-between; padding: 4px 0;
+                 color: var(--muted); }
+.breakdown b { color: var(--ink); }
+.partners { margin-top: 12px; }
+.partner { display: flex; align-items: center; justify-content: space-between;
+           gap: 8px; padding: 8px 0; font-size: 13.5px;
+           border-top: 1px dashed rgba(255, 255, 255, .08); }
+.partner button { background: transparent; border: none; color: var(--muted);
+                  cursor: pointer; font-size: 14px; }
+
+/* ── разборы ── */
+.report-item { display: flex; align-items: center; justify-content: space-between;
+               gap: 10px; padding: 11px 0;
+               border-bottom: 1px dashed rgba(255, 255, 255, .08); }
+.report-item:last-child { border-bottom: none; }
+.report-title { font-size: 14px; }
+.report-when { font-size: 11.5px; color: var(--muted); }
+
+/* ── дневник: настроение и практики ── */
+.mood-row { display: flex; gap: 7px; margin-bottom: 10px; }
+.mood {
+  flex: 1; padding: 8px 4px; border-radius: 11px; cursor: pointer; font-size: 12px;
+  background: transparent; border: 1px solid var(--glass-br); color: var(--muted);
+  font-family: inherit;
+}
+.mood.active { border-color: var(--gold-soft); color: var(--gold);
+               background: rgba(232, 197, 107, .08); }
+.practice { display: flex; align-items: center; gap: 11px; padding: 11px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, .08); }
+.practice:last-child { border-bottom: none; }
+.practice-body { flex: 1; min-width: 0; }
+.practice-title { font-size: 14px; }
+.practice-meta { font-size: 11.5px; color: var(--muted); }
+
+/* ── настройки ── */
+.switch-row { display: flex; align-items: center; justify-content: space-between;
+              gap: 10px; padding: 9px 0; font-size: 14px; }
+.switch-row input { appearance: none; width: 42px; height: 24px; border-radius: 24px;
+                    background: rgba(0, 0, 0, .3); border: 1px solid var(--glass-br);
+                    position: relative; cursor: pointer; flex: 0 0 42px; }
+.switch-row input::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s;
+}
+.switch-row input:checked { border-color: var(--gold-soft);
+                            background: rgba(232, 197, 107, .18); }
+.switch-row input:checked::after { transform: translateX(18px); background: var(--gold); }
+.field { display: block; margin: 10px 0; }
+.field input, .field select {
+  width: 100%; margin-top: 5px; background: rgba(0, 0, 0, .25);
+  border: 1px solid var(--glass-br); border-radius: 12px; color: var(--ink);
+  padding: 11px 12px; font-size: 15px; font-family: inherit;
+}
+
+/* ── рефералка ── */
+.ref-link {
+  font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--gold);
+  background: rgba(0, 0, 0, .28); border: 1px solid var(--glass-br);
+  border-radius: 10px; padding: 10px; margin: 9px 0; word-break: break-all;
+  cursor: pointer;
+}
+.ref-stats { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px;
+             font-size: 12.5px; color: var(--muted); }
+.ref-stats b { color: var(--ink); }
+
+/* ── FAQ ── */
+.faq-item { border-bottom: 1px dashed rgba(255, 255, 255, .08); }
+.faq-item:last-child { border-bottom: none; }
+.faq-q { padding: 11px 0; cursor: pointer; font-size: 14px;
+         display: flex; justify-content: space-between; gap: 10px; }
+.faq-a { font-size: 13px; color: var(--muted); line-height: 1.55;
+         padding-bottom: 11px; }
+
+/* ── отметка «сбылось» ── */
+.outcome-row { display: flex; gap: 7px; margin-top: 11px; }
+.outcome-row button {
+  flex: 1; padding: 8px; border-radius: 11px; font-size: 12.5px; cursor: pointer;
+  background: transparent; border: 1px solid var(--glass-br); color: var(--muted);
+  font-family: inherit;
+}
+.outcome-row button.done { border-color: var(--gold-soft); color: var(--gold); }
+
+/* ── чипы раскладов с ценой ── */
+.spread-chips { flex-wrap: wrap; }
+.chip .chip-price { font-size: 11px; opacity: .8; margin-left: 4px; }
+.chip.locked { border-style: dashed; }
+
+/* ── модальный лист ── */
+.sheet { position: fixed; inset: 0; z-index: 70; }
+.sheet-bg { position: absolute; inset: 0; background: rgba(6, 3, 18, .72); }
+.sheet-body {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 88vh;
+  overflow-y: auto; border-radius: 22px 22px 0 0;
+  background: linear-gradient(180deg, #1a1138, #100a28);
+  border-top: 1px solid var(--gold-soft);
+  padding: 22px 18px calc(28px + env(safe-area-inset-bottom));
+  animation: sheet-up .3s cubic-bezier(.2, .8, .3, 1);
+}
+@keyframes sheet-up { from { transform: translateY(60px); opacity: .5; } }
+.sheet-close { position: absolute; top: 12px; right: 14px; background: transparent;
+               border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.sheet-title { font-family: Georgia, serif; font-size: 19px; margin-bottom: 12px;
+               padding-right: 28px; }
+.sheet-text { font-size: 14.5px; line-height: 1.62; white-space: pre-line; }
+
+/* ══════ ПРАКТИКИ ══════ */
+.practice-card {
+  display: flex; align-items: flex-start; gap: 13px; width: 100%; text-align: left;
+  padding: 14px; margin: 10px 0; border-radius: 18px; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--glass-br);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  color: var(--ink); font-family: inherit;
+  transition: border-color .2s, transform .15s;
+}
+.practice-card:active { transform: scale(.985); }
+.practice-card.running { border-color: var(--gold-soft);
+                         background: rgba(232, 197, 107, .07); }
+.pc-emoji {
+  width: 44px; height: 44px; flex: 0 0 44px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 22px;
+  background: radial-gradient(circle at 35% 30%, #3a2a72, #1c1244);
+  border: 1px solid var(--gold-soft);
+}
+.pc-body { flex: 1; min-width: 0; }
+.pc-title { font-family: Georgia, serif; font-size: 16px; }
+.pc-goal { font-size: 12.5px; color: var(--muted); margin-top: 3px;
+           line-height: 1.4; }
+.pc-meta { font-size: 11.5px; color: var(--gold); margin-top: 6px;
+           letter-spacing: .3px; }
+.pbar { height: 5px; border-radius: 3px; margin-top: 8px; overflow: hidden;
+        background: rgba(255, 255, 255, .08); }
+.pbar i { display: block; height: 100%; border-radius: 3px;
+          background: linear-gradient(90deg, #c9a24b, #f3dc9a);
+          transition: width .5s ease; }
+.pc-today {
+  margin: 12px 0; padding: 12px 14px; border-radius: 14px; font-size: 14px;
+  line-height: 1.5; background: rgba(232, 197, 107, .10);
+  border: 1px solid var(--gold-soft);
+}
+.mantra {
+  margin: 12px 0; padding: 14px; border-radius: 14px; text-align: center;
+  font-family: Georgia, serif; font-size: 16px; line-height: 1.7;
+  white-space: pre-line; color: var(--gold);
+  background: rgba(0, 0, 0, .25); border: 1px dashed var(--gold-soft);
+}
+.steps { margin: 0 0 4px 0; padding-left: 18px; font-size: 14.5px;
+         line-height: 1.55; }
+.steps li { padding: 4px 0; }
+.steps b { color: var(--gold); }
+.signs { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5;
+         color: var(--muted); }
+.signs li { padding: 3px 0; }
+.warn { margin: 12px 0; font-size: 13px; color: #e8b98f; line-height: 1.5; }
+
+/* ── дневник: вечерний вопрос ── */
+.diary-prompt { font-family: Georgia, serif; font-size: 15px; line-height: 1.5;
+                color: var(--gold); margin-bottom: 10px; }
+
+/* ── картинка для сторис ── */
+.share-img { display: block; width: 100%; border-radius: 14px; margin: 4px 0 12px;
+             border: 1px solid var(--gold-soft); }
+
+/* ── состояние загрузки ── */
+.skeleton { height: 14px; border-radius: 7px; margin: 8px 0;
+            background: linear-gradient(90deg, rgba(255,255,255,.05),
+              rgba(255,255,255,.12), rgba(255,255,255,.05));
+            background-size: 200% 100%; animation: shine 1.4s linear infinite; }
+@keyframes shine { to { background-position: -200% 0; } }
+.calm .skeleton { animation: none; }
+
+/* ── очень узкие и очень широкие экраны ── */
+/* Семь вкладок — тесно на узких экранах: убираем отступы и подписи мельче */
+#tabbar { padding-left: 0; padding-right: 0; }
+.nav-btn { padding: 4px 7px; }
+
+@media (max-width: 400px) {
+  .nav-btn { padding: 4px 4px; font-size: 9.5px; letter-spacing: -.2px; }
+  .nav-btn span { font-size: 18px; }
+}
+@media (max-width: 360px) {
+  #app { padding: 16px 12px 92px; }
+  .quick-grid { grid-template-columns: repeat(2, 1fr); }
+  .tcard { width: 80px; height: 128px; }
+  .pos-row span { width: 80px; }
+}
+@media (min-width: 560px) {
+  #app { max-width: 560px; }
+  #tabbar { max-width: 560px; border-radius: 18px 18px 0 0; }
+  .tarot-row { gap: 12px; }
+}
