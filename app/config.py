@@ -26,7 +26,10 @@ def _int(name: str, default: int) -> int:
         return default
 
 
-@dataclass(frozen=True)
+#: Не `frozen=True`: тесты и админские сценарии подменяют отдельные поля на
+#: живом объекте (`monkeypatch.setattr(settings, ...)`), а хеширование настроек
+#: нигде не используется.
+@dataclass
 class Settings:
     # ── Telegram ──
     bot_token: str = os.getenv("BOT_TOKEN", "")

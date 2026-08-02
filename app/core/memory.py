@@ -138,11 +138,17 @@ async def remember(db, tg_id: int, fact: str, kind: str = "fact") -> bool:
 
 
 async def _find_exact(db, tg_id: int, fact: str) -> int | None:
-    cur = await db.execute(
-        "SELECT id FROM memories WHERE tg_id=? AND lower(trim(fact))=lower(trim(?))",
-        (tg_id, fact))
-    row = await cur.fetchone()
-    return row["id"] if row else None
+    """Точный повтор с точностью до регистра, «ё» и пробелов.
+
+    Сравнение в Python: `lower()` в SQLite покрывает только ASCII, из-за чего
+    «Работает дизайнером» и «работает дизайнером» считались разными фактами.
+    """
+    from ..repo.dialog import dedup_key
+
+    key = dedup_key(fact)
+    cur = await db.execute("SELECT id, fact FROM memories WHERE tg_id=?", (tg_id,))
+    return next((r["id"] for r in await cur.fetchall()
+                 if dedup_key(r["fact"]) == key), None)
 
 
 async def _find_similar(db, tg_id: int, vector: list[float]) -> int | None:

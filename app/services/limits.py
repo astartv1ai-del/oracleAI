@@ -117,13 +117,19 @@ async def allowance(db, user, *, check_followup: bool = True) -> Allowance:
         period, limit, used = "none", 0, 0
 
     cost = await content.get_setting(db, "limits.emergency_cost", 20)
+    # Бесплатное уточнение — продолжение вопроса, за который лимит уже уплачен.
+    # Когда лимит исчерпан, уточнять «бесплатно» нельзя: иначе одна фраза «а что
+    # это значит?» открывала бы неограниченный доступ в обход тарифа и покупок.
+    followup = False
+    if check_followup and limit - used > 0:
+        followup = await _is_followup(db, user)
     return Allowance(
         plan=plan, limit=limit, used=used, period=period,
         extra_questions=await billing.available_entitlements(
             db, user["tg_id"], "question"),
         crystals=user["crystals"] or 0,
         emergency_cost=int(cost or 20),
-        followup=await _is_followup(db, user) if check_followup else False,
+        followup=followup,
         features=plan.get("features") or [],
     )
 

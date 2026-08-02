@@ -131,6 +131,11 @@ async def last_question_at(db, tg_id: int) -> str | None:
 
 # ─────────────────────────────── память ───────────────────────────────────────
 
+def dedup_key(fact: str) -> str:
+    """Ключ сравнения фактов: регистр, «ё» и лишние пробелы не различаем."""
+    return " ".join((fact or "").lower().replace("ё", "е").split())
+
+
 async def save_memory(db, tg_id: int, fact: str, kind: str = "fact",
                       weight: int = 1) -> bool:
     """Сохраняет факт, отбрасывая дубликаты.
@@ -143,14 +148,17 @@ async def save_memory(db, tg_id: int, fact: str, kind: str = "fact",
     fact = (fact or "").strip()
     if len(fact) < 3:
         return False
-    cur = await db.execute(
-        "SELECT id FROM memories WHERE tg_id=? AND lower(trim(fact))=lower(trim(?))",
-        (tg_id, fact))
-    if await cur.fetchone():
+    # Сравниваем в Python, а не через SQL lower(): встроенный lower() в SQLite
+    # работает только с ASCII, поэтому «Работает» и «работает» для него разные
+    # строки — на кириллице дедупликация молча не срабатывала.
+    key = dedup_key(fact)
+    cur = await db.execute("SELECT id, fact FROM memories WHERE tg_id=?", (tg_id,))
+    twin = next((r["id"] for r in await cur.fetchall()
+                 if dedup_key(r["fact"]) == key), None)
+    if twin is not None:
         async with transaction(db):
             await db.execute(
-                "UPDATE memories SET weight=weight+1 WHERE tg_id=? "
-                "AND lower(trim(fact))=lower(trim(?))", (tg_id, fact))
+                "UPDATE memories SET weight=weight+1 WHERE id=?", (twin,))
         return False
     async with transaction(db):
         await db.execute(

@@ -1,5 +1,4 @@
 .env
-data/
 __pycache__/
 *.pyc
 .venv/
@@ -7,7 +6,10 @@ __pycache__/
 *.db
 *.db-wal
 *.db-shm
+/data/*
+!/data/oracle.db
 # Local agent/index state — not project source
 .omc/
 .codegraph/
 .claude/
+.omo/

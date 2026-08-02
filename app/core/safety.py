@@ -69,7 +69,7 @@ _MEDICAL = [
 
 _HIGH_STAKES = [
     r"подавать в суд", r"судебн", r"развод", r"опека над реб",
-    r"кредит на", r"взять ипотеку", r"вложить все деньги",
+    r"кредит на", r"ипотек", r"вложить все деньги",
     r"продать квартиру", r"инвестир",
 ]
 
@@ -84,11 +84,30 @@ RE_VIOLENCE = _compile(_VIOLENCE)
 RE_MEDICAL = _compile(_MEDICAL)
 RE_HIGH_STAKES = _compile(_HIGH_STAKES)
 
+#: Те же кризисные формулировки без пробелов — для проверки «расклеенного»
+#: текста. Только для кризиса: в этих словарях нет границ слова `\b`, которые
+#: на склеенной строке дали бы ложные срабатывания (как `\bрак\b` в медицинском).
+RE_SUICIDE_SQ = _compile([p.replace(" ", "") for p in _SUICIDE])
+RE_SELF_HARM_SQ = _compile([p.replace(" ", "") for p in _SELF_HARM])
+RE_VIOLENCE_SQ = _compile([p.replace(" ", "") for p in _VIOLENCE])
+
+#: Чем разделяют буквы, чтобы обойти фильтр: пробелы, точки, дефисы, звёздочки.
+_SEPARATORS = re.compile(r"[\s.\-_*+~·•|/\\]+")
+
 
 def _normalize(text: str) -> str:
-    """Убираем разделители, которыми обходят фильтры («н е   х о ч у»)."""
+    """Приводим к нижнему регистру и сжимаем пробелы."""
     text = unicodedata.normalize("NFKC", text or "").lower().replace("ё", "е")
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _squash(text: str) -> str:
+    """Текст без разделителей: «н е х о ч у ж и т ь» → «нехочужить».
+
+    Разделение букв — самый частый способ обойти словарный фильтр, и он
+    полностью убивает смысл проверки, если не склеить строку обратно.
+    """
+    return _SEPARATORS.sub("", text)
 
 
 def classify(text: str) -> tuple[str, str]:
@@ -96,12 +115,13 @@ def classify(text: str) -> tuple[str, str]:
     body = _normalize(text)
     if not body:
         return NONE, ""
+    squashed = _squash(body)
     # «ё» уже свёрнута в «е» — паттерны пишем с обоими вариантами намеренно
-    if RE_SUICIDE.search(body):
+    if RE_SUICIDE.search(body) or RE_SUICIDE_SQ.search(squashed):
         return CRISIS, "suicide"
-    if RE_SELF_HARM.search(body):
+    if RE_SELF_HARM.search(body) or RE_SELF_HARM_SQ.search(squashed):
         return CRISIS, "self_harm"
-    if RE_VIOLENCE.search(body):
+    if RE_VIOLENCE.search(body) or RE_VIOLENCE_SQ.search(squashed):
         return CRISIS, "violence"
     if RE_MEDICAL.search(body):
         return SOFTEN, "medical"
