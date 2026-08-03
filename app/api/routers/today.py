@@ -55,7 +55,7 @@ async def sky(user=Depends(current_user)):
     return astro.today_sky()
 
 
-@router.get("/horoscope")
+@router.get("/horoscope", dependencies=[Depends(rate_limit("read"))])
 async def horoscope(sign: str | None = None, user=Depends(current_user),
                     db=Depends(get_db)):
     """Гороскоп по знаку. Без параметра — по её знаку Солнца.
@@ -81,7 +81,7 @@ async def horoscope(sign: str | None = None, user=Depends(current_user),
     }
 
 
-@router.get("/horoscope/all")
+@router.get("/horoscope/all", dependencies=[Depends(rate_limit("read"))])
 async def horoscope_all(user=Depends(current_user), db=Depends(get_db)):
     """Все двенадцать знаков на сегодня — витрина «а что у других»."""
     return await horoscopes.all_for_day(db)

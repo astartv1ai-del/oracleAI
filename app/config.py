@@ -50,6 +50,13 @@ class Settings:
     openai_main: str = os.getenv("OPENAI_MODEL_MAIN", "gpt-4o")
     openai_lite: str = os.getenv("OPENAI_MODEL_LITE", "gpt-4o-mini")
 
+    # ── мониторинг (G31): пусто = Sentry выключен ──
+    sentry_dsn: str = os.getenv("SENTRY_DSN", "")
+
+    # ── защита LLM от всплеска: сколько вызовов одновременно и в минуту ──
+    llm_max_concurrency: int = _int("LLM_MAX_CONCURRENCY", 8)
+    llm_rate_per_min: int = _int("LLM_RATE_PER_MIN", 240)
+
     # ── память по смыслу (необязательна: без неё работает поиск по словам) ──
     embed_model: str = os.getenv("EMBED_MODEL", "text-embedding-3-small")
     embed_via_custom: bool = os.getenv("EMBED_VIA_CUSTOM", "0") == "1"

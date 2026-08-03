@@ -33,6 +33,51 @@ async def test_horoscope_is_cached(db):
     assert len(first) > 60
 
 
+async def test_horoscope_builds_once_under_concurrency(db, monkeypatch):
+    """Утренний пик: пять одновременных запросов одного знака — одна генерация.
+
+    Замок на (день, знак) + атомарная проверка кеша после захвата (G17): первый
+    билдит, остальные ждут и читают уже готовое.
+    """
+    import asyncio
+
+    calls = []
+
+    async def fake_generate(db_, sign, day):
+        calls.append(sign)
+        await asyncio.sleep(0.02)     # даём остальным пройти проверку кеша до замка
+        return "Гороскоп на сегодня"
+
+    monkeypatch.setattr(horoscopes, "_generate", fake_generate)
+    results = await asyncio.gather(
+        *[horoscopes.get_or_build(db, "Лев") for _ in range(5)])
+
+    assert calls == ["Лев"], f"генераций {len(calls)}, а должна быть одна"
+    assert all(r == "Гороскоп на сегодня" for r in results)
+
+
+async def test_daily_forecast_builds_once_under_concurrency(db, user, monkeypatch):
+    """Mini App и бот в одно утро: пять параллельных запросов — одна генерация
+    (G17, атомарная проверка кеша в daily_forecast_cached)."""
+    import asyncio
+
+    from app.core import agent as agent_core
+
+    calls = []
+
+    async def fake_forecast(db_, user_, chart):
+        calls.append(user_["tg_id"])
+        await asyncio.sleep(0.02)
+        return "🌅 Прогноз на сегодня"
+
+    monkeypatch.setattr(agent_core, "daily_forecast", fake_forecast)
+    results = await asyncio.gather(
+        *[agent_core.daily_forecast_cached(db, user) for _ in range(5)])
+
+    assert calls == [user["tg_id"]], f"генераций {len(calls)}, а должна быть одна"
+    assert all(r == "🌅 Прогноз на сегодня" for r in results)
+
+
 async def test_build_day_fills_all_signs(db):
     result = await horoscopes.build_day(db)
     assert result["built"] == 12
@@ -43,6 +88,24 @@ async def test_build_day_fills_all_signs(db):
     assert len(items) == 12
     assert all(i["text"] for i in items)
     assert all(i["posted_at"] is None for i in items), "ничего не публиковали"
+
+
+async def test_build_day_does_not_overwrite_existing(db, monkeypatch):
+    """Готовый гороскоп (ручная правка / гонка процессов) сборка не затирает (G26)."""
+    day = horoscopes.date.today().isoformat()
+    await horoscopes.save(db, "Лев", day, "Ручной текст админа")
+
+    calls = []
+
+    async def fake_generate(db_, sign, day_):
+        calls.append(sign)
+        return "сгенерировано заново"
+
+    monkeypatch.setattr(horoscopes, "_generate", fake_generate)
+    result = await horoscopes.build_day(db, day)
+    assert "Лев" not in calls, "сборка перегенерировала готовый знак"
+    assert result["built"] == 11
+    assert await horoscopes.get(db, "Лев", day) == "Ручной текст админа"
 
 
 async def test_offline_horoscope_is_stable(db):
@@ -111,6 +174,30 @@ async def test_recall_prefers_relevant(db, user):
     await memory.remember(db, user["tg_id"], "Хочет сменить работу на удалённую")
     recalled = await memory.recall(db, user["tg_id"], "что там с работой", limit=2)
     assert any("работ" in fact.lower() for fact in recalled)
+
+
+async def test_remember_many_batches_embeddings(db, user, monkeypatch):
+    """Бач-запись: один эмбеддинг-запрос на все факты, а не по одному (G23)."""
+    calls: list[int] = []
+
+    async def fake_embed(texts):
+        calls.append(len(texts))
+        return None              # офлайн: без векторов, дедупликация по словам
+
+    monkeypatch.setattr(memory, "embed", fake_embed)
+    saved = await memory.remember_many(
+        db, user["tg_id"], ["Любит кофе", "Её парня зовут Дима", "Боится летать"])
+    assert saved == 3
+    assert calls == [3], "эмбеддинги не сгруппированы в один запрос"
+
+
+async def test_remember_many_deduplicates(db, user):
+    await memory.remember(db, user["tg_id"], "Любит кофе")
+    assert await memory.remember_many(
+        db, user["tg_id"], ["Любит кофе", "Её парня зовут Дима"]) == 1
+    cur = await db.execute("SELECT COUNT(*) c FROM memories WHERE tg_id=?",
+                           (user["tg_id"],))
+    assert (await cur.fetchone())["c"] == 2, "повтор попал в память"
 
 
 async def test_summary_absent_until_enough_facts(db, user):

@@ -40,11 +40,12 @@ router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 #: запроса: подпись сама по себе бессрочна.
 MAX_SIGNATURE_AGE = 300
 
-#: События, после которых доступ открывается. Остальные просто логируем.
+#: События, после которых доступ открывается. Только то, где реально прошли
+#: деньги: `subscription.updated` (смена плана/перенос даты) и
+#: `subscription.activated` (старт без нового списания) выдавали бы дни
+#: бесплатно при каждом пинге Paddle (review-фикс G37).
 GRANTING_EVENTS = {
     "transaction.completed",
-    "subscription.activated",
-    "subscription.updated",
 }
 
 

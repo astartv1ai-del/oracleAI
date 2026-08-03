@@ -32,13 +32,19 @@ async def db(tmp_path):
 
 @pytest.fixture
 async def user(db):
-    """Клиентка с триалом, прошедшая онбординг."""
+    """Клиентка с триалом, прошедшая онбординг (карта построена как в онбординге)."""
+    import json
+
+    from app.core import astro
     from app.repo import users
     created = await users.ensure(db, 1001, "Тестовая", "tester")
+    chart = await astro.compute_chart_async("1990-06-21", "14:30", "Казань",
+                                            55.79, 49.12, "Europe/Moscow")
     await users.update(db, 1001, onboarded=1, birth_date="1990-06-21",
                        birth_time="14:30", birth_time_known=1,
                        birth_city="Казань", tz="Europe/Moscow",
-                       sub_level="vip")
+                       sub_level="vip",
+                       chart_json=json.dumps(chart, ensure_ascii=False))
     assert created["tg_id"] == 1001
     return await users.get(db, 1001)
 
@@ -51,3 +57,18 @@ async def free_user(db):
     await users.update(db, 1002, onboarded=1, birth_date="1988-01-15",
                        sub_until="2000-01-01T00:00:00+00:00", sub_level="free")
     return await users.get(db, 1002)
+
+
+@pytest.fixture(autouse=True)
+async def _reset_api_rate_limits():
+    """Внутрипроцессное состояние между тестами: API-лимитер накапливает корзину
+    «write», кеш touch проносит last_seen между тестами, фоновые записи событий
+    (G14) могут жить дольше теста и дёргать чужое соединение."""
+    from app.api import deps
+    from app.core import memory
+    from app.repo import users
+    from app.services import analytics
+    deps._hits.clear()
+    users._last_seen_cache.clear()
+    memory._recall_cache.clear()
+    await analytics.drain()

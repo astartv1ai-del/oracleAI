@@ -12,11 +12,29 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
+from ..data.session import transaction
 from ..repo import analytics, billing as repo, content, growth, users
 
 log = logging.getLogger("oracle.billing")
+
+#: Реферальный бонус с первой оплаты приглашённой (G20). Без замка две оплаты
+#: подряд успевали прочитать «первая» и начислить бонус дважды — начисление по
+#: приглашённому сериализуем.
+_bonus_locks: dict[int, asyncio.Lock] = {}
+_BONUS_LOCKS_MAX = 4096
+
+
+def _bonus_lock(tg_id: int) -> asyncio.Lock:
+    lock = _bonus_locks.get(tg_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        if len(_bonus_locks) >= _BONUS_LOCKS_MAX:
+            _bonus_locks.clear()
+        _bonus_locks[tg_id] = lock
+    return lock
 
 # Что делает выдача для каждого вида товара.
 GRANT_KINDS = ("plan", "crystals", "spread", "report", "question")
@@ -96,24 +114,29 @@ async def pay_with_crystals(db, tg_id: int, sku: str, *,
     if price <= 0:
         raise PurchaseError("Этот товар продаётся только за ⭐ Stars")
 
-    order = await repo.create_order(
-        db, tg_id, product["kind"], sku=sku, title=product["title"],
-        amount_crystals=price, surface=surface,
-        meta={"grant_kind": product["grant_kind"], "grant_code": product["grant_code"],
-              "grant_qty": product["grant_qty"], "valid_days": product["valid_days"]})
+    # Списание ✦, выдача и пометка заказа оплаченным — одной транзакцией:
+    # сбой между шагами не оставляет списанный баланс без товара.
+    async with transaction(db):
+        order = await repo.create_order(
+            db, tg_id, product["kind"], sku=sku, title=product["title"],
+            amount_crystals=price, surface=surface,
+            meta={"grant_kind": product["grant_kind"],
+                  "grant_code": product["grant_code"],
+                  "grant_qty": product["grant_qty"],
+                  "valid_days": product["valid_days"]})
 
-    if not await repo.spend_crystals(db, tg_id, price, f"buy:{sku}",
-                                     ref=order["payload"]):
-        raise PurchaseError(f"Нужно ✦{price}, а у тебя меньше. Пополни запас 💎")
+        if not await repo.spend_crystals(db, tg_id, price, f"buy:{sku}",
+                                         ref=order["payload"]):
+            raise PurchaseError(f"Нужно ✦{price}, а у тебя меньше. Пополни запас 💎")
 
-    granted = await _apply_grant(
-        db, tg_id, product["grant_kind"], product["grant_code"],
-        qty=product["grant_qty"] or 1, valid_days=product["valid_days"],
-        source="purchase", order_id=order["id"])
-    await repo.mark_order_paid(db, order["payload"], provider="crystals",
-                               amount_stars=0)
-    await analytics.track(db, analytics.E_PAID, tg_id,
-                          props={"sku": sku, "crystals": price}, surface=surface)
+        granted = await _apply_grant(
+            db, tg_id, product["grant_kind"], product["grant_code"],
+            qty=product["grant_qty"] or 1, valid_days=product["valid_days"],
+            source="purchase", order_id=order["id"])
+        await repo.mark_order_paid(db, order["payload"], provider="crystals",
+                                   amount_stars=0)
+        await analytics.track(db, analytics.E_PAID, tg_id,
+                              props={"sku": sku, "crystals": price}, surface=surface)
     return {"order": order, "granted": granted, "product": dict(product)}
 
 
@@ -125,23 +148,28 @@ async def apply_payment(db, payload: str, *, charge_id: str | None = None,
 
     Идемпотентность целиком на стороне БД (`mark_order_paid` меняет статус только
     из `pending`), поэтому повторная доставка апдейта безопасна.
-    """
-    order = await repo.mark_order_paid(db, payload, charge_id=charge_id,
-                                       amount_stars=amount_stars)
-    if not order:
-        log.info("оплата %s уже обработана или заказ не найден", payload)
-        return None
 
-    meta = _order_meta(order)
-    granted = await _apply_grant(
-        db, order["tg_id"], meta.get("grant_kind"), meta.get("grant_code"),
-        qty=meta.get("grant_qty") or 1, valid_days=meta.get("valid_days"),
-        source="purchase", order_id=order["id"])
-    await analytics.track(db, analytics.E_PAID, order["tg_id"],
-                          props={"sku": order["sku"], "kind": order["kind"],
-                                 "stars": order["amount_stars"]},
-                          surface=order["surface"] or "bot")
-    await _referral_revenue_bonus(db, order["tg_id"], order["amount_stars"] or 0)
+    Вся выдача — в той же транзакции, что и пометка заказа оплаченным: сбой между
+    «деньги приняты» и «товар выдан» невозможен как состояние. Либо всё зафиксирова
+    лось, либо ничего.
+    """
+    async with transaction(db):
+        order = await repo.mark_order_paid(db, payload, charge_id=charge_id,
+                                           amount_stars=amount_stars)
+        if not order:
+            log.info("оплата %s уже обработана или заказ не найден", payload)
+            return None
+
+        meta = _order_meta(order)
+        granted = await _apply_grant(
+            db, order["tg_id"], meta.get("grant_kind"), meta.get("grant_code"),
+            qty=meta.get("grant_qty") or 1, valid_days=meta.get("valid_days"),
+            source="purchase", order_id=order["id"])
+        await analytics.track(db, analytics.E_PAID, order["tg_id"],
+                              props={"sku": order["sku"], "kind": order["kind"],
+                                     "stars": order["amount_stars"]},
+                              surface=order["surface"] or "bot")
+        await _referral_revenue_bonus(db, order["tg_id"], order["amount_stars"] or 0)
     return {"order": dict(order), "granted": granted}
 
 
@@ -204,33 +232,38 @@ async def grant_manually(db, tg_id: int, kind: str, code: str | None = None, *,
 # ─────────────────────────────── промокоды ────────────────────────────────────
 
 async def redeem_promo(db, tg_id: int, code: str) -> dict | None:
-    """Активирует промокод и выдаёт то, что в нём записано."""
-    promo = await growth.redeem(db, code, tg_id)
-    if not promo:
-        return None
-    kind = promo["kind"]
-    if kind == "crystals":
-        granted = await _apply_grant(db, tg_id, "crystals", promo["code"],
-                                     qty=promo["crystals"], source="promo")
-    elif kind == "product" and promo["sku"]:
-        product = await repo.get_product(db, promo["sku"])
-        if not product:
+    """Активирует промокод и выдаёт то, что в нём записано.
+
+    Счётчик использований кода и сама выдача — одной транзакцией: сбой между
+    «код засчитан» и «товар выдан» не сжигает промокод впустую.
+    """
+    async with transaction(db):
+        promo = await growth.redeem(db, code, tg_id)
+        if not promo:
             return None
-        granted = await _apply_grant(
-            db, tg_id, product["grant_kind"], product["grant_code"],
-            qty=product["grant_qty"] or 1, valid_days=product["valid_days"],
-            source="promo")
-    else:
-        granted = await _apply_grant(db, tg_id, "plan", promo["plan_code"],
-                                     valid_days=promo["days"], source="promo")
-    await analytics.track(db, analytics.E_PROMO, tg_id,
-                          props={"code": promo["code"], "batch": promo["batch"],
-                                 "kind": kind})
-    # партия промокода = канал привлечения: без этого нельзя посчитать,
-    # какой листинг Etsy приводит платящих
-    user = await users.get(db, tg_id)
-    if user and not user["source"] and promo["batch"]:
-        await users.update(db, tg_id, source=f"promo:{promo['batch']}")
+        kind = promo["kind"]
+        if kind == "crystals":
+            granted = await _apply_grant(db, tg_id, "crystals", promo["code"],
+                                         qty=promo["crystals"], source="promo")
+        elif kind == "product" and promo["sku"]:
+            product = await repo.get_product(db, promo["sku"])
+            if not product:
+                return None          # rollback: код не засчитан
+            granted = await _apply_grant(
+                db, tg_id, product["grant_kind"], product["grant_code"],
+                qty=product["grant_qty"] or 1, valid_days=product["valid_days"],
+                source="promo")
+        else:
+            granted = await _apply_grant(db, tg_id, "plan", promo["plan_code"],
+                                         valid_days=promo["days"], source="promo")
+        await analytics.track(db, analytics.E_PROMO, tg_id,
+                              props={"code": promo["code"], "batch": promo["batch"],
+                                     "kind": kind})
+        # партия промокода = канал привлечения: без него нельзя посчитать,
+        # какой листинг приводит платящих
+        user = await users.get(db, tg_id)
+        if user and not user["source"] and promo["batch"]:
+            await users.update(db, tg_id, source=f"promo:{promo['batch']}")
     return {**promo, "granted": granted}
 
 
@@ -254,10 +287,15 @@ async def _referral_revenue_bonus(db, tg_id: int, stars: int) -> None:
         share = 30
     if share <= 0:
         return
-    # только за первую оплату приглашённой
-    orders = await repo.user_orders(db, tg_id, limit=5)
-    if sum(1 for o in orders if o["status"] == "paid") > 1:
-        return
-    await repo.add_crystals(db, referrer, share, "referral_revenue", ref=str(tg_id))
-    await analytics.track(db, "referral_revenue_bonus", referrer,
-                          props={"invitee": tg_id, "crystals": share})
+    # «первая оплата» — гонка: две оплаты приглашённой подряд смотрели на
+    # счётчик до начисления и бонусовали пригласившую дважды. Замок на
+    # приглашённую + транзакция: чтение счётчика и начисление — одно целое.
+    async with _bonus_lock(tg_id):
+        async with transaction(db):
+            orders = await repo.user_orders(db, tg_id, limit=5)
+            if sum(1 for o in orders if o["status"] == "paid") > 1:
+                return
+            await repo.add_crystals(db, referrer, share, "referral_revenue",
+                                    ref=str(tg_id))
+            await analytics.track(db, "referral_revenue_bonus", referrer,
+                                  props={"invitee": tg_id, "crystals": share})

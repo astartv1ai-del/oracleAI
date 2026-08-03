@@ -447,9 +447,10 @@ CREATE TABLE IF NOT EXISTS broadcasts (
 CREATE TABLE IF NOT EXISTS broadcast_targets (
     broadcast_id INTEGER NOT NULL,
     tg_id        INTEGER NOT NULL,
-    status       TEXT DEFAULT 'pending',      -- pending|sent|failed|skipped
+    status       TEXT DEFAULT 'pending',      -- pending|claiming|sent|failed|skipped
     error        TEXT,
     sent_at      TEXT,
+    claimed_at   TEXT,                        -- момент захвата (G9: атомарный claim)
     PRIMARY KEY (broadcast_id, tg_id)
 );
 """
@@ -479,13 +480,18 @@ CREATE INDEX IF NOT EXISTS idx_partners_user ON partners(tg_id);
 CREATE INDEX IF NOT EXISTS idx_syn_user      ON synastry_cache(tg_id, partner_key);
 CREATE INDEX IF NOT EXISTS idx_notes_user    ON user_notes(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_ref_referrer  ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_ref_invitee   ON referrals(invitee_id, level);
 CREATE INDEX IF NOT EXISTS idx_promo_batch   ON promo_codes(batch);
+CREATE INDEX IF NOT EXISTS idx_promo_red     ON promo_redemptions(code, tg_id);
+CREATE INDEX IF NOT EXISTS idx_pay_order     ON payments(order_id);
 CREATE INDEX IF NOT EXISTS idx_bt_status     ON broadcast_targets(broadcast_id, status);
 CREATE INDEX IF NOT EXISTS idx_usage_day     ON llm_usage(day, purpose);
 CREATE INDEX IF NOT EXISTS idx_usage_user    ON llm_usage(tg_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_usage_created ON llm_usage(created_at);
 CREATE INDEX IF NOT EXISTS idx_safety_user   ON safety_events(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_horo_day      ON horoscopes(day);
 CREATE INDEX IF NOT EXISTS idx_practice_user ON practices(tg_id, code);
+CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
 """
 
 #: Только таблицы, без индексов. Разделение нужно из-за порядка на старой базе:

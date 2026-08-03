@@ -7,11 +7,15 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from ..repo import analytics as repo
 
 log = logging.getLogger("oracle.analytics")
+
+#: Фоновые записи событий. Сильная ссылка, чтобы задача не умерла по сборке мусора.
+_pending: set[asyncio.Task] = set()
 
 # Реэкспорт имён событий: хендлеры импортируют их отсюда, а не из репозитория.
 E_START = repo.E_START
@@ -31,10 +35,35 @@ E_CHURN_WARN = repo.E_CHURN_WARN
 
 async def track(db, name: str, tg_id: int | None = None, *,
                 props: dict | None = None, surface: str = "bot") -> None:
+    """Ставит запись события в фон и возвращается сразу.
+
+    Хендлеры ждут `await track(...)`, но тело не делает ни одной await-паузы:
+    INSERT уходит в отдельную задачу, а пользовательский запрос не держится ради
+    аналитики. `drain()` даёт тестам и шатдауну дождаться фоновых записей.
+    """
+    task = asyncio.get_running_loop().create_task(
+        _record(db, name, tg_id, props, surface))
+    _pending.add(task)
+    task.add_done_callback(_pending.discard)
+
+
+async def _record(db, name: str, tg_id: int | None, props, surface: str) -> None:
     try:
         await repo.track(db, name, tg_id, props=props, surface=surface)
     except Exception as e:  # noqa: BLE001
         log.warning("событие %s не записано: %s", name, e)
+
+
+async def drain() -> None:
+    """Ждёт фоновые записи событий. Тесты и корректный шатдаун."""
+    if _pending:
+        await asyncio.gather(*_pending, return_exceptions=True)
+
+
+async def prune(db, days: int = 120) -> int:
+    """Чистит события и учёт LLM старее окна. Дашборд живёт на rolling-окнах,
+    история на годы только раздувает базу."""
+    return await repo.prune_analytics(db, days)
 
 
 async def dashboard(db, *, days: int = 30) -> dict:

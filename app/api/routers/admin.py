@@ -19,11 +19,14 @@ from ...services import analytics as analytics_svc
 from ...services import billing as billing_svc
 from ...services import broadcast as broadcast_svc
 from ...services import telegram
-from ..deps import current_admin, get_db, require
+from ..deps import current_admin, get_db, rate_limit, require
 
 log = logging.getLogger("oracle.api.admin")
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+# rate-limit на весь роутер (G24): панель умеет дарить подписки и писать базе —
+# 60 запросов в минуту на админа отсекают перебор и последствия утёкшего ключа
+router = APIRouter(prefix="/api/admin", tags=["admin"],
+                   dependencies=[Depends(rate_limit("admin"))])
 
 
 # ─────────────────────────────── доступ ───────────────────────────────────────

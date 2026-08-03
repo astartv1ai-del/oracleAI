@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -53,8 +54,10 @@ async def reading_png(reading_id: int, user=Depends(current_user),
         raise HTTPException(404, "в раскладе нет карт")
 
     spread = await catalog.get_spread(db, row["spread"] or "")
-    image = cards.reading_card(
-        spread["title"], drawn, spread["positions"],
+    # Отрисовка PNG — тяжёлая работа Pillow: держать событийный цикл, пока она
+    # идёт, значит стопорить все остальные запросы API. Рендер уходит в поток.
+    image = await asyncio.to_thread(
+        cards.reading_card, spread["title"], drawn, spread["positions"],
         name=user["name"] or "", bot_username=await _bot_username(db),
         seed=reading_id)
     await analytics.track(db, "share_card", user["tg_id"],
@@ -69,10 +72,11 @@ async def today_png(user=Depends(current_user), db=Depends(get_db)):
     sun = chart.get("sun") or {}
     text = await agent_core.daily_forecast_cached(db, user, chart)
     card = agent_core.card_of_day(user)
-    image = cards.forecast_card(
-        text, sign=sun.get("sign", ""), symbol=sun.get("symbol", ""),
-        card_name=card["name"], name=user["name"] or "",
-        bot_username=await _bot_username(db), day=users.user_today(user))
+    image = await asyncio.to_thread(
+        cards.forecast_card, text, sign=sun.get("sign", ""),
+        symbol=sun.get("symbol", ""), card_name=card["name"],
+        name=user["name"] or "", bot_username=await _bot_username(db),
+        day=users.user_today(user))
     await analytics.track(db, "share_card", user["tg_id"],
                           props={"kind": "today"}, surface="miniapp")
     return _png(image, "oracle-today.png")

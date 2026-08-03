@@ -12,10 +12,12 @@ import time
 
 from aiogram import BaseMiddleware, Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.types import BotCommand
 
 from ..config import settings
+from ..core import flood, sentry
 from ..data.session import connect
 from ..repo import content as content_repo
 from ..services import broadcast, scheduler
@@ -104,6 +106,19 @@ async def _remember_username(bot: Bot, db) -> None:
         log.warning("не удалось узнать имя бота: %s", e)
 
 
+class _ThrottledSession(AiohttpSession):
+    """Bot API-сессия, которая берёт токен из общего бакета перед каждым вызовом.
+
+    Так лимитируются все исходящие бот-процесса разом — сообщения, инвойсы,
+    ответы на колбэки. Служебные методы (поллинг, getMe) бакет не тратят.
+    """
+
+    async def make_request(self, bot, method, timeout=None):
+        if not flood.is_control(method.__api_method__):
+            await flood.acquire()
+        return await super().make_request(bot, method, timeout)
+
+
 def build_dispatcher(db) -> Dispatcher:
     dp = Dispatcher()
     dp.update.middleware(DbMiddleware(db))
@@ -128,9 +143,13 @@ async def main() -> None:
     for warning in settings.ready:
         log.warning("проверь конфигурацию: %s", warning)
 
+    sentry.init()
     db = await connect()
+    # Сессия-ограничитель: каждый исходящий вызов Bot API берёт токен из общей
+    # корзины (G18), чтобы рассылка на фоне живого диалога не утопила flood-лимит
     bot = Bot(settings.bot_token,
-              default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+              default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+              session=_ThrottledSession(timeout=60))
     dp = build_dispatcher(db)
 
     names = {"anthropic": "Claude API", "openai": "OpenAI API",

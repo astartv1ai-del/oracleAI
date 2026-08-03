@@ -97,28 +97,51 @@ async def _refresh_zones(db) -> None:
 
 
 async def _audience(db, zones: set[str]) -> list:
-    """Активные клиентки из указанных таймзон. Пустой набор — пустой список."""
+    """Активные клиентки из указанных таймзон, все, без отсечки в 5000.
+
+    Курсор по `tg_id`: пачки по AUDIENCE_CAP с ORDER BY tg_id и условием
+    tg_id>last, пока не доберём всех. Раньше LIMIT 5000 резал аудиторию —
+    на 10 тысячах половина клиенток за тик не получала бы ничего.
+    """
     if not zones:
         return []
     placeholders = ",".join("?" * len(zones))
-    cur = await db.execute(
-        f"SELECT * FROM users WHERE onboarded=1 AND status='active' "
-        f"AND COALESCE(tz,'Europe/Moscow') IN ({placeholders}) LIMIT {AUDIENCE_CAP}",
-        list(zones))
-    return await cur.fetchall()
+    out: list = []
+    last_id = 0
+    while True:
+        cur = await db.execute(
+            f"SELECT * FROM users WHERE onboarded=1 AND status='active' "
+            f"AND tg_id>? AND COALESCE(tz,'Europe/Moscow') IN ({placeholders}) "
+            f"ORDER BY tg_id LIMIT {AUDIENCE_CAP}", (last_id, *zones))
+        batch = await cur.fetchall()
+        if not batch:
+            return out
+        out.extend(batch)
+        last_id = batch[-1]["tg_id"]
 
 
 async def _expiring_audience(db, now_utc: datetime) -> list:
-    """Кому пора сказать про конец доступа — выбираем сразу условием, не перебором."""
+    """Кому пора сказать про конец доступа — выбираем сразу условием, не перебором.
+
+    Та же курсорная пагинация по tg_id: продление привязано к дате окончания,
+    а не к часу, поэтому условие другое, а лимита быть не должно.
+    """
     soon = (now_utc + timedelta(days=2)).isoformat()
-    cur = await db.execute(
-        "SELECT * FROM users WHERE onboarded=1 AND status='active' "
-        "AND sub_until IS NOT NULL AND ("
-        "  (sub_until > ? AND sub_until <= ? AND COALESCE(expiry_notified,0) = 0)"
-        "  OR (sub_until <= ? AND COALESCE(expiry_notified,0) <> 2)"
-        f") LIMIT {AUDIENCE_CAP}",
-        (now_utc.isoformat(), soon, now_utc.isoformat()))
-    return await cur.fetchall()
+    out: list = []
+    last_id = 0
+    while True:
+        cur = await db.execute(
+            "SELECT * FROM users WHERE onboarded=1 AND status='active' AND tg_id>? "
+            "AND sub_until IS NOT NULL AND ("
+            "  (sub_until > ? AND sub_until <= ? AND COALESCE(expiry_notified,0) = 0)"
+            "  OR (sub_until <= ? AND COALESCE(expiry_notified,0) <> 2)"
+            f") ORDER BY tg_id LIMIT {AUDIENCE_CAP}",
+            (last_id, now_utc.isoformat(), soon, now_utc.isoformat()))
+        batch = await cur.fetchall()
+        if not batch:
+            return out
+        out.extend(batch)
+        last_id = batch[-1]["tg_id"]
 
 
 # ─────────────────────────── сценарии по клиентке ─────────────────────────────
@@ -172,6 +195,38 @@ async def _voice_forecast(bot, db, user, text: str, day: str) -> None:
                  user["tg_id"], day))
     except Exception as e:  # noqa: BLE001
         log.info("озвучка прогноза не отправлена %s: %s", user["tg_id"], e)
+
+
+async def _pregen_forecasts(db, now_utc, settings_cache) -> None:
+    """Утренние прогнозы генерируем заранее — за час до рассылки по таймзоне.
+
+    Не глобально в один час: час у клиентки свой, и преген идёт в том же окне,
+    что и рассылка (местные morning_hour-1), значит растягивается по суткам и
+    не упирается в рейт-лимит LLM (G6). Кеш forecasts делает преген
+    идемпотентным: заглянувшая в Mini App до рассылки клиентка уже получила
+    текст, и повторные тики не тратят вызовов. Генерация параллельная.
+    """
+    pregen_hour = max(0, settings_cache["morning_hour"] - 1)
+    if pregen_hour == settings_cache["morning_hour"]:
+        return          # morning_hour=0: окна совпадают, преген бесполезен
+    zones = _zones_at_hour(now_utc, {pregen_hour})
+    audience = [u for u in await _audience(db, zones)
+                if u["morning_push"] and users.sub_active(u)]
+    if not audience:
+        return
+    # Реальную цену вызовам ставит семафор LLM (G6); 32 здесь лишь чтобы не
+    # плодить тысячу корутин при большой аудитории.
+    sem = asyncio.Semaphore(32)
+
+    async def one(user):
+        async with sem:
+            try:
+                await agent_core.daily_forecast_cached(db, user)
+            except Exception as e:  # noqa: BLE001
+                log.warning("преген прогноза %s: %s", user["tg_id"], e)
+
+    log.info("преген прогнозов: %s клиенток", len(audience))
+    await asyncio.gather(*(one(u) for u in audience))
 
 
 async def _expiry_warning(bot, db, user, now_utc) -> None:
@@ -343,6 +398,11 @@ async def tick(bot, db) -> None:
         await asyncio.sleep(BATCH_PAUSE)
 
     try:
+        await _pregen_forecasts(db, now_utc, settings_cache)
+    except Exception as e:  # noqa: BLE001
+        log.error("преген прогнозов: %s", e)
+
+    try:
         await _horoscopes(bot, db, now_utc, settings_cache)
     except Exception as e:  # noqa: BLE001
         log.error("гороскопы: %s", e)
@@ -358,6 +418,9 @@ async def tick(bot, db) -> None:
             removed = await comms.prune(db)
             if removed:
                 log.info("журнал доставок: удалено %s старых отметок", removed)
+            purged = await analytics.prune(db)
+            if purged:
+                log.info("аналитика: удалено %s старых событий", purged)
     except Exception as e:  # noqa: BLE001
         log.warning("агрегация метрик: %s", e)
 
@@ -368,6 +431,10 @@ async def run(bot, db) -> None:
     while True:
         try:
             await tick(bot, db)
+            # Хартбит для docker healthcheck: бот жив, пока регулярно крутит тик
+            # (G21). Метку читает scripts/healthcheck.py из бэкап-контейнера.
+            await content.set_setting(db, "system.heartbeat",
+                                      datetime.now(timezone.utc).isoformat())
         except asyncio.CancelledError:
             log.info("планировщик остановлен")
             raise

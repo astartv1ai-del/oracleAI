@@ -25,6 +25,7 @@ import array
 import logging
 import math
 import re
+import time
 
 from ..config import settings
 from ..repo import dialog as dialog_repo
@@ -38,6 +39,19 @@ DUPLICATE_THRESHOLD = 0.90
 RELEVANCE_FLOOR = 0.25
 #: Сколько слотов промпта всегда отдано самым весомым фактам (её «константы»).
 ANCHOR_SHARE = 0.4
+
+#: Сколько кандидатов берём в косинусный поиск из SQL. История у клиентки может
+#: быть на сотни фактов; сканировать все векторы на каждый вопрос — лишняя работа.
+#: Окно «недавние по last_used, затем по весу» держит релевантность и режет сканы.
+CANDIDATE_POOL = 300
+
+#: Кеш recall: тот же вопрос в ближайшие минуты не должен заново эмбеддить запрос
+#: и сканировать кандидатов. Пяти минут задержки на новые факты хватает — память
+#: меняется не на каждый ход.
+RECALL_TTL_S = 300
+RECALL_CACHE_MAX = 512
+
+_recall_cache: dict[tuple[int, str], tuple[float, list[str]]] = {}
 
 EMBED_DIM_LIMIT = 3072
 
@@ -108,33 +122,63 @@ def _normalize(fact: str) -> str:
     return re.sub(r"\s+", " ", (fact or "").strip().lower().replace("ё", "е"))
 
 
-async def remember(db, tg_id: int, fact: str, kind: str = "fact") -> bool:
-    """Сохраняет факт. False — это дубликат, вес существующего усилен.
-
-    Порядок проверок — от дешёвой к дорогой: точное совпадение ловит большинство
-    повторов бесплатно, вектор считаем только для того, что прошло дальше.
-    """
+def _clean(fact: str) -> str:
     fact = (fact or "").strip()
-    if len(fact) < 3:
-        return False
+    if len(fact) <= 3:
+        return ""
     if len(fact) > 300:
         fact = fact[:300].rsplit(" ", 1)[0]
+    return fact
 
+
+async def _remember_one(db, tg_id: int, fact: str, kind: str,
+                        vector: list[float] | None) -> bool:
+    """Проверка «это уже есть» и вставка. False — дубликат, вес усилен.
+
+    Порядок проверок — от дешёвой к дорогой: точное совпадение ловит большинство
+    повторов бесплатно, вектор используем только для того, что прошло дальше.
+    """
     exact = await _find_exact(db, tg_id, fact)
     if exact:
         await _bump(db, exact)
         return False
-
-    vectors = await embed([fact])
-    vector = vectors[0] if vectors else None
     if vector:
         twin = await _find_similar(db, tg_id, vector)
         if twin:
             await _bump(db, twin)
             return False
-
     await _insert(db, tg_id, fact, kind, vector)
     return True
+
+
+async def remember(db, tg_id: int, fact: str, kind: str = "fact") -> bool:
+    """Сохраняет факт. False — это дубликат, вес существующего усилен."""
+    fact = _clean(fact)
+    if not fact:
+        return False
+    vectors = await embed([fact])
+    return await _remember_one(db, tg_id, fact, kind,
+                               vectors[0] if vectors else None)
+
+
+async def remember_many(db, tg_id: int, facts: list[str],
+                        kind: str = "fact") -> int:
+    """Бач-запись фактов одним эмбеддинг-запросом (G23).
+
+    Экстракция даёт до трёх фактов за ответ; по отдельному запросу на каждый —
+    три лишних HTTP-круга на диалог. Векторы считаем разом, дальше — обычная
+    дедупликация. Возвращает число новых фактов.
+    """
+    cleaned = [f for f in (_clean(x) for x in (facts or [])) if f]
+    if not cleaned:
+        return 0
+    vectors = await embed(cleaned)
+    saved = 0
+    for i, fact in enumerate(cleaned):
+        vector = vectors[i] if vectors else None
+        if await _remember_one(db, tg_id, fact, kind, vector):
+            saved += 1
+    return saved
 
 
 async def _find_exact(db, tg_id: int, fact: str) -> int | None:
@@ -188,6 +232,11 @@ async def recall(db, tg_id: int, query: str = "", limit: int = 20) -> list[str]:
     if not query.strip():
         return await dialog_repo.get_memories(db, tg_id, limit=limit)
 
+    key = (tg_id, _normalize(query))
+    hit = _recall_cache.get(key)
+    if hit is not None and time.time() - hit[0] < RECALL_TTL_S:
+        return hit[1]
+
     anchors_n = max(1, int(limit * ANCHOR_SHARE))
     anchors = await dialog_repo.get_memories(db, tg_id, limit=anchors_n)
     rest = limit - len(anchors)
@@ -201,25 +250,36 @@ async def recall(db, tg_id: int, query: str = "", limit: int = 20) -> list[str]:
     seen = {_normalize(a) for a in anchors}
     out = list(anchors)
     for fact in relevant:
-        key = _normalize(fact)
-        if key in seen:
+        key_fact = _normalize(fact)
+        if key_fact in seen:
             continue
-        seen.add(key)
+        seen.add(key_fact)
         out.append(fact)
         if len(out) >= limit:
             break
+
+    if len(_recall_cache) >= RECALL_CACHE_MAX:
+        _recall_cache.clear()      # простая защита от неограниченного роста
+    _recall_cache[key] = (time.time(), out)
     return out
 
 
 async def _semantic(db, tg_id: int, query: str, limit: int) -> list[str] | None:
-    """Факты, отсортированные по близости к вопросу. None — векторов нет."""
+    """Факты, отсортированные по близости к вопросу. None — векторов нет.
+
+    Кандидатов режем в SQL (недавние по last_used, затем по весу), а не
+    сканируем всю историю: косинус по пачке из CANDIDATE_POOL почти не теряет в
+    качестве, но убирает O(все факты) распаковок векторов на каждый вопрос.
+    """
     vectors = await embed([query])
     if not vectors:
         return None
     qv = vectors[0]
     cur = await db.execute(
         "SELECT id, fact, weight, embedding FROM memories "
-        "WHERE tg_id=? AND embedding IS NOT NULL", (tg_id,))
+        "WHERE tg_id=? AND embedding IS NOT NULL "
+        "ORDER BY COALESCE(last_used,'') DESC, weight DESC LIMIT ?",
+        (tg_id, CANDIDATE_POOL))
     rows = await cur.fetchall()
     if not rows:
         return None
@@ -232,28 +292,6 @@ async def _semantic(db, tg_id: int, query: str, limit: int) -> list[str] | None:
         scored.append((score + 0.02 * min(row["weight"] or 1, 5), row["fact"]))
     scored.sort(reverse=True)
     return [fact for _, fact in scored[:limit]]
-
-
-async def backfill_embeddings(db, tg_id: int, limit: int = 50) -> int:
-    """Досчитывает векторы для фактов, сохранённых до включения эмбеддингов."""
-    if not embeddings_enabled():
-        return 0
-    cur = await db.execute(
-        "SELECT id, fact FROM memories WHERE tg_id=? AND embedding IS NULL "
-        "ORDER BY weight DESC, id DESC LIMIT ?", (tg_id, limit))
-    rows = await cur.fetchall()
-    if not rows:
-        return 0
-    vectors = await embed([r["fact"] for r in rows])
-    if not vectors:
-        return 0
-    from ..data.session import transaction
-    async with transaction(db):
-        for row, vector in zip(rows, vectors):
-            await db.execute(
-                "UPDATE memories SET embedding=?, embed_model=? WHERE id=?",
-                (pack(vector), embed_model(), row["id"]))
-    return len(rows)
 
 
 # ──────────────────────────── сводка профиля ──────────────────────────────────

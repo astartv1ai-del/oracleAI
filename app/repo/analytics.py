@@ -48,8 +48,28 @@ async def _scalar(db, sql: str, *args):
     return (row[0] if row else 0) or 0
 
 
+async def prune_analytics(db, days: int = 120) -> int:
+    """События и учёт LLM старее окна — в архив некому, только удалять.
+
+    Дашборд считает DAU/WAU и расходы по rolling-окнам, а вот детальный хвост
+    за месяцы пользы не несёт и раздувает базу. 120 дней между 90 и 180 из ТЗ.
+    """
+    before = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    total = 0
+    async with transaction(db):
+        for table in ("events", "llm_usage"):
+            cur = await db.execute(f"DELETE FROM {table} WHERE created_at < ?",
+                                   (before,))
+            total += cur.rowcount or 0
+    return total
+
+
 def _ago(days: int) -> str:
     return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+
+def _ago_day(days: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
 
 
 async def overview(db) -> dict:
@@ -66,11 +86,11 @@ async def overview(db) -> dict:
         "subs_active": await _scalar(
             db, "SELECT COUNT(*) FROM users WHERE sub_until>?", utcnow()),
         "dau": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE created_at>=?", _ago(1)),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=?", _ago_day(1)),
         "wau": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE created_at>=?", _ago(7)),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=?", _ago_day(7)),
         "mau": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE created_at>=?", _ago(30)),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=?", _ago_day(30)),
         "questions_today": await _scalar(
             db, "SELECT COUNT(*) FROM messages WHERE is_question=1 AND created_at>=?",
             _ago(1)),

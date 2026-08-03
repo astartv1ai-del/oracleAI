@@ -369,6 +369,19 @@ textarea:focus { outline: 1px solid var(--gold-soft); }
   border-top: 1px solid var(--glass-br);
   padding: 8px 4px calc(10px + env(safe-area-inset-bottom));
 }
+
+/* ── доступность (G35): тач-цели, фокус, отключение движения ── */
+button {
+  min-height: 44px;                 /* не меньше рекомендаций Apple для тапа */
+  touch-action: manipulation;       /* без 300мс задержки двойного тапа */
+}
+button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--gold-soft); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important;
+                           transition-duration: .01ms !important; }
+}
 .nav-btn {
   background: none; border: none; color: var(--muted); font-size: 11px;
   display: flex; flex-direction: column; align-items: center; gap: 3px;

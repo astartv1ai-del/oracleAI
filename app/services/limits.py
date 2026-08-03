@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -22,6 +23,23 @@ from ..repo import billing, content, dialog, users
 
 # Сколько уточнений подряд считаются частью того же вопроса.
 FOLLOWUP_MAX = 2
+
+#: Пользовательский замок бюджета (G19). Без него два устройства клиентки на
+#: свободном лимите проходили бы проверку «право есть» одновременно, раньше,
+#: чем запись вопроса зафиксирует расход, — ответов два, а лимит один. Замок
+#: держит секцию «проверил → списал → записал вопрос» в `chat.ask`/`chat.draw`.
+_locks: dict[int, asyncio.Lock] = {}
+_LOCKS_MAX = 4096
+
+
+def user_lock(tg_id: int) -> asyncio.Lock:
+    lock = _locks.get(tg_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        if len(_locks) >= _LOCKS_MAX:
+            _locks.clear()
+        _locks[tg_id] = lock
+    return lock
 
 
 @dataclass

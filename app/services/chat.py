@@ -72,23 +72,26 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     if level == safety.CRISIS:
         return await _crisis_answer(db, user, question, category, agent, surface)
 
-    verdict = await limits.check(db, user)
-    if not verdict.allowed or (not allow_paid and verdict.charge in (
-            limits.CRYSTALS, limits.ENT_QUESTION)):
-        await analytics.track(db, analytics.E_LIMIT_HIT, user["tg_id"],
-                              props={"reason": verdict.reason, "agent": agent},
-                              surface=surface)
-        raise ChatDenied(verdict)
-    if not await limits.consume(db, user, verdict):
-        raise ChatDenied(verdict)
+    # Зона бюджета заперта на пользователя: два устройства не должны пройти
+    # «право есть» одновременно — раньше, чем запись вопроса зафиксирует расход
+    async with limits.user_lock(user["tg_id"]):
+        verdict = await limits.check(db, user)
+        if not verdict.allowed or (not allow_paid and verdict.charge in (
+                limits.CRYSTALS, limits.ENT_QUESTION)):
+            await analytics.track(db, analytics.E_LIMIT_HIT, user["tg_id"],
+                                  props={"reason": verdict.reason, "agent": agent},
+                                  surface=surface)
+            raise ChatDenied(verdict)
+        if not await limits.consume(db, user, verdict):
+            raise ChatDenied(verdict)
 
-    spec = agents.get(agent)
-    thread = await dialog.ensure_thread(db, user["tg_id"], spec.code,
-                                        title=spec.title)
-    await dialog.save_message(
-        db, user["tg_id"], "user", question,
-        is_question=limits.counts_toward_limit(verdict),
-        thread_id=thread["id"], agent=spec.code, surface=surface)
+        spec = agents.get(agent)
+        thread = await dialog.ensure_thread(db, user["tg_id"], spec.code,
+                                            title=spec.title)
+        await dialog.save_message(
+            db, user["tg_id"], "user", question,
+            is_question=limits.counts_toward_limit(verdict),
+            thread_id=thread["id"], agent=spec.code, surface=surface)
 
     allowance_line = _allowance_line(verdict)
     try:
@@ -108,7 +111,10 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     await analytics.track(db, analytics.E_QUESTION, user["tg_id"],
                           props={"agent": spec.code, "charge": verdict.charge},
                           surface=surface)
-    _spawn(agent_core.extract_memory_llm(db, user, question, answer))
+    # Память растёт только со свежих вопросов: уточнение за минуту до этого уже
+    # получило свой контекст, экстракт с него плодил бы шум и жёг lite-вызов (G23).
+    if verdict.charge != limits.FOLLOWUP:
+        _spawn(agent_core.extract_memory_llm(db, user, question, answer))
 
     fresh = await users.get(db, user["tg_id"])
     return {
@@ -175,29 +181,32 @@ async def draw(db, user, spread_code: str, *, surface: str = "bot",
     item = await catalog.get_spread(db, spread_code)
     code = item["code"] if "code" in item else spread_code
 
-    verdict = await limits.spread_access(db, user, code)
-    if not verdict.allowed:
-        await analytics.track(db, analytics.E_LIMIT_HIT, user["tg_id"],
-                              props={"reason": verdict.reason, "spread": code},
-                              surface=surface)
-        raise ChatDenied(verdict)
-    if not await limits.consume(db, user, verdict):
-        raise ChatDenied(verdict)
+    # Тот же пользовательский замок бюджета, что и в `ask`: расклад и вопрос
+    # делят один тарифный лимит и должны списывать его атомарно между собой
+    async with limits.user_lock(user["tg_id"]):
+        verdict = await limits.spread_access(db, user, code)
+        if not verdict.allowed:
+            await analytics.track(db, analytics.E_LIMIT_HIT, user["tg_id"],
+                                  props={"reason": verdict.reason, "spread": code},
+                                  surface=surface)
+            raise ChatDenied(verdict)
+        if not await limits.consume(db, user, verdict):
+            raise ChatDenied(verdict)
 
-    positions = item["positions"]
-    cards = tarot.draw(len(positions))
-    title = item["title"]
-    label = question or f"Расклад «{title}»"
+        positions = item["positions"]
+        cards = tarot.draw(len(positions))
+        title = item["title"]
+        label = question or f"Расклад «{title}»"
 
-    thread = await dialog.ensure_thread(db, user["tg_id"], "tarot",
-                                        title=agents.get("tarot").title)
-    await dialog.save_message(
-        db, user["tg_id"], "user", label,
-        is_question=limits.counts_toward_limit(verdict),
-        thread_id=thread["id"], agent="tarot", surface=surface)
-    reading_id = await readings.start_reading(
-        db, user["tg_id"], code, label, cards, surface=surface,
-        paid_with=limits.PAID_WITH.get(verdict.charge, "daily"))
+        thread = await dialog.ensure_thread(db, user["tg_id"], "tarot",
+                                            title=agents.get("tarot").title)
+        await dialog.save_message(
+            db, user["tg_id"], "user", label,
+            is_question=limits.counts_toward_limit(verdict),
+            thread_id=thread["id"], agent="tarot", surface=surface)
+        reading_id = await readings.start_reading(
+            db, user["tg_id"], code, label, cards, surface=surface,
+            paid_with=limits.PAID_WITH.get(verdict.charge, "daily"))
 
     await analytics.track(db, analytics.E_TAROT, user["tg_id"],
                           props={"spread": code, "charge": verdict.charge},

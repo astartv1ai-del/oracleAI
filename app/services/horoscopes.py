@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import date
 
@@ -35,6 +36,22 @@ SIGN_CODE = {
 
 MAX_LEN = 700
 
+#: Single-flight на билд одного (день, знак): утром весь сегмент приходит разом,
+#: и без замка каждая клиентка генерировала бы «свой» текст гороскопа.
+_build_locks: dict[tuple[str, str], asyncio.Lock] = {}
+_BUILD_LOCKS_MAX = 512
+
+
+def _lock_for(sign: str, day: str) -> asyncio.Lock:
+    key = (sign, day)
+    lock = _build_locks.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        if len(_build_locks) >= _BUILD_LOCKS_MAX:
+            _build_locks.clear()
+        _build_locks[key] = lock
+    return lock
+
 
 # ──────────────────────────────── чтение ──────────────────────────────────────
 
@@ -47,14 +64,35 @@ async def get(db, sign: str, day: str | None = None) -> str | None:
 
 
 async def get_or_build(db, sign: str, day: str | None = None) -> str:
-    """Гороскоп знака на день. Если его ещё нет — собираем и сохраняем."""
+    """Гороскоп знака на день. Если его ещё нет — собираем и сохраняем.
+
+    Защита от лишней генерации двойная: лок в процессе (второй запрос достаёт
+    готовый текст после первого) и атомарный INSERT OR IGNORE на случай, когда
+    параллельно строит другой процесс (бот и API) — проигравший перечитывает
+    чужой результат, а не пишет поверх.
+    """
     day = day or date.today().isoformat()
     cached = await get(db, sign, day)
     if cached:
         return cached
-    text = await _generate(db, sign, day)
-    await save(db, sign, day, text)
-    return text
+    async with _lock_for(sign, day):
+        # пока ждали замок, другой запрос мог уже сгенерировать и сохранить
+        cached = await get(db, sign, day)
+        if cached:
+            return cached
+        text = await _generate(db, sign, day)
+        if not await _save_if_absent(db, sign, day, text):
+            return await get(db, sign, day) or text
+        return text
+
+
+async def _save_if_absent(db, sign: str, day: str, text: str) -> bool:
+    """True — сохранили мы; False — параллельный процесс успел раньше."""
+    async with transaction(db):
+        cur = await db.execute(
+            "INSERT OR IGNORE INTO horoscopes(day, sign, text, posted_at, created_at) "
+            "VALUES(?,?,?,NULL,?)", (day, sign, text, utcnow()))
+        return bool(cur.rowcount)
 
 
 async def all_for_day(db, day: str | None = None) -> list[dict]:
@@ -134,14 +172,19 @@ def _offline(sign: str, day: str, sky: dict) -> str:
 
 
 async def build_day(db, day: str | None = None) -> dict:
-    """Собирает все двенадцать гороскопов на день. Идемпотентно."""
+    """Собирает все двенадцать гороскопов на день. Идемпотентно.
+
+    Пишем через атомарный `_save_if_absent`, а не `save()`: у ночной сборки нет
+    права перезаписать уже лежащий текст — гонка двух процессов (бот и API) не
+    должна стоить двух генераций и затирания (G26).
+    """
     day = day or date.today().isoformat()
     built = 0
     for sign in SIGNS:
         if await get(db, sign, day):
             continue
-        await save(db, sign, day, await _generate(db, sign, day))
-        built += 1
+        if await _save_if_absent(db, sign, day, await _generate(db, sign, day)):
+            built += 1
     if built:
         log.info("гороскопы на %s: собрано %d знаков", day, built)
     return {"day": day, "built": built, "total": len(SIGNS)}

@@ -7,9 +7,22 @@ __pycache__/
 *.db-wal
 *.db-shm
 /data/*
-!/data/oracle.db
 # Local agent/index state — not project source
 .omc/
 .codegraph/
 .claude/
 .omo/
+# Случайно занесённые home-конфиги и редакторский мусор — не исходники проекта
+.bashrc
+.bash_profile
+.zshrc
+.zprofile
+.zshrc_history
+.zsh_history
+.profile
+.gitconfig
+.gitmodules
+.mcp.json
+.ripgreprc
+.vscode
+.idea

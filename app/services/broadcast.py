@@ -77,6 +77,10 @@ async def run(bot, db, broadcast_id: int, *, batch: int = 100) -> dict:
         if not targets:
             break
         for tg_id in targets:
+            # атомарный захват: из двух параллельных `run()` (долгая рассылка
+            # перекрывает соседний тик) цель достаётся ровно одной — без дублей
+            if not await comms.claim_target(db, broadcast_id, tg_id):
+                continue
             try:
                 await bot.send_message(tg_id, broadcast["body"], reply_markup=markup)
                 await comms.mark_target(db, broadcast_id, tg_id, "sent")
@@ -85,6 +89,7 @@ async def run(bot, db, broadcast_id: int, *, batch: int = 100) -> dict:
                 log.warning("рассылка %s: флуд-контроль, пауза %s с",
                             broadcast_id, e.retry_after)
                 await asyncio.sleep(e.retry_after + 1)
+                await comms.release_target(db, broadcast_id, tg_id)
                 continue
             except (TelegramForbiddenError, TelegramBadRequest) as e:
                 # заблокировала бота или чат удалён — повторять бессмысленно
@@ -95,6 +100,10 @@ async def run(bot, db, broadcast_id: int, *, batch: int = 100) -> dict:
             await asyncio.sleep(pause)
 
     progress = await comms.broadcast_progress(db, broadcast_id)
+    # Свежие заявки (крэш случился меньше паузы назад) — это не конец: их вернёт
+    # в очередь следующий next_targets. Не помечаем done, пока что-то в работе.
+    if progress["pending"] or progress["claiming"]:
+        return progress
     await comms.set_broadcast_status(db, broadcast_id, "done",
                                      finished_at=comms.utcnow(),
                                      sent=progress["sent"],

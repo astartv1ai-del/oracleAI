@@ -12,15 +12,25 @@ services:
     volumes: [ oracle_data:/opt/oracle/data ]
     restart: unless-stopped
     stop_grace_period: 30s        # успеть закрыть WAL и сохранить прогресс рассылки
+    healthcheck:
+      # HTTP бот не поднимает, поэтому liveness решается по хартбиту планировщика
+      # (см. scripts/healthcheck.py): бот жив, пока тик регулярно обновляет метку
+      test: ["CMD", "python", "/opt/oracle/scripts/healthcheck.py"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "5" }
 
   api:
     build: { context: .., dockerfile: infra/Dockerfile }
+    # 1 воркер обязателен: rate-limiter `_hits` и бакет исходящих — in-process
+    # (G22). Несколько воркеров дадут каждому свой запас и удвоят бюджет.
     command: >
       uvicorn app.api.main:app --host 0.0.0.0 --port 8080
-      --proxy-headers --forwarded-allow-ips='*'
+      --proxy-headers --forwarded-allow-ips='*' --workers 1
     env_file: ../.env
     volumes: [ oracle_data:/opt/oracle/data ]
     restart: unless-stopped
@@ -49,17 +59,33 @@ services:
 
   # Ежедневный бэкап базы. Данные рождения — чувствительные, и потерять их
   # нельзя: `.backup` снимает консистентную копию прямо на живой БД.
+  # Локальный бэкап живёт в oracle_backups; если задан BACKUP_S3_URL, копия
+  # уходит ещё и в S3-совместимое хранилище (off-site, переживает потерю VPS).
   backup:
     image: alpine:3
     volumes:
       - oracle_data:/data
       - oracle_backups:/backups
+    environment:
+      - BACKUP_S3_URL=${BACKUP_S3_URL:-}
+      - BACKUP_S3_ACCESS_KEY=${BACKUP_S3_ACCESS_KEY:-}
+      - BACKUP_S3_SECRET_KEY=${BACKUP_S3_SECRET_KEY:-}
+      - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET:-}
+      - BACKUP_S3_REGION=${BACKUP_S3_REGION:-us-east-1}
     entrypoint: >
-      sh -c "apk add --no-cache sqlite tzdata >/dev/null &&
+      sh -c "apk add --no-cache sqlite s3cmd >/dev/null &&
+             export AWS_ACCESS_KEY_ID=\$BACKUP_S3_ACCESS_KEY
+                    AWS_SECRET_ACCESS_KEY=\$BACKUP_S3_SECRET_KEY;
              while true; do
                ts=$$(date +%Y%m%d-%H%M);
-               sqlite3 /data/oracle.db \".backup '/backups/oracle-$$ts.db'\" &&
-               echo \"backup ok: oracle-$$ts.db\";
+               file=/backups/oracle-$$ts.db;
+               sqlite3 /data/oracle.db \".backup '\$file'\" &&
+               echo \"backup ok: `basename \$file`\";
+               if [ -n \"\$BACKUP_S3_URL\" ] && [ -n \"\$BACKUP_S3_BUCKET\" ]; then
+                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION
+                       put \$file s3://\$BACKUP_S3_BUCKET/ &&
+                 echo \"uploaded: `basename \$file`\";
+               fi;
                find /backups -name 'oracle-*.db' -mtime +14 -delete;
                sleep 86400;
              done"

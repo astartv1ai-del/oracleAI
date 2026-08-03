@@ -392,8 +392,19 @@ async def llm_smoke():
         raise SkipCheck("LLM выключен — продукт работает в офлайн-режиме, это ок")
     from app.core import llm
     chain = " → ".join(settings.provider_chain)
-    text = await llm.complete("Отвечай одним словом.", "Скажи: работаю",
-                              max_tokens=20)
+    try:
+        text = await llm.complete("Отвечай одним словом.", "Скажи: работаю",
+                                  max_tokens=20)
+    except RuntimeError as e:
+        # Только локальный прокси (localhost) без реальных ключей может быть
+        # просто выключен на машине разработчика — продукт честно уходит в
+        # офлайн. Реальный сервер с ключами обязан падать на этой проверке.
+        base = settings.custom_base_url or ""
+        local_only = ("localhost" in base or "127.0.0.1" in base) \
+            and not settings.anthropic_key and not settings.openai_key
+        if local_only:
+            raise SkipCheck(f"локальный LLM-сервер не отвечает: {e}") from None
+        raise
     return f"цепочка [{chain}] отвечает: «{text[:40]}»"
 
 

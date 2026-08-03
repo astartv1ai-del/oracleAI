@@ -90,6 +90,9 @@ COLUMNS: dict[str, dict[str, str]] = {
         "memory_depth": "INTEGER DEFAULT 20",
         "badge": "TEXT",
     },
+    "broadcast_targets": {
+        "claimed_at": "TEXT",
+    },
 }
 
 
@@ -105,19 +108,32 @@ async def _table_exists(db, table: str) -> bool:
 
 
 async def reconcile_columns(db) -> list[str]:
-    """Добивает отсутствующие колонки. Возвращает список добавленного."""
+    """Добивает отсутствующие колонки. Возвращает список добавленного.
+
+    Весь проход — в одном `BEGIN IMMEDIATE`. Бот и API стартуют как два
+    процесса и могут начать миграцию одновременно: оба прочитали бы
+    `PRAGMA table_info`, оба увидели бы пропавшую колонку и оба пошли в ALTER —
+    второй поймал бы `database is locked`. BEGIN IMMEDIATE берёт блокировку
+    записи заранее; конкурент держится в busy_timeout и после первого коммита
+    видит колонки на месте.
+    """
     added: list[str] = []
-    for table, columns in COLUMNS.items():
-        if not await _table_exists(db, table):
-            continue  # таблицу создаст schema.py — там колонки уже полные
-        present = await _existing_columns(db, table)
-        for name, definition in columns.items():
-            if name in present:
-                continue
-            await db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
-            added.append(f"{table}.{name}")
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        for table, columns in COLUMNS.items():
+            if not await _table_exists(db, table):
+                continue  # таблицу создаст schema.py — там колонки уже полные
+            present = await _existing_columns(db, table)
+            for name, definition in columns.items():
+                if name in present:
+                    continue
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
+                added.append(f"{table}.{name}")
+    except Exception:
+        await db.rollback()
+        raise
+    await db.commit()
     if added:
-        await db.commit()
         log.info("миграция: добавлены колонки %s", ", ".join(added))
     return added
 

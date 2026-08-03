@@ -39,6 +39,7 @@ PRAGMAS = (
     f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}",
     "PRAGMA foreign_keys=ON",
     "PRAGMA temp_store=MEMORY",
+    "PRAGMA wal_autocheckpoint=2000", # WAL-кеш копится до 2000 страниц (~16 МБ)
     "PRAGMA cache_size=-16000",       # ~16 МБ страничного кеша
 )
 
@@ -82,14 +83,32 @@ def _lock(db) -> asyncio.Lock:
 
 @asynccontextmanager
 async def transaction(db):
-    """Атомарный пишущий блок. Внутри НЕ вызывать db.commit()."""
+    """Атомарный пишущий блок. Внутри НЕ вызывать db.commit().
+
+    Вложенные вызовы из той же задачи не открывают свою транзакцию — выполняются
+    внутри внешней. Это нужно сервисам (деньги: оплата→выдача одним коммитом),
+    которые оборачивают несколько repo-операций, каждая из которых открывает свою
+    `transaction()`. Владельца храним задачей, а не флагом: иначе параллельная
+    задача увидела бы «уже внутри» и вклинилась бы в чужую транзакцию.
+    """
+    owner = getattr(db, "_in_txn", None)
+    if owner is asyncio.current_task():
+        yield db
+        return
     async with _lock(db):
+        setattr(db, "_in_txn", asyncio.current_task())
         try:
             yield db
-        except Exception:
+        except BaseException:
+            # CancelledError — это BaseException, а не Exception: отменённая на
+            # шатдауне задача иначе оставила бы соединение в открытой транзакции,
+            # и частичная запись ушла бы в базу следующим чужим commit().
             await db.rollback()
             raise
-        await db.commit()
+        else:
+            await db.commit()
+        finally:
+            setattr(db, "_in_txn", None)
 
 
 async def healthcheck(db) -> dict:

@@ -29,6 +29,8 @@ import asyncio
 import json
 import logging
 import time
+from collections import deque
+from contextlib import asynccontextmanager
 from typing import Awaitable, Callable
 
 from ..config import settings
@@ -39,7 +41,50 @@ ToolExecutor = Callable[[str, dict], Awaitable[str]]
 
 MAX_ITERS = 6
 RETRIES = 2
-TIMEOUT = 180.0
+# 35с вместо 180: зависший провайдер не должен держать слот семафора (G6)
+# и очередь других запросов ~6 минут — 180с*2 ретрая. Ответ дольше 35с
+# пользователь всё равно не дождётся; лучше быстрый отказ и фейловер.
+TIMEOUT = 35.0
+
+
+class _RateLimit:
+    """Скользящее окно: не больше `rate` вызовов в минуту, глобально.
+
+    Провайдеры режут пачки запросов 429-ми, и на пике (утренняя рассылка,
+    одновременные вопросы) без лимита всплеск превращается в веер отказов.
+    """
+
+    def __init__(self, rate: int, window_sec: int = 60) -> None:
+        self.rate = max(1, rate)
+        self.window = window_sec
+        self._calls: deque[float] = deque()
+
+    async def acquire(self) -> None:
+        while True:
+            now = time.monotonic()
+            cutoff = now - self.window
+            while self._calls and self._calls[0] < cutoff:
+                self._calls.popleft()
+            if len(self._calls) < self.rate:
+                self._calls.append(now)
+                return
+            await asyncio.sleep(0.05)
+
+
+# Ограничители живут на уровне модуля: на 10k пользователей без них всплеск
+# открывает сотни одновременных соединений к провайдеру. Доступ к deque из задач
+# event loop атомарен, поэтому отдельная блокировка не нужна.
+_CONCURRENCY = asyncio.Semaphore(settings.llm_max_concurrency)
+_RATE = _RateLimit(settings.llm_rate_per_min)
+
+
+@asynccontextmanager
+async def _llm_slot():
+    """Слот одного логического LLM-вызова: сглаживает частоту и ограничивает
+    одновременные вызовы. Оборачивает `complete` и `run_agent` целиком."""
+    await _RATE.acquire()
+    async with _CONCURRENCY:
+        yield
 # Reasoning-модели тратят часть лимита на размышления: если потолок низкий,
 # ответ не успевает родиться. max_tokens — это кап, а не цель, поднять безопасно.
 MIN_OPENAI_TOKENS = 2500
@@ -218,27 +263,31 @@ async def _with_retries(coro_factory, provider: str, what: str):
 async def complete(system: str, user_text: str, tier: str = "lite",
                    max_tokens: int = 600, *, purpose: str = "complete",
                    tg_id: int | None = None, db=None) -> str:
+    if not settings.provider_chain:
+        raise RuntimeError("Все LLM-провайдеры недоступны")
     errors = []
-    for provider in settings.provider_chain:
-        meter = _Meter()
-        model = _models(provider, tier)
-        try:
-            text = await _with_retries(
-                lambda p=provider: _complete_with(p, system, user_text, tier,
-                                                  max_tokens, meter),
-                provider, "complete")
-        except Exception as e:  # noqa: BLE001
-            errors.append(f"{provider}: {e}")
+    async with _llm_slot():
+        for provider in settings.provider_chain:
+            meter = _Meter()
+            model = _models(provider, tier)
+            try:
+                text = await _with_retries(
+                    lambda p=provider: _complete_with(p, system, user_text, tier,
+                                                      max_tokens, meter),
+                    provider, "complete")
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{provider}: {e}")
+                await record_usage(db, provider=provider, model=model,
+                                   purpose=purpose,
+                                   prompt_tokens=meter.prompt,
+                                   completion_tokens=meter.completion,
+                                   latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                continue
             await record_usage(db, provider=provider, model=model, purpose=purpose,
                                prompt_tokens=meter.prompt,
                                completion_tokens=meter.completion,
-                               latency_ms=meter.ms, ok=False, tg_id=tg_id)
-            continue
-        await record_usage(db, provider=provider, model=model, purpose=purpose,
-                           prompt_tokens=meter.prompt,
-                           completion_tokens=meter.completion,
-                           latency_ms=meter.ms, ok=True, tg_id=tg_id)
-        return text
+                               latency_ms=meter.ms, ok=True, tg_id=tg_id)
+            return text
     raise RuntimeError("Все LLM-провайдеры недоступны: " + "; ".join(errors))
 
 
@@ -270,30 +319,35 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
                     max_tokens: int = 1500, *, purpose: str = "answer",
                     tg_id: int | None = None, db=None) -> str:
     """Агентный цикл: модель вызывает скиллы, мы исполняем, модель отвечает."""
+    if not settings.provider_chain:
+        raise RuntimeError("Все LLM-провайдеры недоступны")
     errors = []
-    for provider in settings.provider_chain:
-        meter = _Meter()
-        model = _models(provider, tier)
-        try:
-            if provider == "anthropic":
-                text = await _run_anthropic(system, messages, tools, execute,
-                                            tier, max_tokens, meter)
-            else:
-                text = await _run_openai_like(provider, system, messages, tools,
-                                              execute, tier, max_tokens, meter)
-        except Exception as e:  # noqa: BLE001
-            errors.append(f"{provider}: {e}")
-            log.warning("run_agent %s: %s", provider, e)
+    async with _llm_slot():
+        for provider in settings.provider_chain:
+            meter = _Meter()
+            model = _models(provider, tier)
+            try:
+                if provider == "anthropic":
+                    text = await _run_anthropic(system, messages, tools, execute,
+                                                tier, max_tokens, meter)
+                else:
+                    text = await _run_openai_like(provider, system, messages,
+                                                  tools, execute, tier, max_tokens,
+                                                  meter)
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{provider}: {e}")
+                log.warning("run_agent %s: %s", provider, e)
+                await record_usage(db, provider=provider, model=model,
+                                   purpose=purpose,
+                                   prompt_tokens=meter.prompt,
+                                   completion_tokens=meter.completion,
+                                   latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                continue
             await record_usage(db, provider=provider, model=model, purpose=purpose,
                                prompt_tokens=meter.prompt,
                                completion_tokens=meter.completion,
-                               latency_ms=meter.ms, ok=False, tg_id=tg_id)
-            continue
-        await record_usage(db, provider=provider, model=model, purpose=purpose,
-                           prompt_tokens=meter.prompt,
-                           completion_tokens=meter.completion,
-                           latency_ms=meter.ms, ok=True, tg_id=tg_id)
-        return text
+                               latency_ms=meter.ms, ok=True, tg_id=tg_id)
+            return text
     raise RuntimeError("Все LLM-провайдеры недоступны: " + "; ".join(errors))
 
 

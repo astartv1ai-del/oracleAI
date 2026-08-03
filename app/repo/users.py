@@ -1,7 +1,9 @@
 """Пользователи: создание, профиль, тарифный уровень, сегменты для CRM."""
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -47,14 +49,18 @@ async def ensure(db, tg_id: int, name: str | None = None,
     trial_days = settings.trial_days
     crystals = settings.crystals_start
     sub_until = (datetime.now(timezone.utc) + timedelta(days=trial_days)).isoformat()
+    # Двойной /start в один момент: оба прошли SELECT выше и оба идут в INSERT.
+    # INSERT OR IGNORE + rowcount снимает гонку — второй INSERT не валит UNIQUE
+    # по tg_id и не пишет второй раз welcome в журнал.
     async with transaction(db):
-        await db.execute(
-            "INSERT INTO users(tg_id, name, username, sub_level, sub_until, crystals, "
-            "source, created_at) VALUES(?,?,?,'trial',?,?,?,?)",
+        cur = await db.execute(
+            "INSERT OR IGNORE INTO users(tg_id, name, username, sub_level, sub_until, "
+            "crystals, source, created_at) VALUES(?,?,?,'trial',?,?,?,?)",
             (tg_id, name, username, sub_until, crystals, source, utcnow()))
-        await db.execute(
-            "INSERT INTO crystal_ledger(tg_id, delta, reason, balance, created_at) "
-            "VALUES(?,?,'welcome',?,?)", (tg_id, crystals, crystals, utcnow()))
+        if cur.rowcount:
+            await db.execute(
+                "INSERT INTO crystal_ledger(tg_id, delta, reason, balance, created_at) "
+                "VALUES(?,?,'welcome',?,?)", (tg_id, crystals, crystals, utcnow()))
     return await get(db, tg_id)
 
 
@@ -70,9 +76,43 @@ async def update(db, tg_id: int, **fields) -> None:
                          (*fields.values(), tg_id))
 
 
+#: Когда последний раз писали last_seen клиентке. Точность в минутах достаточна
+#: для ретеншена, а рестарт процесса теряет максимум несколько часов.
+_last_seen_cache: dict[int, float] = {}
+TOUCH_INTERVAL_S = 300     # раз в 5 минут на клиентку
+
+
 async def touch(db, tg_id: int) -> None:
-    async with transaction(db):
-        await db.execute("UPDATE users SET last_seen=? WHERE tg_id=?", (utcnow(), tg_id))
+    """Отметка активности, не чаще раза в 5 минут и в фоне.
+
+    Раньше каждое сообщение и каждый запрос Mini App писали last_seen
+    синхронно — на 10k это десятки тысяч лишних UPDATE на горячем пути.
+    """
+    now = time.time()
+    if _last_seen_cache.get(tg_id, 0.0) > now - TOUCH_INTERVAL_S:
+        return
+    _last_seen_cache[tg_id] = now
+    _spawn_last_seen(db, tg_id)
+
+
+#: Сильная ссылка на фоновые задачи last_seen: без неё сборщик циклов может
+#: убить запись до её выполнения (review-фикс G37).
+_touch_tasks: set[asyncio.Task] = set()
+
+
+async def _write_last_seen(db, tg_id: int) -> None:
+    try:
+        async with transaction(db):
+            await db.execute("UPDATE users SET last_seen=? WHERE tg_id=?",
+                             (utcnow(), tg_id))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _spawn_last_seen(db, tg_id: int) -> None:
+    task = asyncio.get_running_loop().create_task(_write_last_seen(db, tg_id))
+    _touch_tasks.add(task)
+    task.add_done_callback(_touch_tasks.discard)
 
 
 # ─────────────────────────── подписка и тариф ────────────────────────────────
@@ -114,16 +154,20 @@ def day_start_utc(user) -> str:
 
 
 async def extend_subscription(db, tg_id: int, plan_code: str, days: int) -> str:
-    """Продлевает подписку от максимума (сейчас, текущий конец) — оплата не сгорает."""
-    user = await get(db, tg_id)
-    base = datetime.now(timezone.utc)
-    if user and user["sub_until"]:
-        try:
-            base = max(base, datetime.fromisoformat(user["sub_until"]))
-        except (TypeError, ValueError):
-            pass
-    until = (base + timedelta(days=days)).isoformat()
+    """Продлевает подписку от максимума (сейчас, текущий конец) — оплата не сгорает.
+
+    Все в одной транзакции: параллельные оплаты одной клиентки (Stars в боте +
+    Paddle/*в web) накапливают дни, а не перезаписывают друг друга.
+    """
     async with transaction(db):
+        user = await get(db, tg_id)
+        base = datetime.now(timezone.utc)
+        if user and user["sub_until"]:
+            try:
+                base = max(base, datetime.fromisoformat(user["sub_until"]))
+            except (TypeError, ValueError):
+                pass
+        until = (base + timedelta(days=days)).isoformat()
         await db.execute(
             "UPDATE users SET sub_until=?, sub_level=?, expiry_notified=0 WHERE tg_id=?",
             (until, plan_code, tg_id))

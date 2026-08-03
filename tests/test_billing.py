@@ -99,6 +99,68 @@ async def test_unknown_payload_is_ignored(db):
     assert await svc.apply_payment(db, "o999:plan:nope") is None
 
 
+# ─────────────── атомарность: оплата и выдача одним коммитом ─────────────────
+
+async def test_payment_crash_midway_leaves_order_pending(db, free_user, monkeypatch):
+    """Сбой между «оплачено» и «выдано» не оставляет заказ paid без товара.
+
+    Раньше пометка оплаты и выдача были отдельными транзакциями: падение между
+    ними = клиентка заплатила, а подписки нет, и повторный вебхук уже ничего
+    не выдаст. Теперь всё в одной транзакции — сбой откатывает и оплату.
+    """
+    order = await svc.checkout_plan(db, free_user["tg_id"], "vip")
+
+    async def boom(*_a, **_k):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(users, "extend_subscription", boom)
+    with pytest.raises(RuntimeError):
+        await svc.apply_payment(db, order["payload"],
+                                amount_stars=order["amount_stars"])
+
+    row = await repo.get_order(db, order["id"])
+    assert row["status"] == "pending", "заказ оплачен, хотя выдача не прошла"
+    cur = await db.execute("SELECT COUNT(*) c FROM payments WHERE order_id=?",
+                           (order["id"],))
+    assert (await cur.fetchone())["c"] == 0
+    fresh = await users.get(db, free_user["tg_id"])
+    assert not users.sub_active(fresh), "подписка выдана при откате оплаты"
+
+
+async def test_crystals_purchase_crash_does_not_spend(db, user, monkeypatch):
+    """Сбой на выдаче не списывает ✦: списание и выдача в одной транзакции."""
+    await users.update(db, user["tg_id"], crystals=200)
+
+    async def boom(*_a, **_k):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(repo, "grant_entitlement", boom)
+    with pytest.raises(RuntimeError):
+        await svc.pay_with_crystals(db, user["tg_id"], "spread_celtic")
+
+    fresh = await users.get(db, user["tg_id"])
+    assert fresh["crystals"] == 200, "✦ списаны, хотя выдача не прошла"
+    assert await repo.available_entitlements(db, user["tg_id"], "spread", "celtic") == 0
+
+
+async def test_promo_crash_keeps_code_usable(db, user, monkeypatch):
+    """Сбой на выдаче не сжигает промокод: зачёт кода и выдача в одной транзакции."""
+    codes = await growth.create_codes(db, 1, days=30, plan_code="vip",
+                                      batch="etsy-test")
+
+    async def boom(*_a, **_k):
+        raise RuntimeError("db down")
+
+    with monkeypatch.context() as m:
+        m.setattr(users, "extend_subscription", boom)
+        with pytest.raises(RuntimeError):
+            await svc.redeem_promo(db, user["tg_id"], codes[0])
+
+    # код не засчитан — активируется со второй попытки (патч уже снят)
+    result = await svc.redeem_promo(db, user["tg_id"], codes[0])
+    assert result and result["granted"]["kind"] == "plan"
+
+
 # ──────────────────── покупка товара за Stars и ✦ ─────────────────────────────
 
 async def test_buying_spread_grants_entitlement(db, user):
@@ -253,6 +315,28 @@ async def test_referrer_gets_share_of_first_payment(db, user, free_user):
     await svc.apply_payment(db, order["payload"], amount_stars=order["amount_stars"])
     after = (await users.get(db, user["tg_id"]))["crystals"]
     assert after > before, "бонус с первой оплаты приглашённой не начислен"
+
+
+async def test_concurrent_first_payments_pay_referral_once(db, user, free_user):
+    """Две параллельные первые оплаты приглашённой — бонус пригласившей ровно один.
+
+    Раньше проверка «это первая оплата» и начисление были в разных транзакциях:
+    обе оплаты успевали увидеть по одной записи и бонус удваивался (или терялся).
+    Теперь вся оплата с бонусом — одна транзакция, и гонка невозможна.
+    """
+    await referrals.apply(db, free_user["tg_id"], user["tg_id"])
+    before = (await users.get(db, user["tg_id"]))["crystals"]
+
+    first = await svc.checkout_plan(db, free_user["tg_id"], "vip")
+    second = await svc.checkout_plan(db, free_user["tg_id"], "vip")
+
+    await asyncio.gather(
+        svc.apply_payment(db, first["payload"], amount_stars=first["amount_stars"]),
+        svc.apply_payment(db, second["payload"], amount_stars=second["amount_stars"]),
+    )
+
+    after = (await users.get(db, user["tg_id"]))["crystals"]
+    assert after == before + 30, "реферальный бонус начислен не один раз"
 
 
 # ──────────────────────────── возврат ─────────────────────────────────────────

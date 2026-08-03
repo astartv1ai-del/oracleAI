@@ -421,6 +421,47 @@ async def test_admin_can_edit_catalog_and_content(client, db):
     assert not next(f for f in flags.json() if f["code"] == "voice_questions")["is_on"]
 
 
+async def test_admin_rate_limited(client, db):
+    """Панель: после 60 запросов в минуту на админа — 429 (G24)."""
+    await users.ensure(db, 1, "Владелец")
+    codes = [await client.get("/api/admin/me", params={"dev_user": 1})
+             for _ in range(62)]
+    statuses = [c.status_code for c in codes]
+    assert statuses.count(200) == 60
+    assert statuses[-1] == 429, "перебор админ-эндпоинтов не обрезан"
+
+
+async def test_csp_header_in_production(client, monkeypatch):
+    """В бою (dev_mode=0) все ответы несут CSP; в dev — нет (нужен Swagger)."""
+    import app.config as config
+    monkeypatch.setattr(config.settings, "dev_mode", False)
+    res = await client.get("/api/health")
+    csp = res.headers.get("content-security-policy")
+    assert csp and "default-src 'self'" in csp
+    assert "frame-ancestors 'self'" in csp
+
+
+async def test_csp_absent_in_dev(client):
+    res = await client.get("/api/health")
+    assert "content-security-policy" not in res.headers
+
+
+async def test_cache_control_on_assets(client):
+    """Ассеты кешируются коротко; HTML и API — всегда no-cache (G25)."""
+    js = await client.get("/app.js")
+    assert js.status_code == 200
+    assert js.headers.get("cache-control") == "public, max-age=3600"
+    admin_css = await client.get("/admin/static/admin.css")
+    assert admin_css.status_code == 200
+    assert admin_css.headers.get("cache-control") == "public, max-age=3600"
+
+
+async def test_no_cache_on_html_and_api(client):
+    for path in ("/", "/admin", "/api/health"):
+        res = await client.get(path)
+        assert res.headers.get("cache-control") == "no-cache", path
+
+
 async def test_admin_promo_batch(client, db):
     await users.ensure(db, 1, "Владелец")
     res = await client.post("/api/admin/promo", params={"dev_user": 1},

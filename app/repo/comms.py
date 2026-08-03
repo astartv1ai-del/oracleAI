@@ -107,20 +107,66 @@ async def enqueue_targets(db, broadcast_id: int, ids: list[int]) -> int:
     return len(ids)
 
 
+#: Заявка на отправку живёт дольше живой паузы, но не бесконечно: если процесс
+#: упал между claim и mark, заявку возвращаем в очередь.
+CLAIM_TIMEOUT_S = 600
+
+
 async def next_targets(db, broadcast_id: int, limit: int = 100) -> list[int]:
-    cur = await db.execute(
-        "SELECT tg_id FROM broadcast_targets WHERE broadcast_id=? AND status='pending' "
-        "LIMIT ?", (broadcast_id, limit))
-    return [r["tg_id"] for r in await cur.fetchall()]
+    """Пачка целей к отправке. Брошенные заявки (крэш) возвращает в pending.
+
+    Захват (claim) — не здесь, а по одной цели перед отправкой: пачка из
+    `pending` может перекрыться у двух параллельных запусков, а вот `claim` с
+    условием `status='pending'` атомарен и отдаёт цель ровно одному.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(seconds=CLAIM_TIMEOUT_S)
+              ).isoformat()
+    async with transaction(db):
+        await db.execute(
+            "UPDATE broadcast_targets SET status='pending', claimed_at=NULL, error=NULL "
+            "WHERE broadcast_id=? AND status='claiming' AND claimed_at < ?",
+            (broadcast_id, cutoff))
+        cur = await db.execute(
+            "SELECT tg_id FROM broadcast_targets WHERE broadcast_id=? "
+            "AND status='pending' LIMIT ?", (broadcast_id, limit))
+        return [r["tg_id"] for r in await cur.fetchall()]
+
+
+async def claim_target(db, broadcast_id: int, tg_id: int) -> bool:
+    """Атомарно занимает цель. False — её уже забрал другой процесс.
+
+    Условие `status='pending'` в UPDATE и есть гарантия: из двух параллельных
+    `run()` ровно один получит rowcount 1, второй — 0 и пропустит цель.
+    """
+    async with transaction(db):
+        cur = await db.execute(
+            "UPDATE broadcast_targets SET status='claiming', claimed_at=?, error=NULL "
+            "WHERE broadcast_id=? AND tg_id=? AND status='pending'",
+            (utcnow(), broadcast_id, tg_id))
+        return bool(cur.rowcount)
+
+
+async def release_target(db, broadcast_id: int, tg_id: int) -> None:
+    """Возврат цели в очередь — временный сбой (флуд-контроль, сеть)."""
+    async with transaction(db):
+        await db.execute(
+            "UPDATE broadcast_targets SET status='pending', claimed_at=NULL "
+            "WHERE broadcast_id=? AND tg_id=? AND status='claiming'",
+            (broadcast_id, tg_id))
 
 
 async def mark_target(db, broadcast_id: int, tg_id: int, status: str,
                       error: str | None = None) -> None:
     async with transaction(db):
-        await db.execute(
+        # Условие status='claiming': после reclaim (>CLAIM_TIMEOUT_S) цель может
+        # забрать другой run — первая (опоздавшая) отметка не должна засчитаться
+        # или задвоить broadcasts.sent.
+        cur = await db.execute(
             "UPDATE broadcast_targets SET status=?, error=?, sent_at=? "
-            "WHERE broadcast_id=? AND tg_id=?",
+            "WHERE broadcast_id=? AND tg_id=? AND status='claiming'",
             (status, error, utcnow(), broadcast_id, tg_id))
+        if not cur.rowcount:
+            return
         column = "sent" if status == "sent" else "failed"
         await db.execute(
             f"UPDATE broadcasts SET {column} = COALESCE({column},0) + 1 WHERE id=?",
@@ -132,8 +178,9 @@ async def broadcast_progress(db, broadcast_id: int) -> dict:
         "SELECT status, COUNT(*) n FROM broadcast_targets WHERE broadcast_id=? "
         "GROUP BY status", (broadcast_id,))
     rows = {r["status"]: r["n"] for r in await cur.fetchall()}
-    return {"pending": rows.get("pending", 0), "sent": rows.get("sent", 0),
-            "failed": rows.get("failed", 0), "skipped": rows.get("skipped", 0)}
+    return {"pending": rows.get("pending", 0), "claiming": rows.get("claiming", 0),
+            "sent": rows.get("sent", 0), "failed": rows.get("failed", 0),
+            "skipped": rows.get("skipped", 0)}
 
 
 async def due_broadcasts(db) -> list[dict]:

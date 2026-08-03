@@ -139,6 +139,17 @@ async def test_share_missing_reading_is_404(client, user):
     assert res.status_code == 404
 
 
+async def test_share_reading_png_renders(client, db, user):
+    """Своя карточка расклада отдаётся картинкой (рендер в потоке, G16)."""
+    from app.services import chat as chat_svc
+    drawn = await chat_svc.draw(db, user, "one")
+    res = await client.get(f"/api/share/reading/{drawn['reading_id']}.png",
+                           params=as_user(user))
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "image/png"
+    assert res.content[:8] == b"\x89PNG\r\n\x1a\n", "ответ не похож на PNG"
+
+
 # ────────────────────────────── web-оплата ────────────────────────────────────
 
 async def test_web_checkout_hidden_when_flag_off(client, user):

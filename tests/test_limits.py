@@ -146,6 +146,34 @@ async def test_ask_is_denied_without_access(db, free_user):
         await chat.ask(db, fresh, "ещё вопрос")
 
 
+async def test_parallel_asks_cannot_overspend_weekly_limit(db, free_user,
+                                                           monkeypatch):
+    """Гонка двух устройств: недельный лимит 1, а оплачено должно быть одно.
+
+    Замок бюджета (G19) держит «проверил → списал → записал вопрос», поэтому
+    второй запрос видит расход первого до генерации ответа.
+    """
+    import asyncio
+
+    async def no_followup(db_, user_):
+        return False            # мгновенная вторая фраза — отдельный вопрос
+
+    monkeypatch.setattr(limits, "_is_followup", no_followup)
+    await users.update(db, free_user["tg_id"], crystals=0)
+    fresh = await users.get(db, free_user["tg_id"])
+
+    async def ask_once() -> str:
+        try:
+            await chat.ask(db, fresh, "Во сколько мне проснуться завтра?")
+            return "ok"
+        except chat.ChatDenied:
+            return "denied"
+
+    results = await asyncio.gather(ask_once(), ask_once())
+    assert results.count("ok") == 1, "по недельному лимиту 1 прошло больше одного"
+    assert results.count("denied") == 1
+
+
 async def test_ask_to_each_agent_uses_own_thread(db, user):
     first = await chat.ask(db, user, "Разложи карты", agent="tarot")
     second = await chat.ask(db, user, "Что с моей Венерой?", agent="astro")

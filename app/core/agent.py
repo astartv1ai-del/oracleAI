@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import random
@@ -78,6 +79,12 @@ def _reading_offline(user, title: str, cards: list[dict], cards_block: str) -> s
 
 # ---------------------------------------------------------------- прогноз дня
 
+#: Генерация прогноза — LLM-вызов; Mini App и бот могут спросить прогноз на
+#: одно утро одновременно. Замок по (клиентка, день): второй ждущий после замка
+#: перепроверяет кеш и берёт готовый текст, а не генерирует свой.
+_forecast_locks: dict[tuple[int, str], asyncio.Lock] = {}
+
+
 async def daily_forecast_cached(db, user, chart: dict | None = None) -> str:
     """Прогноз дня — один раз в сутки на клиентку.
 
@@ -88,10 +95,17 @@ async def daily_forecast_cached(db, user, chart: dict | None = None) -> str:
     cached = await readings_repo.get_forecast(db, user["tg_id"], day)
     if cached:
         return cached
-    text = await daily_forecast(db, user, chart if chart is not None
-                               else users_repo.chart_of(user))
-    await readings_repo.save_forecast(db, user["tg_id"], day, text)
-    return text
+    if len(_forecast_locks) > 5000:
+        _forecast_locks.clear()   # ключи прошлых дней не нужны
+    lock = _forecast_locks.setdefault((user["tg_id"], day), asyncio.Lock())
+    async with lock:
+        cached = await readings_repo.get_forecast(db, user["tg_id"], day)
+        if cached:
+            return cached
+        text = await daily_forecast(db, user, chart if chart is not None
+                                   else users_repo.chart_of(user))
+        await readings_repo.save_forecast(db, user["tg_id"], day, text)
+        return text
 
 
 async def daily_forecast(db, user, chart: dict) -> str:
@@ -387,6 +401,10 @@ EXTRACT_PROMPT = (
     "Ответ — ТОЛЬКО JSON-массив строк, без пояснений и без markdown."
 )
 
+#: Короче этого ответа lite-вызов экстракции не окупается (G23): реплики в духе
+#: «поняла 🌙» фактов не несут, а стоимость — вызов модели и эмбеддинги.
+EXTRACT_MIN_ANSWER = 120
+
 
 def _parse_facts(raw: str) -> list[str]:
     """Достаёт массив строк из ответа модели, даже если он в ```-блоке."""
@@ -416,6 +434,8 @@ async def extract_memory_llm(db, user, question: str, answer: str) -> None:
     """
     if not llm.enabled():
         return
+    if len((answer or "").strip()) < EXTRACT_MIN_ANSWER:
+        return                     # короткая реплика — без lite-вызова (G23)
     try:
         raw = await llm.complete(EXTRACT_PROMPT, question, tier="lite",
                                  max_tokens=300, purpose="memory_extract",
@@ -424,11 +444,11 @@ async def extract_memory_llm(db, user, question: str, answer: str) -> None:
         log.debug("экстракция памяти пропущена: %s", e)
         return
 
-    for fact in _parse_facts(raw)[:3]:
-        try:
-            await memory.remember(db, user["tg_id"], fact)
-        except Exception as e:  # noqa: BLE001
-            log.debug("факт не сохранён: %s", e)
+    try:
+        # один эмбеддинг-запрос на все факты, а не по одному на каждый (G23)
+        await memory.remember_many(db, user["tg_id"], _parse_facts(raw)[:3])
+    except Exception as e:  # noqa: BLE001
+        log.debug("факты не сохранены: %s", e)
 
     # сводка «кто она» пересобирается редко и только когда фактов реально прибавилось
     try:
