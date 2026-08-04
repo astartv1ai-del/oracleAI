@@ -43,7 +43,7 @@ def compute_matrix(birth_date: str) -> dict:
     c = _r(sum(int(x) for x in str(d.year)))  # родовой аркан
     dd = _r(a + b + c)                  # аркан судьбы (миссия)
     e = _r(a + b + c + dd)              # центр матрицы (зона комфорта)
-    love = _r(dd + e)                   # линия отношений
+    love = _r(a + dd)                   # линия отношений (зеркально денежной: личность + миссия)
     money = _r(c + dd)                  # линия финансов
 
     def item(n, title):

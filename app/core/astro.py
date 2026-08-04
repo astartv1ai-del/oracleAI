@@ -57,6 +57,112 @@ def sun_sign(d: date) -> tuple[str, str, str]:
     return SIGNS[(idx - 2) % 12]
 
 
+# ───────────────────────── эфемеридные знаки без времени ─────────────────────
+#
+# Для знаков планет точное время и место рождения не нужны — планеты находятся
+# в одном знаке круглые сутки. kerykeion строит карту на дату в 12:00 и с
+# координатами, не влияющими на знаки; кеш по дате экономит повторные расчёты,
+# потому что прогноз дня, гороскопы и спидометр зовут их часто.
+_LIGHT_CACHE: dict[str, dict] = {}
+
+
+def _light_sky(d: date) -> dict:
+    """Знаки Солнца/Луны/Венеры на дату: эфемериды → календарный фолбэк."""
+    key = d.isoformat()
+    cached = _LIGHT_CACHE.get(key)
+    if cached:
+        return cached
+    try:
+        from kerykeion import AstrologicalSubject
+        subj = AstrologicalSubject(name="sky", year=d.year, month=d.month,
+                                   day=d.day, hour=12, minute=0, city="-",
+                                   lat=52.5, lng=13.4, tz_str="UTC", online=False)
+        m = subj.model()
+
+        def sign_of(p) -> tuple[str, str]:
+            s = SIGN_EN2RU.get(p.sign, p.sign)
+            el = next((x[2] for x in SIGNS if x[0] == s), "")
+            return s, el
+
+        # Точный знак Солнца: момент входа по эфемеридам, а не по календарю.
+        s, el = sign_of(m.sun)
+        sym = next((x[1] for x in SIGNS if x[0] == s), "☉")
+        out = {"sun": (s, sym, el),
+               "moon": sign_of(m.moon), "venus": sign_of(m.venus)}
+    except Exception as e:  # noqa: BLE001
+        log.debug("эфемеридные знаки недоступны (%s), фолбэк на календарь", e)
+        out = {"sun": sun_sign(d), "moon": None, "venus": None}
+    if len(_LIGHT_CACHE) > 800:
+        _LIGHT_CACHE.clear()
+    _LIGHT_CACHE[key] = out
+    return out
+
+
+def sun_sign_precise(d: date) -> tuple[str, str, str]:
+    """Точный знак Солнца (эфемериды): переход на годы, а не статичная таблица.
+
+    Рождённый 21 марта в одном году уже Телец, в другом ещё Овен — календарные
+    границы грешат на ±1–2 дня. При недоступных эфемеридах — календарный знак.
+    """
+    return _light_sky(d)["sun"]
+
+
+def moon_venus_signs(d: date) -> tuple[tuple[str, str] | None,
+                                       tuple[str, str] | None]:
+    """(знак, стихия) Луны и Венеры на дату; кортежи None — эфемериды недоступны."""
+    sky = _light_sky(d)
+    return sky["moon"], sky["venus"]
+
+
+# ─────────────────────────────── синастрия ────────────────────────────────────
+
+# Орбы синастрии: светилам шире (10°), планетам 6–8° — классика мажорных.
+_SYNASTRY_ORBS = {"conjunction": 8, "opposition": 8, "trine": 8,
+                  "square": 7, "sextile": 6}
+_ASPECT_ANGLE = {"conjunction": 0.0, "opposition": 180.0, "trine": 120.0,
+                 "square": 90.0, "sextile": 60.0}
+_LUMINARY = {"Солнце", "Луна"}
+
+
+def _delta360(a: float, b: float) -> float:
+    delta = abs(a - b) % 360
+    return min(delta, 360 - delta)
+
+
+def synastry_aspects(planets_a: list[dict], planets_b: list[dict],
+                     limit: int = 10) -> list[dict]:
+    """Мажорные аспекты между планетами двух карт, точные первыми.
+
+    Одноимённые точки (Солнце—Солнце и т.п.) пропускаем: это не аспект «между»,
+    а две стороны одного качества — в классике синастрии их не читают орбно.
+    """
+    out = []
+    for pa in planets_a:
+        if pa.get("abs_deg") is None:   # 0° — легитимная долгота
+            continue
+        for pb in planets_b:
+            if pa["name"] == pb["name"] or pb.get("abs_deg") is None:
+                continue
+            delta = _delta360(pa["abs_deg"], pb["abs_deg"])
+            orb = 10 if (pa["name"] in _LUMINARY or pb["name"] in _LUMINARY) else 8
+            for aspect, good in _ASPECT_ANGLE.items():
+                if abs(delta - good) <= _SYNASTRY_ORBS.get(aspect, orb):
+                    glyph = ASPECT_RU[aspect][1]
+                    out.append({"p1": pa["name"], "p2": pb["name"],
+                                "aspect": ASPECT_RU[aspect][0], "glyph": glyph,
+                                "orb": round(abs(delta - good), 1), "code": aspect})
+                    break
+    out.sort(key=lambda x: x["orb"])
+    return out[:limit]
+
+
+def synastry_aspects_text(aspects: list[dict]) -> str:
+    if not aspects:
+        return "аспектов между картами не найдено"
+    return "; ".join(f"{a['p1']} {a['glyph']} {a['p2']} (орб {a['orb']}°)"
+                     for a in aspects[:8])
+
+
 def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
                   lat: float | None, lon: float | None,
                   tz: str | None = None) -> dict:
@@ -184,7 +290,14 @@ MOON_PHASES = [
 
 
 def moon_phase(d: date | None = None) -> dict:
-    """Фаза Луны по синодическому циклу (точность ±1 день — достаточно для прогнозов)."""
+    """Фаза и лунный день по синодическому циклу (точность ±1 день).
+
+    Считаем день от новолуния; классические лунные календари ведут сутки от
+    восхода Луны, поэтому в начале цикла возможна разница в сутки. Название
+    «лунный день» сохраняем — так это ищут женщины, а «~» в текстах честно
+    помечает приближение. Канон по восходу требует эфемеридных итераций и
+    вынесен из сферы прогнозов.
+    """
     d = d or date.today()
     known_new_moon = date(2000, 1, 6)
     days = (d - known_new_moon).days % 29.530588
@@ -195,25 +308,31 @@ def moon_phase(d: date | None = None) -> dict:
 
 
 def today_sky(d: date | None = None) -> dict:
-    """«Небо сегодня» без эфемерид: знак сезона Солнца + фаза Луны."""
+    """«Небо сегодня»: знак сезона Солнца + фаза Луны."""
     d = d or date.today()
-    sign, sym, element = sun_sign(d)
+    sign, sym, element = sun_sign_precise(d)
     return {"sun_season": {"sign": sign, "symbol": sym, "element": element},
             "moon": moon_phase(d)}
 
 
-def chart_brief(chart: dict) -> str:
-    """Краткая текстовая выжимка карты для промпта агента."""
+def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
+    """Краткая текстовая выжимка карты для промпта агента.
+
+    `time_known=False` — время рождения неизвестно, дома посчитаны по полудню:
+    их нельзя показывать и тем более нельзя давать LLM делать домовые выводы.
+    """
     if chart.get("mode") == "full" and chart.get("planets"):
         parts = []
         asc = chart.get("ascendant")
         if asc:
             parts.append(f"Асцендент в {asc['sign']}")
         for p in chart["planets"]:
-            house = f", {p['house']} дом" if p.get("house") else ""
+            house = f", {p['house']} дом" if (p.get("house") and time_known) else ""
             parts.append(f"{p['name']} в {p['sign']}{house}"
                          + (" (R)" if p["retro"] else ""))
         brief = "; ".join(parts)
+        if time_known is False:
+            brief += ". ВНИМАНИЕ: время рождения неизвестно, дома рассчитаны по полдню — не используй их"
         aspects = chart.get("aspects") or []
         if aspects:
             brief += ". Ключевые аспекты: " + "; ".join(

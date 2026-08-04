@@ -25,7 +25,6 @@ from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from . import astro, memory, tarot
 from .matrix import compute_matrix, matrix_brief
-from .stable import stable_seed
 
 log = logging.getLogger("oracle.skills")
 
@@ -123,43 +122,102 @@ ELEMENT_SCORE = {
     frozenset(["воздух", "земля"]): 56, frozenset(["воздух", "вода"]): 63,
 }
 
-# Вклады в «спидометр любви». Балл должен объясняться, а не выглядеть магией,
-# поэтому возвращаем не только число, но и разбор по составляющим.
+# Вклады в балл пары. Балл должен объясняться, а не выглядеть магией.
 ASPECT_BONUS = {"trine": 6, "sextile": 4, "conjunction": 3,
                 "square": -4, "opposition": -3}
 
 
+def synastry_bonus(aspects: list[dict]) -> int:
+    """Суммарный вклад синастрических аспектов в балл пары."""
+    return sum(ASPECT_BONUS.get(a.get("code", ""), 0) for a in aspects)
+
+
+def _element_bonus(a: str | None, b: str | None) -> int:
+    """Созвучие двух стихий: +4 созвучные, -3 в трении, 0 нейтрально."""
+    if not a or not b:
+        return 0
+    if a == b:
+        return 4
+    if frozenset((a, b)) in (frozenset(["огонь", "воздух"]),
+                             frozenset(["земля", "вода"])):
+        return 4
+    if frozenset((a, b)) in (frozenset(["огонь", "земля"]),
+                             frozenset(["огонь", "вода"])):
+        return -3
+    return 0  # воздух-земля и воздух-вода — нейтрально: не питают и не режут
+
+
 def _compat(user_birth: str, partner_birth: str) -> dict:
-    """Совместимость по стихиям + устойчивый «характер пары».
+    """Совместимость пары по реальным точкам карты.
 
     Формула одна на весь продукт: бот, Mini App и ответ Оракула обязаны называть
     одно и то же число, иначе клиентка видит противоречие и теряет доверие.
+    Базой служат стихии Солнц, поверх — Луна (душа), Венера (любовь) и крест
+    «Солнце-Луна» — это сильнейшие синастрические нити по датам без времени.
+    Балл детерминирован для пары и симметричен: не зависит от того, кто спросил.
     """
     d1 = datetime.strptime(user_birth, "%Y-%m-%d").date()
     d2 = datetime.strptime(partner_birth, "%Y-%m-%d").date()
-    s1, _, e1 = astro.sun_sign(d1)
-    s2, _, e2 = astro.sun_sign(d2)
-    base = ELEMENT_SCORE.get(frozenset([e1, e2]), 60)
-    jitter = (stable_seed(s1, s2) % 9) - 4
-    score = max(35, min(98, base + jitter))
+    s1, _, e1 = astro.sun_sign_precise(d1)
+    s2, _, e2 = astro.sun_sign_precise(d2)
+    m1, v1 = astro.moon_venus_signs(d1)
+    m2, v2 = astro.moon_venus_signs(d2)
 
-    same_element = e1 == e2
-    friendly = frozenset([e1, e2]) in (frozenset(["огонь", "воздух"]),
-                                       frozenset(["земля", "вода"]))
-    breakdown = [
-        {"title": "Стихии", "value": base,
-         "note": (f"обе {e1}" if same_element else
-                  f"{e1} и {e2} — питают друг друга" if friendly else
-                  f"{e1} и {e2} — рост через трение")},
-        {"title": "Характер пары", "value": jitter,
-         "note": "устойчивая индивидуальная поправка"},
-    ]
+    base = ELEMENT_SCORE.get(frozenset([e1, e2]), 60)
+    if e1 == e2:
+        broken = f"обе {e1}"
+    elif frozenset([e1, e2]) in (frozenset(["огонь", "воздух"]),
+                                 frozenset(["земля", "вода"])):
+        broken = f"{e1} и {e2} — питают друг друга"
+    else:
+        broken = f"{e1} и {e2} — рост через трение"
+    breakdown = [{"title": "Стихии Солнца", "value": base, "note": broken}]
+    score = base
+
+    lunar = _element_bonus(m1[1] if m1 else None, m2[1] if m2 else None)
+    if lunar:
+        breakdown.append({"title": "Луна (душа)", "value": lunar,
+                          "note": "как вы чувствуете друг друга без слов"})
+        score += lunar
+
+    venus = _element_bonus(v1[1] if v1 else None, v2[1] if v2 else None)
+    if venus:
+        breakdown.append({"title": "Венера (любовь)", "value": venus,
+                          "note": "как вы притягиваетесь и цените друг друга"})
+
+        score += venus
+
+    cross = (_element_bonus(m2[1] if m2 else None, e1)
+             + _element_bonus(m1[1] if m1 else None, e2))
+    if cross:
+        breakdown.append({"title": "Крест Солнце-Луна", "value": cross,
+                          "note": "его Солнце встречает её Луну и наоборот — "
+                                  "самая живая нить синастрии"})
+        score += cross
+
+    score = max(35, min(98, score))
     return {"you": {"sign": s1, "element": e1},
             "partner": {"sign": s2, "element": e2},
             "score": score, "breakdown": breakdown,
-            "verdict": ("союз-пламя: вы разжигаете друг друга" if score >= 80 else
-                        "союз-рост: разность стихий учит вас обоих" if score >= 60 else
-                        "союз-урок: трение сильное, но именно оно шлифует")}
+            "verdict": _verdict(score, e1, e2)}
+
+
+_ELEMENT_VERB = {
+    ("огонь", "огонь"): "союз-пламя: вы зажигаете друг друга",
+    ("земля", "земля"): "союз-основа: вы строите надёжное",
+    ("воздух", "воздух"): "союз-ветер: вы свободно дышите вместе",
+    ("вода", "вода"): "союз-глубина: вы чувствуете друг друга без слов",
+}
+
+
+def _verdict(score: int, e1: str, e2: str) -> str:
+    """Вердикт по стихии пары — «пламя» уходит только паре из огня."""
+    by_style = _ELEMENT_VERB.get((e1, e2)) or _ELEMENT_VERB.get((e2, e1))
+    if score >= 80:
+        return by_style or "союз-гармония: вы дополняете друг друга"
+    if score >= 60:
+        return "союз-рост: разность стихий учит вас обоих"
+    return "союз-урок: трение сильное, но именно оно шлифует"
 
 
 # ---------------------------------------------------------------- skills
@@ -186,7 +244,7 @@ async def _run_get_chart(db, user, args) -> str:
         return "карта ещё не построена — попроси клиентку пройти /start"
     known = "точное" if user["birth_time_known"] else "НЕТОЧНОЕ (дома не использовать)"
     lines = [await guide(db, "natal"), "", f"Время рождения: {known}",
-             astro.chart_brief(chart)]
+             astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))]
     houses = chart.get("houses") or []
     if houses and user["birth_time_known"]:
         lines.append("Куспиды домов: " + "; ".join(
@@ -201,10 +259,20 @@ async def _run_get_transits(db, user, args) -> str:
     except (TypeError, ValueError):
         chart = {}
     sun = (chart.get("sun") or {}).get("sign", "?")
+    # Реальное небо из эфемерид, а не только «лунная фаза»: знаки Луны и Венеры
+    # меняются медленно и дают контекст для трактовки чувств и ценностей.
+    extras = []
+    moon, venus = astro.moon_venus_signs(date.today())
+    if moon:
+        extras.append(f"Луна в {moon[0]}")
+    if venus:
+        extras.append(f"Венера в {venus[0]}")
+    sky_line = (f"Луна: {sky['moon']['emoji']} {sky['moon']['name']} "
+                f"({sky['moon']['advice']}), лунный день ~{sky['moon']['day']}")
+    if extras:
+        sky_line += ", " + ", ".join(extras)
     return (f"{await guide(db, 'transit')}\n\nСегодня: сезон Солнца в "
-            f"{sky['sun_season']['sign']}, Луна: {sky['moon']['emoji']} "
-            f"{sky['moon']['name']} ({sky['moon']['advice']}), лунный день "
-            f"~{sky['moon']['day']}. Её Солнце: {sun}.")
+            f"{sky['sun_season']['sign']}, {sky_line}. Её Солнце: {sun}.")
 
 
 async def _run_moon_week(db, user, args) -> str:

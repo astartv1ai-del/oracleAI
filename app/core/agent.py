@@ -112,19 +112,24 @@ async def daily_forecast(db, user, chart: dict) -> str:
     sky = astro.today_sky()
     if llm.enabled():
         try:
-            brief = astro.chart_brief(chart) if chart else "-"
+            brief = (astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))
+                     if chart else "-")
             memories = await dialog_repo.get_memories(db, user["tg_id"], limit=5)
             oracle_name = user["oracle_name"] or "Лилит"
             system = (f"Ты — {oracle_name}, личный оракул клиентки {user['name']}. "
                       f"Её карта: {brief}. Память о ней: "
                       f"{'; '.join(memories) or '-'}.\n"
                       f"{await skills.guide(db, 'transit')}")
+            card = card_of_day(user)
             user_msg = (f"Небо сегодня: Луна {sky['moon']['emoji']} "
                         f"{sky['moon']['name']} ({sky['moon']['advice']}), "
                         f"лунный день ~{sky['moon']['day']}, Солнце в "
                         f"{sky['sun_season']['sign']}.\n"
+                        f"Карта дня: {card['emoji']} {card['name']}"
+                        f"{' (перевёрнутая)' if card['reversed'] else ''} — "
+                        f"{card['meaning']}.\n"
                         f"Напиши мой персональный прогноз на сегодня: 4-6 строк, "
-                        f"тепло, 1 конкретный совет. Начни с 🌅.")
+                        f"тепло, 1 конкретный совет, обыграй карту дня. Начни с 🌅.")
             text = await llm.complete(system, user_msg, tier="lite", max_tokens=400,
                                       purpose="forecast", tg_id=user["tg_id"], db=db)
             if text.strip():
@@ -139,7 +144,7 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
     sun = (chart or {}).get("sun") or {}
     sign = sun.get("sign", "твоего знака")
     moon = sky["moon"]
-    card = tarot.draw(1)[0]
+    card = card_of_day(user)
     moods = ["день ясности", "день тихой силы", "день знаков", "день выбора",
              "день отдачи"]
     return (
@@ -152,42 +157,101 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
 
 
 def card_of_day(user) -> dict:
-    """Карта дня: детерминирована датой и клиенткой — одна в боте и в Mini App."""
+    """Карта дня: детерминирована датой и клиенткой — одна в боте и в Mini App.
+
+    Перевёрнутость тоже имитирует честную тасовку (~50/50), но сохраняет
+    стабильность для одного дня: клиентка видит ту же карту утром и вечером.
+    """
     rnd = random.Random(stable_seed(users_repo.user_today(user), user["tg_id"]))
     card = dict(tarot.DECK[rnd.randrange(len(tarot.DECK))])
-    card["reversed"] = False
+    card["reversed"] = bool(rnd.getrandbits(1))
     return card
 
 
 # ---------------------------------------------------------------- совместимость
 
+async def _synastry_data(db, user, partner_date: str) -> str | None:
+    """Блок настоящей синастрии: карты обеих + аспекты пары.
+
+    None — если хотя бы одна карта не полная (тогда остаётся только базовый
+    разбор по датам). Карта партнёра берётся из сохранённых людей по дате,
+    полную мы строим, когда клиентка указывала город/время.
+    """
+    try:
+        chart = json.loads(user["chart_json"] or "{}")
+        if chart.get("mode") != "full" or not chart.get("planets"):
+            return None
+        partner = await readings_repo.find_partner_by_date(
+            db, user["tg_id"], partner_date)
+        if not partner:
+            return None
+        pchart = json.loads(partner["chart_json"] or "{}") if partner["chart_json"] else {}
+        if pchart.get("mode") != "full" or not pchart.get("planets"):
+            return None
+        aspects = astro.synastry_aspects(chart["planets"], pchart["planets"])
+        lines = [
+            "Её карта:",
+            astro.chart_brief(chart, time_known=bool(user["birth_time_known"])),
+            "",
+            f"Карта {partner['name'] or 'партнёра'}:",
+            astro.chart_brief(pchart,
+                              time_known=bool(partner["birth_time"])),
+            "",
+            "Синастрические аспекты пары:",
+        ]
+        if aspects:
+            lines.append(astro.synastry_aspects_text(aspects))
+            bonus = skills.synastry_bonus(aspects)
+            if bonus:
+                lines.append(f"Вклад аспектов в балл пары: {bonus:+d}")
+        else:
+            lines.append("(орбных аспектов между картами не найдено)")
+        return "\n".join(lines)
+    except (TypeError, ValueError):
+        return None
+
+
 async def interpret_compat(db, user, partner_date: str,
                            partner_name: str = "") -> str:
+    """Полный разбор пары. Настоящая синастрия берётся из сохранённых карт,
+    если они есть; иначе — разбор по датам (Солнце/Луна/Венера)."""
+    key = f"syn:{partner_date}:{partner_name}"
+    cached = await readings_repo.get_synastry(db, user["tg_id"], key)
+    if cached and cached["answer"]:
+        return cached["answer"]
+
     data = skills._compat(user["birth_date"], partner_date)
     who = partner_name or "он"
+    brief = (f"я — {data['you']['sign']} ({data['you']['element']}), "
+             f"{who} — {data['partner']['sign']} ({data['partner']['element']}), "
+             f"балл {data['score']}/100")
+    block = await _synastry_data(db, user, partner_date)
+    synast = f"\n\nДанные синастрии (считает код):\n{block}" if block else ""
+    text = ""
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("astro"))
             user_msg = (f"{await skills.guide(db, 'compat')}\n\nРазбор совместимости: "
-                        f"я — {data['you']['sign']} ({data['you']['element']}), "
-                        f"{who} — {data['partner']['sign']} "
-                        f"({data['partner']['element']}), балл {data['score']}/100.\n"
+                        f"{brief}.{synast}\n"
                         f"Расскажи, что нас соединяет, где будет трение и что укрепит "
-                        f"союз. Тепло, конкретно, 5-7 абзацев.")
+                        f"союз. Опирайся на данные расчёта, не выдумывай аспекты."
+                        f" Тепло, конкретно, 5-7 абзацев.")
             text = await llm.complete(system, user_msg, tier="main", max_tokens=1000,
                                       purpose="compat", tg_id=user["tg_id"], db=db)
-            if len(text.strip()) >= 120:
-                return text
         except Exception as e:  # noqa: BLE001
             log.warning("разбор пары ушёл в офлайн: %s", e)
-    return (
-        f"💞 <b>Совместимость</b>\n\n"
-        f"Ты — {data['you']['sign']} ({data['you']['element']}), "
-        f"{who} — {data['partner']['sign']} ({data['partner']['element']}).\n"
-        f"Балл пары: <b>{data['score']}/100</b> — {data['verdict']}.\n\n"
-        f"Стихии подсказывают: не переделывай его, а используй разность как опору. "
-        f"Спроси меня про конкретную ситуацию между вами — разложу карты. 🌙"
-    )
+    if len(text.strip()) < 120:
+        text = (
+            f"💞 <b>Совместимость</b>\n\n"
+            f"Ты — {data['you']['sign']} ({data['you']['element']}), "
+            f"{who} — {data['partner']['sign']} ({data['partner']['element']}).\n"
+            f"Балл пары: <b>{data['score']}/100</b> — {data['verdict']}.\n\n"
+            f"Стихии подсказывают: не переделывай его, а используй разность как "
+            f"опору. Спроси меня про конкретную ситуацию между вами — разложу "
+            f"карты. 🌙")
+    await readings_repo.cache_synastry(db, user["tg_id"], key, data["score"],
+                                       data["breakdown"], text)
+    return text
 
 
 # ---------------------------------------------------------------- отчёты
@@ -220,7 +284,7 @@ REPORTS = {
                      "Как выходить в плюс каждого аркана"],
     },
     "synastry": {
-        "title": "Синастрия: полный разбор пары",
+        "title": "Синастрия: совместимость пары",
         "agent": "astro",
         "guide": "compat",
         "sections": ["Что вас притянуло", "Как вы говорите друг с другом",
@@ -229,7 +293,9 @@ REPORTS = {
                      "Что укрепит вас двоих"],
     },
     "solar": {
-        "title": "Соляр: прогноз на год",
+        # честно про метод: это прогноз года по карте и текущему небу, а не
+        # астрономический соляр (момент возврата Солнца в натальный градус)
+        "title": "Годовой прогноз по картам",
         "agent": "astro",
         "guide": "transit",
         "sections": ["Главная тема года", "Первые три месяца",
@@ -316,10 +382,12 @@ async def _report_data(db, user, kind: str, partner_date: str | None,
             raise ValueError("для синастрии нужна дата партнёра")
         compat = skills._compat(user["birth_date"], partner_date)
         chart = await skills.execute(db, user, "get_chart", {})
-        return (f"{chart}\n\nПартнёр: {partner_name or 'без имени'}, "
+        core = (f"{chart}\n\nПартнёр: {partner_name or 'без имени'}, "
                 f"{compat['partner']['sign']} ({compat['partner']['element']}), "
                 f"дата {partner_date}. Балл пары: {compat['score']}/100 — "
                 f"{compat['verdict']}.")
+        block = await _synastry_data(db, user, partner_date)
+        return core + ("\n\n" + block if block else "")
     if kind == "solar":
         chart = await skills.execute(db, user, "get_chart", {})
         sky = astro.today_sky()

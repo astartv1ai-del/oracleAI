@@ -114,6 +114,14 @@ async def get_partner(db, partner_id: int, tg_id: int):
     return await cur.fetchone()
 
 
+async def find_partner_by_date(db, tg_id: int, birth_date: str):
+    """Сохранённый человек с этой датой рождения — чтобы взять его карту."""
+    cur = await db.execute(
+        "SELECT * FROM partners WHERE tg_id=? AND birth_date=? "
+        "ORDER BY id DESC LIMIT 1", (tg_id, birth_date))
+    return await cur.fetchone()
+
+
 async def delete_partner(db, partner_id: int, tg_id: int) -> None:
     async with transaction(db):
         await db.execute("DELETE FROM partners WHERE id=? AND tg_id=?",

@@ -60,7 +60,8 @@ async def _context(db, user, spec, question: str = ""):
     Часть слотов всегда отдана самым весомым фактам — они про неё в целом.
     """
     chart = users_repo.chart_of(user)
-    brief = astro.chart_brief(chart) if chart else "карта ещё не построена"
+    brief = (astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))
+             if chart else "карта ещё не построена")
     matrix_brief = "-"
     if user["birth_date"]:
         try:
@@ -104,8 +105,13 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
         try:
             system = await system_for(db, user, spec, allowance_line=allowance_line,
                                       question=question, extra_rules=extra_rules)
+            # Активная подписка оплачивает более глубокий разбор: больше итераций
+            # на многошаговый «план + разбор + совет» и длиннее тред в контексте.
+            premium = users_repo.sub_active(user) if db else False
+            history_limit = (max(spec.history_limit, 20)
+                             if premium else spec.history_limit)
             history = await dialog_repo.history(
-                db, user["tg_id"], limit=spec.history_limit, thread_id=thread_id)
+                db, user["tg_id"], limit=history_limit, thread_id=thread_id)
             messages = history + [{"role": "user", "content": question}]
 
             async def executor(name: str, args: dict) -> str:
@@ -114,7 +120,8 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
             text = await llm.run_agent(
                 system, messages, skills.tools_for(spec.skills), executor,
                 tier=spec.tier, max_tokens=spec.max_tokens,
-                purpose=f"answer:{spec.code}", tg_id=user["tg_id"], db=db)
+                purpose=f"answer:{spec.code}", tg_id=user["tg_id"], db=db,
+                max_iters=10 if premium else None)
             if len(text.strip()) >= MIN_ANSWER_LEN:
                 return text
             log.info("агент %s вернул слишком короткий ответ (%d симв) — офлайн",

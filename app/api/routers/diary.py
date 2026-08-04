@@ -50,7 +50,14 @@ async def diary_prompt(user=Depends(current_user), db=Depends(get_db)):
     entries = await dialog.get_diary(db, user["tg_id"], limit=1)
     streak = await dialog.diary_streak(db, user["tg_id"])
     today = users.user_today(user)
-    written_today = bool(entries and (entries[0]["created_at"] or "")[:10] == today)
+    written_today = False
+    if entries and entries[0]["created_at"]:
+        # created_at в UTC, а «сегодня» — по зоне клиентки: вечером UTC
+        # ещё вчера, и сравнение по подстроке даёт ложный False
+        from datetime import datetime
+        local = datetime.fromisoformat(entries[0]["created_at"]).astimezone(
+            users.user_tz(user))
+        written_today = local.strftime("%Y-%m-%d") == today
     return {
         "written_today": written_today,
         "streak": streak,

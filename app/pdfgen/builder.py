@@ -92,7 +92,7 @@ async def build_report_data(order: Order) -> dict:
         "matrix": matrix,
         "sky": astro.today_sky(),
         "tz": tz,
-        "brief": astro.chart_brief(chart),
+        "brief": astro.chart_brief(chart, time_known=order.time_known),
     }
 
 

@@ -295,9 +295,13 @@ async def _complete_with(provider, system, user_text, tier, max_tokens,
                          meter: _Meter) -> str:
     if provider == "anthropic":
         client = _anthropic_client()
+        # Система батча (гороскоп на 12 знаков, разбор) не меняется между
+        # вызовами — кешируем её, чтобы за повторное вхождение не платить.
+        sys_block = [{"type": "text", "text": system,
+                      "cache_control": {"type": "ephemeral"}}]
         resp = await client.messages.create(
             model=_models(provider, tier), max_tokens=max_tokens,
-            system=system,
+            system=sys_block,
             messages=[{"role": "user", "content": user_text}],
         )
         meter.add(getattr(resp, "usage", None))
@@ -317,10 +321,17 @@ async def _complete_with(provider, system, user_text, tier, max_tokens,
 async def run_agent(system: str, messages: list[dict], tools: list[dict],
                     execute: ToolExecutor, tier: str = "main",
                     max_tokens: int = 1500, *, purpose: str = "answer",
-                    tg_id: int | None = None, db=None) -> str:
-    """Агентный цикл: модель вызывает скиллы, мы исполняем, модель отвечает."""
+                    tg_id: int | None = None, db=None,
+                    max_iters: int | None = None) -> str:
+    """Агентный цикл: модель вызывает скиллы, мы исполняем, модель отвечает.
+
+    `max_iters` — потолок глубины. Премиум разбирает «план + разбор + совет»
+    с несколькими инструментами, поэтому может получать больше итераций, чем
+    бесплатный уровень (лимит токенов всё равно стоит на `max_tokens`).
+    """
     if not settings.provider_chain:
         raise RuntimeError("Все LLM-провайдеры недоступны")
+    iters = max_iters or MAX_ITERS
     errors = []
     async with _llm_slot():
         for provider in settings.provider_chain:
@@ -329,11 +340,11 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
             try:
                 if provider == "anthropic":
                     text = await _run_anthropic(system, messages, tools, execute,
-                                                tier, max_tokens, meter)
+                                                tier, max_tokens, meter, iters)
                 else:
                     text = await _run_openai_like(provider, system, messages,
                                                   tools, execute, tier, max_tokens,
-                                                  meter)
+                                                  meter, iters)
             except Exception as e:  # noqa: BLE001
                 errors.append(f"{provider}: {e}")
                 log.warning("run_agent %s: %s", provider, e)
@@ -369,21 +380,27 @@ async def _gather_tools(execute: ToolExecutor, calls: list[tuple[str, dict]]
 
 
 async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
-                         meter: _Meter) -> str:
+                         meter: _Meter, max_iters: int = MAX_ITERS) -> str:
     client = _anthropic_client()
     sys_block = [{"type": "text", "text": system,
                   "cache_control": {"type": "ephemeral"}}]
     msgs = [dict(m) for m in messages]
-
-    for _ in range(MAX_ITERS):
+    kept = ""
+    for _ in range(max_iters):
         resp = await _with_retries(
             lambda: client.messages.create(
                 model=_models("anthropic", tier), max_tokens=max_tokens,
                 system=sys_block, tools=tools, messages=msgs),
             "anthropic", "agent")
         meter.add(getattr(resp, "usage", None))
+        piece = "".join(b.text for b in resp.content
+                        if b.type == "text").strip()
         if resp.stop_reason != "tool_use":
-            return "".join(b.text for b in resp.content if b.type == "text").strip()
+            return piece
+        if piece:
+            # модель часто пишет предисловие до tool_use — не теряем его,
+            # если потолок итераций исчерпан (иначе уходит в офлайн-фолбэк)
+            kept = piece
         msgs.append({"role": "assistant", "content": resp.content})
         blocks = [b for b in resp.content if b.type == "tool_use"]
         outputs = await _gather_tools(
@@ -391,7 +408,7 @@ async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
         msgs.append({"role": "user", "content": [
             {"type": "tool_result", "tool_use_id": b.id, "content": out}
             for b, out in zip(blocks, outputs)]})
-    return _fallback_text()
+    return kept or _fallback_text()
 
 
 def _to_openai_tools(tools: list[dict]) -> list[dict]:
@@ -406,7 +423,8 @@ def _to_openai_tools(tools: list[dict]) -> list[dict]:
 
 
 async def _run_openai_like(provider, system, messages, tools, execute,
-                           tier, max_tokens, meter: _Meter) -> str:
+                           tier, max_tokens, meter: _Meter,
+                           max_iters: int = MAX_ITERS) -> str:
     """OpenAI и OpenAI-совместимые серверы (custom/MiniMax).
 
     Если сервер не поддерживает function calling — падаем в pre-tool режим:
@@ -417,15 +435,18 @@ async def _run_openai_like(provider, system, messages, tools, execute,
     msgs: list[dict] = [{"role": "system", "content": system}]
     msgs += [{"role": m["role"], "content": m["content"]} for m in messages]
     oa_tools = _to_openai_tools(tools)
+    kept = ""
 
     try:
-        for _ in range(MAX_ITERS):
+        for _ in range(max_iters):
             text, calls = await _with_retries(
                 lambda: _stream_chat(client, model, msgs, max_tokens, oa_tools,
                                      meter=meter),
                 provider, "agent")
             if not calls:
                 return text
+            if text:
+                kept = text
             msgs.append({
                 "role": "assistant",
                 "content": text,
@@ -443,7 +464,7 @@ async def _run_openai_like(provider, system, messages, tools, execute,
             outputs = await _gather_tools(execute, parsed)
             for c, out in zip(calls, outputs):
                 msgs.append({"role": "tool", "tool_call_id": c["id"], "content": out})
-        return _fallback_text()
+        return kept or _fallback_text()
     except Exception as e:  # noqa: BLE001
         # сервер не умеет tools (400/устаревший API) → pre-tool режим
         if "tool" not in str(e).lower() and "function" not in str(e).lower():
@@ -460,10 +481,17 @@ async def _run_pretool(client, model, system, messages, execute,
     last = messages[-1]["content"] if messages else ""
     lower = str(last).lower()
     wanted: list[tuple[str, dict]] = [("get_chart", {}), ("get_transits", {})]
-    if any(w in lower for w in ("таро", "карт", "расклад", "будет", "стоит ли")):
+    if any(w in lower for w in ("таро", "карт", "расклад", "будет", "стоит ли",
+                                "гада")):
         wanted.append(("draw_tarot", {"n": 3}))
     if any(w in lower for w in ("матриц", "предназнач", "карм")):
         wanted.append(("get_matrix", {}))
+    if any(w in lower for w in ("работ", "карьер", "увол", "переговор",
+                                "повышен", "деньг")):
+        wanted.append(("get_career_windows", {}))
+    if any(w in lower for w in ("стрижк", "свадьб", "переезд", "поездк",
+                                "выбер")):
+        wanted.append(("get_moon_week", {"days": 7}))
     context_parts = await _gather_tools(execute, wanted)
     system2 = (system + "\n\n[Данные твоих инструментов для этого ответа]\n"
                + "\n\n".join(context_parts))
