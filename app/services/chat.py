@@ -240,7 +240,8 @@ async def interpret(db, user, reading_id: int, *, surface: str = "bot") -> str:
     positions = item["positions"][:len(cards)]
 
     answer = await agent_core.interpret_reading(db, user, item["title"], cards,
-                                                positions)
+                                                positions,
+                                                question=row["question"] or None)
     await readings.finish_reading(db, reading_id, answer)
     thread = await dialog.ensure_thread(db, user["tg_id"], "tarot")
     await dialog.save_message(db, user["tg_id"], "assistant", answer,

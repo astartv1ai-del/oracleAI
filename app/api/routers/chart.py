@@ -1,6 +1,8 @@
 """Натальная карта, Матрица Судьбы, совместимость, партнёры, разборы."""
 from __future__ import annotations
 
+import json
+import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -46,6 +48,52 @@ async def chart(user=Depends(current_user), db=Depends(get_db)):
                   "city": user["birth_city"],
                   "time_known": bool(user["birth_time_known"])},
     }
+
+
+_TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
+
+
+class ChartBuildIn(BaseModel):
+    birth_time: str | None = None
+    birth_city: str | None = Field(default=None, max_length=60)
+
+
+@router.post("/chart", dependencies=[Depends(rate_limit("write"))])
+async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_user),
+                      db=Depends(get_db)):
+    """Строит и сохраняет натальную карту — тот же путь, что в онбординге бота.
+
+    Нужно для сценария «собери карту прямо здесь»: у астролога в чате клиентка
+    может заполнить/уточнить время и город, не заходя в бота. Если карта уже
+    построена — возвращает её без пересчёта.
+    """
+    if not user["birth_date"]:
+        raise HTTPException(400, "нет даты рождения — заполни её в боте")
+
+    existing = users.chart_of(user)
+    if existing and not (item and (item.birth_time or item.birth_city)):
+        return {"ok": True, "cached": True, "mode": existing.get("mode"),
+                "sun": existing.get("sun"), "ascendant": existing.get("ascendant"),
+                "planets": existing.get("planets", []),
+                "houses": existing.get("houses", [])}
+
+    item = item or ChartBuildIn()
+    city = (item.birth_city or user["birth_city"] or "").strip()
+    if not city:
+        raise HTTPException(400, "укажи город рождения")
+    time = item.birth_time or user["birth_time"] or "12:00"
+    if item.birth_time and not _TIME_RE.match(item.birth_time):
+        raise HTTPException(400, "время в формате ЧЧ:ММ, например 14:30")
+
+    lat, lon, tz = await geo.resolve_city_async(city, db)
+    chart = await astro.compute_chart_async(user["birth_date"], time, city, lat, lon, tz)
+    await users.update(db, user["tg_id"], birth_city=city, birth_lat=lat,
+                       birth_lon=lon, tz=tz, birth_time=time,
+                       birth_time_known=1 if item.birth_time else user["birth_time_known"],
+                       chart_json=json.dumps(chart, ensure_ascii=False))
+    return {"ok": True, "cached": False, "mode": chart.get("mode"),
+            "sun": chart.get("sun"), "ascendant": chart.get("ascendant"),
+            "planets": chart.get("planets", []), "houses": chart.get("houses", [])}
 
 
 @router.get("/matrix")

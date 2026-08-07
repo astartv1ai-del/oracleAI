@@ -19,12 +19,23 @@ async def spreads(user=Depends(current_user), db=Depends(get_db)):
     return await catalog.spread_list(db, user)
 
 
+class DrawIn(BaseModel):
+    question: str | None = None
+
+
 @router.post("/draw", dependencies=[Depends(rate_limit("write"))])
-async def draw(spread: str = Query(default="three"), user=Depends(current_user),
-               db=Depends(get_db)):
-    """Тянет карты. Трактовка — вторым запросом, после анимации переворота."""
+async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
+               question: str = Query(default=""),
+               user=Depends(current_user), db=Depends(get_db)):
+    """Тянет карты. Трактовка — вторым запросом, после анимации переворота.
+
+    `question` — формулировка клиентки «что спросить у карт»: сохраняется в
+    раскладе и на трактовке читается моделью (карты отвечают на конкретное).
+    Принимаем и из query, и из тела — фронтенд шлёт в теле, старые вызовы в query.
+    """
+    q = (item.question if item and item.question else question or "").strip() or None
     try:
-        return await chat_svc.draw(db, user, spread, surface="miniapp")
+        return await chat_svc.draw(db, user, spread, surface="miniapp", question=q)
     except chat_svc.ChatDenied as e:
         raise _deny(e.verdict) from e
 

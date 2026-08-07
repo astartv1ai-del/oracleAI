@@ -42,17 +42,24 @@ async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
 # ---------------------------------------------------------------- таро
 
 async def interpret_reading(db, user, title: str, cards: list[dict],
-                            positions: list[str]) -> str:
-    """Трактовка КОНКРЕТНЫХ вытянутых карт (карты выбрал код, не модель)."""
+                            positions: list[str],
+                            question: str | None = None) -> str:
+    """Трактовка КОНКРЕТНЫХ вытянутых карт (карты выбрал код, не модель).
+
+    `question` — формулировка клиентки «что спросить у карт»: карты отвечают на
+    конкретное, и трактовка обязана отталкиваться от её вопроса, а не быть
+    «про жизнь вообще».
+    """
     cards_block = tarot.cards_text(cards, positions)
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("oracle"))
+            q = f"Я спросила карты: «{question}».\n" if question else ""
             user_msg = (f"{await skills.guide(db, 'tarot')}\n\n"
                         f"Я сделала расклад «{title}». Выпали карты:\n{cards_block}\n\n"
-                        f"Дай глубокую тёплую трактовку именно этих карт для меня: "
-                        f"разбери по позициям, свяжи в один сюжет и закончи одним "
-                        f"практическим шагом.")
+                        f"{q}Дай глубокую тёплую трактовку именно этих карт для меня: "
+                        f"разбери по позициям, свяжи в один сюжет и ответь на мой "
+                        f"вопрос{'. Закончи одним практическим шагом' if question else ''}.")
             text = await llm.complete(system, user_msg, tier="main",
                                       max_tokens=min(1400, 220 * max(3, len(cards))),
                                       purpose="tarot", tg_id=user["tg_id"], db=db)
@@ -60,16 +67,18 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
                 return text
         except Exception as e:  # noqa: BLE001
             log.warning("трактовка расклада ушла в офлайн: %s", e)
-    return _reading_offline(user, title, cards, cards_block)
+    return _reading_offline(user, title, cards, cards_block, question)
 
 
-def _reading_offline(user, title: str, cards: list[dict], cards_block: str) -> str:
+def _reading_offline(user, title: str, cards: list[dict], cards_block: str,
+                     question: str | None = None) -> str:
     name = user["name"] or "милая"
     key = cards[len(cards) // 2]
     reversed_note = ("Перевёрнутые карты просят не торопиться. "
                      if any(c["reversed"] for c in cards) else "")
+    q_line = f"\n\nТы спросила: «{question}»." if question else ""
     return (
-        f"🎴 <b>{title}</b>\n\n{cards_block}\n\n"
+        f"🎴 <b>{title}</b>\n\n{cards_block}{q_line}\n\n"
         f"{name}, сердце этого расклада — {key['emoji']} <b>{key['name']}</b>: "
         f"{key['meaning']}. Карты легли так, что прошлое уже отпускает тебя, "
         f"а будущее ждёт твоего шага. {reversed_note}"

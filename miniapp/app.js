@@ -1,1456 +1,911 @@
-/* ══════ Оракул · Mini App ══════
-   Шесть экранов: Сегодня, Чаты с агентами, Таро, Карта, Дневник, Профиль.
+/* ============================================================================
+   ОРАКУЛ — Mini App, chat-first
+   Главный инструмент — чат с ИИ-агентом. У каждого агента — кнопки-функции
+   (фичи), которые живут прямо в диалоге: расклад Таро начинается с вопроса,
+   натальная карта строится и сохраняется в профиль, всё остальное отвечает
+   на вопрос через агента. Домашний экран — статичная база: прогноз дня.
+   ============================================================================ */
 
-   Без сборки и фреймворка намеренно: приложение отдаёт тот же процесс, что и API,
-   поэтому нет шага сборки, нет CDN и нет расхождения версий. Все правила
-   (лимиты, цены, доступы) считает сервер — клиент только показывает.            */
+const tg = () => window.Telegram && window.Telegram.WebApp;
 
-const tg = window.Telegram?.WebApp;
-tg?.ready();
-tg?.expand();
-tg?.setHeaderColor?.('#0b0722');
-tg?.setBackgroundColor?.('#0b0722');
-tg?.disableVerticalSwipes?.();      // свайп вниз не закрывает окно посреди расклада
-
-/* Уважаем системную настройку «меньше движения» */
-const CALM = matchMedia('(prefers-reduced-motion: reduce)').matches;
-if (CALM) document.documentElement.classList.add('calm');
-
-const haptic = (kind = 'light') => tg?.HapticFeedback?.impactOccurred(kind);
-const notify = (kind = 'success') => tg?.HapticFeedback?.notificationOccurred(kind);
-const selectHaptic = () => tg?.HapticFeedback?.selectionChanged();
-
-const qs = new URLSearchParams(location.search);
-const DEV_USER = qs.get('dev_user');
-
-/* ── состояние ── */
-const S = {
-  me: null,
-  agents: [],
-  agent: 'oracle',
-  spreads: [],
-  spread: null,
-  chart: null,
-  shopTab: 'plans',
-  shop: null,
-  diaryMood: null,
-  drawn: null,
-  shuffled: false,
-  compat: null,
-  practices: null,
-  practiceCat: null,
-  shareCards: false,
-};
-
-/* ══════ сеть ══════ */
-const API_MESSAGES = {
-  401: 'Открой приложение из бота — нужна подпись Telegram 🌙',
-  402: 'Доступ завершён 🌙 Продли его в разделе «Я».',
-  403: 'Доступ приостановлен. Напиши в поддержку 🌙',
-  404: 'Открой бота и нажми /start — я ещё не знаю тебя ✨',
-  429: 'Слишком часто или вопросы исчерпаны. Звёзды ждут рассвета 🌘',
-  503: 'Оплата сейчас недоступна, попробуй чуть позже 🌙',
-};
-
-class ApiError extends Error {
-  constructor(status, detail) {
-    super(detail || API_MESSAGES[status] || 'Связь со звёздами прервалась…');
-    this.status = status;
-  }
-}
-
+/* ── API-клиент ─────────────────────────────────────────────────────────── */
 async function api(path, opts = {}) {
-  const url = new URL(path, location.origin);
-  if (DEV_USER) url.searchParams.set('dev_user', DEV_USER);
-  const res = await fetch(url, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Init-Data': tg?.initData || '',
-      ...(opts.headers || {}),
-    },
-  });
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  const initData = tg() && tg().initData;
+  if (initData) headers['X-Init-Data'] = initData;
+  let url = path;
+  const dev = new URLSearchParams(location.search).get('dev_user');
+  if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + dev;
+  const res = await fetch(url, Object.assign({ headers }, opts));
+  let body = null;
+  try { body = await res.json(); } catch (e) { /* пустое тело */ }
   if (!res.ok) {
-    let detail = null;
-    try { detail = (await res.json()).detail; } catch { /* не JSON */ }
-    throw new ApiError(res.status, detail);
+    const detail = body && (body.detail || JSON.stringify(body));
+    const err = new Error(detail || 'Связь прервалась 🌙');
+    err.status = res.status;
+    throw err;
   }
-  return res.json();
+  return body;
 }
 
-const post = (p, body) => api(p, { method: 'POST', body: JSON.stringify(body ?? {}) });
-const del = (p) => api(p, { method: 'DELETE' });
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-/* ── мелкие помощники ── */
-const $ = (id) => document.getElementById(id);
-const esc = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
-const plural = (n, one, few, many) => {
-  const mod10 = n % 10, mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
-};
-const dateRu = (iso) => iso ? new Date(iso).toLocaleDateString('ru-RU') : '';
+// Rich-escape для серверного текста (чат-история, ответы LLM, отчёты):
+// сначала всё экранируем, затем восстанавливаем ТОЛЬКО закрытые пары <b>/<i>
+// из их экранированной формы. <script>, onerror=, атрибуты остаются текстом.
+const rich = s => esc(s).replace(/&lt;(\/?)(b|i)&gt;/g, '<$1$2>');
 
-let toastTimer;
-function toast(text) {
-  const el = $('toast');
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3600);
-}
+const fmtDate = () => new Date().toLocaleDateString('ru-RU',
+  { weekday: 'long', day: 'numeric', month: 'long' });
 
-function reportError(e) {
-  toast(e instanceof ApiError ? e.message : 'Связь со звёздами прервалась…');
-  notify('error');
-}
-
-/* ── модальный лист для длинных текстов ── */
-function openSheet(title, text) {
-  $('sheet-content').innerHTML =
-    `<div class="sheet-title">${esc(title)}</div>
-     <div class="sheet-text">${esc(text)}</div>`;
-  $('sheet').classList.remove('hidden');
-}
-document.querySelectorAll('[data-sheet-close]').forEach((el) =>
-  el.addEventListener('click', () => $('sheet').classList.add('hidden')));
-
-/* ══════ звёздное небо ══════ */
-(function starfield() {
-  const c = $('stars');
-  const ctx = c.getContext('2d');
-  let stars = [];
-  function resize() {
-    c.width = innerWidth; c.height = innerHeight;
-    stars = Array.from({ length: 120 }, () => ({
-      x: Math.random() * c.width,
-      y: Math.random() * c.height,
-      r: Math.random() * 1.3 + .2,
-      tw: Math.random() * Math.PI * 2,
-      sp: .003 + Math.random() * .012,
-    }));
-  }
-  resize();
-  addEventListener('resize', resize);
-
-  function paint(twinkle) {
-    ctx.clearRect(0, 0, c.width, c.height);
-    for (const s of stars) {
-      if (twinkle) s.tw += s.sp * 16;
-      const a = .25 + Math.abs(Math.sin(s.tw)) * .75;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, 7);
-      ctx.fillStyle = `rgba(232,215,255,${a})`;
-      ctx.fill();
-    }
-  }
-
-  if (CALM) { paint(false); return; }
-  let running = true;
-  function loop() {
-    if (!running) return;
-    paint(true);
-    requestAnimationFrame(loop);
-  }
-  loop();
-  // свёрнутое окно не должно жечь батарею
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { running = false; return; }
-    if (!running) { running = true; requestAnimationFrame(loop); }
-  });
-})();
-
-/* ══════ навигация ══════ */
-const LOADED = new Set();
-const TAB_LOADERS = {
-  chats: loadAgents,
-  tarot: loadSpreads,
-  chart: loadChart,
-  practices: loadPractices,
-  diary: loadDiary,
-  profile: loadProfile,
+const fmtDay = iso => {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 };
 
-function switchTab(name) {
-  document.querySelectorAll('.nav-btn').forEach((b) =>
-    b.classList.toggle('active', b.dataset.tab === name));
-  document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-  $('tab-' + name).classList.add('active');
-  if (name === 'today') tg?.BackButton?.hide(); else tg?.BackButton?.show();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+/* ── реестр фич-кнопок агентов: chat-first, функции живут в диалоге ────── */
+const FEATURES = {
+  oracle: [
+    { id: 'draw_tarot', e: '🎴', t: 'Расклад Таро', h: 'featureTarot' },
+    { id: 'today', e: '🌅', t: 'Прогноз дня', h: 'featureToday' },
+    { id: 'chart', e: '🌌', t: 'Натальная карта', h: 'featureChart' },
+    { id: 'moon', e: '🌙', t: 'Лунная неделя', h: 'featureMoon' },
+    { id: 'compat', e: '💞', t: 'Совместимость', h: 'featureCompat' },
+    { id: 'matrix', e: '🔢', t: 'Матрица', h: 'featureMatrix' },
+  ],
+  tarot: [
+    { id: 'tar', e: '🎴', t: 'Расклад Таро', h: 'featureTarot' },
+    { id: 'hist', e: '📚', t: 'История', h: 'featureTarotHistory' },
+  ],
+  astro: [
+    { id: 'chart', e: '🌌', t: 'Натальная карта', h: 'featureChart' },
+    { id: 'today', e: '🔭', t: 'Небо сегодня', h: 'featureToday' },
+    { id: 'moon', e: '🌙', t: 'Лунная неделя', h: 'featureMoon' },
+    { id: 'compat', e: '💞', t: 'Совместимость', h: 'featureCompat' },
+  ],
+  numero: [
+    { id: 'matrix', e: '🔢', t: 'Матрица Судьбы', h: 'featureMatrix' },
+  ],
+  coach: [
+    { id: 'practice', e: '🧘', t: 'Подобрать практику', h: 'chatPractice' },
+  ],
+  keeper: [
+    { id: 'monthly', e: '📖', t: 'Итог месяца', h: 'chatMonthly' },
+  ],
+};
 
-  // экраны грузим по первому открытию: незачем тянуть всё сразу
-  if (!LOADED.has(name) && TAB_LOADERS[name]) {
-    LOADED.add(name);
-    TAB_LOADERS[name]().catch(reportError);
-  }
-}
+/* ── приложение ─────────────────────────────────────────────────────────── */
+const app = {
+  me: null, agents: [], today: null, spreads: null,
+  view: 'home',
+  chat: { key: null, spec: null, messages: [], pending: null, busy: false },
 
-document.querySelectorAll('.nav-btn').forEach((btn) =>
-  btn.addEventListener('click', () => { switchTab(btn.dataset.tab); haptic('light'); }));
-document.querySelectorAll('[data-goto]').forEach((btn) =>
-  btn.addEventListener('click', () => { switchTab(btn.dataset.goto); haptic('light'); }));
-tg?.BackButton?.onClick(() => {
-  if (!$('chat-thread-view').classList.contains('hidden')) { showAgentList(); return; }
-  switchTab('today');
-});
-
-/* ══════ ЭКРАН: СЕГОДНЯ ══════ */
-async function loadMe() {
-  S.me = await api('/api/me');
-  const hour = new Date().getHours();
-  const hello = hour < 5 ? 'Тихой ночи' : hour < 12 ? 'Доброе утро'
-    : hour < 18 ? 'Светлого дня' : 'Мягкого вечера';
-  $('greeting').textContent = `${hello}, ${S.me.name} ✨`;
-  if (S.me.sun) {
-    $('sub-line').textContent =
-      `${S.me.sun.symbol} Солнце в ${S.me.sun.sign} · стихия ${S.me.sun.element}`;
-  }
-  renderLimits();
-  renderProfileHead();
-  return S.me;
-}
-
-function renderLimits() {
-  const a = S.me.allowance;
-  $('limit-label').textContent = a.period === 'week'
-    ? 'Вопросы Оракулу на этой неделе' : 'Вопросы Оракулу сегодня';
-
-  const flames = $('flames');
-  flames.innerHTML = '';
-  const total = Math.min(a.limit || 0, 10);
-  for (let i = 0; i < total; i++) {
-    const s = document.createElement('span');
-    s.textContent = '🔥';
-    if (i >= a.left) s.className = 'used';
-    flames.appendChild(s);
-  }
-  if (!total) flames.textContent = '🌘';
-
-  const notes = [];
-  if (a.extra_questions) notes.push(`куплено сверх лимита: ${a.extra_questions}`);
-  if (!a.limit && !a.extra_questions) {
-    notes.push(a.can_ask ? `можно открыть за ✦${a.emergency_cost}`
-      : 'доступ завершён — продли в разделе «Я»');
-  }
-  $('limit-note').textContent = notes.join(' · ');
-}
-
-async function loadToday() {
-  try {
-    const t = await api('/api/today');
-    $('forecast').textContent = t.forecast;
-    $('cod-emoji').textContent = t.card.emoji;
-    $('cod-name').textContent = t.card.name;
-    $('cod-meaning').textContent = t.card.meaning;
-    if (t.moon) {
-      $('moon-line').innerHTML =
-        `<span class="m-emoji">${esc(t.moon.emoji)}</span>
-         <span>${esc(t.moon.name)}, ${esc(String(t.moon.day))}-й лунный день —
-         ${esc(t.moon.advice)}</span>`;
+  async boot() {
+    if (tg()) {
+      tg().ready && tg().ready();
+      tg().expand && tg().expand();
+      try { tg().setHeaderColor && tg().setHeaderColor('#08070f'); } catch (e) {}
     }
-  } catch (e) {
-    // молчать нельзя: клиентка должна понимать, почему прогноза нет
-    $('forecast').textContent = e instanceof ApiError ? e.message
-      : 'Небо сейчас затянуто — загляни чуть позже 🌙';
-  }
-  loadMoonWeek();
-  loadHoroscope();
-  initShare();
-}
+    this.renderFrame();
+    try {
+      this.me = await api('/api/me');
+      const pill = document.querySelector('.user-pill');
+      if (pill && this.me.name) {
+        pill.innerHTML = `<span class="avatar">${esc(this.me.name[0].toUpperCase())}</span>${esc(this.me.name)}`;
+      }
+    } catch (e) { /* вход по dev_user в БД уже есть */ }
+    this.loadAgents();
+    this.loadToday();
+    this.go('home');
+  },
 
-async function loadHoroscope() {
-  try {
-    const h = await api('/api/horoscope');
-    $('horoscope-text').textContent = h.text;
-    $('horoscope-card').querySelector('.label').textContent =
-      `Гороскоп · ${h.symbol} ${h.sign}`;
-    $('horoscope-card').classList.remove('hidden');
-  } catch { /* не критично для экрана */ }
-}
+  /* ── каркас ── */
+  renderFrame() {
+    const root = document.getElementById('app-root');
+    root.innerHTML = `
+      <header class="app-header">
+        <div class="brand-title">ОРАКУЛ<small>·AI</small></div>
+        <div class="user-pill" data-act="go" data-goto="profile">
+          <span class="avatar">${this.me && this.me.name ? esc(this.me.name[0].toUpperCase()) : '✦'}</span>
+          ${this.me && this.me.name ? esc(this.me.name) : 'Гость'}
+        </div>
+      </header>
+      <div id="app-main"></div>
+      <nav class="app-nav"><div class="main-nav" id="main-nav"></div></nav>`;
+    this.renderNav();
+  },
 
-/* Картинки для сторис: рисует сервер, клиент только открывает готовый PNG.
-   Кнопку показываем, только если рисовать есть чем — иначе она обманывает. */
-async function initShare() {
-  try {
-    const state = await api('/api/share/enabled');
-    S.shareCards = Boolean(state.cards && state.flag);
-  } catch { S.shareCards = false; }
-  $('share-today').classList.toggle('hidden', !S.shareCards);
-}
+  navItems() {
+    return [
+      { k: 'home', ico: '✨', t: 'Сегодня' },
+      { k: 'hub', ico: '🪐', t: 'Агенты' },
+      { k: 'profile', ico: '🌙', t: 'Профиль' },
+    ];
+  },
+  renderNav() {
+    const active = this.chat.key ? 'hub' : this.view;
+    document.getElementById('main-nav').innerHTML = this.navItems().map(n => `
+      <button class="nav-btn ${active === n.k ? 'active' : ''}" data-act="go" data-goto="${n.k}">
+        <span class="nav-ico">${n.ico}</span><span>${n.t}</span>
+      </button>`).join('');
+  },
+  go(v) {
+    if (v === 'chat') v = 'hub';
+    if (v !== 'hub') this.chat.key = null;
+    this.view = v;
+    this.renderNav();
+    const main = document.getElementById('app-main');
+    if (v === 'home') this.renderHome(main);
+    else if (v === 'hub') this.renderHub(main);
+    else if (v === 'profile') { this.renderProfile(main); }
+  },
 
-/* Картинку тянем fetch-ом, а не ссылкой: подпись Telegram живёт в заголовке,
-   и открыть URL напрямую нельзя — сервер не узнает, кто пришёл. Показываем
-   внутри приложения: сохранить в сторис проще всего долгим нажатием. */
-async function openCard(path, btn) {
-  const url = new URL(path, location.origin);
-  if (DEV_USER) url.searchParams.set('dev_user', DEV_USER);
-  if (btn) btn.disabled = true;
-  try {
-    const res = await fetch(url, {
-      headers: { 'X-Init-Data': tg?.initData || '' },
-    });
-    if (!res.ok) {
-      let detail = null;
-      try { detail = (await res.json()).detail; } catch { /* не JSON */ }
-      throw new ApiError(res.status, detail);
-    }
-    const blobUrl = URL.createObjectURL(await res.blob());
-    $('sheet-content').innerHTML =
-      `<div class="sheet-title">Картинка для сторис</div>
-       <img class="share-img" src="${blobUrl}" alt="Карточка Оракула">
-       <p class="muted small center">Нажми и удерживай картинку, чтобы
-          сохранить, — и выкладывай ✨</p>`;
-    $('sheet').classList.remove('hidden');
-    // отзываем ссылку при закрытии листа: иначе картинки копятся в памяти
-    $('sheet').addEventListener('click', () => URL.revokeObjectURL(blobUrl),
-                                { once: true });
-    notify('success');
-  } catch (e) {
-    reportError(e);
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
+  scrollToBottom() {
+    const box = document.querySelector('.chat-messages, .screen');
+    if (box) box.scrollTop = box.scrollHeight;
+  },
 
-$('share-today').addEventListener('click', (ev) =>
-  openCard('/api/share/today.png', ev.currentTarget));
+  /* ── данные ── */
+  async loadAgents() {
+    try { this.agents = await api('/api/agents'); } catch (e) { this.agents = []; }
+    if (this.view === 'hub') this.renderHub(document.getElementById('app-main'));
+    if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
+  },
+  async loadToday() {
+    try { this.today = await api('/api/today'); } catch (e) { this.today = null; }
+    if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
+  },
 
-async function loadMoonWeek() {
-  try {
-    const days = await api('/api/moon/week?days=7');
-    const names = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
-    $('moon-strip').innerHTML = days.map((d, i) => `
-      <div class="moon-day ${i === 0 ? 'today' : ''}" title="${esc(d.advice)}">
-        <div class="md-e">${esc(d.emoji)}</div>
-        <div class="md-d">${i === 0 ? 'сегодня' : esc(names[d.weekday] + ' ' + d.day_num)}</div>
-      </div>`).join('');
-    $('moon-week-card').classList.remove('hidden');
-  } catch { /* не критично для экрана */ }
-}
+  agentSpec(key) {
+    const a = this.agents.find(x => x.code === key);
+    return a || { code: key, name: key, emoji: '✦', accent: '#e6c178' };
+  },
 
-$('ask-btn').addEventListener('click', () => {
-  haptic('medium');
-  switchTab('chats');
-  openThread('oracle').catch(reportError);
-});
-
-/* ══════ ЭКРАН: ЧАТЫ ══════ */
-async function loadAgents() {
-  S.agents = await api('/api/agents');
-  $('agent-list').innerHTML = S.agents.map((a) => `
-    <button class="agent-card" data-agent="${esc(a.code)}"
-            style="--agent-accent:${esc(a.accent)}">
-      <div class="agent-emoji">${esc(a.emoji)}</div>
-      <div class="agent-body">
-        <div class="agent-name">${esc(a.name)}
-          <span class="agent-role">${esc(a.title)}</span></div>
-        <div class="agent-last">${esc(a.last_text || a.tagline)}</div>
-      </div>
-      <div class="agent-count">${a.msg_count ? a.msg_count : ''}</div>
-    </button>`).join('');
-  $('agent-list').querySelectorAll('.agent-card').forEach((el) =>
-    el.addEventListener('click', () => openThread(el.dataset.agent).catch(reportError)));
-}
-
-function showAgentList() {
-  $('chat-thread-view').classList.add('hidden');
-  $('chat-list-view').classList.remove('hidden');
-  loadAgents().catch(reportError);
-}
-$('chat-back').addEventListener('click', showAgentList);
-
-const chatLog = $('chat-log');
-const chatInput = $('chat-input');
-const chatSend = $('chat-send');
-let chatBusy = false;
-
-function bubble(role, text) {
-  const b = document.createElement('div');
-  b.className = 'bubble ' + (role === 'user' ? 'me' : 'oracle');
-  b.textContent = text;
-  chatLog.appendChild(b);
-  b.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  return b;
-}
-
-function thinking() {
-  const b = document.createElement('div');
-  b.className = 'bubble oracle typing';
-  b.innerHTML = '<i></i><i></i><i></i>';
-  chatLog.appendChild(b);
-  b.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  return b;
-}
-
-function renderChatLeft() {
-  const a = S.me?.allowance;
-  if (!a) return;
-  const unit = a.period === 'week' ? 'на этой неделе' : 'сегодня';
-  $('chat-left').textContent = a.left > 0
-    ? `осталось вопросов ${unit}: ${a.left}`
-    : a.extra_questions ? `купленных вопросов: ${a.extra_questions}`
-      : a.can_ask ? `лимит исчерпан — следующий вопрос за ✦${a.emergency_cost}`
-        : 'вопросы исчерпаны — вернись на рассвете 🌘';
-}
-
-async function openThread(code) {
-  const data = await api(`/api/chat/${code}`);
-  S.agent = code;
-  const spec = data.agent;
-  $('chat-list-view').classList.add('hidden');
-  $('chat-thread-view').classList.remove('hidden');
-  $('chat-agent-name').textContent = `${spec.emoji} ${spec.name}`;
-  $('chat-agent-tagline').textContent = spec.tagline;
-  chatInput.placeholder = `Спроси ${spec.name}…`;
-
-  chatLog.innerHTML = '';
-  if (!data.messages.length) bubble('assistant', spec.greeting);
-  else data.messages.forEach((m) => bubble(m.role, m.text));
-
-  $('chat-suggestions').innerHTML = (spec.suggestions || [])
-    .map((s) => `<button class="sugg">${esc(s)}</button>`).join('');
-  $('chat-suggestions').querySelectorAll('.sugg').forEach((btn) =>
-    btn.addEventListener('click', () => {
-      chatInput.value = btn.textContent;
-      sendQuestion();
-    }));
-  renderChatLeft();
-  chatLog.scrollIntoView({ block: 'end' });
-}
-
-/* textarea растёт под текст, но не бесконечно */
-chatInput.addEventListener('input', () => {
-  chatInput.style.height = 'auto';
-  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
-});
-chatInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion(); }
-});
-chatSend.addEventListener('click', sendQuestion);
-
-async function sendQuestion() {
-  const text = chatInput.value.trim();
-  if (!text || chatBusy) return;
-  chatBusy = true;
-  chatSend.disabled = true;
-  chatInput.value = '';
-  chatInput.style.height = 'auto';
-  $('chat-suggestions').innerHTML = '';
-  bubble('user', text);
-  haptic('medium');
-  const dots = thinking();
-  try {
-    const res = await post(`/api/chat/${S.agent}`, { text });
-    dots.remove();
-    bubble('assistant', res.answer);
-    if (S.me) S.me.allowance = res.allowance;
-    renderChatLeft();
-    renderLimits();
-    notify('success');
-  } catch (e) {
-    dots.remove();
-    reportError(e);
-    chatInput.value = text;         // не теряем вопрос клиентки
-    if (e.status === 402 || e.status === 429) {
-      bubble('assistant', e.message + '\n\nВ разделе «Я» можно продлить доступ '
-        + 'или взять дополнительные вопросы.');
-    }
-  } finally {
-    chatBusy = false;
-    chatSend.disabled = false;
-  }
-}
-
-$('chat-clear').addEventListener('click', async () => {
-  if (!confirm('Начать этот диалог заново? Память обо мне сохранится.')) return;
-  try {
-    await del(`/api/chat/${S.agent}`);
-    await openThread(S.agent);
-    toast('Начали с чистого листа ✨');
-  } catch (e) { reportError(e); }
-});
-
-/* ══════ ЭКРАН: ТАРО ══════ */
-const deckEl = $('deck');
-const rowEl = $('tarot-row');
-const posEl = $('pos-row');
-const hintEl = $('deck-hint');
-const drawBtn = $('draw-btn');
-
-async function loadSpreads() {
-  S.spreads = await api('/api/tarot/spreads');
-  renderSpreadChips();
-  loadHistory();
-}
-
-function renderSpreadChips() {
-  const chips = S.spreads.map((s) => {
-    const locked = s.tier === 'premium' && !s.owned;
-    const price = locked
-      ? `<span class="chip-price">${s.price_stars ? '⭐' + s.price_stars : '✦' + s.price_crystals}</span>`
-      : s.owned ? '<span class="chip-price">✓</span>' : '';
-    return `<button class="chip ${locked ? 'locked' : ''}" data-spread="${esc(s.code)}">
-      ${esc(s.emoji)} ${esc(s.title)}${price}</button>`;
-  }).join('');
-  $('spread-chips').innerHTML = chips;
-  $('spread-chips').querySelectorAll('.chip').forEach((chip) =>
-    chip.addEventListener('click', () => pickSpread(chip.dataset.spread)));
-  if (!S.spread && S.spreads.length) pickSpread(S.spreads[0].code);
-}
-
-function currentSpread() {
-  return S.spreads.find((s) => s.code === S.spread);
-}
-
-function pickSpread(code) {
-  S.spread = code;
-  $('spread-chips').querySelectorAll('.chip').forEach((c) =>
-    c.classList.toggle('active', c.dataset.spread === code));
-  const s = currentSpread();
-  resetTarot();
-  selectHaptic();
-  if (!s) return;
-  const locked = s.tier === 'premium' && !s.owned;
-  $('spread-hint').textContent = `${s.hint} · ${s.cards} `
-    + plural(s.cards, 'карта', 'карты', 'карт')
-    + (locked ? ' · большой расклад, открывается отдельно' : '');
-  drawBtn.textContent = locked ? '🔓 Открыть расклад' : '✨ Вытянуть карты';
-  drawBtn.disabled = !locked && !S.shuffled;
-  if (locked) drawBtn.disabled = false;
-}
-
-function resetTarot() {
-  rowEl.innerHTML = '';
-  posEl.innerHTML = '';
-  $('tarot-result').classList.add('hidden');
-  deckEl.classList.remove('dealt');
-  S.shuffled = false;
-  S.drawn = null;
-  drawBtn.disabled = true;
-  hintEl.textContent = 'Сосредоточься на вопросе…';
-}
-
-$('shuffle-btn').addEventListener('click', async () => {
-  if (deckEl.classList.contains('shuffling')) return;
-  deckEl.classList.remove('dealt');
-  rowEl.innerHTML = ''; posEl.innerHTML = '';
-  $('tarot-result').classList.add('hidden');
-  hintEl.textContent = 'Колода слушает тебя…';
-  deckEl.classList.add('shuffling');
-  // вибрация в ритм разлёта карт
-  const beats = CALM ? 0 : 8;
-  for (let i = 0; i < beats; i++) {
-    setTimeout(() => haptic(i === beats - 1 ? 'medium' : 'light'), i * 175);
-  }
-  await new Promise((r) => setTimeout(r, CALM ? 300 : 1500));
-  deckEl.classList.remove('shuffling');
-  S.shuffled = true;
-  drawBtn.disabled = false;
-  hintEl.textContent = 'Колода готова. Тяни ✨';
-  notify('success');
-});
-
-function sparks(el) {
-  if (CALM) return;
-  const r = el.getBoundingClientRect();
-  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  for (let i = 0; i < 14; i++) {
-    const s = document.createElement('div');
-    s.className = 'spark';
-    const ang = Math.random() * Math.PI * 2, dist = 40 + Math.random() * 55;
-    s.style.left = cx + 'px'; s.style.top = cy + 'px';
-    s.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
-    s.style.setProperty('--dy', Math.sin(ang) * dist + 'px');
-    document.body.appendChild(s);
-    setTimeout(() => s.remove(), 750);
-  }
-}
-
-drawBtn.addEventListener('click', async () => {
-  const spread = currentSpread();
-  if (!spread) return;
-
-  // платный расклад без права — сначала покупка
-  if (spread.tier === 'premium' && !spread.owned) {
-    switchTab('profile');
-    S.shopTab = 'spread';
-    renderShopTabs();
-    toast('Открой расклад в лавке — он появится здесь сразу ✨');
-    return;
-  }
-  if (S.drawn) { resetTarot(); return; }
-  if (!S.shuffled) { toast('Сначала потасуй колоду 🌀'); return; }
-
-  drawBtn.disabled = true;
-  drawBtn.textContent = '🌀 Тяну карты…';
-  let res;
-  try {
-    res = await post(`/api/tarot/draw?spread=${encodeURIComponent(S.spread)}`);
-  } catch (e) {
-    reportError(e);
-    resetTarot();
-    drawBtn.textContent = '✨ Вытянуть карты';
-    return;
-  }
-  S.drawn = res.cards;
-  loadMe().catch(() => {});          // расклад мог съесть вопрос дня
-
-  deckEl.classList.add('dealt');
-  hintEl.textContent = res.title;
-
-  rowEl.innerHTML = S.drawn.map((card, i) => `
-    <div class="tcard ${card.reversed ? 'rev' : ''}" data-i="${i}">
-      <div class="tcard-inner">
-        <div class="tface tback">✦</div>
-        <div class="tface tfront">
-          <div class="num">${esc(card.num || '✶')}</div>
-          <div class="e">${esc(card.emoji)}</div>
-          <div>
-            <div class="n">${esc(card.name)}</div>
-            ${card.reversed ? '<div class="r">перевёрнутая ↩︎</div>' : ''}
+  /* ═══ ЭКРАН «СЕГОДНЯ» — статичная база ═══ */
+  renderHome(main) {
+    const t = this.today;
+    main.innerHTML = `
+      <div class="screen">
+        <div class="hero-orb">
+          <div class="orb"></div>
+          <div style="position:relative;z-index:2">
+            <div class="hero-date">${fmtDate()}</div>
+            <div style="font-family:var(--font-serif);font-size:24px;font-weight:700;letter-spacing:.5px">Твой день, ${this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : 'милая'}</div>
+            <div style="color:var(--text-dim);font-size:12.5px;margin-top:6px">Луна ${t ? `${t.moon.emoji} ${t.moon.name} · ${t.moon.day}-й день` : '…'}</div>
           </div>
         </div>
-      </div>
-    </div>`).join('');
-  posEl.innerHTML = res.positions.map((p) => `<span>${esc(p)}</span>`).join('');
 
-  const cardEls = rowEl.querySelectorAll('.tcard');
-  cardEls.forEach((c) => c.addEventListener('click', () => {
-    c.classList.toggle('flipped'); haptic('light');
-  }));
-
-  // ждём раздачу, затем поочерёдный переворот
-  await new Promise((r) => setTimeout(r, CALM ? 150 : 700));
-  const pause = cardEls.length > 6 ? 260 : 620;
-  for (const c of cardEls) {
-    c.classList.add('flipped', 'glow');
-    sparks(c);
-    haptic('medium');
-    await new Promise((r) => setTimeout(r, CALM ? 60 : pause));
-    c.classList.remove('glow');
-  }
-
-  const box = $('tarot-result');
-  box.classList.remove('hidden');
-  box.innerHTML = `<div class="label">${esc(res.title)}</div>
-    <div class="typing"><i></i><i></i><i></i></div>`;
-  try {
-    const { answer } = await post(`/api/tarot/interpret/${res.reading_id}`);
-    box.innerHTML = `<div class="label">${esc(res.title)}</div>
-      <div class="hist-body">${esc(answer)}</div>
-      ${outcomeRow(res.reading_id)}`;
-    wireOutcome(box, res.reading_id);
-    notify('success');
-    loadHistory();
-    loadSpreads().catch(() => {});   // право могло списаться
-  } catch (e) {
-    const key = S.drawn[Math.floor(S.drawn.length / 2)];
-    box.innerHTML = `<div class="label">${esc(res.title)}</div>
-      <div class="hist-body">Сердце расклада — ${esc(key.emoji)} <b>${esc(key.name)}</b>: `
-      + `${esc(key.meaning)}.\n\nГлубокую трактовку спрошу у звёзд чуть позже — `
-      + `связь сейчас неровная 🌙</div>`;
-    reportError(e);
-  }
-  drawBtn.disabled = false;
-  drawBtn.textContent = '↺ Новый расклад';
-});
-
-function outcomeRow(readingId, current = null) {
-  const marks = [['came_true', '✅ Сбылось'], ['partly', '🤔 Частично'], ['no', '➖ Нет']];
-  const share = S.shareCards
-    ? `<button class="btn-ghost" data-card="${readingId}">🖼 Картинка для сторис</button>`
-    : '';
-  return `<div class="outcome-row" data-reading="${readingId}">
-    ${marks.map(([code, label]) =>
-      `<button data-outcome="${code}" class="${current === code ? 'done' : ''}">${label}</button>`
-    ).join('')}</div>${share}`;
-}
-
-function wireOutcome(root, readingId) {
-  root.querySelectorAll(`[data-reading="${readingId}"] button`).forEach((btn) =>
-    btn.addEventListener('click', async () => {
-      try {
-        await post(`/api/tarot/outcome/${readingId}`, { outcome: btn.dataset.outcome });
-        btn.parentElement.querySelectorAll('button').forEach((b) =>
-          b.classList.toggle('done', b === btn));
-        toast('Записала — это помогает читать твои карты точнее 🌙');
-        notify('success');
-      } catch (e) { reportError(e); }
-    }));
-  root.querySelectorAll(`[data-card="${readingId}"]`).forEach((btn) =>
-    btn.addEventListener('click', () =>
-      openCard(`/api/share/reading/${readingId}.png`, btn)));
-}
-
-async function loadHistory() {
-  let list;
-  try { list = await api('/api/tarot/history'); } catch { return; }
-  const box = $('tarot-history');
-  $('history-title').classList.toggle('hidden', !list.length);
-  box.innerHTML = list.map((r) => {
-    const cards = r.cards.map((c) => `${c.emoji} ${c.name}${c.reversed ? ' ↩︎' : ''}`).join(' · ');
-    const title = (r.question || '').replace(/^Расклад «|»$/g, '');
-    return `<div class="glass hist" data-id="${r.id}">
-      <div class="hist-head">
-        <span class="hist-title">${esc(title)}</span>
-        <span class="hist-date">${dateRu(r.created_at)}</span>
-      </div>
-      <div class="hist-cards">${esc(cards)}</div>
-      <div class="hist-body hidden">${esc(r.answer)}${outcomeRow(r.id, r.outcome)}</div>
-    </div>`;
-  }).join('');
-
-  box.querySelectorAll('.hist').forEach((el) => {
-    const body = el.querySelector('.hist-body');
-    el.querySelector('.hist-head').addEventListener('click', () => {
-      body.classList.toggle('hidden');
-      selectHaptic();
-    });
-    wireOutcome(el, +el.dataset.id);
-  });
-}
-
-/* ══════ ЭКРАН: КАРТА ══════ */
-const SIGN_GLYPHS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
-const PLANET_GLYPHS = {
-  'Солнце': '☉', 'Луна': '☽', 'Меркурий': '☿', 'Венера': '♀', 'Марс': '♂',
-  'Юпитер': '♃', 'Сатурн': '♄', 'Уран': '♅', 'Нептун': '♆', 'Плутон': '♇',
-};
-
-async function loadChart() {
-  try {
-    S.chart = await api('/api/chart');
-  } catch (e) {
-    $('chart-note').textContent = e.message;
-    return;
-  }
-  drawWheel(S.chart);
-  renderChartDetail('planets');
-  $('sun-badge').textContent = S.chart.sun
-    ? `${S.chart.sun.symbol} Солнце в ${S.chart.sun.sign}` : '';
-  const notes = [];
-  if (S.chart.mode !== 'full') notes.push(S.chart.note || 'Упрощённый расчёт');
-  if (!S.chart.birth?.time_known) notes.push('время рождения неточное — дома как ориентир');
-  $('chart-note').textContent = notes.join(' · ');
-
-  loadMatrix();
-  loadPartners();
-  loadReports();
-}
-
-/* Колесо: планеты по абсолютной долготе + куспиды домов.
-   Близкие планеты разводим по радиусу, иначе символы наезжают друг на друга. */
-function drawWheel(chart) {
-  const svg = $('wheel');
-  const cx = 150, cy = 150, R = 142, Rin = 108;
-  let s = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(232,197,107,.4)"/>
-           <circle cx="${cx}" cy="${cy}" r="${Rin}" fill="none" stroke="rgba(255,255,255,.15)"/>
-           <circle cx="${cx}" cy="${cy}" r="50" fill="none" stroke="rgba(255,255,255,.1)"/>`;
-
-  for (let i = 0; i < 12; i++) {
-    const a = (i * 30 - 90) * Math.PI / 180;
-    s += `<line x1="${cx + Rin * Math.cos(a)}" y1="${cy + Rin * Math.sin(a)}"
-           x2="${cx + R * Math.cos(a)}" y2="${cy + R * Math.sin(a)}"
-           stroke="rgba(255,255,255,.18)"/>`;
-    const am = (i * 30 + 15 - 90) * Math.PI / 180;
-    s += `<text x="${cx + (R - 16) * Math.cos(am)}" y="${cy + (R - 16) * Math.sin(am)}"
-           fill="#e8c56b" font-size="13" text-anchor="middle"
-           dominant-baseline="middle" opacity=".85">${SIGN_GLYPHS[i]}</text>`;
-  }
-
-  for (const h of (chart.houses || [])) {
-    const a = ((h.abs_deg ?? 0) - 90) * Math.PI / 180;
-    s += `<line x1="${cx + 50 * Math.cos(a)}" y1="${cy + 50 * Math.sin(a)}"
-           x2="${cx + Rin * Math.cos(a)}" y2="${cy + Rin * Math.sin(a)}"
-           stroke="rgba(255,255,255,.10)" stroke-dasharray="3 3"/>
-          <text x="${cx + 60 * Math.cos(a)}" y="${cy + 60 * Math.sin(a)}"
-           fill="#a99fc9" font-size="8" text-anchor="middle"
-           dominant-baseline="middle">${h.n}</text>`;
-  }
-
-  const planets = chart.planets || [];
-  const used = [];
-  for (const p of planets) {
-    const deg = p.abs_deg ?? 0;
-    let radius = 84;
-    while (used.some((u) => Math.abs(u.deg - deg) < 9 && Math.abs(u.radius - radius) < 9)) {
-      radius -= 15;                      // сдвигаем вглубь, пока не освободится место
-      if (radius < 56) { radius = 84; break; }
-    }
-    used.push({ deg, radius });
-    const a = (deg - 90) * Math.PI / 180;
-    const px = cx + radius * Math.cos(a), py = cy + radius * Math.sin(a);
-    s += `<circle cx="${px}" cy="${py}" r="9" fill="rgba(232,197,107,.12)"/>
-          <text x="${px}" y="${py}" fill="#f4efff" font-size="12" text-anchor="middle"
-           dominant-baseline="middle">${PLANET_GLYPHS[p.name] || '•'}</text>`;
-    if (p.retro) {
-      s += `<text x="${px + 8}" y="${py - 7}" fill="#e88f8f" font-size="7">R</text>`;
-    }
-  }
-  if (!planets.length && chart.sun) {
-    s += `<text x="${cx}" y="${cy}" fill="#e8c56b" font-size="40" text-anchor="middle"
-           dominant-baseline="middle">${chart.sun.symbol}</text>`;
-  }
-  svg.innerHTML = s;
-}
-
-document.querySelectorAll('#chart-seg .seg').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#chart-seg .seg').forEach((b) =>
-      b.classList.toggle('active', b === btn));
-    renderChartDetail(btn.dataset.seg);
-    selectHaptic();
-  }));
-
-function renderChartDetail(kind) {
-  const box = $('chart-detail');
-  const chart = S.chart || {};
-  if (kind === 'planets') {
-    const rows = chart.planets || [];
-    box.innerHTML = rows.length ? rows.map((p) => `
-      <div class="planet-line">
-        <span>${PLANET_GLYPHS[p.name] || '•'} ${esc(p.name)}</span>
-        <span>${esc(p.sign)} ${p.deg}°${p.house ? ' · ' + p.house + ' дом' : ''}${p.retro ? ' ↩︎' : ''}</span>
-      </div>`).join('')
-      : '<p class="muted">Упрощённый расчёт: полные эфемериды на сервере покажут все 10 планет ✨</p>';
-    return;
-  }
-  if (kind === 'houses') {
-    const rows = chart.houses || [];
-    box.innerHTML = rows.length ? rows.map((h) => `
-      <div class="house-line"><span>${h.n} дом</span>
-        <span>${esc(h.sign)} ${h.deg}°</span></div>`).join('')
-      : '<p class="muted">Дома считаются, когда известно время рождения 🌙</p>';
-    return;
-  }
-  const rows = chart.aspects || [];
-  box.innerHTML = rows.length ? rows.map((a) => `
-    <div class="aspect-line">
-      <span>${esc(a.p1)} <span class="aspect-glyph">${esc(a.glyph)}</span> ${esc(a.p2)}</span>
-      <span>${esc(a.aspect)} <span class="orb">орб ${a.orb}°</span></span>
-    </div>`).join('')
-    : '<p class="muted">Аспекты появятся в полном расчёте карты 🌌</p>';
-}
-
-async function loadMatrix() {
-  try {
-    const m = await api('/api/matrix');
-    $('matrix-list').innerHTML = Object.values(m).map((v) =>
-      `<div class="matrix-line"><b>${v.n} · ${esc(v.arcana)}</b> — ${esc(v.title)}<br>
-       <span class="muted">${esc(v.meaning)}</span></div>`).join('');
-    drawMatrixStar(m);
-  } catch { /* нет даты рождения */ }
-}
-
-function drawMatrixStar(m) {
-  const svg = $('matrix-star');
-  const cx = 150, cy = 150, R = 116;
-  const keys = ['personal', 'spirit', 'family', 'destiny', 'love', 'money'];
-  const items = keys.filter((k) => m[k]).map((k) => m[k]);
-  let s = '';
-  for (const rot of [0, 45]) {
-    const pts = [0, 90, 180, 270].map((a) => {
-      const r = (a + rot - 90) * Math.PI / 180;
-      return `${cx + R * Math.cos(r)},${cy + R * Math.sin(r)}`;
-    }).join(' ');
-    s += `<polygon points="${pts}" fill="none" stroke="rgba(232,197,107,.35)" stroke-width="1.2"/>`;
-  }
-  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(255,255,255,.08)"/>`;
-  if (m.center) {
-    s += `<circle cx="${cx}" cy="${cy}" r="26" class="mx-circle"/>
-          <text x="${cx}" y="${cy - 2}" text-anchor="middle" class="mx-num">${m.center.n}</text>
-          <text x="${cx}" y="${cy + 13}" text-anchor="middle" class="mx-lab">центр</text>`;
-  }
-  items.forEach((v, i) => {
-    const a = (i * 60 - 90) * Math.PI / 180;
-    const x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
-    const lab = v.title.replace('Аркан ', '').replace('Линия ', '').split(' ')[0];
-    s += `<circle cx="${x}" cy="${y}" r="21" class="mx-circle"/>
-          <text x="${x}" y="${y + 1}" text-anchor="middle" class="mx-num">${v.n}</text>
-          <text x="${x}" y="${y + 33}" text-anchor="middle" class="mx-lab">${esc(lab)}</text>`;
-  });
-  svg.innerHTML = s;
-}
-
-/* ── спидометр любви ── */
-$('compat-btn').addEventListener('click', async () => {
-  const value = $('compat-date').value;
-  if (!value) { toast('Выбери дату рождения партнёра 🌙'); return; }
-  const name = $('compat-name').value.trim();
-  let data;
-  try {
-    data = await post('/api/compat', {
-      partner_date: value, partner_name: name, save: Boolean(name),
-    });
-  } catch (e) { reportError(e); return; }
-
-  S.compat = data;
-  const box = $('compat-result');
-  box.classList.remove('hidden');
-  $('compat-deep').textContent = '';
-  $('gauge-arc').style.strokeDashoffset = 251 - (251 * data.score / 100);
-  animateNum($('gauge-num'), data.score);
-  $('compat-text').innerHTML =
-    `<b>${esc(data.you.sign)}</b> (${esc(data.you.element)}) + ` +
-    `<b>${esc(data.partner.sign)}</b> (${esc(data.partner.element)})<br>` +
-    `<span class="muted">${esc(data.verdict)}</span>`;
-  $('compat-breakdown').innerHTML = (data.breakdown || []).map((b) =>
-    `<div><span>${esc(b.title)}: ${esc(b.note)}</span>
-     <b>${b.value > 0 ? '+' : ''}${b.value}</b></div>`).join('');
-  notify('success');
-  if (name) loadPartners();
-});
-
-$('compat-full').addEventListener('click', async (ev) => {
-  const value = $('compat-date').value;
-  if (!value) return;
-  const btn = ev.currentTarget;
-  const out = $('compat-deep');
-  btn.disabled = true;
-  out.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
-  haptic('medium');
-  try {
-    const { answer } = await post('/api/compat/full', {
-      partner_date: value, partner_name: $('compat-name').value.trim(), save: true,
-    });
-    out.textContent = answer;
-    notify('success');
-    loadMe().catch(() => {});
-  } catch (e) {
-    out.textContent = '';
-    reportError(e);
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-function animateNum(el, to) {
-  if (CALM) { el.textContent = to; return; }
-  let v = 0;
-  const step = () => {
-    v = Math.min(to, v + Math.ceil(to / 30));
-    el.textContent = v;
-    if (v < to) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
-
-async function loadPartners() {
-  let list;
-  try { list = await api('/api/partners'); } catch { return; }
-  const box = $('partners-list');
-  if (!list.length) { box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="label">Сохранённые люди</div>' + list.map((p) =>
-    `<div class="partner" data-id="${p.id}">
-       <span>${esc(p.name)} · ${esc(p.birth_date)}</span>
-       <span><button data-use="${esc(p.birth_date)}" data-name="${esc(p.name)}">↻</button>
-         <button data-del="${p.id}">✕</button></span>
-     </div>`).join('');
-
-  box.querySelectorAll('[data-use]').forEach((btn) => btn.addEventListener('click', () => {
-    $('compat-date').value = btn.dataset.use;
-    $('compat-name').value = btn.dataset.name;
-    $('compat-btn').click();
-  }));
-  box.querySelectorAll('[data-del]').forEach((btn) => btn.addEventListener('click', async () => {
-    try { await del(`/api/partners/${btn.dataset.del}`); loadPartners(); }
-    catch (e) { reportError(e); }
-  }));
-}
-
-/* ── большие разборы ── */
-const REPORT_TITLES = {
-  natal: 'Натальная карта — полный разбор',
-  matrix: 'Матрица Судьбы — полный разбор',
-  synastry: 'Синастрия: совместимость пары',
-  career: 'Карьера и предназначение',
-  solar: 'Годовой прогноз по картам',
-  monthly: 'Итог месяца',
-};
-
-async function loadReports() {
-  let data;
-  try { data = await api('/api/reports'); } catch { return; }
-  const box = $('reports-box');
-  const parts = [];
-
-  if (data.available.length) {
-    parts.push('<div class="label">Оплачено — можно собрать</div>');
-    parts.push(data.available.map((e) => `
-      <div class="report-item">
-        <div><div class="report-title">${esc(REPORT_TITLES[e.code] || e.code)}</div>
-          <div class="report-when">осталось ${e.qty_total - e.qty_used}</div></div>
-        <button class="btn-price" data-build="${esc(e.code)}">Собрать</button>
-      </div>`).join(''));
-  }
-  if (data.ready.length) {
-    parts.push('<div class="label">Готовые разборы</div>');
-    parts.push(data.ready.map((r) => `
-      <div class="report-item">
-        <div><div class="report-title">${esc(r.title)}</div>
-          <div class="report-when">${dateRu(r.created_at)}${r.period ? ' · ' + esc(r.period) : ''}</div></div>
-        <button class="btn-price ghost" data-open="${esc(r.kind)}"
-          data-period="${esc(r.period || '')}">Читать</button>
-      </div>`).join(''));
-  }
-  if (!parts.length) {
-    parts.push('<p class="muted">Большой разбор — длинный текст, который остаётся '
-      + 'у тебя навсегда. Взять можно в лавке, раздел «Я» → «Разборы».</p>');
-  }
-  box.innerHTML = parts.join('');
-
-  box.querySelectorAll('[data-build]').forEach((btn) =>
-    btn.addEventListener('click', () => buildReport(btn, btn.dataset.build)));
-  box.querySelectorAll('[data-open]').forEach((btn) =>
-    btn.addEventListener('click', async () => {
-      try {
-        const period = btn.dataset.period;
-        const r = await api(`/api/reports/${btn.dataset.open}`
-          + (period ? `?period=${encodeURIComponent(period)}` : ''));
-        openSheet(r.title, r.body.replace(/<[^>]+>/g, ''));
-      } catch (e) { reportError(e); }
-    }));
-}
-
-async function buildReport(btn, kind) {
-  const body = {};
-  if (kind === 'synastry') {
-    const value = $('compat-date').value;
-    if (!value) { toast('Сначала укажи дату партнёра в разделе «Спидометр любви»'); return; }
-    body.partner_date = value;
-    body.partner_name = $('compat-name').value.trim();
-  }
-  btn.disabled = true;
-  btn.textContent = 'Собираю…';
-  try {
-    const r = await post(`/api/reports/${kind}`, body);
-    openSheet(r.title, (r.body || '').replace(/<[^>]+>/g, ''));
-    notify('success');
-    loadReports();
-  } catch (e) {
-    reportError(e);
-    btn.disabled = false;
-    btn.textContent = 'Собрать';
-  }
-}
-
-/* ══════ ЭКРАН: ПРАКТИКИ ══════ */
-
-async function loadPractices() {
-  const data = await api('/api/practices');
-  S.practices = data;
-  renderPracticeCats(data.categories);
-  renderPractices();
-}
-
-function renderPracticeCats(categories) {
-  const chips = [{ code: null, emoji: '✦', title: 'Все' }, ...categories];
-  $('practice-cats').innerHTML = chips.map((c) => `
-    <button class="chip ${c.code === S.practiceCat ? 'active' : ''}"
-            data-cat="${esc(c.code || '')}">${esc(c.emoji)} ${esc(c.title)}</button>`
-  ).join('');
-  $('practice-cats').querySelectorAll('.chip').forEach((chip) =>
-    chip.addEventListener('click', () => {
-      S.practiceCat = chip.dataset.cat || null;
-      renderPracticeCats(S.practices.categories);
-      renderPractices();
-      selectHaptic();
-    }));
-}
-
-function practiceRow(p) {
-  const bar = p.started && !p.finished
-    ? `<div class="pbar"><i style="width:${p.percent}%"></i></div>` : '';
-  const meta = p.finished ? '✓ пройдена'
-    : p.started ? `день ${p.day_index} из ${p.days}`
-      + (p.streak >= 2 ? ` · стрик ${p.streak} 🔥` : '')
-      : `${p.days} ${plural(p.days, 'день', 'дня', 'дней')}`;
-  return `
-    <button class="practice-card ${p.started && !p.finished ? 'running' : ''}"
-            data-practice="${esc(p.code)}">
-      <div class="pc-emoji">${esc(p.emoji)}</div>
-      <div class="pc-body">
-        <div class="pc-title">${esc(p.title)}</div>
-        <div class="pc-goal">${esc(p.goal || p.about || '')}</div>
-        <div class="pc-meta">${esc(meta)}</div>
-        ${bar}
-      </div>
-    </button>`;
-}
-
-function renderPractices() {
-  if (!S.practices) return;
-  const all = S.practices.items;
-  const running = all.filter((p) => p.started && !p.finished);
-  $('practice-running').innerHTML = running.length
-    ? `<div class="glass"><div class="label">Ты сейчас проходишь</div>
-        ${running.map(practiceRow).join('')}</div>`
-    : '';
-
-  const list = all.filter((p) => (!S.practiceCat || p.category === S.practiceCat)
-    && !(p.started && !p.finished));
-  $('practice-list').innerHTML = list.length
-    ? list.map(practiceRow).join('')
-    : '<p class="muted center">В этом разделе пока пусто</p>';
-
-  document.querySelectorAll('[data-practice]').forEach((el) =>
-    el.addEventListener('click', () => openPractice(el.dataset.practice)));
-}
-
-function practiceSheet(p) {
-  const steps = (p.steps || []).map((s, i) =>
-    `<li><b>${i + 1}.</b> ${esc(s)}</li>`).join('');
-  const signs = (p.signs || []).map((s) => `<li>${esc(s)}</li>`).join('');
-  const meta = [
-    `⏳ ${p.days} ${plural(p.days, 'день', 'дня', 'дней')}`,
-    p.best_time ? `🕐 ${esc(p.best_time)}` : '',
-    p.moon ? `🌙 ${esc(p.moon)}` : '',
-  ].filter(Boolean).join(' · ');
-
-  const today = p.started && !p.finished && p.today_step
-    ? `<div class="pc-today"><b>Сегодня — день ${p.day_index + 1}</b><br>
-       ${esc(p.today_step)}</div>` : '';
-  const mantra = p.text
-    ? `<div class="mantra">${esc(p.text)}</div>` : '';
-
-  const action = p.finished
-    ? `<button class="btn-gold" data-p-start="${esc(p.code)}">🔁 Пройти заново</button>`
-    : p.started
-      ? `<button class="btn-gold" data-p-done="${esc(p.code)}">
-           ✅ Отметить день ${p.day_index + 1}</button>
-         <button class="btn-ghost" data-p-stop="${esc(p.code)}">Остановить</button>`
-      : `<button class="btn-gold" data-p-start="${esc(p.code)}">
-           ▶️ Начать · ${p.days} ${plural(p.days, 'день', 'дня', 'дней')}</button>`;
-
-  return `
-    <div class="sheet-title">${esc(p.emoji)} ${esc(p.title)}</div>
-    <p class="muted">${esc(p.goal || '')}</p>
-    <p class="pc-meta">${meta}</p>
-    ${today}
-    ${p.about ? `<p class="sheet-text">${esc(p.about)}</p>` : ''}
-    ${mantra}
-    <div class="label">Что делать</div>
-    <ol class="steps">${steps}</ol>
-    ${signs ? `<div class="label">По чему поймёшь, что работает</div>
-               <ul class="signs">${signs}</ul>` : ''}
-    ${p.warning ? `<p class="warn">⚠️ ${esc(p.warning)}</p>` : ''}
-    ${action}`;
-}
-
-function openPractice(code) {
-  const p = (S.practices?.items || []).find((x) => x.code === code);
-  if (!p) return;
-  $('sheet-content').innerHTML = practiceSheet(p);
-  $('sheet').classList.remove('hidden');
-  haptic('light');
-  wirePracticeActions();
-}
-
-function wirePracticeActions() {
-  const box = $('sheet-content');
-  const call = async (path, btn, done) => {
-    btn.disabled = true;
-    try {
-      const res = await post(path);
-      await loadPractices();
-      done(res);
-    } catch (e) { reportError(e); btn.disabled = false; }
-  };
-  box.querySelectorAll('[data-p-start]').forEach((btn) =>
-    btn.addEventListener('click', () =>
-      call(`/api/practices/${btn.dataset.pStart}/start`, btn, () => {
-        toast('Начали ✨ Я напомню утром');
-        notify('success');
-        openPractice(btn.dataset.pStart);
-      })));
-  box.querySelectorAll('[data-p-done]').forEach((btn) =>
-    btn.addEventListener('click', () =>
-      call(`/api/practices/${btn.dataset.pDone}/done`, btn, (res) => {
-        toast(res.message);
-        notify('success');
-        openPractice(btn.dataset.pDone);
-      })));
-  box.querySelectorAll('[data-p-stop]').forEach((btn) =>
-    btn.addEventListener('click', () =>
-      call(`/api/practices/${btn.dataset.pStop}/stop`, btn, () => {
-        toast('Практика остановлена 🌙');
-        $('sheet').classList.add('hidden');
-      })));
-}
-
-/* ══════ ЭКРАН: ДНЕВНИК ══════ */
-document.querySelectorAll('#mood-row .mood').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    const same = S.diaryMood === btn.dataset.mood;
-    S.diaryMood = same ? null : btn.dataset.mood;
-    document.querySelectorAll('#mood-row .mood').forEach((b) =>
-      b.classList.toggle('active', !same && b === btn));
-    selectHaptic();
-  }));
-
-async function loadDiary() {
-  try {
-    const data = await api('/api/diary');
-    $('diary-list').innerHTML = data.entries.map((e) => `
-      <div class="glass diary-entry">
-        <div class="diary-date">${dateRu(e.created_at)}${e.mood ? ' · ' + esc(e.mood) : ''}</div>
-        <div>${esc(e.text)}</div></div>`).join('')
-      || '<p class="muted center">Первая запись — самая важная ✨</p>';
-    const badge = $('streak-badge');
-    if (data.streak >= 2) {
-      badge.textContent = `🔥 ${data.streak} дн. подряд`;
-      badge.classList.remove('hidden');
-    } else badge.classList.add('hidden');
-  } catch { /* профиль ещё не создан */ }
-  loadDiaryPrompt();
-}
-
-/* Вечерний вопрос от Оракула: пустое поле «расскажи о дне» не заполняют,
-   а конкретный вопрос — заполняют. */
-async function loadDiaryPrompt() {
-  try {
-    const p = await api('/api/diary/prompt');
-    $('diary-prompt').textContent = p.prompt;
-    $('diary-text').placeholder = p.written_today
-      ? 'Добавить ещё…' : p.prompt;
-  } catch { /* не критично */ }
-}
-
-$('diary-save').addEventListener('click', async (ev) => {
-  const ta = $('diary-text');
-  const text = ta.value.trim();
-  if (!text) return;
-  const btn = ev.currentTarget;
-  btn.disabled = true;
-  try {
-    const res = await post('/api/diary', { text, mood: S.diaryMood });
-    ta.value = '';
-    S.diaryMood = null;
-    document.querySelectorAll('#mood-row .mood').forEach((b) => b.classList.remove('active'));
-    notify('success');
-    toast(res.streak >= 3 ? `Записала 📖 Ты пишешь ${res.streak} дней подряд 🔥`
-      : 'Записала в твою книгу судьбы 📖');
-    loadDiary();
-  } catch (e) {
-    reportError(e);          // текст остаётся в поле, ничего не теряем
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-/* ══════ ЭКРАН: ПРОФИЛЬ ══════ */
-function renderProfileHead() {
-  const me = S.me;
-  if (!me) return;
-  $('p-name').textContent = me.name;
-  $('p-oracle').textContent = `Твой Оракул — ${me.oracle_name}`;
-  $('p-crystals').textContent = me.crystals;
-  $('p-days').textContent = me.sub_days_left;
-  $('p-q').textContent = me.allowance.left;
-  $('avatar').textContent = me.sun?.symbol || '🔮';
-  const plan = $('p-plan');
-  plan.textContent = me.sub_active ? me.plan.title : 'без подписки';
-  plan.style.display = 'inline-block';
-  $('memories').innerHTML = me.memories.length
-    ? me.memories.map((m) => `<li>${esc(m)}</li>`).join('')
-    : '<li class="muted">я только начинаю узнавать тебя…</li>';
-  $('set-push').checked = Boolean(me.morning_push);
-  $('set-oracle-name').value = me.oracle_name || '';
-}
-
-async function loadProfile() {
-  renderProfileHead();
-  await Promise.all([loadShop(), loadReferral(), loadPersonas(), loadFaq()]);
-}
-
-document.querySelectorAll('#shop-seg .seg').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    S.shopTab = btn.dataset.shop;
-    renderShopTabs();
-    selectHaptic();
-  }));
-
-function renderShopTabs() {
-  document.querySelectorAll('#shop-seg .seg').forEach((b) =>
-    b.classList.toggle('active', b.dataset.shop === S.shopTab));
-  renderShop();
-}
-
-async function loadShop() {
-  S.shop = await api('/api/shop');
-  renderShop();
-}
-
-function renderShop() {
-  const box = $('shop-items');
-  if (!S.shop) { box.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>'; return; }
-
-  if (S.shopTab === 'plans') {
-    box.innerHTML = S.shop.plans.filter((p) => p.price_stars).map((p) => `
-      <div class="plan-card ${p.code === S.shop.current_plan ? 'current' : ''}">
-        <div class="plan-top">
-          <span class="plan-title">${esc(p.title)}</span>
-          <span class="plan-price">⭐${p.price_stars}</span>
+        <div class="spacer"></div>
+        <div class="section-title">✨ Прогноз на сегодня</div>
+        <div class="glass" style="padding:16px;font-size:13.8px;line-height:1.65">
+          ${t ? esc(t.forecast) : '<div class="skeleton" style="height:90px;border-radius:12px"></div>'}
         </div>
-        ${p.badge ? `<div class="plan-badge">${esc(p.badge)}</div>` : ''}
-        <div class="plan-tagline">${esc(p.tagline || '')} · ${p.period_days} дн.</div>
-        <ul class="plan-features">${(p.features || []).map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
-        <button class="btn-gold" data-plan="${esc(p.code)}" style="margin-top:10px">
-          ${p.code === S.shop.current_plan ? 'Продлить' : 'Выбрать'}</button>
+
+        ${t && t.card ? `
+        <div class="spacer"></div>
+        <div class="section-title">🂠 Карта дня</div>
+        <div class="card-day">
+          <div class="cd-row">
+            <div class="cd-emoji">${t.card.emoji}</div>
+            <div>
+              <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:15px">${esc(t.card.name)}</div>
+              <div style="color:var(--text-dim);font-size:12.5px;margin-top:3px">${esc(t.card.meaning)}</div>
+            </div>
+          </div>
+        </div>` : ''}
+
+        <div class="spacer"></div>
+        <div class="section-title">🪐 Твои агенты</div>
+        <div class="agent-dock">
+          ${this.agents.length ? this.agents.map(a => `
+            <div class="dock-chip" data-act="chat" data-chat="${a.code}">
+              <div class="dock-orb" style="--ac:${esc(a.accent || '#e6c178')}">${a.emoji}</div>
+              <div>${esc(a.name.split(' ')[0])}</div>
+            </div>`).join('') : '<div class="skeleton" style="height:74px;border-radius:16px;flex:1"></div>'}
+        </div>
+        <div style="color:var(--text-faint);font-size:11.5px;text-align:center;margin-top:6px">Открой агента — задай вопрос или используй его функцию прямо в чате</div>
+      </div>`;
+  },
+
+  /* ═══ ХАБ АГЕНТОВ ═══ */
+  renderHub(main) {
+    if (this.chat.key) return this.renderChat(main);
+    const list = this.agents.length ? this.agents : [
+      { code: 'oracle', name: 'Лилит', title: 'Личный Оракул', emoji: '🔮', accent: '#e8c56b' },
+      { code: 'astro', name: 'Урания', title: 'Астролог', emoji: '🌌', accent: '#7fb4e8' },
+      { code: 'tarot', name: 'Мадам Ленорман', title: 'Таролог', emoji: '🎴', accent: '#c58bd8' },
+      { code: 'numero', name: 'Пифия', title: 'Нумеролог', emoji: '🔢', accent: '#e8a87f' },
+    ];
+    main.innerHTML = `
+      <div class="screen">
+        <div class="hub-head">
+          <h1>Твой Оракул</h1>
+          <p>Чат — главный инструмент. Выбери агента: задай вопрос или нажми его функцию.</p>
+        </div>
+        <div class="agent-list">
+          ${list.map(a => `
+            <div class="agent-card" style="--ac:${esc(a.accent || '#e6c178')}" data-act="chat" data-chat="${a.code}">
+              <div class="ac-top">
+                <div class="agent-avatar">${a.emoji}</div>
+                <div style="flex:1;min-width:0">
+                  <div class="agent-title">${esc(a.name)}</div>
+                  <div class="agent-role">${esc(a.title || a.code)}</div>
+                  <div class="agent-last">${esc(a.last_text || a.tagline || '')}</div>
+                </div>
+                <span style="color:var(--text-faint);font-size:18px">›</span>
+              </div>
+              <div class="agent-chips">
+                ${(FEATURES[a.code] || []).slice(0, 4).map(f => `
+                  <span class="chip" style="--ac2:${esc(a.accent || '#e6c178')}" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}">
+                    <span class="c-emoji">${f.e}</span>${f.t}
+                  </span>`).join('')}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  },
+
+  /* ═══ ЧАТ — ГЛАВНЫЙ ИНСТРУМЕНТ ═══ */
+  openChat(key, after) {
+    if (this.chat.key !== key) {
+      this.chat.key = key;
+      this.chat.spec = this.agentSpec(key);
+      this.chat.messages = [];
+      this.chat.pending = null;
+      this.loadThread(key);
+    }
+    this.view = 'hub';
+    this.renderNav();
+    this.renderChat(document.getElementById('app-main'));
+    if (after) setTimeout(after, 60);
+  },
+
+  async loadThread(key) {
+    try {
+      const r = await api('/api/chat/' + key);
+      this.chat.spec = r.agent;
+      this.chat.messages = (r.messages || []).map(m => ({ role: m.role, text: m.text }));
+    } catch (e) {
+      this.chat.messages = [{ role: 'assistant', text: '😔 Связь прервалась. Попробуй ещё раз.' }];
+    }
+    if (this.chat.key === key) this.renderChat(document.getElementById('app-main'));
+  },
+
+  renderChat(main) {
+    const a = this.chat.spec;
+    const messages = this.chat.messages;
+    const busy = this.chat.busy;
+    const pending = this.chat.pending;
+    const features = FEATURES[a.code] || [];
+    const suggest = (a.suggestions || []).slice(0, 3);
+
+    const body = messages.map(m =>
+      `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${rich(m.text)}</div>`).join('');
+
+    const pendHtml = pending ? this.pendingHtml(pending) : '';
+
+    main.innerHTML = `
+      <div class="chat-shell">
+        <div class="chat-head">
+          <button class="back" data-act="back">‹</button>
+          <div class="agent-avatar" style="--ac:${esc(a.accent || '#e6c178')}">${a.emoji}</div>
+          <div style="flex:1;min-width:0">
+            <div class="cname">${esc(a.name)}</div>
+            <div class="tsub">${esc(a.title || a.role || '')}</div>
+          </div>
+          <span style="color:var(--text-faint);font-size:12px" data-act="clear">↺</span>
+        </div>
+        ${features.length ? `
+        <div class="chat-features">
+          ${features.map(f => `
+            <span class="chip" data-act="feature" data-fn="${f.h}"><span class="c-emoji">${f.e}</span>${f.t}</span>`).join('')}
+        </div>` : ''}
+        <div class="chat-messages" id="chat-messages">
+          ${body}
+          ${pendHtml}
+          ${busy ? `<div class="msg assistant"><div class="typing"><span></span><span></span><span></span></div></div>` : ''}
+        </div>
+        <div class="composer">
+          <div class="composer-top">
+            <input class="ipt" id="chat-input" placeholder="Спроси ${esc(a.name)}…" autocomplete="off"/>
+            <button class="send-btn" id="send-btn" data-act="send">➤</button>
+          </div>
+          ${suggest.length ? `
+          <div class="suggest-chips">
+            ${suggest.map(s => `<span class="chip" data-act="send" data-val="${esc(s)}">${esc(s)}</span>`).join('')}
+          </div>` : ''}
+        </div>
+      </div>`;
+    this.scrollToBottom();
+  },
+
+  pendingHtml(p) {
+    const q = s => esc(s).replace(/'/g, "&#39;");
+    switch (p.kind) {
+      case 'tarot-pick':
+        return `<div class="msg assistant">
+          Давай сделаем расклад. Сначала выбери схему и <b>напиши свой вопрос картам</b> — чем точнее, тем яснее ответ.
+          <div class="chat-widget">
+            <div class="w-title">Схема расклада</div>
+            <div class="spread-grid">${p.spreads.map(s => `
+              <div class="spread-cell ${p.spread === s.code ? 'sel' : ''} ${s.tier === 'premium' ? 'premium' : ''}"
+                   data-code="${s.code}" data-act="spread" data-spread="${s.code}">
+                ${s.tier === 'premium' ? '<span class="lock">🔒</span>' : ''}
+                <span class="se">${s.emoji}</span>
+                <span class="sn">${esc(s.title)}</span>
+              </div>`).join('')}
+            </div>
+            <textarea class="ipt" id="tarot-q" rows="2" placeholder="Твой вопрос к картам…"
+              style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
+            <button class="btn btn-primary" style="margin-top:10px" data-act="draw">Потянула карты 🎴</button>
+          </div></div>`;
+
+      case 'tarot-cards':
+        return `<div class="msg assistant">
+          Карты вытянуты. Твой вопрос: <b>«${esc(p.question)}»</b>
+          <div class="chat-widget">
+            ${p.positions.map((pos, i) => `
+              <div class="card-spot-label">${esc(pos)}</div>
+              <div class="tarot-zone">
+                <div class="tarot-card ${p.revealed[i] ? 'flipped' : ''}" data-act="flip" data-i="${i}">
+                  <div class="face back"><div class="motif">☾</div><div class="lf">ORACLE</div></div>
+                  <div class="face front">
+                    <div class="fe">${p.cards[i].emoji}${p.cards[i].reversed ? ' ↺' : ''}</div>
+                    <div class="fn">${esc(p.cards[i].name)}</div>
+                    <div class="fp">${esc(p.cards[i].meaning)}</div>
+                  </div>
+                </div>
+              </div>`).join('')}
+            ${p.allRevealed ? `
+              <button class="btn btn-primary" style="margin-top:12px" data-act="interpret">Что это значит для меня?</button>`
+              : `<div style="text-align:center;color:var(--text-faint);font-size:11.5px;margin-top:10px">Нажми на карты, чтобы перевернуть ✨</div>`}
+          </div></div>`;
+
+      case 'chart':
+        return `<div class="msg assistant">
+          ${p.loading ? '<div class="typing"><span></span><span></span><span></span></div>' : ''}
+          <div class="chat-widget">${p.html}</div>
+        </div>`;
+
+      case 'compat':
+        return `<div class="msg assistant">
+          Расскажи, кто твой партнёр — и я разложу вашу совместимость по картам.
+          <div class="chat-widget">
+            <input class="ipt" id="cp-name" placeholder="Имя (необязательно)" style="margin-bottom:8px"/>
+            <input class="ipt" id="cp-date" placeholder="Дата рождения партнёра · ГГГГ-ММ-ДД" style="margin-bottom:8px"/>
+            <button class="btn btn-primary" data-act="compat">Проверить совместимость 💞</button>
+          </div></div>`;
+
+      case 'moon':
+        return `<div class="msg assistant">
+          <div class="chat-widget">
+            <div class="w-title">🌙 Лунная неделя</div>
+            ${p.loading ? '<div class="loader-ring"></div>' : p.rows}
+          </div></div>`;
+
+      case 'matrix':
+        return `<div class="msg assistant">
+          <div class="chat-widget">
+            <div class="w-title">🔢 Матрица Судьбы</div>
+            ${p.loading ? '<div class="loader-ring"></div>' : p.rows}
+          </div></div>`;
+
+      case 'today':
+        return `<div class="msg assistant">
+          ${p.loading ? '<div class="typing"><span></span><span></span><span></span></div>' : esc(p.forecast)}
+        </div>`;
+
+      case 'history':
+        return `<div class="msg assistant">
+          <div class="chat-widget">
+            <div class="w-title">📚 Твои расклады</div>
+            ${p.loading ? '<div class="loader-ring"></div>' : (p.rows || '<div style="color:var(--text-faint);font-size:12.5px">Пока пусто — первый расклад ждёт тебя ✨</div>')}
+          </div></div>`;
+
+      default: return '';
+    }
+  },
+
+  closeChat() {
+    this.chat.key = null;
+    this.go('hub');
+  },
+  async clearThread() {
+    const key = this.chat.key;
+    if (!confirm('Начать новый чат с чистого листа?')) return;
+    try { await api('/api/chat/' + key, { method: 'DELETE' }); } catch (e) {}
+    this.chat.messages = [];
+    this.chat.pending = null;
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  /* ── отправка вопроса агенту ── */
+  async doSend(text) {
+    const a = this.chat.spec;
+    const val = (text || (document.getElementById('chat-input') || {}).value || '').trim();
+    if (!val || this.chat.busy) return;
+    const input = document.getElementById('chat-input');
+    if (input) input.value = '';
+    this.chat.messages.push({ role: 'user', text: val });
+    this.chat.busy = true;
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const r = await api('/api/chat/' + a.code, { method: 'POST', body: JSON.stringify({ text: val }) });
+      this.chat.messages.push({ role: 'assistant', text: r.answer });
+    } catch (e) {
+      this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+    }
+    this.chat.busy = false;
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  /* ═══ ФИЧА: РАСКЛАД ТАРО (вопрос → карты → LLM) ═══ */
+  async featureTarot() {
+    if (this.chat.pending && this.chat.pending.kind.startsWith('tarot')) return;
+    this.chat.pending = { kind: 'tarot-pick', spreads: [], spread: 'three', q: '' };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      this.spreads = this.spreads || await api('/api/tarot/spreads');
+      this.chat.pending.spreads = this.spreads;
+    } catch (e) {
+      this.chat.pending.spreads = [
+        { code: 'one', title: 'Одна карта', emoji: '🂠', tier: 'included' },
+        { code: 'three', title: 'Прошлое·Наст·Будущее', emoji: '🂠🂠🂠', tier: 'included' },
+        { code: 'love', title: 'На отношения', emoji: '💞', tier: 'included' },
+      ];
+    }
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  pendingQ(v) { if (this.chat.pending) this.chat.pending.q = v; },
+
+  pickSpread(code) {
+    if (!this.chat.pending || !this.chat.pending.spreads) return;
+    this.chat.pending.spread = code;
+    document.querySelectorAll('.spread-cell').forEach(el => el.classList.toggle('sel', el.dataset.code === code));
+  },
+
+  async doDraw() {
+    const q = (document.getElementById('tarot-q') || {}).value;
+    const qv = (q || '').trim();
+    if (!qv) { alert('Сформулируй свой вопрос картам — я передам его в расклад'); return; }
+    const spread = this.chat.pending.spread || 'three';
+    this.chat.busy = true;
+    this.chat.pending = { kind: 'tarot-pick', spreads: this.chat.pending.spreads, spread, q: qv };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const r = await api('/api/tarot/draw?spread=' + spread, {
+        method: 'POST',
+        body: JSON.stringify({ question: qv }),
+      });
+      this.chat.messages.push({ role: 'user', text: 'Мой вопрос к картам: ' + qv });
+      this.chat.pending = {
+        kind: 'tarot-cards', question: qv, cards: r.cards,
+        positions: r.positions, revealed: r.cards.map(() => false),
+        allRevealed: false, reading_id: r.reading_id,
+      };
+    } catch (e) {
+      this.chat.pending = null;
+      this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+    }
+    this.chat.busy = false;
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  flipCard(i) {
+    const p = this.chat.pending;
+    if (!p || p.kind !== 'tarot-cards') return;
+    p.revealed[i] = true;
+    p.allRevealed = p.revealed.every(Boolean);
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  async doInterpret() {
+    const p = this.chat.pending;
+    if (!p || p.kind !== 'tarot-cards') return;
+    this.chat.busy = true;
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const r = await api('/api/tarot/interpret/' + p.reading_id, { method: 'POST' });
+      this.chat.messages.push({ role: 'assistant', text: r.answer });
+    } catch (e) {
+      this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+    }
+    this.chat.pending = null;
+    this.chat.busy = false;
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  async featureTarotHistory() {
+    this.chat.pending = { kind: 'history', loading: true };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const rows = await api('/api/tarot/history');
+      this.chat.pending = {
+        kind: 'history', loading: false,
+        rows: rows.map(r => `
+          <div class="result-card" style="margin-bottom:8px" data-act="reading" data-id="${r.id}">
+            <div class="rc-top">
+              <span style="font-size:18px">${r.cards && r.cards[0] ? r.cards[0].emoji : '🎴'}</span>
+              <div style="flex:1;min-width:0">
+                <div class="rc-title">${esc(r.question || 'Расклад')}</div>
+                <div class="rc-meta">${fmtDay(r.created_at.slice(0, 10))} · ${esc(r.spread || '')}</div>
+              </div>
+              <span class="rc-open">›</span>
+            </div>
+          </div>`).join(''),
+      };
+    } catch (e) {
+      this.chat.pending = { kind: 'history', loading: false, rows: '<div style="color:var(--text-faint)">' + esc(e.message) + '</div>' };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  /* ═══ ФИЧА: НАТАЛЬНАЯ КАРТА → строится и сохраняется в профиль ═══ */
+  async featureChart() {
+    if (this.chat.pending && this.chat.pending.kind === 'chart') return;
+    this.chat.pending = { kind: 'chart', loading: true, html: '' };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const c = await api('/api/chart');
+      this.chat.pending = { kind: 'chart', loading: false, html: this.chartHtml(c) };
+    } catch (e) {
+      // карты ещё нет — даём собрать её прямо здесь (время и город)
+      this.chart = null;
+      this.chat.pending = { kind: 'chart', loading: false, html: this.chartForm() };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  chartHtml(c) {
+    this.chart = c;
+    const sun = c.sun || {};
+    const asc = c.ascendant || {};
+    const planets = c.planets || [];
+    const glyph = p => (p.sign ? SIGNS[p.sign] : '');
+    const lines = planets.map(p => `
+      <div class="planet-line">
+        <div class="p-ico">${glyph(p)}</div>
+        <div class="p-name">${esc(p.name)}</div>
+        <div class="p-val">${esc(p.sign)}${p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ☍' : ''}</div>
       </div>`).join('');
-    box.querySelectorAll('[data-plan]').forEach((btn) =>
-      btn.addEventListener('click', () => payStars({ plan: btn.dataset.plan }, btn)));
-    return;
-  }
-
-  const items = S.shop.products[S.shopTab] || [];
-  if (!items.length) { box.innerHTML = '<p class="muted">Здесь пока пусто</p>'; return; }
-  box.innerHTML = items.map((p) => `
-    <div class="shop-item">
-      <div class="shop-body">
-        <div class="shop-title">${esc(p.title)}</div>
-        <div class="shop-desc">${esc(p.description || '')}</div>
+    return `
+      <div class="w-title">🌌 Натальная карта</div>
+      <div class="chart-wheel" style="width:130px;height:130px;margin:4px auto 12px">
+        <div class="wheel-center">
+          <div class="wc-s">${sun.symbol || '☉'}</div>
+          <div class="wc-t">${esc(sun.sign || '')}</div>
+          <div class="wc-t" style="font-size:10px;color:var(--text-dim)">AC ${esc((asc.sign || '').slice(0, 3))}</div>
+        </div>
       </div>
-      <div class="shop-buy">
-        ${p.price_stars ? `<button class="btn-price" data-sku="${esc(p.sku)}">⭐${p.price_stars}</button>` : ''}
-        ${p.price_crystals ? `<button class="btn-price ghost" data-crystals="${esc(p.sku)}">✦${p.price_crystals}</button>` : ''}
+      <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:13px;margin-bottom:8px">Солнце в ${esc(sun.sign || '—')} · Асцендент ${esc(asc.sign || '—')}</div>
+      <div>${lines || '<div style="color:var(--text-faint);font-size:12.5px">Планеты ещё не рассчитаны</div>'}</div>
+      <div style="color:var(--text-faint);font-size:11.5px;margin:10px 0">✓ Сохранена в твоём профиле — всегда под рукой.</div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn btn-primary" style="flex:1" data-act="ask-chart">Спросить про карту</button>
+        <button class="btn btn-ghost" data-act="go" data-goto="profile">В профиль</button>
+      </div>`;
+  },
+
+  chartForm() {
+    const me = this.me || {};
+    return `
+      <div class="w-title">🌌 Построить натальную карту</div>
+      <div style="color:var(--text-dim);font-size:12.5px;margin-bottom:10px">
+        Дата рождения: <b style="color:var(--text)">${esc(me.birth_date || '—')}</b>. Уточни время и город — и я рассчитаю карту прямо здесь.
       </div>
-    </div>`).join('');
+      <input class="ipt" id="ch-time" placeholder="Время рождения · 14:30 (если не знаешь — пусто)" style="margin-bottom:8px"/>
+      <input class="ipt" id="ch-city" placeholder="Город рождения · Москва" style="margin-bottom:8px"/>
+      <button class="btn btn-primary" data-act="build">Рассчитать карту ✨</button>`;
+  },
 
-  box.querySelectorAll('[data-sku]').forEach((btn) =>
-    btn.addEventListener('click', () => payStars({ sku: btn.dataset.sku }, btn)));
-  box.querySelectorAll('[data-crystals]').forEach((btn) =>
-    btn.addEventListener('click', () => payCrystals(btn.dataset.crystals, btn)));
-}
+  async doBuildChart() {
+    const time = (document.getElementById('ch-time') || {}).value || '';
+    const city = (document.getElementById('ch-city') || {}).value || '';
+    this.chat.busy = true;
+    this.chat.pending = { kind: 'chart', loading: true, html: '' };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const c = await api('/api/chart', {
+        method: 'POST',
+        body: JSON.stringify({ birth_time: time.trim() || null, birth_city: city.trim() || null }),
+      });
+      this.chat.pending = { kind: 'chart', loading: false, html: this.chartHtml(c) };
+    } catch (e) {
+      this.chat.pending = { kind: 'chart', loading: false, html: '<div style="color:#ff9e9e;font-size:13px">😔 ' + esc(e.message) + '</div>' };
+    }
+    this.chat.busy = false;
+    this.renderChat(document.getElementById('app-main'));
+  },
 
-/* Оплата Stars: сервер создаёт заказ и ссылку, Telegram проводит платёж,
-   выдачу делает бот по апдейту successful_payment. Поэтому после 'paid'
-   просто перечитываем состояние — оно уже обновлено сервером. */
-async function payStars(body, btn) {
-  btn.disabled = true;
-  try {
-    const { link } = await post('/api/shop/invoice', body);
-    if (!tg?.openInvoice) { toast('Оплата доступна только внутри Telegram 🌙'); return; }
-    tg.openInvoice(link, async (status) => {
-      if (status === 'paid') {
-        notify('success');
-        toast('Оплата прошла ✨ Открываю…');
-        // боту нужен момент, чтобы обработать апдейт и выдать покупку
-        setTimeout(async () => {
-          await Promise.all([loadMe(), loadShop(), loadSpreads(), loadReports()]
-            .map((p) => Promise.resolve(p).catch(() => {})));
-        }, 1200);
-      } else if (status === 'failed') {
-        toast('Платёж не прошёл 🌙');
-      }
-    });
-  } catch (e) {
-    reportError(e);
-  } finally {
-    btn.disabled = false;
+  chatAsk(text) {
+    if (!text || !text.trim()) return;
+    this.chat.messages.push({ role: 'user', text });
+    this.chat.busy = true;
+    this.renderChat(document.getElementById('app-main'));
+    api('/api/chat/' + this.chat.key, { method: 'POST', body: JSON.stringify({ text }) })
+      .then(r => { this.chat.messages.push({ role: 'assistant', text: r.answer }); })
+      .catch(e => { this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message }); })
+      .finally(() => { this.chat.busy = false; this.renderChat(document.getElementById('app-main')); });
+  },
+
+  // Вопрос по натальной карте из виджета — prompt вынесен из inline-хендлера.
+  askChart() {
+    const q = prompt('О чём спросить карту?', 'моих отношениях');
+    if (q && q.trim()) this.chatAsk('Что в моей натальной карте говорит о ' + q.trim());
+  },
+
+  /* ═══ ФИЧА: ПРОГНОЗ / НЕБО ═══ */
+  async featureToday() {
+    if (this.chat.pending && this.chat.pending.kind === 'today') return;
+    this.chat.pending = { kind: 'today', loading: true, forecast: '' };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const t = await api('/api/today');
+      this.chat.pending = { kind: 'today', loading: false,
+        forecast: `🌅 ${fmtDate()}\n\n${t.forecast}\n\n🂠 Карта дня: ${t.card.emoji} ${t.card.name} — ${t.card.meaning}` };
+    } catch (e) {
+      this.chat.pending = { kind: 'today', loading: false, forecast: '😔 ' + e.message };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  /* ═══ ФИЧА: ЛУННАЯ НЕДЕЛЯ ═══ */
+  async featureMoon() {
+    this.chat.pending = { kind: 'moon', loading: true, rows: '' };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const days = await api('/api/moon/week');
+      const wd = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+      this.chat.pending = { kind: 'moon', loading: false, rows: days.map(d => `
+        <div class="planet-line">
+          <div class="p-ico">${d.emoji}</div>
+          <div class="p-name">${d.date.slice(8)} ${wd[d.weekday]} · ${d.name}</div>
+          <div class="p-val" style="font-size:11.5px">${d.day}-й день</div>
+        </div>`).join('') };
+    } catch (e) {
+      this.chat.pending = { kind: 'moon', loading: false, rows: '<div style="color:var(--text-faint)">' + esc(e.message) + '</div>' };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  /* ═══ ФИЧА: МАТРИЦА ═══ */
+  async featureMatrix() {
+    this.chat.pending = { kind: 'matrix', loading: true, rows: '' };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const m = await api('/api/matrix');
+      const keys = [['personal', 'Личный'], ['destiny', 'Судьба'], ['love', 'Любовь'], ['money', 'Деньги']];
+      this.chat.pending = { kind: 'matrix', loading: false, rows: keys.map(([k, label]) => {
+        const a = m[k] || {};
+        return `<div class="planet-line">
+          <div class="p-ico">${a.arcana ? '✦' : '·'}</div>
+          <div class="p-name">${label} · ${esc(a.arcana || '—')}</div>
+          <div class="p-val" style="font-size:11.5px">${a.n != null ? a.n : ''}</div>
+        </div>`;
+      }).join('') + `<div style="font-size:11.5px;color:var(--text-faint);margin-top:10px">Попроси агента разобрать твои арканы подробнее — просто напиши ему.</div>` };
+    } catch (e) {
+      this.chat.pending = { kind: 'matrix', loading: false, rows: '<div style="color:var(--text-faint)">' + esc(e.message) + '</div>' };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  /* ═══ ФИЧА: СОВМЕСТИМОСТЬ ═══ */
+  featureCompat() {
+    if (this.chat.pending && this.chat.pending.kind === 'compat') return;
+    this.chat.pending = { kind: 'compat' };
+    this.renderChat(document.getElementById('app-main'));
+  },
+  async doCompat() {
+    const name = ((document.getElementById('cp-name') || {}).value || '').trim();
+    const date = ((document.getElementById('cp-date') || {}).value || '').trim();
+    if (!date) { alert('Введи дату рождения партнёра'); return; }
+    this.chat.busy = true;
+    this.chat.pending = null;
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const r = await api('/api/compat/full', { method: 'POST', body: JSON.stringify({ partner_date: date, partner_name: name, save: true }) });
+      this.chat.messages.push({ role: 'user', text: 'Моя совместимость с ' + (name || 'партнёром') + ' (' + date + ')' });
+      this.chat.messages.push({ role: 'assistant', text: r.answer });
+    } catch (e) {
+      this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+    }
+    this.chat.busy = false;
+    this.renderChat(document.getElementById('app-main'));
+  },
+
+  /* ═══ ФИЧИ-ВОПРОСЫ (агент решает сам, по скиллам) ═══ */
+  chatPractice() { this.doSend('Подбери мне практику под моё состояние — расскажи, зачем она мне и с чего начать.'); },
+  chatMonthly() { this.doSend('Подведи итог моего месяца: что менялось, что повторялось, на что обратить внимание.'); },
+
+  /* ═══ ПРОФИЛЬ: данные + натальная карта + расклады + отчёты ═══ */
+  async renderProfile(main) {
+    const me = this.me;
+    main.innerHTML = `
+      <div class="screen">
+        <div class="hub-head">
+          <h1>Профиль</h1>
+          <p>Твоё небо и сохранённое</p>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="sv">${me ? (me.sub_active ? '∞' : '—') : '…'}</div><div class="sl">Подписка</div></div>
+          <div class="stat"><div class="sv">${me ? me.crystals : '…'}</div><div class="sl">Кристаллы ✦</div></div>
+          <div class="stat"><div class="sv">${me ? me.allowance.left : '…'}</div><div class="sl">Вопросы</div></div>
+          <div class="stat"><div class="sv">${me ? (me.diary_streak || 0) : '…'}</div><div class="sl">Дневник·дн</div></div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="section-title">👤 Твои данные</div>
+        <div class="glass" style="padding:14px 16px;font-size:13px">
+          <div class="planet-line"><div class="p-ico">🗓</div><div class="p-name">Рождение</div><div class="p-val">${me ? esc(me.birth_date || '—') : '…'}</div></div>
+          <div class="planet-line"><div class="p-ico">⏰</div><div class="p-name">Время</div><div class="p-val">${me ? esc(me.birth_time_known ? me.birth_time : 'не известно') : '…'}</div></div>
+          <div class="planet-line"><div class="p-ico">🏙</div><div class="p-name">Город</div><div class="p-val">${me ? esc(me.birth_city || '—') : '…'}</div></div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="section-title">🌌 Натальная карта</div>
+        <div id="profile-chart"><div class="glass"><div class="center-block"><div class="loader-ring"></div></div></div></div>
+
+        <div class="spacer"></div>
+        <div class="section-title">🎴 Последние расклады</div>
+        <div id="profile-tarot"><div class="skeleton" style="height:80px;border-radius:16px"></div></div>
+
+        <div class="spacer"></div>
+        <div class="section-title">📜 Разборы</div>
+        <div id="profile-reports"><div class="skeleton" style="height:60px;border-radius:16px"></div></div>
+
+        <div class="spacer"></div>
+        <div class="section-title">🧠 Что я помню о тебе</div>
+        <div id="profile-memories"><div class="skeleton" style="height:60px;border-radius:16px"></div></div>
+      </div>`;
+    this.loadProfileSections();
+  },
+
+  async loadProfileSections() {
+    const chartEl = document.getElementById('profile-chart');
+    const tarotEl = document.getElementById('profile-tarot');
+    const repEl = document.getElementById('profile-reports');
+    const memEl = document.getElementById('profile-memories');
+
+    // натальная карта (по возможности — из /api/me, иначе /api/chart)
+    try {
+      const c = await api('/api/chart');
+      const sun = c.sun || {}, asc = c.ascendant || {};
+      const planets = (c.planets || []).slice(0, 8).map(p => `
+        <div class="planet-line">
+          <div class="p-ico">${SIGNS[p.sign] || ''}</div>
+          <div class="p-name">${esc(p.name)}</div>
+          <div class="p-val">${esc(p.sign)}${p.house ? ' · ' + p.house : ''}</div>
+        </div>`).join('');
+      if (chartEl) chartEl.innerHTML = `
+        <div class="glass" style="padding:16px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="chart-wheel" style="width:110px;height:110px">
+              <div class="wheel-center"><div class="wc-s">${sun.symbol || '☉'}</div><div class="wc-t">${esc(sun.sign || '')}</div></div>
+            </div>
+            <div style="flex:1;font-size:13px">
+              <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:14.5px">${esc(sun.sign || '—')}</div>
+              <div style="color:var(--text-dim);font-size:12px">Асцендент ${esc(asc.sign || '—')}</div>
+              <div style="margin-top:10px;display:flex;gap:8px">
+                <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="chat" data-chat="astro">Спросить</button>
+                <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="report" data-kind="natal">Разбор</button>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:10px">${planets}</div>
+        </div>`;
+    } catch (e) {
+      if (chartEl) chartEl.innerHTML = `
+        <div class="glass" style="padding:16px;text-align:center">
+          <div style="font-size:34px">🌌</div>
+          <div style="font-size:13.5px;margin:8px 0 12px">Карта ещё не построена.<br>Собери её у Астролога — прямо в чате.</div>
+          <button class="btn btn-primary" data-act="chat" data-chat="astro">Построить карту</button>
+        </div>`;
+    }
+
+    try {
+      const rows = await api('/api/tarot/history');
+      if (tarotEl) tarotEl.innerHTML = rows.length ? rows.slice(0, 5).map(r => `
+        <div class="result-card" style="margin-bottom:8px" data-act="reading" data-id="${r.id}">
+          <div class="rc-top">
+            <span style="font-size:16px">${r.cards && r.cards[0] ? r.cards[0].emoji : '🎴'}</span>
+            <div style="flex:1;min-width:0">
+              <div class="rc-title" style="font-size:13px">${esc(r.question || 'Расклад')}</div>
+              <div class="rc-meta">${fmtDay(r.created_at.slice(0, 10))} · ${esc(r.spread || '')}</div>
+            </div>
+            <span class="rc-open">›</span>
+          </div>
+        </div>`).join('') : '<div class="glass" style="padding:16px;color:var(--text-faint);font-size:13px">Раскладов пока нет — зайди к Тарологу и задай вопрос картам.</div>';
+    } catch (e) { if (tarotEl) tarotEl.innerHTML = ''; }
+
+    try {
+      const rep = await api('/api/reports');
+      const ready = rep.ready || [];
+      if (repEl) repEl.innerHTML = ready.length ? ready.map(r => `
+        <div class="result-card" style="margin-bottom:8px" data-act="report" data-kind="${esc(r.kind)}">
+          <div class="rc-top">
+            <span style="font-size:16px">📜</span>
+            <div style="flex:1;min-width:0"><div class="rc-title" style="font-size:13px">${esc(r.title)}</div>
+            <div class="rc-meta">${r.period || fmtDay((r.created_at || '').slice(0, 10))}</div></div>
+            <span class="rc-open">›</span>
+          </div>
+        </div>`).join('') : '<div class="glass" style="padding:16px;color:var(--text-faint);font-size:13px">Разборов пока нет — они появляются в лавке.</div>';
+    } catch (e) { if (repEl) repEl.innerHTML = ''; }
+
+    if (this.me && this.me.memories && this.me.memories.length) {
+      if (memEl) memEl.innerHTML = `<div class="glass" style="padding:14px 16px">${this.me.memories.map(m => `<div style="font-size:12.5px;padding:3px 0;color:var(--text-dim)">✦ ${esc(m)}</div>`).join('')}</div>`;
+    } else if (memEl) memEl.innerHTML = '<div class="glass" style="padding:16px;color:var(--text-faint);font-size:13px">Я запомню о тебе важное, когда расскажешь.</div>';
+  },
+
+  async openReport(kind) {
+    try {
+      const r = await api('/api/reports/' + kind);
+      this.showModal(`<h3>${esc(r.title)}</h3><button class="m-close" data-act="modal-close">✕</button><div style="font-size:13.5px;line-height:1.65;margin-top:8px">${rich(r.body)}</div>`);
+    } catch (e) { alert(e.message); }
+  },
+
+  async openReading(id) {
+    try {
+      const rows = await api('/api/tarot/history');
+      const r = rows.find(x => x.id === id) || rows[0];
+      const cards = (r.cards || []).map(c => `${c.emoji} ${c.name}${c.reversed ? ' ↺' : ''} — ${c.meaning}`).join('\n');
+      this.showModal(`<h3>🎴 ${esc(r.question || 'Расклад')}</h3><button class="m-close" data-act="modal-close">✕</button>
+        <div style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;margin:8px 0">${esc(cards)}</div>
+        <div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap">${esc(r.answer || '—')}</div>`);
+    } catch (e) { alert(e.message); }
+  },
+
+  showModal(html) {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.id = 'app-modal';
+    ov.innerHTML = `<div class="modal">${html}</div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  },
+  closeModal() { const el = document.getElementById('app-modal'); if (el) el.remove(); },
+};
+
+const SIGNS = {
+  Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍',
+  Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓',
+};
+
+window.app = app;
+
+/* ── прод-CSP: вместо inline onclick/oninput/onkeydown — делегирование ──
+   data-act на элементе + один обработчик на документе. Вложенные [data-act]
+   (чип внутри карточки) берёт ближайший — отдельный stopPropagation не нужен. */
+document.addEventListener('click', e => {
+  const el = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+  if (!el) return;
+  const act = el.dataset.act, v = el.dataset;
+  switch (act) {
+    case 'go': app.go(v.goto); break;
+    case 'chat': app.openChat(v.chat); break;
+    case 'chat-fn': app.openChat(v.chat, () => app[v.fn] && app[v.fn]()); break;
+    case 'back': app.closeChat(); break;
+    case 'clear': app.clearThread(); break;
+    case 'feature': app[v.fn] && app[v.fn](); break;
+    case 'send': app.doSend(v.val || undefined); break;
+    case 'spread': app.pickSpread(v.spread); break;
+    case 'draw': app.doDraw(); break;
+    case 'flip': app.flipCard(parseInt(v.i, 10)); break;
+    case 'interpret': app.doInterpret(); break;
+    case 'compat': app.doCompat(); break;
+    case 'reading': app.openReading(parseInt(v.id, 10)); break;
+    case 'report': app.openReport(v.kind); break;
+    case 'build': app.doBuildChart(); break;
+    case 'ask-chart': app.askChart(); break;
+    case 'modal-close': app.closeModal(); break;
   }
-}
-
-async function payCrystals(sku, btn) {
-  btn.disabled = true;
-  try {
-    const res = await post('/api/shop/crystals', { sku });
-    notify('success');
-    toast(`Открыто: ${res.granted.title || 'покупка'} ✨`);
-    await Promise.all([loadMe(), loadShop()]);
-    loadSpreads().catch(() => {});
-    loadReports().catch(() => {});
-  } catch (e) {
-    reportError(e);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function loadReferral() {
-  try {
-    const r = await api('/api/referral');
-    $('ref-text').textContent =
-      `За каждую подругу — по ✦${r.bonus_per_invite} вам обеим. `
-      + `Когда она оформит доступ — тебе ещё ✦${r.revenue_share}.`;
-    $('ref-link').textContent = r.link;
-    $('ref-link').onclick = () => {
-      navigator.clipboard?.writeText(r.link);
-      toast('Ссылка скопирована ✨');
-      selectHaptic();
-    };
-    $('ref-share').onclick = () => {
-      const url = 'https://t.me/share/url?url=' + encodeURIComponent(r.link)
-        + '&text=' + encodeURIComponent(r.share_text);
-      tg?.openTelegramLink ? tg.openTelegramLink(url) : window.open(url, '_blank');
-    };
-    $('ref-stats').innerHTML = r.level1
-      ? `<span>пришло: <b>${r.level1}</b></span>
-         ${r.level2 ? `<span>подруг подруг: <b>${r.level2}</b></span>` : ''}
-         <span>оформили доступ: <b>${r.paying}</b></span>
-         <span>начислено: <b>✦${r.bonus_total}</b></span>`
-      : '<span>пока никто не пришёл — самое время поделиться ✨</span>';
-  } catch { /* не критично */ }
-}
-
-async function loadPersonas() {
-  try {
-    const list = await api('/api/personas');
-    $('set-persona').innerHTML = list.map((p) =>
-      `<option value="${esc(p.code)}">${esc(p.emoji)} ${esc(p.title)}</option>`).join('');
-    if (S.me?.persona) $('set-persona').value = S.me.persona;
-  } catch { /* не критично */ }
-}
-
-$('set-save').addEventListener('click', async (ev) => {
-  ev.currentTarget.disabled = true;
-  try {
-    await post('/api/profile', {
-      oracle_name: $('set-oracle-name').value.trim() || null,
-      persona: $('set-persona').value || null,
-      morning_push: $('set-push').checked,
-    });
-    toast('Сохранила ✨');
-    notify('success');
-    await loadMe();
-    LOADED.delete('chats');          // имя и образ агента изменились
-  } catch (e) { reportError(e); } finally { ev.currentTarget.disabled = false; }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target && e.target.id === 'chat-input') app.doSend();
+});
+document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'tarot-q') app.pendingQ(e.target.value);
 });
 
-$('set-push').addEventListener('change', async (e) => {
-  try { await post('/api/profile', { morning_push: e.target.checked }); }
-  catch (err) { reportError(err); }
-});
-
-async function loadFaq() {
-  try {
-    const items = await api('/api/faq');
-    if (!items.length) { $('faq-box').innerHTML = ''; return; }
-    $('faq-box').innerHTML = '<div class="label">Вопросы и ответы</div>' + items.map((f) => `
-      <div class="faq-item">
-        <div class="faq-q">${esc(f.title)}<span>＋</span></div>
-        <div class="faq-a hidden">${esc(f.body)}</div>
-      </div>`).join('');
-    $('faq-box').querySelectorAll('.faq-q').forEach((q) =>
-      q.addEventListener('click', () => {
-        q.nextElementSibling.classList.toggle('hidden');
-        q.querySelector('span').textContent =
-          q.nextElementSibling.classList.contains('hidden') ? '＋' : '－';
-        selectHaptic();
-      }));
-  } catch { /* не критично */ }
-}
-
-/* ══════ старт ══════ */
-(async function boot() {
-  try {
-    await loadMe();
-  } catch (e) {
-    $('greeting').textContent = e.status === 404
-      ? 'Открой бота и нажми /start 🌙' : e.message;
-    return;
-  }
-  loadToday();
-})();
+app.boot();
