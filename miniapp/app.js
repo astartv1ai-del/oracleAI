@@ -349,10 +349,9 @@ const app = {
                 <span class="tb-arc">${esc(toRoman(t.card.num))}</span>
                 <span class="tb-emoji">${t.card.emoji}</span>
                 <svg class="tb-namepath" viewBox="0 0 116 36" preserveAspectRatio="none" aria-hidden="true">
-                  <path id="tbArcPath" d="M 8 6 Q 58 28 108 6" fill="none"/>
-                  <text class="tb-pathtext" dy="9"><textPath href="#tbArcPath" xlink:href="#tbArcPath" startOffset="50%" text-anchor="middle">${esc(t.card.name)}</textPath></text>
+                  <path id="tbArcPath" d="M 8 4 Q 58 26 108 4" fill="none"/>
+                  <text class="tb-pathtext" dy="11"><textPath href="#tbArcPath" xlink:href="#tbArcPath" startOffset="50%" text-anchor="middle">${esc(t.card.name)}</textPath></text>
                 </svg>
-                <span class="tb-orn">✦ ✦ ✦</span>
               </div>
               <div class="tb-face tb-back">
                 <span class="tb-arc tb-back-arc">${esc(toRoman(t.card.num))}</span>

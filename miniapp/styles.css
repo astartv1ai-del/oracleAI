@@ -1101,7 +1101,7 @@ body {
   font-size: 40px; line-height: 1; padding-bottom: 14%;
   filter: drop-shadow(0 0 12px rgba(230,193,120,.55)); text-shadow: 0 2px 8px rgba(0,0,0,.9);
 }
-.tb-namepath { position: absolute; left: 4px; right: 4px; bottom: 14px; height: 36px; z-index: 2; }
+.tb-namepath { position: absolute; left: 4px; right: 4px; bottom: 8px; height: 36px; z-index: 2; }
 .tb-namepath text {
   font-family: var(--font-serif); font-size: 12px; font-weight: 700; letter-spacing: .6px;
   fill: #f7ecd2; paint-order: stroke; stroke: rgba(5,4,12,.95); stroke-width: 2px;
