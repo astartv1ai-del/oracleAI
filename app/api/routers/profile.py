@@ -132,6 +132,19 @@ async def memories(user=Depends(current_user), db=Depends(get_db)):
     return await dialog.memories_full(db, user["tg_id"], limit=60)
 
 
+class MemoryIn(BaseModel):
+    fact: str = Field(min_length=3, max_length=300)
+    kind: str = Field(default="fact", max_length=20)
+
+
+@router.post("/memories", dependencies=[Depends(rate_limit("write"))])
+async def add_memory(item: MemoryIn, user=Depends(current_user), db=Depends(get_db)):
+    """Ручное добавление факта из Mini App — та же дедупликация, что у агента."""
+    await dialog.save_memory(db, user["tg_id"], item.fact.strip(),
+                             kind=item.kind or "fact")
+    return {"ok": True}
+
+
 @router.delete("/memories/{memory_id}", dependencies=[Depends(rate_limit("write"))])
 async def forget(memory_id: int, user=Depends(current_user), db=Depends(get_db)):
     """«Забудь это» — клиентка должна управлять тем, что о ней помнят."""

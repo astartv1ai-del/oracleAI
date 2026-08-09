@@ -60,11 +60,24 @@ async def _refund(db, user, verdict) -> None:
 # ────────────────────────────── вопрос агенту ─────────────────────────────────
 
 async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
-              surface: str = "bot", allow_paid: bool = True) -> dict:
-    """Задаёт вопрос агенту. Поднимает `ChatDenied`, если доступа нет."""
+              surface: str = "bot", allow_paid: bool = True,
+              thread_id: int | None = None) -> dict:
+    """Задаёт вопрос агенту. Поднимает `ChatDenied`, если доступа нет.
+
+    `thread_id` — конкретная сессия (многочатовой режим Mini App). Без него —
+    активный тред агента (один диалог на агента, как в боте).
+    """
     question = (text or "").strip()[:MAX_QUESTION_LEN]
     if not question:
         raise ValueError("пустой вопрос")
+    spec = agents.get(agent)
+    if thread_id is not None:
+        thread = await dialog.get_thread(db, thread_id, user["tg_id"])
+        if not thread or thread["archived"] or thread["agent"] != spec.code:
+            raise ValueError("нет такого чата")
+    else:
+        thread = await dialog.ensure_thread(db, user["tg_id"], spec.code,
+                                            title=spec.title)
 
     # Кризисный протокол — до всего остального. Ответ собирает код, модель не
     # зовём вовсе, лимит не тратим: брать вопрос за деньги в такой момент нельзя.
@@ -85,9 +98,6 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
         if not await limits.consume(db, user, verdict):
             raise ChatDenied(verdict)
 
-        spec = agents.get(agent)
-        thread = await dialog.ensure_thread(db, user["tg_id"], spec.code,
-                                            title=spec.title)
         await dialog.save_message(
             db, user["tg_id"], "user", question,
             is_question=limits.counts_toward_limit(verdict),

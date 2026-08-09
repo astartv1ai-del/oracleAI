@@ -5,6 +5,7 @@
    ============================================================================ */
 
 :root {
+  --nav-h: 66px;
   /* палитра — ночь с золотом и аметистом */
   --bg-0: #08070f;
   --bg-1: #0e0d1e;
@@ -43,7 +44,7 @@ body {
   background: var(--bg-0);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.55;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
@@ -54,6 +55,8 @@ body {
 .starfield {
   position: fixed; inset: 0; z-index: -2; pointer-events: none;
   background:
+    linear-gradient(180deg, rgba(10,9,22,.38) 0%, rgba(7,7,15,.8) 100%),
+    url("/static/img/bg-cosmos.jpg") center / cover no-repeat,
     radial-gradient(120% 70% at 50% -10%, #1c1a3a 0%, transparent 55%),
     radial-gradient(90% 60% at 85% 110%, #2a1440 0%, transparent 60%),
     linear-gradient(180deg, #0a0916 0%, #07070f 100%);
@@ -74,30 +77,69 @@ body {
 .starfield::after { height: 80%; opacity: .3; animation-direction: reverse; animation-duration: 140s; }
 @keyframes starDrift { to { background-position: -240px 200px; } }
 
-/* ── каркас ────────────────────────────────────────────────────────────── */
+/* дальние галактики: мягкие светящиеся эллипсы, медленно пульсируют */
+.galaxy { position: absolute; border-radius: 50%; filter: blur(42px);
+  mix-blend-mode: screen; pointer-events: none; animation: gPulse 14s ease-in-out infinite; }
+.galaxy.g1 { width: 360px; height: 240px; top: 7%; right: -90px;
+  background: radial-gradient(ellipse at 45% 40%, rgba(147,197,253,.38), rgba(88,80,236,.12) 55%, transparent 76%);
+  transform: rotate(-24deg); }
+.galaxy.g2 { width: 300px; height: 210px; bottom: 14%; left: -80px;
+  background: radial-gradient(ellipse at 50% 45%, rgba(230,193,120,.24), rgba(167,139,250,.14) 55%, transparent 78%);
+  transform: rotate(18deg); animation-delay: -5s; }
+.galaxy.g3 { width: 210px; height: 150px; top: 44%; right: 4%;
+  background: radial-gradient(circle at 50% 50%, rgba(250,204,138,.2), rgba(167,139,250,.1) 55%, transparent 72%);
+  animation-delay: -9s; }
+@keyframes gPulse { 0%,100% { opacity: .32; } 50% { opacity: .62; } }
+
+/* созвездия: астеризмы из точек-звёзд и линий, деликатно мерцают */
+.constellations { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .55; }
+.constellations path { stroke: rgba(255,255,255,.15); fill: none; stroke-width: .8; stroke-dasharray: 2 3; }
+.constellations circle { fill: rgba(255,255,255,.5); filter: drop-shadow(0 0 3px rgba(255,255,255,.5)); }
+.constellations .cst { animation: cstBlink 6s ease-in-out infinite; }
+.constellations .cst:nth-child(odd) { animation-delay: -3s; }
+@keyframes cstBlink { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+
+/* силуэт Лилит: одна эфирная богиня из PNG с мягкой прозрачностью,
+   деликатно в нижнем правом углу, не перекрывает контент. */
+.lilith-sil {
+  position: absolute; bottom: -10px; right: -26px; width: 38%; max-width: 220px;
+  height: auto; opacity: .55; pointer-events: none;
+  filter: drop-shadow(0 0 22px rgba(167,139,250,.3));
+  transform-origin: bottom center; animation: lilBreathe 16s ease-in-out infinite;
+}
+@keyframes lilBreathe { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .62; transform: scale(1.012); } }
+@media (max-width: 420px) {
+  .lilith-sil { width: 34%; max-width: 150px; right: -18px; bottom: -8px; opacity: .48; }
+}
+
+/* ── каркас: жёсткий app-shell, вся высота вьюпорта, скролл внутри экрана ── */
 #app-root {
   display: flex; flex-direction: column;
-  min-height: 100dvh; max-width: 480px; margin: 0 auto;
-  position: relative;
+  height: 100dvh; max-width: 480px; margin: 0 auto;
+  position: relative; overflow: hidden;
 }
-#app-main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#app-main { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
 .screen {
   flex: 1; display: flex; flex-direction: column; min-height: 0;
-  padding: 20px 18px 96px; overflow-y: auto;
+  padding: 20px 18px 28px; overflow-y: auto;
   scroll-behavior: smooth;
 }
+/* блоки экрана не должны сжиматься flex'ом: иначе при нехватке высоты
+   герой схлопывается в «узкую полоску». Скроллится сам .screen. */
+.screen > * { flex: none; }
 .screen::-webkit-scrollbar { width: 5px; }
 .screen::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
 
 /* ═══ Шапка ═══ */
 .app-header {
+  flex: none;
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px;
   background: rgba(10, 9, 22, 0.55);
   backdrop-filter: blur(18px) saturate(140%);
   border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 60;
+  position: relative; z-index: 60;
 }
 .brand-title {
   font-family: var(--font-serif);
@@ -120,30 +162,45 @@ body {
   box-shadow: 0 0 10px var(--violet-glow);
 }
 
-/* ═══ Нижняя навигация ═══ */
+/* ═══ Нижняя навигация — в потоке, внизу app-shell ═══ */
 .app-nav {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 480px; z-index: 70;
-  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(10, 9, 22, 0.72);
+  flex: none; z-index: 70;
+  padding: 8px 16px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(10, 9, 22, 0.82);
   backdrop-filter: blur(20px) saturate(140%);
   border-top: 1px solid var(--border);
 }
-.main-nav { display: flex; justify-content: space-around; }
+.main-nav { display: flex; justify-content: space-around; gap: 4px; }
 .nav-btn {
   display: flex; flex-direction: column; align-items: center; gap: 5px;
-  background: none; border: none; cursor: pointer;
+  background: none; border: none; cursor: pointer; flex: 1; max-width: 110px;
   color: var(--text-faint); font: 600 11px/1 var(--font-sans);
-  letter-spacing: .3px; padding: 4px 14px; border-radius: 14px;
+  letter-spacing: .3px; padding: 6px 4px; border-radius: 18px;
   transition: color .25s var(--e);
 }
-.nav-btn .nav-ico { font-size: 21px; filter: grayscale(1) opacity(.75); transition: .25s var(--e); }
+.nav-btn .nav-ico {
+  font-size: 20px; width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  filter: grayscale(1) opacity(.7); transition: .3s var(--e);
+}
 .nav-btn.active { color: var(--gold-bright); }
-.nav-btn.active .nav-ico { filter: none; transform: translateY(-1px); }
-.nav-btn.active::after {
-  content: ""; display: block; width: 18px; height: 3px; border-radius: 3px;
-  background: linear-gradient(90deg, var(--gold), var(--violet));
-  box-shadow: 0 0 10px var(--gold-glow);
+.nav-btn.active .nav-ico {
+  filter: none;
+  background: radial-gradient(circle at 35% 30%, rgba(230,193,120,.35), rgba(167,139,250,.18));
+  box-shadow: 0 0 0 1px rgba(230,193,120,.3), 0 0 20px rgba(230,193,120,.35);
+  transform: translateY(-2px);
+}
+
+/* колокольчик уведомлений */
+.bell {
+  position: relative; background: var(--glass); border: 1px solid var(--border);
+  border-radius: 50%; width: 40px; height: 40px; font-size: 16px; cursor: pointer;
+  display: grid; place-items: center; transition: .25s var(--e); color: var(--text);
+}
+.bell:hover { border-color: var(--gold); transform: translateY(-1px); }
+.bell-dot {
+  position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 0 8px var(--gold-glow);
 }
 
 /* ═══ Общие карточки ═══ */
@@ -163,7 +220,7 @@ body {
 }
 
 .section-title {
-  font-family: var(--font-serif); font-size: 15px; letter-spacing: .5px;
+  font-family: var(--font-serif); font-size: 16.5px; letter-spacing: .5px;
   color: var(--gold); margin-bottom: 12px; font-weight: 600;
   display: flex; align-items: center; gap: 8px;
 }
@@ -233,6 +290,7 @@ body {
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
+.dock-face { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .dock-chip:hover .dock-orb { transform: translateY(-3px); box-shadow: 0 10px 24px -10px rgba(167,139,250,.6); }
 
 /* ═══ Список агентов (хаб чатов) ═══ */
@@ -244,11 +302,29 @@ body {
 }
 .hub-head p { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
 
+/* ── профиль в табах ── */
+.ptab-bar { display: flex; gap: 6px; margin: 0 0 16px; border-bottom: 1px solid var(--border); }
+.ptab {
+  flex: 1; padding: 10px 4px 12px; background: none; border: 0; cursor: pointer;
+  color: var(--text-faint); font: 600 13px/1 var(--font-sans); letter-spacing: .3px;
+  border-bottom: 2px solid transparent; transition: .2s var(--e);
+}
+.ptab:hover { color: var(--text-dim); }
+.ptab.active { color: var(--gold-bright); border-bottom-color: var(--gold); }
+.ptab-pane { display: none; animation: paneFade .25s var(--ease); }
+.ptab-pane.active { display: block; }
+@keyframes paneFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
 .agent-list { display: flex; flex-direction: column; gap: 12px; }
 .agent-card {
   background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-m);
   padding: 15px 16px; cursor: pointer; position: relative; overflow: hidden;
   transition: .3s var(--e);
+}
+.agent-card::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ac, var(--gold)), transparent);
+  opacity: .55;
 }
 .agent-card::after {
   content: ""; position: absolute; right: -40px; top: -40px; width: 120px; height: 120px;
@@ -259,10 +335,10 @@ body {
 .agent-card:hover::after { opacity: 1; }
 .agent-card .ac-top { display: flex; gap: 13px; align-items: center; position: relative; z-index: 1; }
 .agent-avatar {
-  width: 52px; height: 52px; border-radius: 16px; flex: none; position: relative;
+  width: 60px; height: 60px; border-radius: 18px; flex: none; position: relative;
   display: grid; place-items: center; font-size: 25px;
   background: radial-gradient(circle at 34% 28%, #3a2f6b, #141130);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 6px 18px -8px rgba(0,0,0,.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 8px 20px -8px rgba(0,0,0,.6);
 }
 .agent-avatar::before {
   content: ""; position: absolute; inset: -2px; border-radius: 18px; pointer-events: none;
@@ -271,22 +347,101 @@ body {
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
-.agent-title { font-family: var(--font-serif); color: var(--text); font-size: 16.5px; font-weight: 600; }
-.agent-role { color: var(--ac, var(--gold)); font-size: 11.5px; letter-spacing: .5px; }
-.agent-last { color: var(--text-dim); font-size: 12px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.agent-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; position: relative; z-index: 1; }
+.agent-title { font-family: var(--font-serif); color: var(--text); font-size: 17.5px; font-weight: 600; letter-spacing: .2px; }
+.agent-role { color: var(--ac, var(--gold)); font-size: 12px; font-weight: 600; letter-spacing: .6px; }
+.agent-last { color: var(--text-dim); font-size: 12.5px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Анимированный персонаж агента: мордочка мигает, дышит, держит проп-атрибут,
+   реагирует на наведение и радуется ответу. Без color-mix (старые WebView). */
+.agent-sprite {
+  position: relative; width: 88%; height: 88%; display: block;
+  animation: as-bob 3.6s ease-in-out infinite;
+  z-index: 2;
+}
+.agent-face {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--ac, var(--gold));
+  box-shadow: 0 0 0 2px rgba(255,255,255,.06), 0 6px 16px -8px rgba(0,0,0,.8), 0 0 18px var(--gold-glow);
+}
+.as-prop { position: absolute; top: -22%; right: -14%; font-size: 22px; line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.55)); animation: as-float 3s ease-in-out infinite; }
+@keyframes as-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes as-float { 0%,100% { transform: rotate(0) translateY(0); } 50% { transform: rotate(-7deg) translateY(-2px); } }
+.agent-sprite.cheer .agent-face { animation: as-cheer .7s cubic-bezier(.34,1.56,.64,1); }
+@keyframes as-cheer {
+  0% { transform: scale(1) rotate(0); }
+  35% { transform: scale(1.18) rotate(-7deg); }
+  70% { transform: scale(1.05) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.agent-card .agent-sprite:hover .as-prop, .chat-head .agent-sprite:hover .as-prop { animation: as-wave .55s ease; }
+/* мелкий аватар в шапке чата: проп не должен нахлёстываться на соседний текст */
+.chat-head .as-prop { font-size: 15px; top: -16%; right: -6%; }
+@keyframes as-wave { 0% { transform: rotate(0); } 40% { transform: rotate(-16deg); } 70% { transform: rotate(10deg); } 100% { transform: rotate(0); } }
+
+/* Горизонтальный скролл рядов чипсов: длинная фраза не прячет остальные —
+   ряд листается пальцем/колесом, тонкий золотой скроллбар виден как намёк. */
+.suggest-chips, .chat-features, .agent-chips, .agent-ask-chips {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity; scrollbar-width: thin;
+  scrollbar-color: rgba(230,193,120,.4) transparent;
+}
+.suggest-chips::-webkit-scrollbar, .chat-features::-webkit-scrollbar,
+.agent-chips::-webkit-scrollbar, .agent-ask-chips::-webkit-scrollbar { height: 4px; }
+.suggest-chips::-webkit-scrollbar-thumb, .chat-features::-webkit-scrollbar-thumb,
+.agent-chips::-webkit-scrollbar-thumb, .agent-ask-chips::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(230,193,120,.55), rgba(167,139,250,.55));
+  border-radius: 99px;
+}
+.suggest-chips::-webkit-scrollbar-track, .chat-features::-webkit-scrollbar-track,
+.agent-chips::-webkit-scrollbar-track, .agent-ask-chips::-webkit-scrollbar-track { background: transparent; }
+.suggest-chips > *, .chat-features > *, .agent-chips > *, .agent-ask-chips > * { scroll-snap-align: start; }
+
+.agent-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; position: relative; z-index: 1; }
 
 /* feature-чиксы */
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11.5px; font-weight: 600; letter-spacing: .2px;
+  font-size: 12.5px; font-weight: 600; letter-spacing: .2px;
   color: var(--text-dim); background: rgba(255,255,255,.04);
-  border: 1px solid var(--border); border-radius: 99px; padding: 5px 10px;
+  border: 1px solid var(--border); border-radius: 99px; padding: 6px 12px;
   cursor: pointer; transition: .2s var(--e);
-  white-space: nowrap;
+  white-space: nowrap; flex: 0 0 auto;
 }
 .chip:hover { color: var(--ac2, var(--gold-bright)); border-color: var(--ac2, var(--gold)); transform: translateY(-1px); }
 .chip .c-emoji { font-size: 12px; }
+
+/* инструмент-функция: аккуратная карточка «иконка + название + подпись»,
+   как отдельный «проект», а не копеечный чип. */
+.tool {
+  display: flex; align-items: center; gap: 11px;
+  padding: 12px 14px; border-radius: 16px; text-align: left;
+  background: rgba(255,255,255,.035); border: 1px solid var(--border);
+  cursor: pointer; transition: .2s var(--ease); position: relative;
+}
+.tool:hover {
+  border-color: var(--ac2, var(--gold)); background: rgba(230,193,120,.06);
+  transform: translateY(-1px);
+}
+.tool:active { transform: translateY(0); }
+.tool::after {
+  content: "›"; margin-left: auto; color: var(--text-faint); font-size: 19px;
+  flex: none; opacity: .8; transition: .2s var(--ease);
+}
+.tool:hover::after { color: var(--gold-bright); transform: translateX(2px); }
+.tool-ico {
+  flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  font-size: 20px;
+  background: radial-gradient(circle at 35% 28%, rgba(230,193,120,.3), rgba(167,139,250,.12));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.tool-txt { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.tool-t { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: .1px; line-height: 1.25; }
+.tool-d { font-size: 12.5px; color: var(--text-dim); line-height: 1.4; }
+/* в хабе — сетка в 2 колонки (не тесный скролл) */
+.agent-chips .tool { flex: 1 1 46%; min-width: 148px; }
+/* в чате — широкие карточки горизонтальным свайпом */
+.chat-features .tool { flex: 0 0 auto; min-width: 230px; max-width: 300px; }
 
 /* ═══ ЧАТ ═══ */
 .chat-shell { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -302,8 +457,19 @@ body {
 .chat-head .cname { font-family: var(--font-serif); font-size: 15.5px; font-weight: 600; }
 .chat-head .tsub { color: var(--text-dim); font-size: 11px; }
 
-.chat-features { display: flex; gap: 7px; overflow-x: auto; padding: 8px 14px; scrollbar-width: none; }
-.chat-features::-webkit-scrollbar { display: none; }
+.chat-features { display: flex; gap: 7px; overflow-x: auto; padding: 8px 14px; }
+
+/* первый экран чата: портрет агента + кто он */
+.agent-intro {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 14px 16px 4px; margin: 4px 0 14px;
+}
+.agent-intro .ai-face { width: 84px; height: 84px; position: relative; }
+.agent-intro .ai-face .agent-sprite { width: 100%; height: 100%; }
+.agent-intro .ai-face .as-prop { font-size: 26px; top: -12%; right: -10%; }
+.agent-intro .ai-name { font-family: var(--font-serif); font-size: 21px; font-weight: 700; color: var(--gold-bright); margin-top: 10px; letter-spacing: .3px; }
+.agent-intro .ai-role { color: var(--ac, var(--gold)); font-size: 13px; font-weight: 600; letter-spacing: .5px; margin-top: 2px; }
+.agent-intro .ai-tag { color: var(--text-dim); font-size: 13px; line-height: 1.55; margin-top: 8px; max-width: 300px; }
 
 .chat-messages {
   flex: 1; overflow-y: auto; padding: 18px 14px; display: flex; flex-direction: column;
@@ -378,15 +544,17 @@ body {
   padding: 8px; text-align: center;
 }
 .tarot-card .back {
-  background: linear-gradient(150deg, #2a214f, #151238);
+  background: url("/static/img/card-back-src.png") center / cover no-repeat;
   border: 1.5px solid var(--gold); box-shadow: 0 12px 28px -12px rgba(0,0,0,.8);
 }
 .tarot-card .back .motif { font-size: 30px; filter: drop-shadow(0 0 8px var(--gold-glow)); }
 .tarot-card .back .lf { font-family: var(--font-serif); color: var(--gold); font-size: 10px; letter-spacing: 2px; margin-top: 6px; }
-.tarot-card .front { transform: rotateY(180deg); background: linear-gradient(160deg, #1c1738, #0e0c22); border: 1.5px solid var(--border-strong); }
-.tarot-card .front .fe { font-size: 32px; }
-.tarot-card .front .fn { font-family: var(--font-serif); font-size: 11px; color: var(--gold-bright); margin-top: 7px; line-height: 1.15; }
-.tarot-card .front .fp { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+.tarot-card .front {
+  transform: rotateY(180deg); background: url("/static/img/card-face-src.png") center / cover no-repeat; border: 1.5px solid var(--border-strong);
+}
+.tarot-card .front .fe { font-size: 32px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.8)); }
+.tarot-card .front .fn { font-family: var(--font-serif); font-size: 11px; color: var(--gold-bright); margin-top: 7px; line-height: 1.15; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+.tarot-card .front .fp { font-size: 10px; color: var(--text-dim); margin-top: 4px; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
 .tarot-card.flipped { transform: rotateY(180deg); }
 .card-spot-label { text-align: center; font-size: 10.5px; color: var(--text-faint); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
 
@@ -408,8 +576,7 @@ body {
 }
 .send-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
 .send-btn:disabled { opacity: .5; }
-.suggest-chips { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; scrollbar-width: none; }
-.suggest-chips::-webkit-scrollbar { display: none; }
+.suggest-chips { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; }
 
 /* ═══ ПРОФИЛЬ ═══ */
 .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -472,3 +639,534 @@ body {
 .loader-ring { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--gold); animation: spin 1s linear infinite; margin: 0 auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .center-block { display: grid; place-items: center; padding: 40px 0; }
+/* ============================================================================
+   UI-полировка v2.1: метеоры, ровный dock, фаза луны, живые карточки агентов
+   ============================================================================ */
+
+/* ── падающие звёзды (метеоры): голова впереди, хвост позади по ходу ── */
+.meteor {
+  position: fixed; z-index: -1; pointer-events: none;
+  width: 140px; height: 2px; border-radius: 99px;
+  /* голова слева (передний край), хвост тает вправо — в сторону, откуда летит */
+  background: linear-gradient(90deg, #fff 0%, rgba(255,255,255,.7) 12%, rgba(230,193,120,.35) 55%, transparent 100%);
+  filter: drop-shadow(0 0 5px rgba(230,193,120,.6));
+  opacity: 0;
+  transform-origin: left center;
+  animation: meteorFall var(--mdur, 7s) ease-in var(--mdelay, 0s) infinite;
+}
+.meteor::before {
+  content: ""; position: absolute; left: -1px; top: 50%; transform: translateY(-50%);
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px 2px rgba(255,255,255,.9), 0 0 18px 4px rgba(230,193,120,.5);
+}
+/* разброс: разные старты, скорости, задержки, углы — не однообразно */
+.meteor.m1 { --mdur: 7s;  --mdelay: 0.8s; top: 4%;  left: 84%; --mrot: -41deg; }
+.meteor.m2 { --mdur: 10s; --mdelay: 3.4s; top: 16%; left: 22%; --mrot: -34deg; }
+.meteor.m3 { --mdur: 13s; --mdelay: 6.2s; top: 9%;  left: 60%; --mrot: -46deg; }
+.meteor.m4 { --mdur: 9s;  --mdelay: 8.6s; top: 22%; left: 90%; --mrot: -38deg; }
+@keyframes meteorFall {
+  /* движение вниз-влево; хвост (правый конец полосы) тянется вверх-вправо — позади */
+  0%   { transform: translate(0,0) rotate(var(--mrot,-40deg)); opacity: 0; }
+  5%   { opacity: 1; }
+  22%  { opacity: 1; }
+  30%  { opacity: 0; transform: translate(-56vw, 44vh) rotate(var(--mrot,-40deg)); }
+  100% { opacity: 0; transform: translate(-56vw, 44vh) rotate(var(--mrot,-40deg)); }
+}
+
+/* ── мерцающие звёзды + полярная ── */
+.twinkle {
+  position: fixed; z-index: -1; pointer-events: none; border-radius: 50%;
+  background: #fff; opacity: .25;
+  animation: twinkle 3.4s ease-in-out var(--tdelay, 0s) infinite;
+}
+.twinkle.t1 { width: 2px; height: 2px; top: 14%; left: 12%; --tdelay: 0s; }
+.twinkle.t2 { width: 2px; height: 2px; top: 30%; left: 88%; --tdelay: 1.1s; }
+.twinkle.t3 { width: 2px; height: 2px; top: 52%; left: 8%;  --tdelay: 2.0s; }
+.twinkle.t4 { width: 1.5px; height: 1.5px; top: 68%; left: 80%; --tdelay: .6s; }
+.twinkle.t5 { width: 1.5px; height: 1.5px; top: 8%;  left: 55%; --tdelay: 2.8s; }
+/* полярная — ярче всех, с лучами */
+.twinkle.polaris {
+  width: 4px; height: 4px; top: 20%; left: 70%;
+  box-shadow: 0 0 8px 1px rgba(230,193,120,.8), 0 0 20px 3px rgba(230,193,120,.35);
+  animation: twinkleBig 4s ease-in-out infinite;
+}
+.twinkle.polaris::before, .twinkle.polaris::after {
+  content: ""; position: absolute; inset: -8px; border-radius: 50%;
+  border-top: 1px solid rgba(230,193,120,.5); border-bottom: 1px solid rgba(230,193,120,.5);
+  animation: spin 9s linear infinite;
+}
+.twinkle.polaris::after { inset: -14px; opacity: .5; animation-duration: 14s; animation-direction: reverse; }
+@keyframes twinkle {
+  0%, 100% { opacity: .18; transform: scale(.8); }
+  50%      { opacity: .9;  transform: scale(1.15); }
+}
+@keyframes twinkleBig {
+  0%, 100% { opacity: .6; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meteor, .twinkle { animation: none !important; display: none; }
+}
+
+/* ── ровная панель «Твои агенты»: крупные аватары, читаемо на телефоне ── */
+.dock-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.dock-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 9px; min-width: 0;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--r-s);
+  padding: 16px 10px 14px;
+  cursor: pointer; text-align: center;
+  transition: .25s var(--e);
+}
+.dock-item:hover { border-color: var(--gold); transform: translateY(-2px); }
+.dock-item .dock-orb { width: 76px; height: 76px; margin: 0; }
+.dock-item .dock-name {
+  font-size: 14.5px; font-weight: 600; color: var(--text);
+  line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+.dock-item .dock-role { font-size: 11.5px; color: var(--text-faint); }
+
+/* ── фаза луны: SVG-диск ── */
+.moon-wrap { display: flex; align-items: center; gap: 12px; }
+.moon-orb {
+  width: 64px; height: 64px; flex: none; position: relative;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a3358, #17132e);
+  box-shadow: 0 0 18px -4px var(--violet-glow), inset 0 0 12px rgba(0,0,0,.55);
+  display: grid; place-items: center;
+}
+.moon-orb svg { width: 78%; height: 78%; display: block; }
+.moon-info .mi-name { font-size: 13.5px; color: var(--text); font-weight: 600; }
+.moon-info .mi-day { font-size: 11.5px; color: var(--text-dim); }
+.moon-info .mi-advice { font-size: 12px; color: var(--gold-bright); margin-top: 2px; }
+.mini-moon { width: 26px; height: 26px; flex: none; }
+
+/* ── профиль: компактные строки раскладов и теги памяти ── */
+.tight-card {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r-s); padding: 11px 13px;
+  display: flex; align-items: center; gap: 11px; cursor: pointer;
+  transition: .2s var(--e); margin-bottom: 7px;
+}
+.tight-card:hover { border-color: var(--gold); transform: translateX(2px); }
+.tight-card .tc-emoji { font-size: 19px; width: 26px; text-align: center; }
+.tight-card .tc-title {
+  font-size: 12.5px; color: var(--text); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+}
+.tight-card .tc-meta { font-size: 10.5px; color: var(--text-faint); margin-top: 1px; }
+.tight-card .tc-open { color: var(--text-faint); font-size: 16px; }
+.more-row {
+  display: block; width: 100%; text-align: center;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+  border-radius: var(--r-s); padding: 9px; cursor: pointer;
+  color: var(--text-dim); font-size: 12px; font-weight: 600;
+  transition: .2s var(--e); margin-bottom: 7px;
+}
+.more-row:hover { border-color: var(--gold); color: var(--gold-bright); }
+.mem-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.mem-tag {
+  font-size: 11.5px; color: var(--text-dim);
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  border-radius: 99px; padding: 5px 10px; max-width: 100%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mem-tag.more { color: var(--gold); }
+
+/* ── агент-карточки: статус онлайн, выразительные кнопки ── */
+.agent-card .ac-head { display: flex; align-items: center; gap: 8px; }
+.online-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #58d68d;
+  box-shadow: 0 0 8px rgba(88,214,141,.8); position: relative; flex: none;
+  animation: pulseDot 2.4s var(--e) infinite;
+}
+@keyframes pulseDot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(88,214,141,.55); }
+  50% { box-shadow: 0 0 0 5px rgba(88,214,141,0); }
+}
+.online-label { font-size: 10px; color: #58d68d; letter-spacing: .4px; }
+.agent-ask-chips { display: flex; flex-wrap: nowrap; gap: 6px; margin-top: 10px; padding-bottom: 4px; }
+.ask-chip {
+  font-size: 11px; color: var(--text-dim); background: rgba(255,255,255,.05);
+  border: 1px solid var(--border); border-radius: 99px; padding: 5px 10px;
+  cursor: pointer; transition: .2s var(--e); white-space: nowrap;
+}
+.ask-chip:hover { color: var(--gold-bright); border-color: var(--gold); }
+.ask-chip::before { content: "«"; opacity: .5; }
+.ask-chip::after { content: "»"; opacity: .5; }
+
+/* ── панель памяти: читаемый список, полный текст с переносом ── */
+.mem-list { padding: 6px 14px; }
+.mem-row { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+.mem-row:last-child { border-bottom: none; }
+.mem-dot { color: var(--gold); font-size: 11px; margin-top: 3px; flex: none; }
+.mem-txt { font-size: 13px; line-height: 1.5; color: var(--text-dim); flex: 1; white-space: normal; overflow-wrap: anywhere; }
+
+/* ============================================================================
+   Полировка v2.2: премиум чат + главная
+   ============================================================================ */
+
+/* ── композер как в лучших чатах: капсульный инпут + круглая кнопка ── */
+.composer {
+  flex: none; padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(10,9,22,0) 0%, rgba(10,9,22,.85) 40%);
+}
+.composer-top {
+  display: flex; align-items: flex-end; gap: 10px;
+  background: var(--glass-strong);
+  border: 1px solid var(--border); border-radius: 26px;
+  padding: 6px 6px 6px 18px;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,.6);
+  transition: border-color .25s var(--e), box-shadow .25s var(--e);
+}
+.composer-top:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-glow), 0 10px 30px -10px rgba(0,0,0,.6);
+}
+#chat-input {
+  flex: 1; background: none; border: none; outline: none; color: var(--text);
+  font: inherit; font-size: 14.5px; padding: 9px 0; min-height: 22px;
+}
+#chat-input::placeholder { color: var(--text-faint); }
+.send-btn {
+  border: none; border-radius: 50%; cursor: pointer; flex: none;
+  width: 40px; height: 40px; padding: 0; display: grid; place-items: center;
+  font-size: 16px; color: #1c1430;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-deep));
+  box-shadow: 0 6px 18px -6px rgba(230,193,120,.6);
+  transition: .2s var(--e);
+}
+.send-btn:hover { transform: scale(1.06); }
+.send-btn:active { transform: scale(.96); }
+.suggest-chips { display: flex; gap: 6px; overflow-x: auto; padding: 9px 4px 0; }
+.suggest-chips .chip { flex: none; }
+
+/* ── пузыри: мягче, чище ── */
+.chat-messages { padding: 20px 16px 8px; gap: 14px; }
+.msg { max-width: 82%; line-height: 1.6; }
+.msg.user {
+  background: linear-gradient(135deg, #f0cd82 0%, #d3a552 100%);
+  color: #241830; font-weight: 500; font-size: 14px;
+  padding: 12px 16px; border-radius: 20px 20px 6px 20px;
+}
+.msg.assistant {
+  background: transparent; border: none; padding: 2px 4px;
+  color: var(--text); font-size: 14.5px; line-height: 1.7;
+  border-radius: 0; max-width: 100%;
+}
+.msg.assistant b { color: var(--gold-bright); }
+
+/* аватар агента у первого сообщения в блоке не нужен — шапка уже даёт контекст */
+
+/* ── виджеты в чате: единая премиум-карточка ── */
+.chat-widget {
+  margin-top: 14px; background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r-m); padding: 16px; box-shadow: var(--sh-card);
+}
+.chat-widget .w-title {
+  font-family: var(--font-serif); color: var(--gold); font-size: 13.5px;
+  margin-bottom: 12px; font-weight: 600; letter-spacing: .4px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* таро-карты — выразительнее */
+.tarot-zone { gap: 14px; margin: 16px 0 10px; }
+.tarot-card { width: 92px; height: 144px; }
+.tarot-card .back {
+  background: url("/static/img/card-back-src.png") center / cover no-repeat;
+  border: 2px solid var(--gold); box-shadow: 0 10px 24px -8px rgba(0,0,0,.7);
+}
+.tarot-card .front {
+  transform: rotateY(180deg); background: url("/static/img/card-face-src.png") center / cover no-repeat; border: 1.5px solid var(--border-strong);
+}
+
+/* ── Главная: меньше «коробок», больше атмосферы ── */
+.hero-orb {
+  height: 224px; min-height: 224px; border: none; border-radius: var(--r-l);
+  box-shadow: inset 0 0 60px rgba(167,139,250,.12);
+}
+.hero-body { max-width: 100%; }
+.glass.flat { border: none; background: rgba(255,255,255,.03); box-shadow: none; }
+
+/* луна на главной — крупнее и с мягким свечением */
+.moon-orb { width: 76px; height: 76px; box-shadow: 0 0 26px -6px var(--violet-glow), inset 0 0 12px rgba(0,0,0,.5); }
+
+@media (max-width: 380px) {
+  .dock-grid { gap: 9px; }
+  .dock-item .dock-orb { width: 68px; height: 68px; }
+  .moon-slot { padding: 12px 14px; gap: 12px; }
+  .ms-ico { width: 46px; height: 46px; }
+}
+
+/* ── главная: большая луна справа (абс. от .hero-orb), дата/имя слева ── */
+.hero-moon-orb {
+  position: absolute; right: 14px; top: 14px;
+  z-index: 2; width: 92px; height: 92px; display: grid; place-items: center;
+  filter: drop-shadow(0 0 20px rgba(255,214,140,.5));
+}
+.hero-moon-orb svg { width: 100%; height: 100%; }
+.hero-moon-txt {
+  font-size: 12px; color: var(--text-dim); max-width: 230px;
+  margin-top: 7px; line-height: 1.45; padding-right: 4px;
+}
+.hero-moon-txt em { color: var(--gold-bright); font-style: normal; }
+
+/* лунный календарь на главной: просторный вертикальный список с премиум-карточками-днями */
+.moon-cal { display: flex; flex-direction: column; gap: 12px; }
+.mc-row {
+  display: flex; align-items: center; gap: 16px; padding: 22px 18px;
+  border-radius: 20px; background: rgba(255,255,255,.045); border: 1.5px solid var(--border);
+  cursor: pointer; transition: .25s var(--ease);
+}
+.mc-row:hover { border-color: var(--gold); background: rgba(230,193,120,.08); transform: translateY(-2px); box-shadow: 0 10px 28px -10px rgba(230,193,120,.2); }
+.mc-row:active { transform: translateY(0); }
+.mc-row.today { background: rgba(230,193,120,.12); border-color: var(--gold); box-shadow: 0 0 18px var(--gold-glow); }
+.mc-ico { width: 68px; height: 68px; flex: none; filter: drop-shadow(0 0 12px rgba(255,214,140,.55)); }
+.mc-ico svg { width: 100%; height: 100%; }
+.mc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.mc-wd { font-size: 17.5px; font-weight: 700; color: var(--text); letter-spacing: .35px; line-height: 1.2; }
+.mc-wd b { color: var(--gold-bright); font-weight: 800; }
+.mc-nm { font-size: 15.5px; color: var(--text-dim); font-family: var(--font-serif); letter-spacing: .25px; line-height: 1.35; }
+.mc-ln { font-style: normal; color: var(--gold-deep); font-size: 14.5px; margin-left: 3px; }
+.mc-chev { flex: none; color: var(--text-faint); font-size: 22px; transition: transform .2s var(--ease); }
+.mc-row:hover .mc-chev, .mc-row.open .mc-chev { color: var(--gold-bright); transform: translateX(3px); }
+.mc-row.open .mc-chev { transform: rotate(90deg) translateX(0); }
+.mc-detail { padding: 20px 20px; font-size: 15.5px; line-height: 1.75; color: var(--text-dim);
+  background: rgba(255,255,255,.03); border-radius: 20px; border: 1px dashed rgba(230,193,120,.28); margin-top: 10px; }
+.mc-detail .mc-adv em { color: var(--gold-bright); font-style: normal; font-weight: 600; }
+.moon-note { margin-top: 16px; padding: 18px 20px; font-size: 16px; color: var(--gold-bright);
+  background: rgba(255,255,255,.045); border-radius: 20px; border: 1px dashed rgba(230,193,120,.38); line-height: 1.6; }
+.moon-note b { font-weight: 700; color: var(--gold-bright); }
+.sec-hint { font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--text-faint); letter-spacing: .2px; opacity: .9; }
+
+/* детальный лунный календарь в модале */
+.moon-detail { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.md-row {
+  display: flex; align-items: flex-start; gap: 13px; padding: 12px 14px;
+  border-radius: 16px; background: rgba(255,255,255,.03); border: 1px solid var(--border);
+}
+.md-row.today { background: rgba(230,193,120,.1); border-color: var(--gold); box-shadow: 0 0 14px var(--gold-glow); }
+.md-ico { width: 46px; height: 46px; flex: none; margin-top: 2px; filter: drop-shadow(0 0 8px rgba(255,214,140,.35)); }
+.md-ico svg { width: 100%; height: 100%; }
+.md-main { flex: 1; min-width: 0; }
+.md-wd { font-size: 11px; color: var(--text-faint); letter-spacing: .6px; text-transform: uppercase; }
+.md-wd em { color: var(--gold-bright); font-style: normal; }
+.md-name { font-size: 14px; color: var(--text); margin-top: 2px; }
+.md-name b { color: var(--gold-bright); }
+.md-adv { font-size: 12.5px; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
+
+.forecast-flow {
+  font-size: 15px; line-height: 1.8; color: var(--text);
+  padding: 2px 2px 0; letter-spacing: .1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+.forecast-flow::first-letter {
+  font-family: var(--font-serif); font-size: 30px; color: var(--gold);
+  float: left; line-height: 1; padding: 2px 6px 0 0;
+}
+
+/* ============================================================================
+   v2.3 — масштаб, космос, память/карта-модалы, скроллбар, шаблоны
+   ============================================================================ */
+
+/* ── туманность: космический фон с мягкими цветными облаками ── */
+.nebula { position: fixed; z-index: -2; pointer-events: none; border-radius: 50%;
+  filter: blur(60px); opacity: .35; }
+.nebula.n1 { width: 48vmax; height: 48vmax; top: -12vmax; right: -14vmax;
+  background:
+    radial-gradient(circle at 40% 45%, rgba(90,60,160,.5), transparent 60%),
+    radial-gradient(circle at 62% 30%, rgba(40,110,120,.28), transparent 55%),
+    radial-gradient(circle at 30% 65%, rgba(230,193,120,.14), transparent 50%);
+  animation: nebulaDrift 26s ease-in-out infinite alternate; }
+.nebula.n2 { width: 42vmax; height: 42vmax; bottom: -16vmax; left: -12vmax;
+  background:
+    radial-gradient(circle at 55% 45%, rgba(40,110,120,.45), transparent 60%),
+    radial-gradient(circle at 35% 30%, rgba(167,139,250,.26), transparent 55%),
+    radial-gradient(circle at 70% 70%, rgba(230,193,120,.13), transparent 50%);
+  animation: nebulaDrift 32s ease-in-out infinite alternate-reverse; }
+@keyframes nebulaDrift { from { transform: translate(0,0) scale(1); } to { transform: translate(4vmax, 3vmax) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .nebula { animation: none; } }
+
+/* ── скроллбары: тонкие, в теме ── */
+.chat-messages::-webkit-scrollbar, .screen::-webkit-scrollbar,
+.modal::-webkit-scrollbar, .chat-features::-webkit-scrollbar, .suggest-chips::-webkit-scrollbar {
+  width: 5px; height: 4px;
+}
+.chat-messages::-webkit-scrollbar-thumb, .screen::-webkit-scrollbar-thumb,
+.modal::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(230,193,120,.35), rgba(167,139,250,.3));
+  border-radius: 99px;
+}
+.chat-messages::-webkit-scrollbar-track, .screen::-webkit-scrollbar-track,
+.modal::-webkit-scrollbar-track { background: transparent; }
+.chat-messages { scrollbar-width: thin; scrollbar-color: rgba(230,193,120,.35) transparent; }
+.screen { scrollbar-width: thin; scrollbar-color: rgba(230,193,120,.35) transparent; }
+.modal { scrollbar-width: thin; }
+
+/* ── шаблоны-фразы: крупнее, читабельнее, явно «нажми-отредактируй» ── */
+.suggest-chips { padding: 10px 4px 2px; }
+.chip.tpl {
+  font-size: 12.5px; padding: 8px 13px; white-space: normal; text-align: left;
+  line-height: 1.3; border-radius: 14px; background: rgba(255,255,255,.05);
+  border-color: var(--border-strong);
+}
+.chip.tpl::before { content: "✎ "; color: var(--gold); }
+
+/* ── карта дня: настоящая арка с орнаментом + переворот (тап раскрывает смысл) ── */
+.card-day-big { display: flex; gap: 18px; align-items: center; padding: 18px; }
+.tarot-card-big { flex: none; width: 124px; height: 190px; perspective: 900px; cursor: pointer; position: relative; }
+.tb-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .65s var(--ease); }
+.tarot-card-big.flipped .tb-inner { transform: rotateY(180deg); }
+.tb-face {
+  position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 12px 8px; border: 2px solid var(--gold);
+  background: url("/static/img/card-face-src.png") center / cover no-repeat;
+  box-shadow: 0 16px 34px -12px rgba(0,0,0,.8), 0 0 18px var(--gold-glow);
+}
+.tb-front { overflow: hidden; background: url("/static/img/card-face-src.png") center / cover no-repeat; }
+.tb-front::before {
+  content: ""; position: absolute; inset: 6px; border-radius: 11px;
+  border: 1px solid rgba(230,193,120,.4); pointer-events: none;
+}
+.tb-front::after {
+  content: ""; position: absolute; inset: 6px; border-radius: 11px; pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 20% 15%, rgba(230,193,120,.8), transparent),
+    radial-gradient(1.5px 1.5px at 80% 18%, rgba(167,139,250,.7), transparent),
+    radial-gradient(1.5px 1.5px at 30% 85%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1.5px 1.5px at 72% 82%, rgba(230,193,120,.6), transparent);
+}
+.tb-arc { font-family: var(--font-serif); color: var(--gold-bright); font-size: 15px; letter-spacing: 1px; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+.tb-emoji { font-size: 44px; filter: drop-shadow(0 0 10px rgba(230,193,120,.5)); text-shadow: 0 2px 8px rgba(0,0,0,.9); }
+.tb-name { font-family: var(--font-serif); color: var(--text); font-size: 13px; text-align: center; font-weight: 600; line-height: 1.15; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+.tb-orn { color: var(--gold); font-size: 9px; letter-spacing: 3px; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+.tb-back { transform: rotateY(180deg); justify-content: center; gap: 10px; background: url("/static/img/card-back-src.png") center / cover no-repeat; border: 2px solid var(--gold); box-shadow: 0 16px 34px -12px rgba(0,0,0,.8), 0 0 14px var(--gold-glow); }
+.tb-back-arc { font-size: 12px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.tb-mean { font-size: 11.5px; color: var(--text-dim); line-height: 1.4; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.tb-hint2 { color: var(--gold); }
+.cd-name { font-family: var(--font-serif); color: var(--gold-bright); font-size: 18px; font-weight: 700; }
+.cd-mean { color: var(--text); font-size: 13.5px; margin-top: 4px; line-height: 1.5; }
+.cd-note { color: var(--text-dim); font-size: 12px; margin-top: 8px; line-height: 1.5; font-style: italic; }
+.cd-hint { margin-top: 10px; color: var(--text-faint); font-size: 11.5px; letter-spacing: .2px; }
+
+/* ── память: кнопка-открытие и модал управления ── */
+.memory-open {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-m);
+  padding: 14px 16px; cursor: pointer; color: var(--text); transition: .2s var(--e);
+}
+.memory-open:hover { border-color: var(--gold); transform: translateX(2px); }
+.mem-add { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+.mem-add .ipt { flex: 1; }
+.mem-add .send-btn { width: 40px; height: 40px; font-size: 20px; line-height: 1; }
+.mem-manage-list { max-height: 46vh; overflow-y: auto; }
+.mem-manage-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.mem-manage-row:last-child { border-bottom: none; }
+.mem-manage-txt { flex: 1; font-size: 13.5px; line-height: 1.45; color: var(--text); overflow-wrap: anywhere; }
+.mem-manage-meta { font-size: 10.5px; color: var(--text-faint); flex: none; }
+.mem-del {
+  flex: none; background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  color: var(--text-faint); border-radius: 50%; width: 26px; height: 26px;
+  font-size: 13px; cursor: pointer; display: grid; place-items: center; transition: .2s;
+}
+.mem-del:hover { color: #ff9e9e; border-color: #ff9e9e; }
+
+/* ═══ Полная карта: секционные карточки с артом-оформлением ═══ */
+.fc-hero { position: relative; border-radius: var(--r-m); overflow: hidden; height: 140px; margin-bottom: 14px; box-shadow: var(--sh-card); }
+.fc-hero img { width: 100%; height: 100%; object-fit: cover; opacity: .35; filter: blur(6px); }
+.fc-hero-overlay { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 14px; background: linear-gradient(180deg, transparent 42%, rgba(10,9,22,.92) 100%); }
+.fc-card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-m); padding: 14px; margin-bottom: 10px; box-shadow: var(--sh-card); position: relative; }
+.fc-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; border-radius: inherit; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .55; }
+.fc-card-body { flex: 1; min-width: 0; }
+.fc-t { font-family: var(--font-serif); color: var(--gold-bright); font-size: 15.5px; letter-spacing: .3px; font-weight: 600; margin-top: 2px; }
+.fc-desc { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-top: 4px; }
+.fc-desc b { color: var(--gold-bright); font-weight: 700; }
+.fc-planets-grid { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 6px; }
+.fc-planet { flex: 1 1 150px; min-width: 0; max-width: 210px; padding: 9px 11px; border-radius: 13px; background: rgba(255,255,255,.03); border: 1px solid var(--border); transition: .15s var(--ease); display: flex; gap: 8px; align-items: center; }
+.fc-planet:hover { background: rgba(230,193,120,.06); border-color: var(--gold); transform: translateY(-1px); }
+.fc-planet .pl-ico { width: 32px; height: 32px; border-radius: 9px; flex: none; display: grid; place-items: center; font-size: 16px; background: radial-gradient(circle at 35% 28%, rgba(230,193,120,.25), rgba(167,139,250,.12)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+.fc-planet .pl-info { flex: 1; min-width: 0; }
+.fc-planet .pl-t { font-size: 11.5px; font-weight: 700; color: var(--text); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-planet .pl-d { font-size: 11px; color: var(--text-faint); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-node { background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+.fc-adv { margin-top: 8px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,.08); font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+.fc-adv b { color: var(--gold-bright); font-weight: 700; }
+.fc-asp { background: rgba(255,255,255,.025); border-radius: 12px; padding: 9px 11px; border: 1px solid var(--border); }
+.fc-explain { background: var(--glass-strong); border-radius: var(--r-m); padding: 16px 16px 12px; border: 1px solid var(--border); }
+
+/* ── полная натальная карта: таблицы ── */
+.fc-grid { margin-bottom: 4px; }
+.fc-big { display: flex; align-items: center; gap: 14px; padding: 6px 0 10px; }
+.fc-ico-xl { font-size: 40px; filter: drop-shadow(0 0 10px var(--gold-glow)); }
+.fc-section {
+  font-family: var(--font-serif); color: var(--gold); font-size: 13px;
+  letter-spacing: .5px; margin: 14px 0 4px; font-weight: 600;
+  border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+.fc-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid rgba(190,170,255,.06); font-size: 13px; }
+.fc-row:last-child { border-bottom: none; }
+.fc-ico { width: 26px; text-align: center; font-size: 15px; color: var(--gold-bright); flex: none; }
+.fc-name { flex: 1; color: var(--text); }
+.fc-val { color: var(--text-dim); font-size: 12.5px; }
+
+/* ── масштаб интерфейса вверх (читаемость) ── */
+body { font-size: 16px; }
+.msg.assistant { font-size: 15.5px; }
+.msg.user { font-size: 15px; }
+.forecast-flow { font-size: 16px; line-height: 1.85; }
+.section-title { font-size: 16px; }
+.hub-head p { font-size: 13.5px; }
+.nav-btn { font-size: 12px; }
+.chat-input, #chat-input { font-size: 15px; }
+
+/* ═══ Сессии-чаты (как ChatGPT: список, новый, удалить, до 5) ═══ */
+.sess-panel {
+  border-bottom: 1px solid rgba(230,193,120,.12);
+  background: rgba(9,8,20,.82); backdrop-filter: blur(12px);
+  max-height: 42vh; overflow-y: auto; position: relative; z-index: 5;
+}
+.sess-panel::-webkit-scrollbar { width: 4px; }
+.sess-panel::-webkit-scrollbar-thumb { background: rgba(230,193,120,.4); border-radius: 99px; }
+.sess-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 14px; font-size: 12.5px; color: var(--text-dim);
+  border-bottom: 1px dashed rgba(230,193,120,.16);
+  position: sticky; top: 0; background: rgba(10,9,22,.9);
+}
+.sess-row {
+  display: flex; align-items: center; gap: 9px; padding: 9px 14px;
+  cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.045);
+  transition: background .15s var(--e);
+}
+.sess-row.active { background: rgba(230,193,120,.10); }
+.sess-row:active { background: rgba(230,193,120,.16); }
+.sess-t { font-size: 13.5px; color: var(--text); flex: none; max-width: 46%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sess-prev { font-size: 12px; color: var(--text-faint); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sess-del {
+  flex: none; width: 24px; height: 24px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--text-faint); font-size: 12px; cursor: pointer;
+  transition: .15s var(--ease);
+}
+.sess-del:hover { background: rgba(230,193,120,.16); color: var(--gold-bright); }
+
+.toast {
+  position: fixed; left: 50%; bottom: 98px; transform: translateX(-50%);
+  z-index: 120; background: #1b1533; border: 1px solid rgba(230,193,120,.35);
+  color: var(--text); padding: 10px 18px; border-radius: 12px;
+  font-size: 13px; box-shadow: 0 10px 28px -8px rgba(0,0,0,.8);
+  max-width: 86%; text-align: center;
+}
