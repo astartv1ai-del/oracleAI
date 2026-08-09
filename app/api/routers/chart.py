@@ -43,6 +43,7 @@ async def chart(user=Depends(current_user), db=Depends(get_db)):
         "planets": data.get("planets", []),
         "houses": data.get("houses", []),
         "aspects": data.get("aspects", []),
+        "nodes": data.get("nodes", []),
         "note": data.get("note"),
         "birth": {"date": user["birth_date"], "time": user["birth_time"],
                   "city": user["birth_city"],
@@ -75,7 +76,9 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
         return {"ok": True, "cached": True, "mode": existing.get("mode"),
                 "sun": existing.get("sun"), "ascendant": existing.get("ascendant"),
                 "planets": existing.get("planets", []),
-                "houses": existing.get("houses", [])}
+                "houses": existing.get("houses", []),
+                "nodes": existing.get("nodes", []), "mc": existing.get("mc"),
+                "aspects": existing.get("aspects", [])}
 
     item = item or ChartBuildIn()
     city = (item.birth_city or user["birth_city"] or "").strip()
@@ -93,7 +96,32 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
                        chart_json=json.dumps(chart, ensure_ascii=False))
     return {"ok": True, "cached": False, "mode": chart.get("mode"),
             "sun": chart.get("sun"), "ascendant": chart.get("ascendant"),
-            "planets": chart.get("planets", []), "houses": chart.get("houses", [])}
+            "planets": chart.get("planets", []), "houses": chart.get("houses", []),
+            "nodes": chart.get("nodes", []), "mc": chart.get("mc"),
+            "aspects": chart.get("aspects", [])}
+
+
+@router.post("/chart/interpret", dependencies=[Depends(rate_limit("write"))])
+async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
+    """Бесплатный ИИ-разбор построенной карты простыми словами (кэш в chart_json).
+
+    Для людей без астрологических знаний: кто ты, характер, сильные/слабые
+    стороны, страхи, предназначение (Раху) и кармический багаж (Кету).
+    """
+    if not user["birth_date"]:
+        raise HTTPException(400, "нет даты рождения")
+    chart = users.chart_of(user)
+    if not chart:
+        raise HTTPException(400, "карта ещё не построена")
+    text = chart.get("interpretation")
+    if not text:
+        text, live = await agent_core.interpret_chart(db, user, chart)
+        # Кэшируем только LLM-генерацию: офлайн-заглушка не должна «залипать».
+        if live:
+            chart["interpretation"] = text
+            await users.update(db, user["tg_id"],
+                               chart_json=json.dumps(chart, ensure_ascii=False))
+    return {"text": text}
 
 
 @router.get("/matrix")

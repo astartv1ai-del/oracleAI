@@ -31,6 +31,24 @@ async def ensure_thread(db, tg_id: int, agent: str = "oracle", title: str | None
     return await cur.fetchone()
 
 
+async def create_thread(db, tg_id: int, agent: str = "oracle",
+                        title: str | None = None) -> dict:
+    """Создаёт НОВЫЙ тред (не переиспользует активный). Для многочатовых сессий.
+
+    В отличие от `ensure_thread` (один живой тред на агента) — здесь каждый
+    вызов даёт отдельный чат, чтобы в Mini App можно было вести несколько
+    параллельных диалогов, как в ChatGPT.
+    """
+    async with transaction(db):
+        cur = await db.execute(
+            "INSERT INTO threads(tg_id, agent, title, created_at, last_at) "
+            "VALUES(?,?,?,?,?)", (tg_id, agent, title, utcnow(), utcnow()))
+        thread_id = cur.lastrowid
+    cur = await db.execute("SELECT * FROM threads WHERE id=? AND tg_id=?",
+                           (thread_id, tg_id))
+    return dict(await cur.fetchone())
+
+
 async def get_thread(db, thread_id: int, tg_id: int):
     cur = await db.execute(
         "SELECT * FROM threads WHERE id=? AND tg_id=?", (thread_id, tg_id))

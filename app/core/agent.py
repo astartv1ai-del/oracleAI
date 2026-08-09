@@ -263,6 +263,100 @@ async def interpret_compat(db, user, partner_date: str,
     return text
 
 
+def _chart_brief(chart: dict) -> str:
+    """Компактное текстовое представление карты для промпта."""
+    bits = []
+    sun = chart.get("sun") or {}
+    asc = chart.get("ascendant") or {}
+    mc = chart.get("mc") or {}
+    bits.append(f"Солнце — {sun.get('sign','?')} ({sun.get('element','')}), "
+                f"Асцендент — {asc.get('sign','?')} ({asc.get('deg','')}°), "
+                f"MC — {mc.get('sign','?')}")
+    pl = []
+    for p in chart.get("planets", []):
+        r = " ℞" if p.get("retro") else ""
+        h = p.get("house")
+        pl.append(f"{p.get('name')} {p.get('sign')} {p.get('deg','')}°"
+                  f"{r}" + (f" (дом {h})" if h else ""))
+    if pl:
+        bits.append("Планеты: " + "; ".join(pl))
+    hs = chart.get("houses", [])
+    if hs:
+        bits.append("Дома: " + "; ".join(
+            f"{h.get('n')} — {h.get('sign')}" for h in hs))
+    for n in chart.get("nodes", []):
+        h = n.get("house")
+        bits.append(f"{n.get('name')} — {n.get('sign')} {n.get('deg','')}°"
+                    f"{' ℞' if n.get('retro') else ''}"
+                    + (f" (дом {h})" if h else ""))
+    asp = chart.get("aspects", [])
+    if asp:
+        bits.append("Аспекты: " + "; ".join(
+            f"{a.get('p1')} {a.get('glyph','')} {a.get('p2')} "
+            f"(орб {a.get('orb')}°)" for a in asp[:14]))
+    return "\n".join(bits)
+
+
+async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
+    """Бесплатный «разбор простыми словами» встроенной натальной карты.
+
+    Возвращает (текст, live): live=True только когда текст сгенерировал LLM —
+    роутер кэширует запросы, чтобы офлайн-заглушка не «залипала» навсегда.
+
+    Платный `build_report(natal)` глубже; здесь — короткий портрет для тех, кто
+    не понимает дома и карты: кто ты, характер, сильные/слабые стороны, страхи,
+    предназначение (Раху) и кармический багаж (Кету).
+    """
+    brief = _chart_brief(chart)
+    text = ""
+    live = False
+    if llm.enabled():
+        try:
+            system = await agents.system_for(db, user, agents.get("astro"))
+            user_msg = (
+                f"{await skills.guide(db, 'natal')}\n\n"
+                f"Натальная карта клиентки ({(user['name'] or 'она') if user else 'она'}):\n{brief}\n\n"
+                "Напиши понятный разбор карты для человека без астрологических "
+                "знаний. Текст живой, тёплый, от второго лица (обращайся к ней на "
+                "'ты'). Разделы (каждый начни с заголовка в **жирном**):\n"
+                "**Ты и твой характер** — 2-3 предложения, что за человек;\n"
+                "**Сильные стороны** — что даёт ей опору;\n"
+                "**Слабые стороны и зоны роста** — честно, но мягко;\n"
+                "**Страхи и тени** — что её тревожит подсознательно;\n"
+                "**Предназначение этой жизни** — опирайся на Раху;\n"
+                "**Кармический багаж** — опирайся на Кету, что уже наработано из "
+                "прошлого;\n"
+                "**Планеты и дома простыми словами** — только ключевое, 3-5 строк.\n"
+                "Опирайся только на данные выше, не выдумывай планеты и аспекты.")
+            text = await llm.complete(system, user_msg, tier="main",
+                                      max_tokens=2200, purpose="chart_interpret",
+                                      tg_id=user["tg_id"], db=db)
+            if len(text.strip()) >= 160:
+                live = True
+        except Exception as e:  # noqa: BLE001
+            log.warning("разбор карты ушёл в офлайн: %s", e)
+    if not live:
+        sun = chart.get("sun") or {}
+        asc = chart.get("ascendant") or {}
+        nodes = {n.get("name", ""): n for n in chart.get("nodes", [])}
+        rahu = nodes.get("Раху (Северный узел)")
+        ketu = nodes.get("Кету (Южный узел)")
+        text = (
+            f"**Ты и твой характер**\n"
+            f"Солнце в {sun.get('sign') or '?'} ({sun.get('element')}) и Асцендент "
+            f"в {asc.get('sign') or '?'} делают тебя человеком, который чувствует "
+            f"глубоко, а действует осознанно.\n\n"
+            f"**Предназначение этой жизни**\n"
+            f"{rahu['sign'] + ' (дом ' + str(rahu.get('house')) + ')' if rahu else 'Раху'}"
+            f" — зона, куда тебя ведёт рост.\n\n"
+            f"**Кармический багаж**\n"
+            f"{ketu['sign'] + ' (дом ' + str(ketu.get('house')) + ')' if ketu else 'Кету'}"
+            f" — то, что уже наработано в прошлом.\n\n"
+            f"Попроси меня подробнее разобрать любой дом, планету или аспект — "
+            f"расскажу по-человечески. 🌙")
+    return text, live
+
+
 # ---------------------------------------------------------------- отчёты
 
 #: Купленные разборы. Каждый — длинный структурированный текст, который остаётся

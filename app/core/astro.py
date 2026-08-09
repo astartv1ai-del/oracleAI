@@ -265,6 +265,25 @@ def _full_chart(d: date, birth_time, city, lat, lon, tz) -> dict:
     sun = planets[0]
     sym = next((s[1] for s in SIGNS if s[0] == sun["sign"]), "☉")
     element = next((s[2] for s in SIGNS if s[0] == sun["sign"]), "")
+    # Лунные узлы (Раху — северный, Кету — южный) и Чёрная Луна — часть карты,
+    # без них «полная карта» выглядит неполной.
+    nodes = []
+    for attr, ru in [("true_north_lunar_node", "Раху (Северный узел)"),
+                     ("true_south_lunar_node", "Кету (Южный узел)"),
+                     ("true_lilith", "Лилит (Чёрная Луна)")]:
+        try:
+            n = getattr(m, attr)
+        except AttributeError:
+            continue
+        if n is None or getattr(n, "sign", None) is None:
+            continue
+        nodes.append({
+            "name": ru,
+            "sign": SIGN_EN2RU.get(n.sign, n.sign),
+            "deg": round(n.position, 1),
+            "house": HOUSE_NUM.get(str(getattr(n, "house", "")), None),
+            "retro": bool(getattr(n, "retrograde", False)),
+        })
     return {
         "mode": "full",
         "sun": {"sign": sun["sign"], "symbol": sym, "element": element},
@@ -274,6 +293,7 @@ def _full_chart(d: date, birth_time, city, lat, lon, tz) -> dict:
         "planets": planets,
         "houses": houses,
         "aspects": _aspects(subject),
+        "nodes": nodes,
     }
 
 
