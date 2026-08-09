@@ -293,26 +293,43 @@ const app = {
         ${this.moonWeek && this.moonWeek[0] ? (() => {
           const wd = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
           const mon = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+          const tv = t && t.moon ? t.moon : { name: this.moonWeek[0].name, day: this.moonWeek[0].day, advice: this.moonWeek[0].advice, emoji: this.moonWeek[0].emoji };
+          const tIdx = this.moonWeek.findIndex(d => d.day === tv.day);
           const rows = this.moonWeek.map((d, i) => {
             const wdS = wd[d.weekday];
             const monS = mon[parseInt(d.date.slice(5, 7), 10) - 1] || '';
             const today = t && t.moon && d.day === t.moon.day;
-            return `<div class="mc-row${today ? ' today' : ''}" data-act="moon-day" data-i="${i}">
-              <span class="mc-ico">${moonSvg(d.emoji)}</span>
-              <span class="mc-main">
-                <span class="mc-wd">${wdS} · ${d.day_num} ${monS}${i === 0 ? ' <b>· сегодня</b>' : ''}</span>
-                <span class="mc-nm">${esc(d.name)} <em class="mc-ln">${d.day}-й лунный день</em></span>
-              </span>
-              <span class="mc-chev">▾</span>
-            </div>
-            <div class="mc-detail" id="mc-detail-${i}" style="display:none"><div class="mc-adv">${esc(d.advice)}</div></div>`;
+            return `<div class="mc-day${today ? ' today' : ''}" data-i="${i}" data-act="moon-day">
+              <div class="mc-row">
+                <span class="mc-ico">${moonSvg(d.emoji)}</span>
+                <span class="mc-main">
+                  <span class="mc-wd">${wdS} · ${d.day_num} ${monS}${today ? ' <b>· сегодня</b>' : ''}</span>
+                  <span class="mc-nm">${esc(d.name)} <em class="mc-ln">${d.day}-й день</em></span>
+                </span>
+                <span class="mc-chev">▾</span>
+              </div>
+              <div class="mc-detail" hidden><div class="mc-adv">${esc(d.advice)}</div></div>
+            </div>`;
           }).join('');
           const atEmoji = e => e && e.includes('🌕') ? 'Полнолуния' : e && e.includes('🌑') ? 'Новолуния' : null;
           const key = this.moonWeek.find(d => atEmoji(d.emoji));
           const note = key ? `<div class="moon-note">${atEmoji(key.emoji)} — <b>${key.day_num} ${mon[Number(key.date.slice(5, 7), 10) - 1]}</b>. ${atEmoji(key.emoji) === 'Новолуния' ? 'Хорошее время начинать и загадывать.' : 'Энергия на подъёме — закрепляй начатое.'}</div>` : '';
           return `<div class="spacer"></div>
-            <div class="section-title">🌙 Лунный календарь <span class="sec-hint">· тапни день</span></div>
-            <div class="moon-cal">${rows}${note}</div>`;
+            <div class="moon-section">
+              <div class="moon-head">
+                <div class="section-title" style="margin:0">🌙 Лунный календарь</div>
+                <button class="moon-toggle" data-act="moon-week"><span class="mt-lbl">Вся неделя</span><span class="mo-chev">▾</span></button>
+              </div>
+              <div class="moon-today" data-act="moon-week">
+                <span class="mc-ico mc-ico-sm">${moonSvg(tv.emoji)}</span>
+                <div class="mt-main">
+                  <div class="mt-name">${esc(tv.name)} · ${tv.day}-й лунный день</div>
+                  <div class="mt-adv">${esc(tv.advice)}</div>
+                </div>
+                <span class="mt-cta">Неделя<span class="mo-chev">›</span></span>
+              </div>
+              <div class="moon-week" id="moon-week">${rows}${note}</div>
+            </div>`;
         })() : ''}
 
         <div class="spacer"></div>
@@ -328,9 +345,13 @@ const app = {
           <div class="tarot-card-big" data-act="flip-card" title="Перевернуть карту">
             <div class="tb-inner">
               <div class="tb-face tb-front">
+                <div class="tb-scrim"></div>
                 <span class="tb-arc">${esc(toRoman(t.card.num))}</span>
                 <span class="tb-emoji">${t.card.emoji}</span>
-                <span class="tb-name">${esc(t.card.name)}</span>
+                <svg class="tb-namepath" viewBox="0 0 124 190" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                  <path id="tbArcPath" d="M 30 140 Q 62 158 94 140" fill="none"/>
+                  <text class="tb-pathtext"><textPath href="#tbArcPath" xlink:href="#tbArcPath" startOffset="50%" text-anchor="middle">${esc(t.card.name)}</textPath></text>
+                </svg>
                 <span class="tb-orn">✦ ✦ ✦</span>
               </div>
               <div class="tb-face tb-back">
@@ -471,6 +492,34 @@ const app = {
   toggleSessions() {
     const p = document.getElementById('sess-panel');
     if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  },
+
+  // Лунный календарь: компакт — «кратко о сегодня» + раскрытие всей недели по кнопке
+  toggleMoonWeek() {
+    haptic('light');
+    const wk = document.getElementById('moon-week');
+    if (!wk) return;
+    const open = wk.classList.toggle('show');
+    document.querySelectorAll('.moon-toggle, .moon-today').forEach(el => {
+      if (!el.closest('#moon-week')) el.classList.toggle('open', open);
+    });
+    if (!open) this.collapseMoonDays();
+  },
+  collapseMoonDays() {
+    document.querySelectorAll('#moon-week .mc-day').forEach(d => {
+      d.classList.remove('open');
+      const det = d.querySelector('.mc-detail');
+      if (det) det.hidden = true;
+    });
+  },
+  toggleMoonDay(i) {
+    haptic('soft');
+    const day = Array.from(document.querySelectorAll('#moon-week .mc-day'))
+      .find(d => d.dataset.i === String(i));
+    if (!day) return;
+    const det = day.querySelector('.mc-detail');
+    const open = day.classList.toggle('open');
+    if (det) det.hidden = !open;
   },
 
   // Лунный календарь: детальный модал со всей неделей (загружена в moonWeek)
@@ -635,6 +684,7 @@ const app = {
                 ${s.tier === 'premium' ? '<span class="lock">🔒</span>' : ''}
                 <span class="se">${s.emoji}</span>
                 <span class="sn">${esc(s.title)}</span>
+                ${s.desc ? `<span class="s-desc">${esc(s.desc)}</span>` : ''}
               </div>`).join('')}
             </div>
             <textarea class="ipt" id="tarot-q" rows="2" placeholder="Твой вопрос к картам…"
@@ -759,9 +809,9 @@ const app = {
       this.chat.pending.spreads = this.spreads;
     } catch (e) {
       this.chat.pending.spreads = [
-        { code: 'one', title: 'Одна карта', emoji: '🂠', tier: 'included' },
-        { code: 'three', title: 'Прошлое·Наст·Будущее', emoji: '🂠🂠🂠', tier: 'included' },
-        { code: 'love', title: 'На отношения', emoji: '💞', tier: 'included' },
+        { code: 'one', title: 'Одна карта', emoji: '🂠', tier: 'included', desc: 'Один ясный ответ на конкретный вопрос' },
+        { code: 'three', title: 'Прошлое · Наст · Будущее', emoji: '🂠🂠🂠', tier: 'included', desc: 'Как развивалась ситуация — и куда ведёт' },
+        { code: 'love', title: 'На отношения', emoji: '💞', tier: 'included', desc: 'Твоё чувство, партнёр и связь между вами' },
       ];
     }
     this.renderChat(document.getElementById('app-main'));
@@ -1456,6 +1506,8 @@ document.addEventListener('click', e => {
     case 'feature': haptic('light'); app[v.fn] && app[v.fn](); break;
     case 'sessions': app.toggleSessions(); break;
     case 'moon': app.openMoon(); break;
+    case 'moon-week': app.toggleMoonWeek(); break;
+    case 'moon-day': app.toggleMoonDay(parseInt(v.i, 10)); break;
     case 'ptab': app.switchPTab(v.tab); break;
     case 'new-session': app.newSession(); break;
     case 'open-session': app.openSession(parseInt(v.tid, 10)); break;
