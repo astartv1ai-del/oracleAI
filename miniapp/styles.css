@@ -551,11 +551,15 @@ body {
 .tarot-card .back .motif { font-size: 30px; filter: drop-shadow(0 0 8px var(--gold-glow)); }
 .tarot-card .back .lf { font-family: var(--font-serif); color: var(--gold); font-size: 10px; letter-spacing: 2px; margin-top: 6px; }
 .tarot-card .front {
-  transform: rotateY(180deg); background: url("/static/img/card-face-src.png") center / cover no-repeat; border: 1.5px solid var(--border-strong);
+  transform: rotateY(180deg);
+  background:
+    linear-gradient(180deg, rgba(6,4,14,.28) 22%, rgba(6,4,14,.78) 82%),
+    url("/static/img/card-face-src.png") center / cover no-repeat;
+  border: 1.5px solid var(--border-strong);
 }
 .tarot-card .front .fe { font-size: 32px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.8)); }
-.tarot-card .front .fn { font-family: var(--font-serif); font-size: 11px; color: var(--gold-bright); margin-top: 7px; line-height: 1.15; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
-.tarot-card .front .fp { font-size: 10px; color: var(--text-dim); margin-top: 4px; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.tarot-card .front .fn { font-family: var(--font-serif); font-size: 11px; color: #f7ecd2; font-weight: 700; margin-top: 7px; line-height: 1.15; text-shadow: 0 2px 7px rgba(0,0,0,.95); }
+.tarot-card .front .fp { font-size: 10px; color: #e9e2f5; font-weight: 600; margin-top: 4px; text-shadow: 0 1px 5px rgba(0,0,0,.9); }
 .tarot-card.flipped { transform: rotateY(180deg); }
 .card-spot-label { text-align: center; font-size: 10.5px; color: var(--text-faint); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
 
@@ -887,7 +891,11 @@ body {
   border: 2px solid var(--gold); box-shadow: 0 10px 24px -8px rgba(0,0,0,.7);
 }
 .tarot-card .front {
-  transform: rotateY(180deg); background: url("/static/img/card-face-src.png") center / cover no-repeat; border: 1.5px solid var(--border-strong);
+  transform: rotateY(180deg);
+  background:
+    linear-gradient(180deg, rgba(6,4,14,.28) 22%, rgba(6,4,14,.78) 82%),
+    url("/static/img/card-face-src.png") center / cover no-repeat;
+  border: 1.5px solid var(--border-strong);
 }
 
 /* ── Главная: меньше «коробок», больше атмосферы ── */
@@ -1088,27 +1096,34 @@ body {
   text-shadow: 0 1px 6px rgba(0,0,0,.9);
 }
 .tb-emoji {
-  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 2;
-  font-size: 42px; line-height: 1;
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; line-height: 1; padding-bottom: 14%;
   filter: drop-shadow(0 0 12px rgba(230,193,120,.55)); text-shadow: 0 2px 8px rgba(0,0,0,.9);
 }
-.tb-namepath { position: absolute; left: 2px; right: 2px; bottom: 26px; height: 58px; width: auto; z-index: 2; }
+.tb-namepath { position: absolute; left: 4px; right: 4px; bottom: 20px; height: 34px; z-index: 2; }
 .tb-namepath text {
-  font-family: var(--font-serif); font-size: 10.5px; font-weight: 600; letter-spacing: .5px;
-  fill: #f5e9d0; paint-order: stroke; stroke: rgba(5,4,12,.9); stroke-width: 1.6px;
+  font-family: var(--font-serif); font-size: 12px; font-weight: 700; letter-spacing: .6px;
+  fill: #f7ecd2; paint-order: stroke; stroke: rgba(5,4,12,.95); stroke-width: 2px;
 }
 .tb-orn {
-  position: absolute; bottom: 9px; left: 0; right: 0; text-align: center; z-index: 2;
+  position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; z-index: 2;
   color: var(--gold); font-size: 8px; letter-spacing: 4px; text-shadow: 0 1px 3px rgba(0,0,0,.9);
 }
 .tb-back {
   transform: rotateY(180deg);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  background: url("/static/img/card-back-src.png") center / cover no-repeat; border: 2px solid var(--gold);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
+  background:
+    radial-gradient(115% 85% at 50% 42%, rgba(8,6,18,.42) 0%, rgba(8,6,18,.88) 80%),
+    url("/static/img/card-back-src.png") center / cover no-repeat;
+  border: 2px solid var(--gold);
   box-shadow: 0 16px 34px -12px rgba(0,0,0,.8), 0 0 14px var(--gold-glow);
 }
 .tb-back-arc { position: static; font-size: 12px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
-.tb-mean { font-size: 11.5px; color: var(--text-dim); line-height: 1.45; text-align: center; padding: 0 6px; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.tb-mean {
+  font-size: 12.5px; color: #f4eedd; font-weight: 600; line-height: 1.5;
+  text-align: center; padding: 0 8px; text-shadow: 0 2px 7px rgba(0,0,0,.95);
+}
 .tb-hint2 { color: var(--gold); }
 .cd-name { font-family: var(--font-serif); color: var(--gold-bright); font-size: 18px; font-weight: 700; }
 .cd-mean { color: var(--text); font-size: 13.5px; margin-top: 4px; line-height: 1.5; }
