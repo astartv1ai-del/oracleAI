@@ -30,7 +30,8 @@ async def today(user=Depends(active_user), db=Depends(get_db)):
     return {
         "forecast": _clean(text),
         "card": {"name": card["name"], "emoji": card["emoji"],
-                 "meaning": card["meaning"], "num": card.get("num")},
+                 "meaning": card["meaning"], "num": card.get("num"),
+                 "img": card.get("img")},
         "moon": sky["moon"],
         "sun_season": sky["sun_season"],
         "day": users.user_today(user),

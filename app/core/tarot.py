@@ -111,10 +111,19 @@ ROMAN = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
          "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX", "XXI"]
 
 
+# Слаг картинки Rider-Waite (селфхост в miniapp/img/tarot/{slug}.jpg):
+# младшие — Suit+NN (wands01..14), старшие — mNN. Согласуется с
+# /tmp/dl_tarot_deck.py и статикой miniapp/img/tarot/.
+_SUIT_SHORT = {"Жезлов": "wands", "Кубков": "cups", "Мечей": "swords", "Пентаклей": "pents"}
+_RANK_NUM = {"Туз": "01", "Двойка": "02", "Тройка": "03", "Четвёрка": "04", "Пятёрка": "05",
+             "Шестёрка": "06", "Семёрка": "07", "Восьмёрка": "08", "Девятка": "09",
+             "Десятка": "10", "Паж": "11", "Рыцарь": "12", "Королева": "13", "Король": "14"}
+
+
 def full_deck() -> list[dict]:
     deck = [
         {"name": n, "emoji": e, "meaning": m, "arcana": "major",
-         "num": ROMAN[i], "suit": None}
+         "num": ROMAN[i], "suit": None, "img": f"m{i:02d}"}
         for i, (n, e, m) in enumerate(MAJORS)
     ]
     for suit, (emoji, domain) in SUITS.items():
@@ -126,6 +135,7 @@ def full_deck() -> list[dict]:
                 "arcana": "minor",
                 "num": str(ri + 1) if ri < 10 else rank,
                 "suit": suit,
+                "img": f"{_SUIT_SHORT[suit]}{_RANK_NUM[rank]}",
             })
     return deck
 

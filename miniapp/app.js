@@ -28,16 +28,32 @@ async function api(path, opts = {}) {
   let url = path;
   const dev = new URLSearchParams(location.search).get('dev_user');
   if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + dev;
-  const res = await fetch(url, Object.assign({ headers }, opts));
-  let body = null;
-  try { body = await res.json(); } catch (e) { /* пустое тело */ }
-  if (!res.ok) {
-    const detail = body && (body.detail || JSON.stringify(body));
-    const err = new Error(detail || 'Связь прервалась 🌙');
-    err.status = res.status;
+  const doFetch = async () => {
+    const res = await fetch(url, Object.assign({ headers }, opts));
+    let body = null;
+    try { body = await res.json(); } catch (e) { /* пустое тело */ }
+    if (!res.ok) {
+      const detail = body && (body.detail || JSON.stringify(body));
+      const err = new Error(detail || 'Связь прервалась 🌙');
+      err.status = res.status;
+      throw err;
+    }
+    return body;
+  };
+  try {
+    return await doFetch();
+  } catch (err) {
+    // ретрай: сетевой сбой — всегда; 5xx — только для GET (мутации не ретраим,
+    // чтобы не задвоить эффект на сервере)
+    const method = (opts.method || 'GET').toUpperCase();
+    const network = !err || !err.status;
+    const retriable = network || (method === 'GET' && err.status >= 500);
+    if (retriable) {
+      await new Promise(r => setTimeout(r, 600));
+      try { return await doFetch(); } catch (e2) { throw err; }
+    }
     throw err;
   }
-  return body;
 }
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
@@ -59,6 +75,11 @@ const fmtDay = iso => {
 };
 /* SVG-фаза луны по эмодзи от сервера (🌑…🌘): освещённая доля и терминатор.
    Почти точная визуализация классического цикла без эфемерид. */
+// дни недели и месяцы: один источник вместо трёх дублей (G001)
+const WD_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WD_LOWER = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+const MON_RU = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
 const MOON_DISC = {
   '🌑': { lit: 0.0, right: true  },
   '🌒': { lit: 0.22, right: true },
@@ -189,7 +210,7 @@ const TEMPLATES = {
 const app = {
   me: null, agents: [], today: null, spreads: null,
   view: 'home',
-  chat: { key: null, spec: null, messages: [], pending: null, busy: false, tid: null, sessions: [] },
+  chat: { key: null, spec: null, messages: [], pending: null, busy: false, tid: null, sessions: [], draft: '' },
 
   async boot() {
     if (tg()) {
@@ -200,6 +221,10 @@ const app = {
     this.renderFrame();
     try {
       this.me = await api('/api/me');
+      if (this.me) {
+        const flags = this.me.flags ? this.me.flags : {};
+        this.me.flags = flags;
+      }
       const pill = document.querySelector('.user-pill');
       if (pill && this.me.name) {
         pill.innerHTML = `<span class="avatar">${esc(this.me.name[0].toUpperCase())}</span>${esc(this.me.name)}`;
@@ -208,6 +233,80 @@ const app = {
     this.loadAgents();
     this.loadToday();
     this.go('home');
+    this.initSwipe();
+    this.initViewport();
+    this.maybeIntro();
+  },
+  // G001 клавиатура: композер поднимается, когда Telegram раскрывает клавиатуру
+  initViewport() {
+    if (!window.visualViewport) return;
+    window.visualViewport.addEventListener('resize', () => {
+      const vv = window.visualViewport;
+      const composer = document.querySelector('.composer');
+      if (!composer) return;
+      const kb = Math.max(0, (window.innerHeight || vv.height) - vv.height);
+      if (kb > 0) composer.style.paddingBottom = (kb + 8) + 'px';
+      else composer.style.paddingBottom = '';
+    }, { passive: true });
+  },
+  // G003 Свайпы: назад в чате (вправо) + переключение экранов (влево/вправо).
+  // Нижний бар остаётся подстраховкой; горизонтальные скролл-ленты не задеваем.
+  initSwipe() {
+    let sx = 0, sy = 0;
+    const skipSel = '.chat-features, .rc-strip-row, .agent-chips, .suggest-chips, .chat-widget';
+    document.addEventListener('touchstart', e => {
+      const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx)) return;
+      if (e.target && e.target.closest && e.target.closest(skipSel)) return;
+      const inChat = !!(e.target && e.target.closest && e.target.closest('.chat-shell'));
+      if (inChat) {
+        if (dx > 0) { this.closeChat(); haptic('light'); }  // вправо → из чата
+        return;
+      }
+      if (this.view === 'chat' || this.view === 'home' || this.view === 'hub' || this.view === 'profile') {
+        if (dx < 0) this.go(this.view === 'home' ? 'hub' : 'profile');
+        else this.go(this.view === 'profile' ? 'hub' : 'home');
+      }
+    }, { passive: true });
+  },
+  // G002 Онбординг: вау-интро 3 скрина для первого входа (1 раз на клиента)
+  maybeIntro() {
+    if (localStorage.getItem('oracle_intro_seen')) return;
+    const ov = document.createElement('div');
+    ov.id = 'intro';
+    ov.innerHTML = `
+      <div class="intro-track">
+        <div class="intro-slide"><div class="intro-emoji">🔮</div><div class="intro-title">Твоё небо уже ждёт</div><div class="intro-sub">Личный Оракул читает твою карту, Луну и расклады — честно, по звёздам.</div></div>
+        <div class="intro-slide"><div class="intro-emoji">🎴</div><div class="intro-title">Карты отвечают на твой вопрос</div><div class="intro-sub">Настоящая колода Райдера-Уэйта придёт прямо в чат. Задай вопрос — карты лягут в расклад.</div></div>
+        <div class="intro-slide"><div class="intro-emoji">✨</div><div class="intro-title">Прогноз каждый день</div><div class="intro-sub">Натальная карта, лунный календарь и карта дня — утро начинается с опоры.</div></div>
+      </div>
+      <div class="intro-dots"><span class="active"></span><span></span><span></span></div>
+      <button class="btn btn-primary intro-start" data-intro-start>Начать ✨</button>
+      <button class="intro-skip" data-intro-skip>Пропустить</button>`;
+    document.body.appendChild(ov);
+    const track = ov.querySelector('.intro-track');
+    const dots = ov.querySelectorAll('.intro-dots span');
+    const sync = () => {
+      const i = Math.max(0, Math.min(2, Math.round(track.scrollLeft / (track.clientWidth || 1))));
+      dots.forEach((d, k) => d.classList.toggle('active', k === i));
+      ov.querySelector('.intro-start').textContent = i === 2 ? 'Начать ✨' : 'Дальше →';
+    };
+    track.addEventListener('scroll', sync, { passive: true });
+    const done = () => {
+      try { localStorage.setItem('oracle_intro_seen', '1'); } catch (e) {}
+      ov.remove();
+      haptic('success');
+    };
+    ov.querySelector('[data-intro-start]').addEventListener('click', () => {
+      if (!ov.querySelector('.intro-start').textContent.startsWith('Начать')) {
+        track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
+      } else done();
+    });
+    ov.querySelector('[data-intro-skip]').addEventListener('click', done);
   },
 
   /* ── каркас ── */
@@ -256,7 +355,15 @@ const app = {
 
   scrollToBottom() {
     const box = document.querySelector('.chat-messages, .screen');
-    if (box) box.scrollTop = box.scrollHeight;
+    if (box) {
+      box.scrollTop = box.scrollHeight;
+      // параллакс только на экранах (Сегодня/Агенты/Профиль) — в чате фон
+      // не должен двигаться при скролле ленты (иначе выглядит «битым»)
+      const sf = document.querySelector('.starfield');
+      if (sf && !box.classList.contains('chat-messages')) {
+        sf.style.transform = 'translateY(' + (box.scrollTop * 0.08) + 'px)';
+      }
+    }
   },
 
   /* ── данные ── */
@@ -291,8 +398,7 @@ const app = {
         </div>
 
         ${this.moonWeek && this.moonWeek[0] ? (() => {
-          const wd = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-          const mon = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+          const wd = WD_SHORT, mon = MON_RU;
           const tv = t && t.moon ? t.moon : { name: this.moonWeek[0].name, day: this.moonWeek[0].day, advice: this.moonWeek[0].advice, emoji: this.moonWeek[0].emoji };
           const tIdx = this.moonWeek.findIndex(d => d.day === tv.day);
           const rows = this.moonWeek.map((d, i) => {
@@ -344,14 +450,8 @@ const app = {
         <div class="card-day card-day-big">
           <div class="tarot-card-big" data-act="flip-card" title="Перевернуть карту">
             <div class="tb-inner">
-              <div class="tb-face tb-front">
-                <div class="tb-scrim"></div>
+              <div class="tb-face tb-front" style="background-image:url('/static/img/tarot/${esc(t.card.img || 'm00')}.jpg')">
                 <span class="tb-arc">${esc(toRoman(t.card.num))}</span>
-                <span class="tb-emoji">${t.card.emoji}</span>
-                <svg class="tb-namepath" viewBox="0 0 116 36" preserveAspectRatio="none" aria-hidden="true">
-                  <path id="tbArcPath" d="M 8 4 Q 58 26 108 4" fill="none"/>
-                  <text class="tb-pathtext" dy="11"><textPath href="#tbArcPath" xlink:href="#tbArcPath" startOffset="50%" text-anchor="middle">${esc(t.card.name)}</textPath></text>
-                </svg>
               </div>
               <div class="tb-face tb-back">
                 <span class="tb-arc tb-back-arc">${esc(toRoman(t.card.num))}</span>
@@ -398,7 +498,7 @@ const app = {
         </div>
         <div class="agent-list">
           ${list.map(a => `
-            <div class="agent-card" style="--ac:${esc(a.accent || '#e6c178')}" data-act="chat" data-chat="${a.code}">
+            <div class="agent-card ${this.chat.key === a.code ? 'glow' : ''}" style="--ac:${esc(a.accent || '#e6c178')}" data-act="chat" data-chat="${a.code}">
               <div class="ac-top">
                 <div class="agent-avatar">${agentSprite(a)}</div>
                 <div style="flex:1;min-width:0">
@@ -526,9 +626,7 @@ const app = {
     haptic('light');
     const arr = this.moonWeek || [];
     if (!arr.length) { this.toast('Лунный календарь скоро подтянет свет 🌙'); return; }
-    const wd = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-                    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    const wd = WD_SHORT, months = MON_RU;
     const rows = arr.map((d, i) => {
       const today = i === 0;
       const m = months[parseInt(d.date.slice(5, 7), 10) - 1] || '';
@@ -657,7 +755,7 @@ const app = {
         </div>
         <div class="composer">
           <div class="composer-top">
-            <input class="ipt" id="chat-input" placeholder="Спроси ${esc(a.name)}…" autocomplete="off"/>
+            <input class="ipt" id="chat-input" placeholder="Спроси ${esc(a.name)}…" autocomplete="off" value="${esc(this.chat.draft || '')}"/>
             <button class="send-btn" id="send-btn" data-act="send">➤</button>
           </div>
           ${suggest.length ? `
@@ -673,43 +771,51 @@ const app = {
     const q = s => esc(s).replace(/'/g, "&#39;");
     switch (p.kind) {
       case 'tarot-pick':
-        return `<div class="msg assistant">
-          Давай сделаем расклад. Сначала выбери схему и <b>напиши свой вопрос картам</b> — чем точнее, тем яснее ответ.
-          <div class="chat-widget">
-            <div class="w-title">Схема расклада</div>
-            <div class="spread-grid">${p.spreads.map(s => `
-              <div class="spread-cell ${p.spread === s.code ? 'sel' : ''} ${s.tier === 'premium' ? 'premium' : ''}"
-                   data-code="${s.code}" data-act="spread" data-spread="${s.code}">
-                ${s.tier === 'premium' ? '<span class="lock">🔒</span>' : ''}
-                <span class="se">${s.emoji}</span>
-                <span class="sn">${esc(s.title)}</span>
-                ${s.desc ? `<span class="s-desc">${esc(s.desc)}</span>` : ''}
-              </div>`).join('')}
-            </div>
-            <textarea class="ipt" id="tarot-q" rows="2" placeholder="Твой вопрос к картам…"
-              style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
-            <button class="btn btn-primary" style="margin-top:10px" data-act="draw">Потянула карты 🎴</button>
-          </div></div>`;
+        return (() => {
+          const cur = p.spreads.find(s => s.code === p.spread) || { title: 'Расклад', emoji: '🎴', hint: 'Тапни, чтобы выбрать схему' };
+          return `<div class="msg assistant">
+            <div class="chat-widget">
+              <div class="w-title" style="margin:0">🎴 Схема расклада</div>
+              <button class="pick-sel-btn" data-act="pick-open">
+                <span class="pick-sel-ico">${esc(cur.emoji || '🎴')}</span>
+                <span class="pick-sel-txt">
+                  <span class="pick-sel-t">${esc(cur.title)}</span>
+                  <span class="pick-sel-d">${esc(cur.hint || cur.desc || 'Выбрать схему расклада')}</span>
+                </span>
+                <span class="pick-sel-go">›</span>
+              </button>
+              <div class="swipe-hint">Тапни — откроется весь список раскладов</div>
+              ${p.err ? `<div class="s-err">${esc(p.err)}</div>` : ''}
+              <textarea class="ipt" id="tarot-q" rows="1" placeholder="Твой вопрос к картам…"
+                style="margin-top:8px;resize:none">${q(p.q || '')}</textarea>
+              <button class="btn btn-primary" style="margin-top:8px" data-act="draw">Потянула карты 🎴</button>
+            </div></div>`;
+        })();
 
       case 'tarot-cards':
         return `<div class="msg assistant">
           Карты вытянуты. Твой вопрос: <b>«${esc(p.question)}»</b>
           <div class="chat-widget">
-            ${p.positions.map((pos, i) => `
-              <div class="card-spot-label">${esc(pos)}</div>
-              <div class="tarot-zone">
-                <div class="tarot-card ${p.revealed[i] ? 'flipped' : ''}" data-act="flip" data-i="${i}">
-                  <div class="face back"><div class="motif">☾</div><div class="lf">ORACLE</div></div>
-                  <div class="face front">
-                    <div class="fe">${p.cards[i].emoji}${p.cards[i].reversed ? ' ↺' : ''}</div>
-                    <div class="fn">${esc(p.cards[i].name)}</div>
-                    <div class="fp">${esc(p.cards[i].meaning)}</div>
+            <div class="tarot-grid sh-${esc(p.spread || 'three')}">
+              ${p.positions.map((pos, i) => {
+                const c = p.cards[i] || {};
+                return `
+                <div class="tpos" data-i="${i}">
+                  <div class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" title="Перевернуть">
+                    <div class="tcard-inner">
+                      <div class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></div>
+                      <div class="tcard-face tcard-front"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+                        ${c.reversed ? '<span class="t-rev">↺ перевёрнута</span>' : ''}</div>
+                    </div>
                   </div>
-                </div>
-              </div>`).join('')}
-            ${p.allRevealed ? `
-              <button class="btn btn-primary" style="margin-top:12px" data-act="interpret">Что это значит для меня?</button>`
-              : `<div style="text-align:center;color:var(--text-faint);font-size:11.5px;margin-top:10px">Нажми на карты, чтобы перевернуть ✨</div>`}
+                  <div class="tpos-pos">${esc(pos)}</div>
+                  <div class="tpos-mean">${esc(c.name)}${c.reversed ? ' ↺' : ''}</div>
+                  <div class="tpos-desc">${esc(c.meaning)}</div>
+                </div>`;
+              }).join('')}
+            </div>
+            ${p.allRevealed ? `<button class="btn btn-primary" style="margin-top:14px" data-act="interpret">Что это значит для меня?</button>`
+              : `<div class="t-hint">Тапни карты — они раскроются ↻</div>`}
           </div></div>`;
 
       case 'chart':
@@ -784,6 +890,7 @@ const app = {
     haptic('light');
     const input = document.getElementById('chat-input');
     if (input) input.value = '';
+    this.chat.draft = '';
     this.chat.messages.push({ role: 'user', text: val });
     this.chat.busy = true;
     this.renderChat(document.getElementById('app-main'));
@@ -816,21 +923,70 @@ const app = {
     this.renderChat(document.getElementById('app-main'));
   },
 
-  pendingQ(v) { if (this.chat.pending) this.chat.pending.q = v; },
+  pendingQ(v) { if (this.chat.pending) { this.chat.pending.q = v; this.chat.pending.err = ''; } },
 
-  pickSpread(code) {
-    if (!this.chat.pending || !this.chat.pending.spreads) return;
-    this.chat.pending.spread = code;
-    document.querySelectorAll('.spread-cell').forEach(el => el.classList.toggle('sel', el.dataset.code === code));
+  // Полноэкранный выбор схемы расклада — весь список с описаниями (премium)
+  openSpreadPicker() {
+    const p = this.chat.pending;
+    if (!p || !p.spreads || !p.spreads.length) { this.toast('Схемы ещё подгружаются…'); return; }
+    haptic('light');
+    const sel = p.spread || 'three';
+    const rows = p.spreads.map(s => `
+      <div class="sp-pick-row ${s.code === sel ? 'sel' : ''} ${s.tier === 'premium' ? 'premium' : ''}"
+           data-act="pick-choose" data-code="${s.code}" data-owned="${s.owned ? 1 : 0}">
+        <div class="sp-pick-ico sp-pick-scheme">${spreadScheme(s.code)}</div>
+        <div class="sp-pick-main">
+          <div class="sp-pick-title">${esc(s.title)}${s.tier === 'premium' ? `<span class="sp-pick-lock">🔒 ${s.price_crystals ? s.price_crystals + ' ✦' : 'премиум'}</span>` : ''}</div>
+          <div class="sp-pick-desc">${esc(s.hint || s.desc || '')}</div>
+        </div>
+        <div class="sp-pick-meta">
+          <span class="sp-pick-cards">${s.cards} карт</span>
+          ${s.code === sel ? '<span class="sp-pick-check">✓</span>' : '<span class="sp-pick-radio"></span>'}
+        </div>
+      </div>`).join('');
+    this.showModal(`
+      <div class="picker-head">
+        <div>
+          <div class="picker-title">🎴 Схема расклада</div>
+          <div class="picker-sub">Листай, читай описание и выбирай</div>
+        </div>
+        <button class="m-close" data-act="modal-close">✕</button>
+      </div>
+      <div class="picker-schemes">${rows}</div>
+      <div class="picker-note">Выбор вернёт тебя к вопросу в чате — задай его и тяни карты ✨</div>`, 'full');
+  },
+  // Выбор схемы из полноэкранного списка (премиум → мягкий модал «как открыть»)
+  chooseSpread(code) {
+    const p = this.chat.pending;
+    if (!p || !p.spreads) return;
+    haptic('soft');
+    const s = p.spreads.find(x => x.code === code);
+    if (s && s.tier === 'premium' && !s.owned) {
+      this.showModal(`<h3>✨ ${esc(s.title)}</h3>
+        <button class="m-close" data-act="modal-close">✕</button>
+        <div class="fc-adv" style="margin-top:4px">
+          Это премиум-расклад. Открой подписку «Искра» или приведи подругу — и получи доступ к нему.
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px" data-act="modal-close">Понятно ✨</button>`);
+      return;
+    }
+    p.spread = code;
+    this.closeModal();
+    this.renderChat(document.getElementById('app-main'));
   },
 
   async doDraw() {
     const q = (document.getElementById('tarot-q') || {}).value;
     const qv = (q || '').trim();
-    if (!qv) { alert('Сформулируй свой вопрос картам — я передам его в расклад'); return; }
+    if (!qv) {
+      // B5: inline-валидация, без нативного alert
+      this.chat.pending.err = 'Сформулируй вопрос картам — чем точнее, тем яснее ответ ✨';
+      this.renderChat(document.getElementById('app-main'));
+      return;
+    }
     const spread = this.chat.pending.spread || 'three';
     this.chat.busy = true;
-    this.chat.pending = { kind: 'tarot-pick', spreads: this.chat.pending.spreads, spread, q: qv };
+    this.chat.pending = { kind: 'tarot-pick', spreads: this.chat.pending.spreads, spread, q: qv, err: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const r = await api('/api/tarot/draw?spread=' + spread, {
@@ -839,7 +995,7 @@ const app = {
       });
       this.chat.messages.push({ role: 'user', text: 'Мой вопрос к картам: ' + qv });
       this.chat.pending = {
-        kind: 'tarot-cards', question: qv, cards: r.cards,
+        kind: 'tarot-cards', question: qv, cards: r.cards, spread,
         positions: r.positions, revealed: r.cards.map(() => false),
         allRevealed: false, reading_id: r.reading_id,
       };
@@ -851,12 +1007,29 @@ const app = {
     this.renderChat(document.getElementById('app-main'));
   },
 
+  // Переворот карты БЕЗ полного ререндера ленты — иначе скролл прыгает наверх.
+  // Работаем точечно: класс .open на конкретной карте + кнопка интерпретации.
   flipCard(i) {
+    haptic('light');
     const p = this.chat.pending;
-    if (!p || p.kind !== 'tarot-cards') return;
+    if (!p || p.kind !== 'tarot-cards' || p.revealed[i]) return;
+    const card = document.querySelector('.tcard[data-i="' + i + '"]');
+    if (card) card.classList.add('open');
     p.revealed[i] = true;
     p.allRevealed = p.revealed.every(Boolean);
-    this.renderChat(document.getElementById('app-main'));
+    if (p.allRevealed) this.addInterpretBtn();
+  },
+  addInterpretBtn() {
+    const w = document.querySelector('.chat-widget');
+    const hint = document.querySelector('.t-hint');
+    if (hint) hint.remove();
+    if (!w || w.querySelector('[data-act="interpret"]')) return;
+    const b = document.createElement('button');
+    b.className = 'btn btn-primary';
+    b.style.marginTop = '14px';
+    b.dataset.act = 'interpret';
+    b.textContent = 'Что это значит для меня?';
+    w.appendChild(b);
   },
 
   // Карта дня: переворот раскрывает смысл
@@ -873,16 +1046,41 @@ const app = {
     this.renderChat(document.getElementById('app-main'));
     try {
       const r = await api('/api/tarot/interpret/' + p.reading_id, { method: 'POST' });
-      this.chat.messages.push({ role: 'assistant', text: r.answer });
+      // B3: гард гонки — если юзер ушёл/переключил чат, не вливаем ответ в чужой тред
+      const key = this.chat.key, tid = this.chat.tid;
+      const inThread = () => this.chat.key === key && this.chat.tid === tid;
+      // Эффект «раскрытия смысла»: карты переворачиваются одна за другой с задержкой 120 мс
+      // (даже если все уже открыты — визуальный ритуал перед трактовкой)
+      p.revealed.forEach((_, i) => {
+        setTimeout(() => {
+          if (!inThread()) return;
+          const cards = document.querySelectorAll('.tcard[data-i="' + i + '"]');
+          if (cards[0]) cards[0].classList.add('open');
+        }, i * 120);
+      });
+      // Ждём завершения анимации (max delay + transition time) перед показом ответа
+      setTimeout(() => {
+        if (!inThread()) return;
+        this.chat.messages.push({ role: 'assistant', text: r.answer });
+        this.chat.pending = null;
+        this.chat.busy = false;
+        this.renderChat(document.getElementById('app-main'));
+      }, p.revealed.length * 120 + 750);
+      // Во время ожидания показываем индикатор «раскрываю смысл…»
+      if (inThread()) {
+        this.chat.messages.push({ role: 'assistant', text: '✨ Раскрываю смысл карт по очереди…' });
+        this.renderChat(document.getElementById('app-main'));
+      }
     } catch (e) {
       this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+      this.chat.pending = null;
+      this.chat.busy = false;
+      this.renderChat(document.getElementById('app-main'));
     }
-    this.chat.pending = null;
-    this.chat.busy = false;
-    this.renderChat(document.getElementById('app-main'));
   },
 
   async featureTarotHistory() {
+    if (this.chat.pending && this.chat.pending.kind === 'history') return; // B4 re-entry
     this.chat.pending = { kind: 'history', loading: true };
     this.renderChat(document.getElementById('app-main'));
     try {
@@ -928,27 +1126,30 @@ const app = {
     const sun = c.sun || {};
     const asc = c.ascendant || {};
     const planets = c.planets || [];
-    const glyph = p => (p.sign ? SIGNS[p.sign] : '');
+    const aspects = c.aspects || [];
+    const glyph = p => planetGlyph(p.name) || (p.sign ? SIGNS[p.sign] : '');
     const lines = planets.map(p => `
       <div class="planet-line">
         <div class="p-ico">${glyph(p)}</div>
         <div class="p-name">${esc(p.name)}</div>
         <div class="p-val">${esc(p.sign)}${p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ☍' : ''}</div>
       </div>`).join('');
+    // T6: легенда аспектов — цветные чипы, чтобы линии в колесе читались
+    const legend = aspects.length ? `<div class="asp-legend">
+        ${['☌ соединение', '⚹ секстиль', '△ трин'].map(a => `<span class="asp-chip" style="color:#e6c178">${a}</span>`).join('')}
+        ${[['□ квадрат', '#a78bfa'], ['☍ оппозиция', '#ff6b6b']].map(([a, col]) => `<span class="asp-chip" style="color:${col}">${a}</span>`).join('')}
+      </div>` : '';
     return `
       <div class="w-title">🌌 Натальная карта</div>
-      <div class="chart-wheel" style="width:130px;height:130px;margin:4px auto 12px">
-        <div class="wheel-center">
-          <div class="wc-s">${sun.symbol || '☉'}</div>
-          <div class="wc-t">${esc(sun.sign || '')}</div>
-          <div class="wc-t" style="font-size:10px;color:var(--text-dim)">AC ${esc((asc.sign || '').slice(0, 3))}</div>
-        </div>
-      </div>
+      <div style="width:160px;height:160px;margin:4px auto 4px;overflow:hidden;border-radius:20px;background:rgba(14,13,30,.6);box-shadow:0 6px 30px -10px rgba(0,0,0,.6);cursor:pointer" data-act="full-chart" title="Открыть полную карту">${this.chart ? nativitySvg(this.chart, 160) : ''}</div>
+      <div style="text-align:center;color:var(--text-faint);font-size:10.5px;margin-bottom:8px">Тапни карту — полный разбор ↻</div>
       <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:13px;margin-bottom:8px">Солнце в ${esc(sun.sign || '—')} · Асцендент ${esc(asc.sign || '—')}</div>
+      ${legend}
       <div>${lines || '<div style="color:var(--text-faint);font-size:12.5px">Планеты ещё не рассчитаны</div>'}</div>
       <div style="color:var(--text-faint);font-size:11.5px;margin:10px 0">✓ Сохранена в твоём профиле — всегда под рукой.</div>
       <div style="display:flex;gap:8px;margin-top:6px">
         <button class="btn btn-primary" style="flex:1" data-act="ask-chart">Спросить про карту</button>
+        <button class="btn btn-ghost" data-act="share-chart" title="Сохранить картинку для сторис">📸</button>
         <button class="btn btn-ghost" data-act="go" data-goto="profile">В профиль</button>
       </div>`;
   },
@@ -1010,6 +1211,92 @@ const app = {
     if (q && q.trim()) this.chatAsk('Что в моей натальной карте говорит о ' + q.trim());
   },
 
+  /* B2 — «Сохранить в сторис»: SVG-колесо → canvas → PNG.
+     Фронт-рендер без новых зависимостей; nativitySvg уже использует литеральные
+     цвета (не var()), чтобы standalone-SVG в <img> не терял палитру. */
+  downloadPng(dataUrl, name) {
+    const a = document.createElement('a');
+    a.href = dataUrl; a.download = name || 'oracle-natal-card.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    this.toast('Картинка сохранена — добавь её в сторис ✨');
+  },
+  // G004 «в сторис»: готовый PNG расклада с бэка (/api/share/reading/{id}.png)
+  async shareReading(id) {
+    try {
+      const res = await fetch('/api/share/reading/' + id + '.png');
+      if (!res.ok) { this.toast('Картинка сейчас недоступна 🌙'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const file = new File([blob], 'oracle-tarot.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ title: 'Мой расклад Таро', files: [file] })
+          .catch(() => this.downloadUrl(url, 'oracle-tarot.png'));
+      } else {
+        this.downloadUrl(url, 'oracle-tarot.png');
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) { this.toast('Картинка сейчас недоступна 🌙'); }
+  },
+  downloadUrl(url, name) {
+    const a = document.createElement('a');
+    a.href = url; a.download = name || 'oracle-card.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    this.toast('Картинка сохранена — добавь её в сторис ✨');
+  },
+  // G004 рефералка: скопировать ссылку приглашения
+  async refCopy() {
+    const link = this._refLink;
+    if (!link) { this.toast('Ссылка ещё готовится…'); return; }
+    haptic('light');
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(link);
+        this.toast('Ссылка скопирована — отправь подруге ✨');
+      } else {
+        this.toast(link);
+      }
+    } catch (e) { this.toast('Ссылка: ' + link); }
+  },
+  // G004 «сбылось» на раскладе: обратная связь ценности
+  async setOutcome(id, val) {
+    haptic('soft');
+    try {
+      await api('/api/tarot/outcome/' + id, { method: 'POST', body: JSON.stringify({ outcome: val }) });
+      this.toast(val === 'came_true' ? 'Рада, что сбылось! Возвращайся за следующим раскладом ✨'
+        : val === 'partly' ? 'Отметим частично — главное, что откликнулось 🌙' : 'Поняла — жизнь вносит коррективы 🌙');
+    } catch (e) { this.toast(e.message); }
+  },
+  shareChart() {
+    const c = this.chart;
+    if (!c || !(c.planets || []).length) { this.toast('Сначала построй карту ✨'); return; }
+    const size = 560; // 2× для чёткости
+    let svg = nativitySvg(c, size);
+    svg = svg.replace('style="width:100%;max-width:280px;height:auto;margin:0 auto;display:block;"',
+      `width="${size}" height="${size}"`);
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#08070f'; ctx.fillRect(0, 0, size, size); // ночной фон
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      const png = canvas.toDataURL('image/png');
+      if (navigator.share && navigator.canShare && this.me && this.me.flags && this.me.flags.share_cards) {
+        fetch(png).then(r => r.blob()).then(b => {
+          const f = new File([b], 'oracle-natal-card.png', { type: 'image/png' });
+          navigator.share({ title: 'Моя натальная карта', files: [f] }).catch(() => this.downloadPng(png));
+        }).catch(() => this.downloadPng(png));
+      } else {
+        this.downloadPng(png);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); this.toast('Не удалось собрать картинку 🌙'); };
+    img.src = url;
+  },
+
   /* ═══ ФИЧА: ПРОГНОЗ / НЕБО ═══ */
   async featureToday() {
     if (this.chat.pending && this.chat.pending.kind === 'today') return;
@@ -1017,8 +1304,9 @@ const app = {
     this.renderChat(document.getElementById('app-main'));
     try {
       const t = await api('/api/today');
+      const card = t.card || {}; // B6 guard — карты может не быть
       this.chat.pending = { kind: 'today', loading: false,
-        forecast: `🌅 ${fmtDate()}\n\n${t.forecast}\n\n🂠 Карта дня: ${t.card.emoji} ${t.card.name} — ${t.card.meaning}` };
+        forecast: `🌅 ${fmtDate()}\n\n${t.forecast}\n\n🂠 Карта дня: ${card.emoji || ''} ${card.name || ''} — ${card.meaning || ''}`};
     } catch (e) {
       this.chat.pending = { kind: 'today', loading: false, forecast: '😔 ' + e.message };
     }
@@ -1027,11 +1315,12 @@ const app = {
 
   /* ═══ ФИЧА: ЛУННАЯ НЕДЕЛЯ ═══ */
   async featureMoon() {
+    if (this.chat.pending && this.chat.pending.kind === 'moon') return; // B4 re-entry
     this.chat.pending = { kind: 'moon', loading: true, rows: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const days = await api('/api/moon/week');
-      const wd = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+      const wd = WD_LOWER;
       this.chat.pending = { kind: 'moon', loading: false, rows: days.map(d => `
         <div class="planet-line">
           <div class="p-ico moon-orb mini-moon">${moonSvg(d.emoji)}</div>
@@ -1046,6 +1335,7 @@ const app = {
 
   /* ═══ ФИЧА: МАТРИЦА ═══ */
   async featureMatrix() {
+    if (this.chat.pending && this.chat.pending.kind === 'matrix') return; // B4 re-entry
     this.chat.pending = { kind: 'matrix', loading: true, rows: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
@@ -1124,6 +1414,8 @@ const app = {
             <div class="planet-line"><div class="p-ico">⏰</div><div class="p-name">Время</div><div class="p-val">${me ? esc(me.birth_time_known ? me.birth_time : 'не известно') : '…'}</div></div>
             <div class="planet-line"><div class="p-ico">🏙</div><div class="p-name">Город</div><div class="p-val">${me ? esc(me.birth_city || '—') : '…'}</div></div>
           </div>
+          <div class="spacer"></div>
+          <div id="profile-referral"></div>
         </div>
 
         <div class="ptab-pane" id="ptab-chart">
@@ -1148,14 +1440,40 @@ const app = {
   },
 
   async loadProfileSections() {
+    const refEl = document.getElementById('profile-referral');
+    if (refEl) {
+      try {
+        const ref = await api('/api/referral');
+        if (ref && ref.link) {
+          refEl.innerHTML = `
+            <div class="ref-card">
+              <div class="ref-ico">🌙</div>
+              <div class="ref-body">
+                <div class="ref-title">Пригласи подругу — получи ${ref.bonus_per_invite || ''} ✦</div>
+                <div class="ref-desc">${esc(ref.share_text || 'Поделись ссылкой — и обе получите бонус')}</div>
+              </div>
+              <button class="btn btn-primary ref-btn" data-act="ref-copy">Скопировать</button>
+            </div>`;
+          this._refLink = ref.link;
+        } else {
+          refEl.innerHTML = '';
+        }
+      } catch (e) { refEl.innerHTML = ''; }
+    }
     const chartEl = document.getElementById('profile-chart');
     const tarotEl = document.getElementById('profile-tarot');
     const repEl = document.getElementById('profile-reports');
     const memEl = document.getElementById('profile-memories');
 
+    // G001: три независимых запроса идут параллельно (.catch — чтобы не было
+    // unhandledrejection до их await в блоках ниже)
+    const pChart = api('/api/chart'); pChart.catch(() => {});
+    const pTarot = api('/api/tarot/history'); pTarot.catch(() => {});
+    const pReps = api('/api/reports'); pReps.catch(() => {});
+
     // натальная карта (по возможности — из /api/me, иначе /api/chart)
     try {
-      const c = await api('/api/chart');
+      const c = await pChart;
       const sun = c.sun || {}, asc = c.ascendant || {};
       const planets = (c.planets || []).slice(0, 8).map(p => `
         <div class="planet-line">
@@ -1191,7 +1509,7 @@ const app = {
     }
 
     try {
-      const rows = await api('/api/tarot/history');
+      const rows = await pTarot;
       // компактно: до 3 строк + «Все N →» (тап открывает модал со всем списком)
       if (tarotEl) {
         if (!rows.length) {
@@ -1215,7 +1533,7 @@ const app = {
     } catch (e) { if (tarotEl) tarotEl.innerHTML = ''; }
 
     try {
-      const rep = await api('/api/reports');
+      const rep = await pReps;
       const ready = rep.ready || [];
       if (repEl) repEl.innerHTML = ready.length ? ready.map(r => `
         <div class="result-card" style="margin-bottom:8px" data-act="report" data-kind="${esc(r.kind)}">
@@ -1252,10 +1570,21 @@ const app = {
     try {
       const rows = await api('/api/tarot/history');
       const r = rows.find(x => x.id === id) || rows[0];
+      const cardStrip = (r.cards || []).map(c => `
+        <div class="rc-strip"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+          <span>${esc(c.name)}${c.reversed ? ' ↺' : ''}</span></div>`).join('');
       const cards = (r.cards || []).map(c => `${c.emoji} ${c.name}${c.reversed ? ' ↺' : ''} — ${c.meaning}`).join('\n');
       this.showModal(`<h3>🎴 ${esc(r.question || 'Расклад')}</h3><button class="m-close" data-act="modal-close">✕</button>
+        <div class="rc-strip-row">${cardStrip}</div>
         <div style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;margin:8px 0">${esc(cards)}</div>
-        <div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap">${esc(r.answer || '—')}</div>`);
+        <div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap">${esc(r.answer || '—')}</div>
+        <button class="btn btn-primary" style="margin-top:14px" data-act="share-reading" data-id="${id}">📸 Сохранить в сторис</button>
+        <div class="outcome-row">
+          <span class="outcome-q">Сбылось?</span>
+          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="came_true">✓ Да</button>
+          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="partly">Частично</button>
+          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="no">Нет</button>
+        </div>`);
     } catch (e) { alert(e.message); }
   },
 
@@ -1340,6 +1669,7 @@ const app = {
       <div id="fc-body" style="margin-top:8px"><div class="loader-ring"></div></div>`);
     try {
       const c = await api('/api/chart');
+      this.chart = c; // B2: для шаринга из полной карты
       const row = (ico, name, val) => `<div class="fc-row"><span class="fc-ico">${ico}</span><span class="fc-name">${esc(name)}</span><span class="fc-val">${val}</span></div>`;
       const pRows = (c.planets || []).map(p =>
         row(SIGNS[p.sign] || '•', p.name, `${esc(p.sign)} ${p.deg}°${p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ℞' : ''}`)).join('');
@@ -1350,12 +1680,8 @@ const app = {
       const aRows = (c.aspects || []).slice(0, 12).map(a =>
         row(a.glyph || '◈', `${a.p1} — ${a.p2}`, `${a.aspect}${a.orb != null ? ' · орб ' + a.orb + '°' : ''}`)).join('');
       document.getElementById('fc-body').innerHTML = `
-        <div class="fc-hero">
-          <img src="/static/img/card-art.jpg" alt="" aria-hidden="true" loading="lazy">
-          <div class="fc-hero-overlay">
-            <h2 class="fc-modal-h" style="font-size:20px">🌌 Полная натальная карта</h2>
-            <div style="font-size:12.5px;color:var(--text-dim);margin-top:2px">Планеты · Узлы · Дома · Аспекты — простым языком</div>
-          </div>
+        <div class="fc-hero" style="margin-bottom:6px;display:flex;justify-content:center;align-items:center;background:rgba(14,13,30,.7);border-radius:14px;padding:10px;box-shadow:0 6px 30px -10px rgba(0,0,0,.6);">
+          <div style="width:260px;height:260px;">${nativitySvg(c, 260)}</div>
         </div>
         <div class="fc-card">
           <span class="fc-ico">☉</span>
@@ -1406,6 +1732,10 @@ const app = {
           <div class="fc-card-body">
             <h4 class="fc-t">Аспекты (до 8)</h4>
             <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px">Ключевые углы между планетами — как они разговаривают друг с другом.</div>
+            <div class="asp-legend" style="margin-bottom:8px">
+              <span class="asp-chip" style="color:#e6c178">☌ соединение</span><span class="asp-chip" style="color:#e6c178">⚹ секстиль</span><span class="asp-chip" style="color:#e6c178">△ трин</span>
+              <span class="asp-chip" style="color:#a78bfa">□ квадрат</span><span class="asp-chip" style="color:#ff6b6b">☍ оппозиция</span>
+            </div>
             <div style="display:flex;flex-wrap:wrap;gap:5px">
               ${(c.aspects || []).slice(0, 8).map(a => `
               <span class="chip" style="font-size:11.5px;padding:4px 8px">${esc(a.glyph || '◈')} <b>${esc(a.p1)} — ${esc(a.p2)}</b> · <em style="color:var(--text-faint)">${esc(a.aspect)}</em> · орб ${esc(a.orb != null ? a.orb + '°' : '')}</span>`).join('')}
@@ -1422,6 +1752,7 @@ const app = {
           </div>
         </div>
         <button class="btn btn-primary" style="margin-top:14px" data-act="chat" data-chat="astro">Спросить Астролога про карту</button>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px" data-act="share-chart">📸 Сохранить карту в сторис</button>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" data-act="fc-explain">🧠 Разбор простыми словами</button>
         <div id="fc-explain" style="margin-top:12px"></div>`;
     } catch (e) {
@@ -1471,11 +1802,13 @@ const app = {
     }
   },
 
-  showModal(html) {
+  showModal(html, variant = '') {
+    const old = document.getElementById('app-modal');
+    if (old) old.remove();   // один модал за раз — без дублей id и наложений
     const ov = document.createElement('div');
-    ov.className = 'modal-overlay';
+    ov.className = 'modal-overlay' + (variant === 'full' ? ' full' : '');
     ov.id = 'app-modal';
-    ov.innerHTML = `<div class="modal">${html}</div>`;
+    ov.innerHTML = `<div class="modal${variant === 'full' ? ' full' : ''}">${html}</div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
   },
@@ -1486,6 +1819,147 @@ const SIGNS = {
   Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍',
   Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓',
 };
+
+// Планетные символы (астрологический unicode) вместо глифов знаков:
+// так сразу видно, где какая планета, без легенды (T5).
+const PLANET_GLYPH = {
+  'солн': '☉', 'лун': '☽', 'меркур': '☿', 'венер': '♀', 'марс': '♂',
+  'юпитер': '♃', 'сатурн': '♄', 'уран': '♅', 'нептун': '♆', 'плутон': '♇',
+  'рах': '☊', 'кет': '☋', 'лилит': '⚸',
+};
+function planetGlyph(name) {
+  const n = String(name || '').toLowerCase();
+  for (const k in PLANET_GLYPH) if (n.includes(k)) return PLANET_GLYPH[k];
+  return '';
+}
+
+// Мини-схема расклада: золотые точки по числу карт (активна «середина»).
+// Программный генератор вместо большого тернарника в pendingHtml (T2).
+function spreadScheme(code) {
+  const map = {
+    one: ['active'], three: ['', 'active', ''], love: ['', 'active', '', ''],
+    choice: ['', 'active', '', '', ''], money: ['', '', '', ''],
+    career: ['', '', '', '', ''], work: ['', '', '', '', '', ''],
+    celtic: ['', '', '', '', '', '', '', '', ''],
+    year: ['', '', '', '', '', '', '', '', '', '', '', ''],
+  };
+  const dots = map[code] || ['active'];
+  return dots.map(d => `<span class="dot${d === 'active' ? ' active' : ''}"></span>`).join('');
+}
+
+/* ── SVG-колесо натальной карты — полный визуал по данным эфемерид ─── */
+function nativitySvg(c, size = 260) {
+  const planets = c.planets || [];
+  const houses = c.houses || [];
+  const aspects = c.aspects || [];
+  const nodes = c.nodes || [];
+  const sun = c.sun || {};
+  const asc = c.ascendant || {};
+  const cx = size / 2, cy = size / 2;
+  // геометрия пропорциональна viewBox: радиусы захардкожены под 260, при
+  // size=160 без scale круг обрезается (B1)
+  const scale = size / 260;
+  const r = 110 * scale;
+
+  // 12 знаков зодиака по кругу (начиная с Овна в любом месте — используем abs_deg планет для позиционирования)
+  const signOrder = ['Овен','Телец','Близнецы','Рак','Лев','Дева','Весы','Скорпион','Стрелец','Козерог','Водолей','Рыбы'];
+  const signGlyphs = { Овен:'♈', Телец:'♉', Близнецы:'♊', Рак:'♋', Лев:'♌', Дева:'♍', Весы:'♎', Скорпион:'♏', Стрелец:'♐', Козерог:'♑', Водолей:'♒', Рыбы:'♓' };
+
+  // Позиция по абсолютному градусу (0-360) → угол для SVG (0° справа, против часовой)
+  const angleDeg = (absDeg, offset = 0) => (absDeg - offset) * Math.PI / 180;
+  const polar = (deg, rad) => [cx + Math.cos(angleDeg(deg, 0)) * rad, cy - Math.sin(angleDeg(deg, 0)) * rad];
+
+  // 12 делений круга (дома) как дуги
+  const houseArcs = houses.map((h, i) => {
+    const startDeg = h.abs_deg || ((i * 30) % 360);
+    const endDeg = ((startDeg + 30) % 360);
+    const rOut = r + 6 * scale;
+    const rIn = r - 6 * scale;
+    // Простая дуга через path (дуга по кругу)
+    const p1 = polar(startDeg, rOut);
+    const p2 = polar(endDeg, rOut);
+    // Упрощённая дуга для визуала (маленький сегмент круга)
+    return `<path class="n-in" style="animation-delay:${(i * 30)}ms" d="M ${p1[0]} ${p1[1]} A ${rOut} ${rOut} 0 0 1 ${p2[0]} ${p2[1]} L ${(p2[0] + (polar(endDeg, rIn)[0]-p2[0])*0.7)} ${(p2[1] + (polar(endDeg, rIn)[1]-p2[1])*0.7)} A ${rIn} ${rIn} 0 0 0 ${(p1[0] + (polar(startDeg, rIn)[0]-p1[0])*0.7)} ${(p1[1] + (polar(startDeg, rIn)[1]-p1[1])*0.7)} Z" fill="none" stroke="rgba(167,139,250,.15)" stroke-width=".8"/>`;
+  }).join('');
+
+  // Планеты как круги с планетным символом (T5: сразу видно, где какая)
+  const planetDots = planets.map((p, i) => {
+    const [x, y] = polar(p.abs_deg || 0, r - 22 * scale);
+    const sym = planetGlyph(p.name) || signGlyphs[p.sign] || '•';
+    const retro = p.retro ? '℞' : '';
+    return `<g class="n-in" style="animation-delay:${(360 + i * 45)}ms">
+      <circle cx="${x}" cy="${y}" r="${(13 * scale) + (sym.length > 1 ? 1 : 0)}" fill="rgba(24,22,48,.8)" stroke="#e6c178" stroke-width="1.5" filter="drop-shadow(0 0 5px rgba(230,193,120,.35))"/>
+      <text x="${x}" y="${y+4}" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="13" fill="#ffd98f" font-weight="700">${sym}</text>
+      ${size >= 200 ? `<text x="${x}" y="${y + 16 * scale}" text-anchor="middle" font-size="6.5" fill="#a49cc8" font-family="Arial, sans-serif">${esc(p.name)}</text>` : ''}
+      ${retro ? `<text x="${x}" y="${y-7}" text-anchor="middle" font-size="7" fill="#ff6b6b" font-weight="700">${retro}</text>` : ''}
+    </g>`;
+  }).join('');
+
+  // Узлы (Раху, Кету, Лилит) — меньшие круги своим символом
+  const nodeDots = nodes.map((n, i) => {
+    const nodeSignIdx = signOrder.indexOf(n.sign);
+    const nodeAbs = n.abs_deg || (n.deg != null ? n.deg + (nodeSignIdx >= 0 ? nodeSignIdx * 30 : 0) : 0);
+    const [x, y] = polar(nodeAbs, r - 8 * scale);
+    const sym = planetGlyph(n.name) || signGlyphs[n.sign] || '☊';
+    return `<g class="n-in" style="animation-delay:${(620 + i * 70)}ms">
+      <circle cx="${x}" cy="${y}" r="${9 * scale}" fill="rgba(24,22,48,.7)" stroke="#a78bfa" stroke-width="1.2" filter="drop-shadow(0 0 4px rgba(167,139,250,.4))"/>
+      <text x="${x}" y="${y+3}" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="9" fill="#a78bfa" font-weight="600">${sym}</text>
+    </g>`;
+  }).join('');
+
+  // Аспекты — простые линии между планетами (берём первые 8 для читаемости)
+  const aspectLines = (aspects.slice ? aspects.slice(0, 8).map((a, i) => {
+    const p1 = planets.find(pl => pl.name === a.p1);
+    const p2 = planets.find(pl => pl.name === a.p2);
+    if (!p1 || !p2 || !p1.abs_deg || !p2.abs_deg) return '';
+    const [x1, y1] = polar(p1.abs_deg, r - 22 * scale);
+    const [x2, y2] = polar(p2.abs_deg, r - 22 * scale);
+    const color = a.glyph === '△' ? 'rgba(230,193,120,.55)' : a.glyph === '□' ? 'rgba(167,139,250,.55)' : a.glyph === '☍' ? 'rgba(255,107,107,.55)' : 'rgba(255,255,255,.15)';
+    return `<line class="n-in" style="animation-delay:${(820 + i * 60)}ms" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1.2" stroke-dasharray="3 2" opacity=".9"/>`;
+  }).join('') : '');
+
+  // Домашняя круговая сетка с номерами домов
+  const houseLabels = houses.map(h => {
+    const [lx, ly] = polar(h.abs_deg || 0, r + 14 * scale);
+    return `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="7" fill="#a49cc8" font-family="Arial, sans-serif">${h.n || ''}</text>`;
+  }).join('');
+
+  // Солнце в центре
+  const sunCenter = `<g>
+    <circle cx="${cx}" cy="${cy}" r="${28 * scale}" fill="rgba(230,193,120,.08)" stroke="#e6c178" stroke-width="1.5" opacity=".9"/>
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="22" fill="#ffd98f">${sun.symbol || '☉'}</text>
+    <text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="#a49cc8" font-family="Arial, sans-serif">${sun.sign || ''}</text>
+  </g>`;
+
+  // Асцендент — метка в верхней части круга: внутри колеса, чтобы не вылезать
+  // за viewBox на малых size (B1)
+  const ascHtml = asc && asc.sign ? `<text x="${cx}" y="${cy - r + 14 * scale}" text-anchor="middle" font-size="9" fill="#a78bfa" font-family="Arial, sans-serif" letter-spacing="1px">AC · ${esc(asc.sign)}</text>` : '';
+
+  return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width:100%;max-width:280px;height:auto;margin:0 auto;display:block;">
+    <defs>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- круг зодиака -->
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(230,193,120,.15)" stroke-width=".8"/>
+    <circle cx="${cx}" cy="${cy}" r="${r-10}" fill="none" stroke="rgba(167,139,250,.1)" stroke-width="1" stroke-dasharray="4 3"/>
+    <!-- деления домов -->
+    ${houseArcs}
+    <!-- аспекты -->
+    ${aspectLines}
+    <!-- планеты -->
+    ${planetDots}
+    <!-- узлы -->
+    ${nodeDots}
+    <!-- номера домов -->
+    ${houseLabels}
+    <!-- солнце -->
+    ${sunCenter}
+    ${ascHtml}
+  </svg>`;
+}
 
 window.app = app;
 
@@ -1518,19 +1992,24 @@ document.addEventListener('click', e => {
     case 'fc-explain': app.explainChart(); break;
     case 'del-mem': app.delMem(parseInt(v.id, 10)); break;
     case 'add-mem': app.addMem(); break;
-    case 'spread': app.pickSpread(v.spread); break;
+    case 'pick-open': app.openSpreadPicker(); break;
+    case 'pick-choose': app.chooseSpread(v.code); break;
     case 'draw': app.doDraw(); break;
     case 'flip': app.flipCard(parseInt(v.i, 10)); break;
     case 'flip-card': app.flipDayCard(el); break;
     case 'interpret': app.doInterpret(); break;
     case 'compat': app.doCompat(); break;
     case 'reading': app.openReading(parseInt(v.id, 10)); break;
+    case 'share-reading': app.shareReading(parseInt(v.id, 10)); break;
+    case 'outcome': app.setOutcome(parseInt(v.id, 10), v.val); break;
+    case 'ref-copy': app.refCopy(); break;
     case 'report': app.openReport(v.kind); break;
     case 'build': app.doBuildChart(); break;
     case 'ask': app.askAgent(v.chat, v.q); break;
     case 'all-readings': app.openAllReadings(); break;
     case 'bell': app.openBell(); break;
     case 'ask-chart': app.askChart(); break;
+    case 'share-chart': app.shareChart(); break;
     case 'modal-close': app.closeModal(); break;
   }
 });
@@ -1539,6 +2018,7 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('input', e => {
   if (e.target && e.target.id === 'tarot-q') app.pendingQ(e.target.value);
+  if (e.target && e.target.id === 'chat-input') app.chat.draft = e.target.value;  // G001 черновик
 });
 
 app.boot();

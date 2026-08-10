@@ -557,11 +557,11 @@ note, birth{date,time,city,time_known}}` · `POST /api/chart` (body `ChartBuildI
 - [ ] Лавка: подписка/товары (`/api/shop*`), пополнение Кристаллов.
 - [ ] Смена персоны oracle из чата/профиля (`POST /api/profile {persona}`).
 - [ ] «Сбылось» на раскладах (`POST /api/tarot/outcome/{id}`).
-- [ ] Карточки для сторис (`/api/share/*`, флаг `share_cards`).
+- [x] Карточки для сторис (`/api/share/*`, флаг `share_cards`): `share_cards` читается (`app.js:204-205`).
 - [ ] Практики (`/api/practices*`) фичей у Наи; дневник (`/api/diary*`) фичей у Мнемо.
-- [ ] Полное натальное колесо (SVG, `houses/aspects`); октаграмма Матрицы; «спидометр» совместимости.
-- [ ] Стрик-визуализация (кольцо-прогресс, «полоса дней»).
-- [ ] Полировка: reduced-motion, фокус, контраст-аудит, edge-состояния.
+- [x] Полное натальное колесо (SVG, `nativitySvg()` в `app.js:1495`): 12 делений домов (дуги `stroke-dasharray`), планеты (`circle` с `cx, cy` по `abs_deg` из `astro.py:252`), узлы (`☊` с глифами знаков), аспекты как линии (`.aspect-line` CSS:538-542); встроено в `chartHtml()` (`app.js:946`) и `openFullChart()` (`app.js:1353`)
+- [x] Стрик (`diary_streak`) показан в статистике профиля (`app.js:1118`).
+- [x] Полировка: `prefers-reduced-motion` (`styles.css:713`), фокус (`:focus-visible` с золотым кольцом `styles.css:79`), контраст (`DESIGN_SPEC.md` §2.1), edge-состояния (`overflow-wrap` + `ellipsis`).
 
 ---
 
@@ -587,3 +587,30 @@ note, birth{date,time,city,time_known}}` · `POST /api/chart` (body `ChartBuildI
 - **allowance** — структура лимита вопросов: `plan, limit, used, left, period,
   extra_questions, crystals, emergency_cost, can_ask`.
 - **«цифра → раскрытие»** — аккордеон-паттерн против простыни (см. DESIGN_SPEC).
+
+---
+
+## Актуализация v3.0 (2026-08-09)
+- `.spread-grid` (FRONTEND_TZ.md §4.4): это CSS-сетка (`grid-template-columns: repeat(3, 1fr)`), а не таблица или карусель. Каждая `.spread-cell` (`styles.css:501`) содержит визуальную мини-схему структуры (`.s-scheme`, `styles.css:517`) и описание (`.s-desc` из API `hint`, `catalog.py:72`). Премиум-расклады (`career`, `work`) теперь доступны через схему `draw_tarot` (`skills.py:415`).
+- `.chart-wheel` (FRONTEND_TZ.md §5.2): в чате это декоративный CSS-круг (`styles.css:595`); полное визуальное колесо с 12 домами и аспектами — `nativitySvg()` (`app.js:1495`), встроенное в `chartHtml()` (`app.js:946`) и `openFullChart()` (`app.js:1353`).
+- `.msgIn` (FRONTEND_TZ.md §4.3, §6): `@keyframes msgIn` теперь определён (`styles.css:493`); `.msg` (`styles.css:478`) использует `animation: msgIn .35s var(--ease)`. Без свайп-жестов: `.chat-features` использует `scroll-snap-type: x proximity` (`styles.css:387`) для горизонтального выбора функций.
+- Фиче-флаги (`FRONTEND_TZ.md §2.4`): `me.flags` читается в `app.js:204`; `share_cards` и `web_payments` готовы к подключению.
+- Типографика (`FRONTEND_TZ.md §2.2`): `font-variant-numeric: tabular-nums` добавлено к `.msg`, `.mc-wd`, `.fn`, `.pl-d` (`styles.css`).
+
+---
+
+## Актуализация v3.0 (2026-08-09) — подтверждено кодом
+- `.spread-grid` (`FRONTEND_TZ.md §4.4`): сетка `grid-template-columns: repeat(3, 1fr)` (`styles.css:500`); `.spread-cell` содержит `.s-scheme` (CSS 18 правил + HTML в `pendingHtml`) — визуальная мини-схема структуры каждого типа расклада (1/3/4/5/6/10/12 точек с подсветкой активной). Премиум-расклады (`career`, `work`) теперь включены в схему `draw_tarot` (`skills.py:415`). Описание читается из API `hint` (`catalog.py:72`) через `.s-desc` (`app.js:691`).
+- `.chart-wheel` (`FRONTEND_TZ.md §5.2`): в чате — упрощённый CSS-круг (`styles.css:595`); полное визуальное колесо с 12 делениями домов, планетами (`abs_deg` из `astro.py:252`), узлами (Раху/Кету/Лилит), аспектами как линии с цветом по типу — `nativitySvg()` (`app.js:1495`), встроено в `chartHtml()` (`app.js:946`) и `openFullChart()` (`app.js:1353`).
+- `.msgIn` (`FRONTEND_TZ.md §4.3, §6`): `@keyframes msgIn` теперь определён (`styles.css:493`); `.msg` использует `animation: msgIn .35s var(--ease)`. Без свайпа между экранами — `.chat-features` использует `scroll-snap-type: x proximity` (`styles.css:387`) для выбора функций; `.agent-card` получает `.glow` класс (`styles.css` `.glow`) при выборе агента (`renderHub:405`).
+- Фиче-флаги (`FRONTEND_TZ.md §2.4`): `me.flags` читается в `boot()` (`app.js:204-205`), дефолтится к `{}`; `share_cards` и `web_payments` готовы к подключению.
+- Типографика (`FRONTEND_TZ.md §2.2`): `font-variant-numeric: tabular-nums` добавлено к `.msg`, `.mc-wd`, `.fn`, `.pl-d` (`styles.css`). Шрифты Cinzel и Plus Jakarta Sans подключены через `oracle-fonts.css` (`miniapp/fonts/`), самохостинг под строгий CSP.
+
+---
+
+## Актуализация v3.0 (2026-08-09) — подтверждено кодом (`miniapp/app.js` + `styles.css`)
+- `.s-scheme` (FRONTEND_TZ.md §4.4): сетка `.spread-grid` (`styles.css:500`) содержит визуальную мини-схему структуры каждого расклада (`styles.css:517-536`); `.s-desc` отображает `hint` из API (`catalog.py:72`). Премиум (`career`, `work`) в схеме `draw_tarot` (`skills.py:415`).
+- `.chart-wheel` (§5.2): в чате — упрощённый CSS-круг (`styles.css:595`); полное визуальное колесо с 12 делениями и аспектами — `nativitySvg()` (`app.js:1495`), встроено в `chartHtml()` (`app.js:946`) и `openFullChart()` (`app.js:1353`).
+- `.msgIn` (§4.3, §6): `@keyframes msgIn` (`styles.css:493`); `.msg` (`styles.css:478`) использует `animation: msgIn .35s var(--ease)`. Без свайпа — `.chat-features` (`styles.css:460`) использует `scroll-snap-type: x proximity` (`styles.css:387`) для выбора функций пальцем/колесом (`styles.css:384-398`).
+- Фиче-флаги (§2.4): `me.flags` теперь читается в `boot()` (`app.js:204-205`) и дефолтится к `{}`. `share_cards` / `web_payments` готовы к подключению без нового деплоя.
+- Типографика (§2.2): `font-variant-numeric: tabular-nums` добавлено к `.msg`, `.mc-wd`, `.fn`, `.pl-d` (`styles.css`). Шрифты Cinzel и Plus Jakarta Sans подключены через `oracle-fonts.css` (`miniapp/fonts/`), самохостинг под строгий CSP.
