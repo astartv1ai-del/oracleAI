@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -36,6 +37,13 @@ WEB_DIR = ROOT / "web"                 # публичный лендинг и SE
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Подключаемся к БД на старте, чтобы миграции прошли до первого запроса."""
+    # DEV_MODE=1 отключает подпись Telegram (?dev_user=<id>) — это только для
+    # разработки. Забытая на бою единица открывает API всем подряд, поэтому
+    # запуск падает, если режим включён не в dev-окружении (APP_ENV=dev).
+    if settings.dev_mode and os.getenv("APP_ENV", "") != "dev":
+        raise RuntimeError(
+            "DEV_MODE=1 включает вход по ?dev_user=<id> БЕЗ подписи Telegram. "
+            "Допустимо только в dev: выстави APP_ENV=dev либо выключи DEV_MODE=0")
     sentry.init()
     db = await get_db()
     from ..data.session import healthcheck

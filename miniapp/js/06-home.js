@@ -82,6 +82,20 @@
           </div>
         </div>` : ''}
 
+        ${t && t.next_action && t.next_action.kind ? `
+        <div class="spacer"></div>
+        <div class="section-title">🧭 Что дальше</div>
+        <div class="glass" style="display:flex;align-items:center;gap:12px;padding:14px 16px">
+          <span style="font-size:22px;flex-shrink:0">${esc(t.next_action.emoji || '✨')}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13.5px">${esc(t.next_action.title)}</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${esc(t.next_action.text)}</div>
+          </div>
+          ${t.next_action.fn
+            ? `<button class="btn btn-primary" style="padding:9px 13px;font-size:12px;flex-shrink:0" data-act="chat-fn" data-chat="${esc(t.next_action.chat || 'oracle')}" data-fn="${esc(t.next_action.fn)}">${esc(t.next_action.cta)}</button>`
+            : `<span style="flex-shrink:0;color:var(--text-faint);font-size:12px">${esc(t.next_action.cta)}</span>`}
+        </div>` : ''}
+
         <div class="spacer"></div>
         <div class="section-title">🪐 Твои агенты</div>
         <div class="dock-grid">

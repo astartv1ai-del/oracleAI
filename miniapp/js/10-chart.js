@@ -1,12 +1,15 @@
 /* chart: натальная карта — форма, построение, SVG, шаринг, планеты/стихии */
   app.featureChart = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'chart') return;
-    this.chat.pending = { kind: 'chart', loading: true, html: '' };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'chart', loading: true, html: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const c = await api('/api/chart');
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartHtml(c) };
     } catch (e) {
+      if (!widAlive(key, view, pend)) return;
       // карты ещё нет — даём собрать её прямо здесь (время и город)
       this.chart = null;
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartForm() };
@@ -80,15 +83,18 @@
     const time = (document.getElementById('ch-time') || {}).value || '';
     const city = (document.getElementById('ch-city') || {}).value || '';
     this.chat.busy = true;
-    this.chat.pending = { kind: 'chart', loading: true, html: '' };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'chart', loading: true, html: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const c = await api('/api/chart', {
         method: 'POST',
         body: JSON.stringify({ birth_time: time.trim() || null, birth_city: city.trim() || null }),
       });
+      if (!widAlive(key, view, pend)) { this.chat.busy = false; return; }
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartHtml(c) };
     } catch (e) {
+      if (!widAlive(key, view, pend)) { this.chat.busy = false; return; }
       this.chat.pending = { kind: 'chart', loading: false, html: '<div style="color:#ff9e9e;font-size:13px">😔 ' + esc(e.message) + '</div>' };
     }
     this.chat.busy = false;
@@ -182,7 +188,7 @@
     const p = (c && c.planets) ? c.planets[i] : null;
     if (!p) return;
     haptic('light');
-    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+    vb(15);
     const svg = document.querySelector('.nw svg');
     if (svg) {
       svg.querySelectorAll('.n-planet.active').forEach(g => g.classList.remove('active'));
@@ -200,7 +206,7 @@
 
   app.filterElement = function(el) {
     haptic('light');
-    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
+    vb(10);
     const c = this.chart;
     const svg = document.querySelector('.nw svg');
     if (!svg || !c || !c.planets) return;

@@ -18,7 +18,7 @@ document.addEventListener('click', e => {
     case 'feature': haptic('light'); app[v.fn] && app[v.fn](); break;
     case 'tool-fn':
       haptic('light');
-      if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+      vb(15);
       app[v.fn] && app[v.fn]();
       break;
     case 'tool-toggle': app.toggleToolbox(); break;
@@ -70,6 +70,7 @@ document.addEventListener('click', e => {
     case 'bell': app.openBell(); break;
     case 'ask-chart': app.askChart(); break;
     case 'share-chart': app.shareChart(); break;
+    case 'share-compat': app.shareCompat(v.pdate, v.pname, v.rel); break;
     case 'modal-close': app.closeModal(); break;
   }
 });

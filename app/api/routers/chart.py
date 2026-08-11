@@ -184,7 +184,8 @@ async def compat_full(item: CompatIn, user=Depends(active_user), db=Depends(get_
         db, user["tg_id"], "user", f"Совместимость с {name or 'партнёром'}",
         is_question=limits.counts_toward_limit(verdict), thread_id=thread["id"],
         agent="astro", surface="miniapp")
-    text = await agent_core.interpret_compat(db, user, partner_date, name)
+    text = await agent_core.interpret_compat(db, user, partner_date, name,
+                                             relation=item.relation)
     await dialog.save_message(db, user["tg_id"], "assistant", text,
                               thread_id=thread["id"], agent="astro",
                               surface="miniapp")
@@ -195,7 +196,11 @@ async def compat_full(item: CompatIn, user=Depends(active_user), db=Depends(get_
         if item.save:
             await readings.add_partner(db, user["tg_id"], name, partner_date)
     await analytics.track(db, "compat_full", user["tg_id"], surface="miniapp")
-    scores = skills._compat(user["birth_date"], partner_date, relation=item.relation)
+    # Балл в ответе — ровно тот, что лёг в текст: те же аспекты и тип связи,
+    # иначе шкала и разбор показывали бы разные числа на одном экране.
+    aspects = await skills._pair_aspects(db, user, partner_date)
+    scores = skills._compat(user["birth_date"], partner_date, relation=item.relation,
+                            aspects=aspects)
     return {"answer": text, "scores": scores}
 
 

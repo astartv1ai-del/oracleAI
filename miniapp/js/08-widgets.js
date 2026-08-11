@@ -1,19 +1,34 @@
 /* widgets: лунная неделя, карта дня, матрица, практики, дневник, карьера */
+/* оболочка виджета-сообщения: msg.assistant > chat-widget > title + loader|error|body.
+   loading → loader-ring, error → строка с esc(p.error), иначе body. title/body — строка или fn(p). */
+const widgetShell = (p, { title, body, tail = '' }) => {
+  const head = typeof title === 'function' ? title(p) : title;
+  const content = p.loading ? '<div class="loader-ring"></div>'
+    : p.error ? '<div style="color:var(--text-faint);font-size:12.5px">' + esc(p.error) + '</div>'
+    : (typeof body === 'function' ? body() : body);
+  return `<div class="msg assistant">
+    <div class="chat-widget">
+      <div class="w-title">${head}</div>
+      ${content}
+      ${tail}
+    </div>
+  </div>`;
+};
   app.moonWidget = function(p) {
     const wd = WD_LOWER;
     const days = p.days || [];
-    return `<div class="msg assistant">
-      <div class="chat-widget">
-        <div class="w-title">🌙 Лунная неделя</div>
-        ${p.loading ? '<div class="loader-ring"></div>' : (days.length ? days.map((d, i) => `
+    return widgetShell(p, {
+      title: '🌙 Лунная неделя',
+      body: days.length ? days.map((d, i) => `
           <div class="planet-line pw-mline${p.exp === i ? ' exp' : ''}" data-act="moon-expand" data-i="${i}">
             <div class="p-ico moon-orb mini-moon">${moonSvg(d.emoji)}</div>
             <div class="p-name">${d.date.slice(8)} ${wd[d.weekday]} · <b>${esc(d.name)}</b></div>
             <div class="p-val" style="font-size:11.5px">${d.day}-й д.</div>
             ${p.exp === i ? `<div class="moon-adv">${esc(d.advice)}</div>` : ''}
-          </div>`).join('') : '<div style="color:var(--text-faint);font-size:12.5px">' + esc(p.error || 'Нет данных') + '</div>')}
-        <div style="font-size:11.5px;color:var(--text-faint);margin-top:8px">Тапни день — раскроется совет фазы</div>
-      </div></div>`;
+          </div>`).join('')
+        : '<div style="color:var(--text-faint);font-size:12.5px">' + esc(p.error || 'Нет данных') + '</div>',
+      tail: '<div style="font-size:11.5px;color:var(--text-faint);margin-top:8px">Тапни день — раскроется совет фазы</div>',
+    });
   };
 
 
@@ -58,9 +73,6 @@
 
   app.matrixWidget = function(p) {
     const d = p.data || {};
-    if (p.loading || !Object.keys(d).length) {
-      return `<div class="msg assistant"><div class="chat-widget"><div class="w-title">🔢 Матрица Судьбы</div><div class="loader-ring"></div></div></div>`;
-    }
     const sel = p.selected;
     const colors = { love: '#ff8fa3', money: '#e6c178', rod: '#7fd4a8', destiny: '#a78bfa' };
     const nodeGroup = { personal: 'love', spirit: 'love', love: 'love', family: 'rod', money: 'money', destiny: 'destiny', center: 'destiny' };
@@ -113,22 +125,22 @@
           <button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="matrix-ask" data-key="${sel}">Хочу разбор подробнее ✨</button>
         </div>`;
     }
-    return `<div class="msg assistant">
-      <div class="chat-widget">
-        <div class="w-title">🔢 Матрица Судьбы</div>
-        <div class="m-diamond">
+    return widgetShell(p, {
+      title: '🔢 Матрица Судьбы',
+      body: `<div class="m-diamond">
           <svg viewBox="0 0 240 240" class="m-svg" aria-hidden="true">${segHtml}${nodeHtml}</svg>
         </div>
         <div class="m-lines">${summary}</div>
-        ${cardHtml}
-      </div></div>`;
+        ${cardHtml}`,
+    });
   };
 
 
   app.practicesWidget = function(p) {
-    if (p.loading) return `<div class="msg assistant"><div class="chat-widget"><div class="w-title">🧘 Практики</div><div class="loader-ring"></div></div></div>`;
     const items = p.items || [];
-    const body = p.error ? `<div style="color:var(--text-faint);font-size:12.5px">${esc(p.error)}</div>` : items.map(it => {
+    return widgetShell(p, {
+      title: t => '🧘 Практики' + (t.loading ? '' : ' · ' + items.length + ' программ'),
+      body: items.map(it => {
       const st = it.status;
       const active = st === 'active';
       const done = st === 'completed';
@@ -154,20 +166,17 @@
             ${done ? `<span class="pr-done">✓ Завершена — горжусь тобой</span>` : ''}
           </div>
         </div>`;
-    }).join('') || '<div style="color:var(--text-faint);font-size:12.5px">Практики не загрузились — попробуй ещё раз.</div>';
-    return `<div class="msg assistant">
-      <div class="chat-widget">
-        <div class="w-title">🧘 Практики · ${items.length} программ</div>
-        ${body}
-      </div></div>`;
+    }).join('') || '<div style="color:var(--text-faint);font-size:12.5px">Практики не загрузились — попробуй ещё раз.</div>',
+    });
   };
 
 
   app.diaryWidget = function(p) {
-    if (p.loading) return `<div class="msg assistant"><div class="chat-widget"><div class="w-title">📖 Книга судьбы</div><div class="loader-ring"></div></div></div>`;
     const entries = p.entries || [];
     const streak = p.streak || 0;
-    const body = p.error ? `<div style="color:var(--text-faint);font-size:12.5px">${esc(p.error)}</div>` : `
+    return widgetShell(p, {
+      title: '📖 Книга судьбы',
+      body: `
       <div class="dy-head">
         <span class="dy-streak${streak ? ' on' : ''}">${streak ? '🔥 ' + streak + ' дней подряд' : '🔥 начни серию'}</span>
         <span class="dy-count">${entries.length} записей</span>
@@ -187,12 +196,8 @@
           <div class="dy-row"><span class="dy-date">${esc((e.created_at || '').slice(0, 10))}</span><span class="dy-txt">${esc((e.text || '').slice(0, 90))}</span></div>`).join('')}
       </div>` : '<div style="color:var(--text-faint);font-size:12.5px">Пока пусто — начни с вечернего вопроса ✨</div>'}
       ${p.summary ? this.diarySummaryHtml(p.summary) : ''}
-      <button class="btn btn-ghost" style="width:100%;margin-top:10px" data-act="diary-summary">${p.summary ? 'Обновить сводку' : 'Что показала Вселенная? 🌌'}</button>`;
-    return `<div class="msg assistant">
-      <div class="chat-widget">
-        <div class="w-title">📖 Книга судьбы</div>
-        ${body}
-      </div></div>`;
+      <button class="btn btn-ghost" style="width:100%;margin-top:10px" data-act="diary-summary">${p.summary ? 'Обновить сводку' : 'Что показала Вселенная? 🌌'}</button>`,
+    });
   };
 
 
@@ -211,10 +216,11 @@
 
   app.careerWidget = function(p) {
     const days = p.days || [];
-    if (p.loading) return `<div class="msg assistant"><div class="chat-widget"><div class="w-title">💼 Карьерные окна</div><div class="loader-ring"></div></div></div>`;
     const sel = p.sel != null ? days[p.sel] : null;
     const legend = [['#7fd4a8', 'Действие · старт'], ['#e6c178', 'Решение'], ['#ff8fa3', 'Осторожно'], ['#8b86a3', 'Пауза']];
-    const body = p.error ? `<div style="color:var(--text-faint);font-size:12.5px">${esc(p.error)}</div>` : `
+    return widgetShell(p, {
+      title: t => '💼 Карьерные окна' + (t.loading ? '' : ' · ' + fmtDate()),
+      body: `
       <div class="cw-legend">${legend.map(([c, t]) => `<span class="cw-lg" style="--lc:${c}">${t}</span>`).join('')}</div>
       <div class="cw-grid">
         ${days.map((d, i) => {
@@ -229,12 +235,8 @@
         <div class="cw-dt">${sel.date.slice(8, 10)}.${sel.date.slice(5, 7)} · <b>${esc(sel.name)}</b> — ${careerWindow(sel).t}</div>
         <div class="cw-da">${esc(sel.advice)}</div>
       </div>` : '<div class="cw-hint">Тапни день — покажу, что делать в это окно</div>'}
-      <button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="career-ask">Спросить Астролога про окна 💼</button>`;
-    return `<div class="msg assistant">
-      <div class="chat-widget">
-        <div class="w-title">💼 Карьерные окна · ${fmtDate()}</div>
-        ${body}
-      </div></div>`;
+      <button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="career-ask">Спросить Астролога про окна 💼</button>`,
+    });
   };
 
   /* ── интерактив виджетов ── */
@@ -258,7 +260,7 @@
     const p = this.chat.pending;
     if (!p || p.kind !== 'matrix' || !p.data || !p.data[key]) return;
     haptic('light');
-    if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+    vb(30);
     p.selected = key;
     this.renderChat(document.getElementById('app-main'));
   };
@@ -290,7 +292,7 @@
       p.items = (r && r.items) || p.items || [];
       if (a === 'done') {
         haptic('success');
-        if (navigator.vibrate) { try { navigator.vibrate([10, 40, 20]); } catch (e) {} }
+        vb([10, 40, 20]);
       }
     } catch (e) {
       this.toast(e.message || 'Не получилось — попробуй ещё раз');
@@ -306,7 +308,7 @@
     try {
       await api('/api/diary', { method: 'POST', body: JSON.stringify({ text: val }) });
       haptic('success');
-      if (navigator.vibrate) { try { navigator.vibrate([10, 40, 20]); } catch (e) {} }
+      vb([10, 40, 20]);
       const r = await api('/api/diary');
       if (p) { p.entries = (r && r.entries) || []; p.streak = (r && r.streak) || 0; p.wroteToday = true; p.prompt = ''; }
     } catch (e) {
@@ -332,7 +334,7 @@
     const p = this.chat.pending;
     if (!p || p.kind !== 'career' || !p.days || !p.days[i]) return;
     haptic('light');
-    if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} }
+    vb(20);
     p.sel = i;
     this.renderChat(document.getElementById('app-main'));
   };
@@ -345,14 +347,17 @@
 
   app.featureToday = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'today') return;
-    this.chat.pending = { kind: 'today', loading: true, forecast: '', card: null, moon: null, sphere: '', flipped: false };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'today', loading: true, forecast: '', card: null, moon: null, sphere: '', flipped: false };
     this.renderChat(document.getElementById('app-main'));
     try {
       const t = await api('/api/today');
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'today', loading: false,
         forecast: t.forecast || '', card: t.card || null, moon: t.moon || null,
         sphere: t.sphere || '', flipped: false };
     } catch (e) {
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'today', loading: false, forecast: '😔 ' + e.message, card: null, moon: null, sphere: '', flipped: false };
     }
     this.renderChat(document.getElementById('app-main'));
@@ -362,12 +367,15 @@
 
   app.featureMoon = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'moon') return; // B4 re-entry
-    this.chat.pending = { kind: 'moon', loading: true, days: [], exp: null, error: '' };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'moon', loading: true, days: [], exp: null, error: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const days = await api('/api/moon/week');
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'moon', loading: false, days, exp: null, error: '' };
     } catch (e) {
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'moon', loading: false, days: [], exp: null, error: e.message };
     }
     this.renderChat(document.getElementById('app-main'));
@@ -377,12 +385,15 @@
 
   app.featureMatrix = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'matrix') return; // B4 re-entry
-    this.chat.pending = { kind: 'matrix', loading: true, data: null, selected: null, error: '' };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'matrix', loading: true, data: null, selected: null, error: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const m = await api('/api/matrix');
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'matrix', loading: false, data: m, selected: null, error: '' };
     } catch (e) {
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'matrix', loading: false, data: null, selected: null, error: e.message };
     }
     this.renderChat(document.getElementById('app-main'));
@@ -392,12 +403,15 @@
 
   app.chatPractice = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'practices') return; // B4 re-entry
-    this.chat.pending = { kind: 'practices', loading: true, items: [], error: '' };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'practices', loading: true, items: [], error: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const r = await api('/api/practices');
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'practices', loading: false, items: (r && r.items) || [], error: '' };
     } catch (e) {
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'practices', loading: false, items: [], error: e.message };
     }
     this.renderChat(document.getElementById('app-main'));
@@ -406,19 +420,22 @@
 
   app.chatMonthly = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'diary') return; // B4 re-entry
-    this.chat.pending = { kind: 'diary', loading: true, entries: [], streak: 0, prompt: '', wroteToday: false, summary: null, error: '' };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'diary', loading: true, entries: [], streak: 0, prompt: '', wroteToday: false, summary: null, error: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const [r, pr] = await Promise.all([
         api('/api/diary'),
         api('/api/diary/prompt').catch(() => null),
       ]);
+      if (!widAlive(key, view, pend)) return;
       const wroteToday = !!(pr && pr.written_today);
       this.chat.pending = { kind: 'diary', loading: false,
         entries: (r && r.entries) || [], streak: (r && r.streak) || 0,
         prompt: wroteToday ? (pr.prompt || '') : ((pr && pr.prompt) || ''),
         wroteToday, summary: null, error: '' };
     } catch (e) {
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'diary', loading: false, entries: [], streak: 0, prompt: '', wroteToday: false, summary: null, error: e.message };
     }
     this.renderChat(document.getElementById('app-main'));
@@ -427,12 +444,15 @@
 
   app.featureCareer = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'career') return; // B4 re-entry
-    this.chat.pending = { kind: 'career', loading: true, days: [], sel: null, error: '' };
+    const key = this.chat.key, view = this.view;
+    const pend = this.chat.pending = { kind: 'career', loading: true, days: [], sel: null, error: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const days = await api('/api/moon/week?days=30');
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'career', loading: false, days: (days || []).slice(0, 16), sel: null, error: '' };
     } catch (e) {
+      if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'career', loading: false, days: [], sel: null, error: e.message };
     }
     this.renderChat(document.getElementById('app-main'));

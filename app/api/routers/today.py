@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ...core import agent as agent_core
 from ...core import astro
-from ...repo import users
+from ...repo import readings, users
 from ...services import analytics, horoscopes
 from ..deps import active_user, current_user, get_db, rate_limit
 
@@ -36,7 +36,38 @@ async def today(user=Depends(active_user), db=Depends(get_db)):
         "sun_season": sky["sun_season"],
         "sphere": agent_core.daily_sphere(user),
         "day": users.user_today(user),
+        "next_action": await _next_action(db, user),
     }
+
+
+async def _next_action(db, user) -> dict:
+    """«Что дальше» — один шаг на главной, ведущий к следующему артефакту.
+
+    Приоритет простой: нет карты → собрать её; нет партнёра → совместимость;
+    не было раскладов → вопрос картам; иначе — вернуться завтра.
+    """
+    chart = users.chart_of(user)
+    partners = await readings.list_partners(db, user["tg_id"])
+    readings_done = bool(await readings.recent_readings(db, user["tg_id"], limit=1))
+    if not chart:
+        return {"kind": "chart", "emoji": "🌌",
+                "title": "Собери натальную карту",
+                "text": "Планеты, дома и предназначение — по дате и времени рождения.",
+                "cta": "Собрать карту ✨", "chat": "astro", "fn": "featureChart"}
+    if not partners:
+        return {"kind": "compat", "emoji": "💞",
+                "title": "Проверь совместимость с партнёром",
+                "text": "Спидометр любви — балл и разбор пары по картам.",
+                "cta": "Проверить 💞", "chat": "astro", "fn": "featureCompat"}
+    if not readings_done:
+        return {"kind": "spread", "emoji": "🎴",
+                "title": "Расклад на твой вопрос",
+                "text": "Задай вопрос картам — колода Райдера-Уэйта ляжет в расклад.",
+                "cta": "Вытянуть карты 🎴", "chat": "tarot", "fn": "featureTarot"}
+    return {"kind": "tomorrow", "emoji": "🌙",
+            "title": "Вернись завтра за картой дня",
+            "text": "Сегодня всё увидела. Завтра — новый прогноз и новая карта.",
+            "cta": "Завтра снова ✨", "chat": "", "fn": ""}
 
 
 @router.get("/moon/week")

@@ -13,6 +13,17 @@ function haptic(kind) {
   } catch (e) {}
 }
 
+/* вибро-отклик (безопасно): vibrate может отсутствовать или бросать — тихо глотаем.
+   Заменяет повсюду копии `if (navigator.vibrate) { try { navigator.vibrate(...) } catch (e) {} }`. */
+const vb = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+/* гонка-предохранитель для виджетов: активен ли всё ещё тот же виджет в том же
+   чате/экране. Если юзер успел открыть другой виджет/агента, закрыть чат или уйти
+   с экрана — late-ответ от api() надо бросить, а не затирать чужой рендер. */
+function widAlive(key, view, pend) {
+  return app.chat.key === key && app.view === view && app.chat.pending === pend;
+}
+
 /* ── API-клиент ─────────────────────────────────────────────────────────── */
 async function api(path, opts = {}) {
   const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});

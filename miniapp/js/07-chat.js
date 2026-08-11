@@ -384,6 +384,7 @@
 
   app.closeChat = function() {
     this.chat.key = null;
+    this.chat.pending = null; // гонка B1: закрыли чат — несозревший виджет никому не нужен
     this.go('hub');
   };
   // свайп по табам агентов: вбок листаем Оракул → Астролог → Таролог → …
@@ -430,7 +431,7 @@
     const val = (text || (document.getElementById('chat-input') || {}).value || '').trim();
     if (!val || this.chat.busy) return;
     haptic('light');
-    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+    vb(15);
     const input = document.getElementById('chat-input');
     if (input) input.value = '';
     this.chat.draft = '';
@@ -440,7 +441,7 @@
     try {
       const r = await this.chatPost(val);
       haptic('success');
-      if (navigator.vibrate) { try { navigator.vibrate([10, 40, 14]); } catch (e) {} }
+      vb([10, 40, 14]);
       this.chat.messages.push({ role: 'assistant', text: r.answer });
     } catch (e) {
       this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });

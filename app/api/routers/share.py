@@ -12,10 +12,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from ...core import agent as agent_core
-from ...core import cards
+from ...core import astro, cards, skills
 from ...repo import content, readings, users
 from ...services import analytics, catalog
 from ..deps import current_user, get_db, rate_limit
+from .chart import _parse_date
 
 log = logging.getLogger("oracle.api.share")
 
@@ -80,6 +81,37 @@ async def today_png(user=Depends(current_user), db=Depends(get_db)):
     await analytics.track(db, "share_card", user["tg_id"],
                           props={"kind": "today"}, surface="miniapp")
     return _png(image, "oracle-today.png")
+
+
+@router.get("/compat.png", dependencies=[Depends(rate_limit("write"))])
+async def compat_png(partner_date: str, partner_name: str = "", relation: str = "love",
+                     user=Depends(current_user), db=Depends(get_db)):
+    """Открытка совместимости: два знака, кольцо-шкала, вердикт, сферы.
+
+    Балл считается ровно той же формулой, что в /api/compat, — иначе открытка и
+    виджет спидометра показывали бы разные числа. LLM не зовём: данные пары уже
+    посчитаны, рендер чисто по датам рождения.
+    """
+    if not user["birth_date"]:
+        raise HTTPException(400, "нет даты рождения — заполни её в боте")
+    pdate = _parse_date(partner_date)
+    aspects = await skills._pair_aspects(db, user, pdate)
+    data = skills._compat(user["birth_date"], pdate, relation=relation,
+                          aspects=aspects)
+    symbol = {name: s for name, s, _ in astro.SIGNS}
+    image = await asyncio.to_thread(
+        cards.compat_card,
+        you={"sign": data["you"]["sign"], "symbol": symbol.get(data["you"]["sign"], ""),
+             "name": user["name"] or ""},
+        partner={"sign": data["partner"]["sign"],
+                 "symbol": symbol.get(data["partner"]["sign"], ""),
+                 "name": partner_name.strip()[:30]},
+        total=data["total"], verdict=data["verdict"], spheres=data["spheres"],
+        relation=skills._RELATION_LABEL.get(relation, ""),
+        bot_username=await _bot_username(db))
+    await analytics.track(db, "share_card", user["tg_id"],
+                          props={"kind": "compat"}, surface="miniapp")
+    return _png(image, "oracle-compat.png")
 
 
 @router.get("/enabled")

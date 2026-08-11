@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from ..core import agent as agent_core
+from ..core import astro
 from ..repo import comms, content, users
 from . import analytics, broadcast, horoscopes, practices as practices_svc
 
@@ -146,11 +147,27 @@ async def _expiring_audience(db, now_utc: datetime) -> list:
 
 # ─────────────────────────── сценарии по клиентке ─────────────────────────────
 
+#: Фазы Луны, ради которых стоит будить бесплатную клиентку: полнолуние и
+#: новолуние сами по себе редки (~2 раза в месяц), а счётчик за неделю страхует
+#: от сбоев календаря, которые наплодили бы спам.
+_LUNAR_ALERT_PHASES = frozenset({"Новолуние", "Полнолуние"})
+#: Лунные алерты для free — не чаще 2 в неделю (guardrail «не спамить»).
+_FREE_LUNAR_PER_WEEK = 2
+
+
 async def _morning_forecast(bot, db, user, now, settings_cache) -> None:
-    if not user["morning_push"] or not users.sub_active(user):
+    if not user["morning_push"]:
         return
     if now.hour != settings_cache["morning_hour"]:
         return
+    if users.sub_active(user):
+        await _paid_morning_forecast(bot, db, user, now)
+    else:
+        await _free_morning_forecast(bot, db, user, now)
+
+
+async def _paid_morning_forecast(bot, db, user, now) -> None:
+    """Платный утренний пуш — в тарифе обещаны персональный прогноз и озвучка."""
     day = now.strftime("%Y-%m-%d")
     if await comms.already_sent(db, user["tg_id"], "forecast", day):
         return
@@ -159,6 +176,56 @@ async def _morning_forecast(bot, db, user, now, settings_cache) -> None:
         await analytics.track(db, analytics.E_FORECAST, user["tg_id"],
                               props={"channel": "push"}, surface="system")
         await _voice_forecast(bot, db, user, text, day)
+
+
+async def _free_morning_forecast(bot, db, user, now) -> None:
+    """Бесплатный утренний пуш — подогревает free, не отнимая платных функций.
+
+    Два формата: ежедневный короткий прогноз с приглашением в Mini App и редкие
+    лунные алерты (полнолуние/новолуние, не чаще двух в неделю). Прогноз
+    использует тот же кеш `forecast`, что и paid, — клиентка не увидит
+    «утреннее дважды», если успела заглянуть в Mini App до рассылки.
+    """
+    day = now.strftime("%Y-%m-%d")
+    if not await comms.already_sent(db, user["tg_id"], "forecast", day):
+        text = await agent_core.daily_forecast_cached(db, user)
+        cta = await content.get_text(
+            db, "copy", "free_forecast_cta",
+            "\n\n🔮 <b>Оракул</b> — бесплатный прогноз дня. "
+            "Карта дня и полный разбор — в Mini App ✨")
+        await _send_free_push(bot, db, user, "forecast", day, text + cta)
+    await _free_lunar_alert(bot, db, user, now)
+
+
+async def _send_free_push(bot, db, user, kind: str, key: str, text: str) -> None:
+    """Отправка free-пуша с пометкой в аналитике: канал push есть и у бесплатных."""
+    if await _send_once(bot, db, user["tg_id"], kind, key, text):
+        await analytics.track(db, analytics.E_FORECAST, user["tg_id"],
+                              props={"channel": "push", "tier": "free"},
+                              surface="system")
+
+
+async def _free_lunar_alert(bot, db, user, now) -> None:
+    """Лунный алерт полнолуния/новолуния — не чаще 2 в неделю на клиентку."""
+    moon = astro.moon_phase(now.date())
+    if moon["name"] not in _LUNAR_ALERT_PHASES:
+        return
+    week = now.strftime("%G-W%V")
+    cur = await db.execute(
+        "SELECT COUNT(*) c FROM deliveries WHERE tg_id=? AND kind='forecast_lunar' "
+        "AND key LIKE ?", (user["tg_id"], week + ":%"))
+    if (await cur.fetchone())["c"] >= _FREE_LUNAR_PER_WEEK:
+        return
+    key = f"{week}:{now.strftime('%Y-%m-%d')}"
+    if await comms.already_sent(db, user["tg_id"], "forecast_lunar", key):
+        return
+    template = await content.get_text(
+        db, "copy", "free_lunar_alert",
+        "🌕 {moon} — особенная ночь для тебя.\n\n"
+        "{advice}.\n\n"
+        "🌙 Оракул следит за небом — карта дня ждёт в Mini App ✨")
+    text = template.replace("{moon}", moon["name"]).replace("{advice}", moon["advice"])
+    await _send_free_push(bot, db, user, "forecast_lunar", key, text)
 
 
 async def _voice_forecast(bot, db, user, text: str, day: str) -> None:
@@ -210,8 +277,9 @@ async def _pregen_forecasts(db, now_utc, settings_cache) -> None:
     if pregen_hour == settings_cache["morning_hour"]:
         return          # morning_hour=0: окна совпадают, преген бесполезен
     zones = _zones_at_hour(now_utc, {pregen_hour})
-    audience = [u for u in await _audience(db, zones)
-                if u["morning_push"] and users.sub_active(u)]
+    # Преген работает и для free: их утренний пуш живёт в том же часу и питается
+    # тем же кешем `forecast`, иначе каждая отправка ждала бы LLM-генерацию.
+    audience = [u for u in await _audience(db, zones) if u["morning_push"]]
     if not audience:
         return
     # Реальную цену вызовам ставит семафор LLM (G6); 32 здесь лишь чтобы не

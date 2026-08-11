@@ -57,6 +57,13 @@
         </div>
 
         <div class="ptab-pane active" id="ptab-summary">
+          <div class="glass" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:10px">
+            <span style="font-size:24px;flex-shrink:0">${(me && me.global_streak) ? '🔥' : '🌅'}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:14px">${(me && me.global_streak) ? 'День ' + me.global_streak + ' с Оракулом' : 'Начни свой путь с Оракулом'}</div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${(me && me.global_streak) ? 'Не разрывай цепочку — завтра новый прогноз и карта дня' : 'Вернись завтра — заглянем в твоё небо вместе'}</div>
+            </div>
+          </div>
           <div class="stat-row">
             <div class="stat"><div class="sv">${me ? (me.sub_active ? '∞' : '—') : '…'}</div><div class="sl">Подписка</div></div>
             <div class="stat"><div class="sv">${me ? me.crystals : '…'}</div><div class="sl">Кристаллы ✦</div></div>
@@ -170,7 +177,11 @@
       // компактно: до 3 строк + «Все N →» (тап открывает модал со всем списком)
       if (tarotEl) {
         if (!rows.length) {
-          tarotEl.innerHTML = '<div class="glass" style="padding:16px;color:var(--text-faint);font-size:13px">Раскладов пока нет — зайди к Тарологу и задай вопрос картам.</div>';
+          tarotEl.innerHTML = `<div class="glass" style="padding:16px;text-align:center">
+            <div style="font-size:24px">🎴</div>
+            <div style="color:var(--text-faint);font-size:13px;margin:6px 0 10px">Раскладов пока нет — зайди к Тарологу и задай вопрос картам.</div>
+            <button class="btn btn-primary" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Задать вопрос картам ✨</button>
+          </div>`;
         } else {
           const shown = rows.slice(0, 3).map(r => `
             <div class="tight-card" data-act="reading" data-id="${r.id}">
@@ -325,7 +336,8 @@
         <span class="tc-open">›</span>
       </div>`).join('');
     this.showModal(`<h3>Все расклады</h3><button class="m-close" data-act="modal-close">✕</button>
-      <div style="margin-top:8px">${items || '<div style="color:var(--text-faint);font-size:13px">Раскладов пока нет</div>'}</div>`);
+      <div style="margin-top:8px">${items || `<div style="color:var(--text-faint);font-size:13px;text-align:center;padding:6px 0">Раскладов пока нет</div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Вытянуть первую карту 🎴</button>`}</div>`);
   };
 
   // Полная натальная карта: планеты, узлы (Раху/Кету/Лилит), дома, аспекты, ASC/MC

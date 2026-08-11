@@ -1,6 +1,8 @@
 """Профиль, настройки, рефералка, health."""
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -13,6 +15,34 @@ from ...services import analytics, chat, limits, referrals
 from ..deps import current_user, get_db, rate_limit, touched_user
 
 router = APIRouter(prefix="/api", tags=["profile"])
+
+
+async def _global_streak(db, tg_id: int) -> int:
+    """Дней подряд с любым действием — «день с Оракулом».
+
+    Активным считается день, когда было хотя бы одно взаимодействие: запись в
+    дневнике, сообщение в чате, расклад или отметка практики. Дни в UTC — как в
+    `dialog.diary_streak`. Агрегат по существующим таблицам, без миграций.
+    """
+    cur = await db.execute(
+        "SELECT d FROM ("
+        " SELECT substr(created_at,1,10) d FROM diary WHERE tg_id=?"
+        " UNION SELECT substr(created_at,1,10) FROM messages WHERE tg_id=? AND role='user'"
+        " UNION SELECT substr(created_at,1,10) FROM tarot_readings WHERE tg_id=?"
+        " UNION SELECT substr(last_done,1,10) FROM practices WHERE tg_id=? AND last_done IS NOT NULL"
+        ") ORDER BY d DESC LIMIT 400",
+        (tg_id, tg_id, tg_id, tg_id))
+    dayset = {r["d"] for r in await cur.fetchall()}
+    if not dayset:
+        return 0
+    cursor = date.today()
+    if cursor.isoformat() not in dayset:
+        cursor -= timedelta(days=1)
+    streak = 0
+    while cursor.isoformat() in dayset:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak
 
 
 @router.get("/health")
@@ -60,6 +90,7 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
         "questions_total": allowance.limit,
         "memories": await dialog.get_memories(db, user["tg_id"], limit=8),
         "diary_streak": await dialog.diary_streak(db, user["tg_id"]),
+        "global_streak": await _global_streak(db, user["tg_id"]),
         "morning_push": bool(user["morning_push"]),
         "entitlements": await billing.list_entitlements(db, user["tg_id"]),
         "reports": await readings.list_reports(db, user["tg_id"]),

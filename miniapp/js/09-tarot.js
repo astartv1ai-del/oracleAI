@@ -105,7 +105,7 @@
 
   app.flipCard = function(i) {
     haptic('light');
-    if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+    vb(25);
     const p = this.chat.pending;
     if (!p || p.kind !== 'tarot-cards' || p.revealed[i]) return;
     const card = document.querySelector('.tcard[data-i="' + i + '"]');

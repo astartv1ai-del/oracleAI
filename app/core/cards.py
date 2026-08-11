@@ -286,3 +286,93 @@ def forecast_card(text: str, *, sign: str = "", symbol: str = "",
         _footer(draw, bot_username)
 
     return _render(paint)
+
+
+# ──────────────────────── открытка совместимости пары ─────────────────────────
+
+def compat_card(*, you: dict, partner: dict, total: int, verdict: str,
+                spheres: list[dict] | None = None, relation: str = "",
+                bot_username: str = "") -> bytes | None:
+    """Вертикальная открытка пары: два знака, кольцо-шкала %, вердикт, сферы.
+
+    Самый виральный продукт должен уходить в сторис так же легко, как расклад:
+    имя бота нанесено прямо на картинку — она сама себе реклама. Знаки передаём
+    символами (♈ есть в DejaVu), цветных эмодзи в системных шрифтах нет.
+    """
+    you = you or {}
+    partner = partner or {}
+    total = max(0, min(100, int(total or 0)))
+    spheres = (spheres or [])[:5]
+
+    def paint(image, draw):
+        _gradient(draw, W, H)
+        _stars(draw, total or 42)
+        # золотая рамка открытки: внешний контур + тонкая внутренняя линия
+        draw.rectangle([36, 36, W - 36, H - 36], outline=GOLD, width=3)
+        draw.rectangle([50, 50, W - 50, H - 50], outline=GOLD_SOFT, width=1)
+
+        y = 170
+        y = _centered(draw, y, "Совместимость", _font(64), GOLD)
+        if relation:
+            y = _centered(draw, y + 6, relation, _font(36, serif=False), MUTED)
+        block_y = y + 70
+
+        # два знака по краям, сердце между ними
+        for cx, who in ((W // 4, you), (3 * W // 4, partner)):
+            sym = _font(128)
+            sw = draw.textlength(who.get("symbol", ""), font=sym)
+            draw.text((cx - sw / 2, block_y), who.get("symbol", "✦"), font=sym,
+                      fill=GOLD)
+            sign = who.get("sign", "")
+            sf = _font(46)
+            tw = draw.textlength(sign, font=sf)
+            draw.text((cx - tw / 2, block_y + 190), sign, font=sf, fill=INK)
+            nm = who.get("name", "")
+            if nm:
+                nf = _font(30, serif=False)
+                for j, line in enumerate(_wrap(draw, nm, nf, 320)[:1]):
+                    lw = draw.textlength(line, font=nf)
+                    draw.text((cx - lw / 2, block_y + 262 + j * 40), line,
+                              font=nf, fill=MUTED)
+        heart = _font(96)
+        hw = draw.textlength("♡", font=heart)
+        draw.text((W / 2 - hw / 2, block_y + 70), "♡", font=heart, fill=GOLD)
+
+        # кольцо-шкала 0–100 с заполнением по баллу
+        cy_ring, r, ring_w = 1080, 250, 22
+        draw.arc([W // 2 - r, cy_ring - r, W // 2 + r, cy_ring + r], 0, 360,
+                 fill=(232, 197, 107, 70), width=ring_w)
+        draw.arc([W // 2 - r, cy_ring - r, W // 2 + r, cy_ring + r], -90,
+                 -90 + 3.6 * total, fill=GOLD, width=ring_w)
+        tf = _font(150)
+        ts = str(total)
+        tw = draw.textlength(ts, font=tf)
+        draw.text((W / 2 - tw / 2, cy_ring - 92), ts, font=tf, fill=GOLD)
+        lab = _font(32, serif=False)
+        lw = draw.textlength("из 100", font=lab)
+        draw.text((W / 2 - lw / 2, cy_ring + 78), "из 100", font=lab, fill=MUTED)
+
+        # вердикт
+        vf = _font(42)
+        yv = cy_ring + 180
+        for line in _wrap(draw, verdict or "", vf, W - 220)[:3]:
+            lw = draw.textlength(line, font=vf)
+            draw.text(((W - lw) / 2, yv), line, font=vf, fill=INK)
+            yv += _line_height(vf, 46)
+
+        # сферы: название слева, балл справа, разделительная нить
+        yv += 46
+        sf = _font(32, serif=False)
+        for s in spheres:
+            title = s.get("title", "")
+            val = f"{int(s.get('value') or 0)}%"
+            draw.text((240, yv), title, font=sf, fill=INK)
+            vw = draw.textlength(val, font=sf)
+            draw.text((W - 240 - vw, yv), val, font=sf, fill=GOLD)
+            draw.line([(240, yv + 42), (W - 240, yv + 42)],
+                      fill=(232, 197, 107, 60), width=1)
+            yv += 66
+
+        _footer(draw, bot_username)
+
+    return _render(paint)

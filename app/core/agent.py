@@ -16,7 +16,7 @@ import json
 import logging
 import random
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
@@ -54,15 +54,23 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
     cards_block = tarot.cards_text(cards, positions)
     if llm.enabled():
         try:
-            system = await agents.system_for(db, user, agents.get("tarot"))
+            system = await agents.system_for(db, user, agents.get("tarot"),
+                                             question=question or "")
             q = f"Я спросила карты: «{question}».\n" if question else ""
+            summary = await memory.get_summary(db, user["tg_id"])
+            mems = await memory.recall(db, user["tg_id"], question or "", limit=3)
+            who_block = ""
+            if summary:
+                who_block += f"Кто я для тебя: {summary}\n"
+            if mems:
+                who_block += f"Что ты обо мне помнишь: {'; '.join(mems)}\n"
             user_msg = (f"{await skills.guide(db, 'tarot')}\n\n"
                         f"Я сделала расклад «{title}». Выпали карты:\n{cards_block}\n\n"
-                        f"{q}Дай глубокую тёплую трактовку именно этих карт для меня: "
+                        f"{q}{who_block}Дай глубокую тёплую трактовку именно этих карт для меня: "
                         f"разбери по позициям, свяжи в один сюжет и ответь на мой "
                         f"вопрос{'. Закончи одним практическим шагом' if question else ''}.")
             text = await llm.complete(system, user_msg, tier="main",
-                                      max_tokens=min(1400, 220 * max(3, len(cards))),
+                                      max_tokens=min(1800, 320 * max(3, len(cards))),
                                       purpose="tarot", tg_id=user["tg_id"], db=db)
             if len(text.strip()) >= 120:
                 return text
@@ -251,8 +259,25 @@ async def _synastry_data(db, user, partner_date: str) -> str | None:
         return None
 
 
+#: Кеш синастрии живёт сутки. Балл детерминирован данными пары, и пара за день не
+#: меняется; дольше — пересобираем, чтобы добавление полной карты партнёра не
+#: пряталось под старым ответом навсегда.
+SYNASTRY_TTL = timedelta(hours=24)
+
+
+def _synastry_fresh(cached) -> bool:
+    """Свежий ли кеш синастрии. Сломанная дата — мисс: пересоберём без риска."""
+    created = cached.get("created_at") or ""
+    try:
+        age = datetime.now(timezone.utc) - datetime.fromisoformat(created)
+        return age <= SYNASTRY_TTL
+    except ValueError:
+        return False
+
+
 async def interpret_compat(db, user, partner_date: str,
-                           partner_name: str = "") -> str:
+                           partner_name: str = "", *,
+                           relation: str = "love") -> str:
     """Полный разбор пары. Настоящая синастрия берётся из сохранённых карт,
     если они есть; иначе — разбор по датам (Солнце/Луна/Венера).
 
@@ -260,14 +285,23 @@ async def interpret_compat(db, user, partner_date: str,
     `relation` (love/friend/work/family) — просим модель разобрать пару ПО СФЕРАМ
     и типу связи, а не только общим баллом. Ключи опциональны: их нет — прежнее
     поведение.
+
+    `relation` и синастрические аспекты считаются как в `/compat` и чате
+    (`skills._compat`), чтобы Mini App и бот называли один балл на одну пару.
+    Версия ключа кеша зависит от наличия полных карт: добавили карту партнёра —
+    балл пересобирается сразу, а не «залипает» старый.
     """
-    key = f"syn:{partner_date}:{partner_name}"
+    who = partner_name or "он"
+    relation = relation if relation in skills.RELATIONS else "love"
+    aspects = await skills._pair_aspects(db, user, partner_date)
+    version = "full" if aspects is not None else "lite"
+    key = f"syn:{partner_date}:{partner_name}:{relation}:{version}"
     cached = await readings_repo.get_synastry(db, user["tg_id"], key)
-    if cached and cached["answer"]:
+    if cached and cached["answer"] and _synastry_fresh(cached):
         return cached["answer"]
 
-    data = skills._compat(user["birth_date"], partner_date)
-    who = partner_name or "он"
+    data = skills._compat(user["birth_date"], partner_date, relation=relation,
+                          aspects=aspects)
     brief = (f"я — {data['you']['sign']} ({data['you']['element']}), "
              f"{who} — {data['partner']['sign']} ({data['partner']['element']}), "
              f"балл {data['score']}/100")
@@ -294,9 +328,18 @@ async def interpret_compat(db, user, partner_date: str,
     text = ""
     if llm.enabled():
         try:
-            system = await agents.system_for(db, user, agents.get("astro"))
+            system = await agents.system_for(db, user, agents.get("astro"),
+                                             question=f"Совместимость: {who}")
+            summary = await memory.get_summary(db, user["tg_id"])
+            mems = await memory.recall(db, user["tg_id"], f"Совместимость: {who}",
+                                       limit=3)
+            who_block = ""
+            if summary:
+                who_block += f"\nКто я: {summary}"
+            if mems:
+                who_block += f"\nЧто ты знаешь обо мне: {'; '.join(mems)}"
             user_msg = (f"{await skills.guide(db, 'compat')}\n\nРазбор совместимости: "
-                        f"{brief}.{synast}{spheres_block}\n"
+                        f"{brief}.{synast}{spheres_block}{who_block}\n"
                         f"Расскажи, что нас соединяет, где будет трение и что укрепит "
                         f"союз. Опирайся на данные расчёта, не выдумывай аспекты."
                         f" Тепло, конкретно, 5-7 абзацев.")

@@ -25,7 +25,7 @@
       this.chat.messages.push({ role: 'user', text: 'Моя совместимость с ' + (name || 'партнёром') + ' (' + date + ')' });
       // новый бэкенд вернёт scores — рисуем спидометр; старый — просто текст
       if (r && r.scores) {
-        this.chat.messages.push({ role: 'assistant', widget: this.compatWidgetHtml(r.scores, r.answer) });
+        this.chat.messages.push({ role: 'assistant', widget: this.compatWidgetHtml(r.scores, r.answer, { partner_name: name, partner_date: date, relation: rel }) });
       } else {
         this.chat.messages.push({ role: 'assistant', text: r.answer });
       }
@@ -38,11 +38,12 @@
 
   // «Спидометр любви»: кольцо из 5 сегментов-сфер, общий балл в центре, стрелка на total.
 
-  app.compatWidgetHtml = function(scores, answer) {
+  app.compatWidgetHtml = function(scores, answer, ctx) {
     const gid = 'spdGlow' + (++spdSeq); // уникальный id фильтра: несколько спидометров в ленте не конфликтуют
     const total = Math.round(scores && scores.total != null ? scores.total : 0);
     const verdict = (scores && scores.verdict) || '';
     const spheres = (scores && Array.isArray(scores.spheres)) ? scores.spheres : [];
+    ctx = ctx || {};
     const colors = ['#e6c178', '#a78bfa', '#ff9e9e', '#7fd4a8', '#8ab6ff'];
     const n = Math.max(1, spheres.length);
     const cx = 110, cy = 110, R = 84, sw = 15;
@@ -72,6 +73,10 @@
     const more = answer ? `
       <button class="spd-more" data-act="spd-toggle">Разбор ✨</button>
       <div class="spd-answer" hidden>${richMd(answer || '')}</div>` : '';
+    // «в сторис»: серверный PNG открытки (/api/share/compat.png) — тот же путь,
+    // что у расклада; данные пары живут в data-атрибутах кнопки
+    const share = ctx.partner_date ? `
+      <button class="btn btn-ghost" data-act="share-compat" data-pdate="${esc(ctx.partner_date)}" data-pname="${esc(ctx.partner_name || '')}" data-rel="${esc(ctx.relation || 'love')}" title="Открытка для сторис" style="margin-top:8px">📸 Поделиться</button>` : '';
     return `<div class="chat-widget">
       <div class="w-title" style="margin:0">💞 Спидометр любви</div>
       <div class="spd-wrap">
@@ -102,13 +107,14 @@
         ${spheres.map((s, i) => s.note ? `<div class="spd-note">${esc(s.note)}</div>` : '').join('')}
       </div>
       ${more}
+      ${share}
     </div>`;
   };
   // тап по карточке сферы → подсветка её сегмента в кольце
 
   app.selectSphere = function(i) {
     haptic('light');
-    if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+    vb(30);
     const cards = document.querySelector('.spd-cards');
     if (cards) cards.querySelectorAll('.spd-card').forEach(c =>
       c.classList.toggle('spd-active', parseInt(c.dataset.sphere, 10) === i));
@@ -120,6 +126,32 @@
   app.toggleSpdAnswer = function() {
     const a = document.querySelector('.spd-answer');
     if (a) a.hidden = !a.hidden;
+  };
+
+  // «в сторис» для совместимости: серверный PNG открытки → системный share или
+  // скачивание. Данные пары приходят из data-атрибутов кнопки (13-events).
+  app.shareCompat = async function(partnerDate, partnerName, relation) {
+    if (!partnerDate) { this.toast('Введи дату рождения партнёра ✨'); return; }
+    haptic('light');
+    const qs = new URLSearchParams({
+      partner_date: partnerDate,
+      partner_name: partnerName || '',
+      relation: relation || 'love',
+    }).toString();
+    try {
+      const res = await fetch('/api/share/compat.png?' + qs);
+      if (!res.ok) { this.toast('Картинка сейчас недоступна 🌙'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const file = new File([blob], 'oracle-compat.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ title: 'Наша совместимость', files: [file] })
+          .catch(() => this.downloadUrl(url, 'oracle-compat.png'));
+      } else {
+        this.downloadUrl(url, 'oracle-compat.png');
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) { this.toast('Картинка сейчас недоступна 🌙'); }
   };
 
   /* ═══ ВИДЖЕТЫ: ПРАКТИКИ / КНИГА СУДЬБЫ / КАРЬЕРНЫЕ ОКНА ═══ */

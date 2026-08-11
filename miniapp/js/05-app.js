@@ -90,24 +90,40 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
 
   app.maybeIntro = function() {
     if (localStorage.getItem('oracle_intro_seen')) return;
+    // первый день + дата рождения уже есть, а карты нет — в финал интро
+    // добавляем CTA «собрать натальную карту» (строится у Астролога в чате)
+    const needChart = !!(this.me && this.me.birth_date && !this.me.chart_mode);
+    const firstName = this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : '';
+    const slides = [
+      `<div class="intro-slide"><div class="intro-emoji">🔮</div><div class="intro-title">Твоё небо уже ждёт</div><div class="intro-sub">Личный Оракул читает твою карту, Луну и расклады — честно, по звёздам.</div></div>`,
+      `<div class="intro-slide"><div class="intro-emoji">🎴</div><div class="intro-title">Карты отвечают на твой вопрос</div><div class="intro-sub">Настоящая колода Райдера-Уэйта придёт прямо в чат. Задай вопрос — карты лягут в расклад.</div></div>`,
+      `<div class="intro-slide"><div class="intro-emoji">✨</div><div class="intro-title">Прогноз каждый день</div><div class="intro-sub">Натальная карта, лунный календарь и карта дня — утро начинается с опоры.</div></div>`,
+    ];
+    if (needChart) {
+      slides.push(`<div class="intro-slide">
+        <div class="intro-emoji">🌌</div>
+        <div class="intro-title">Собери натальную карту</div>
+        <div class="intro-sub">${firstName ? 'Лилит посмотрит на твою карту, ' + firstName + '.' : 'Твоя карта рождения откроет характер и путь.'} Планеты, дома и предназначение — по дате и времени рождения.</div>
+        <button class="btn btn-primary" style="margin-top:14px;width:100%" data-act="chat-fn" data-chat="astro" data-fn="featureChart" data-intro-chart>Собрать мою натальную карту ✨</button>
+      </div>`);
+    }
+    const last = slides.length - 1;
     const ov = document.createElement('div');
     ov.id = 'intro';
     ov.innerHTML = `
       <div class="intro-track">
-        <div class="intro-slide"><div class="intro-emoji">🔮</div><div class="intro-title">Твоё небо уже ждёт</div><div class="intro-sub">Личный Оракул читает твою карту, Луну и расклады — честно, по звёздам.</div></div>
-        <div class="intro-slide"><div class="intro-emoji">🎴</div><div class="intro-title">Карты отвечают на твой вопрос</div><div class="intro-sub">Настоящая колода Райдера-Уэйта придёт прямо в чат. Задай вопрос — карты лягут в расклад.</div></div>
-        <div class="intro-slide"><div class="intro-emoji">✨</div><div class="intro-title">Прогноз каждый день</div><div class="intro-sub">Натальная карта, лунный календарь и карта дня — утро начинается с опоры.</div></div>
+        ${slides.join('')}
       </div>
-      <div class="intro-dots"><span class="active"></span><span></span><span></span></div>
+      <div class="intro-dots">${slides.map((_, k) => `<span${k === 0 ? ' class="active"' : ''}></span>`).join('')}</div>
       <button class="btn btn-primary intro-start" data-intro-start>Начать ✨</button>
       <button class="intro-skip" data-intro-skip>Пропустить</button>`;
     document.body.appendChild(ov);
     const track = ov.querySelector('.intro-track');
     const dots = ov.querySelectorAll('.intro-dots span');
     const sync = () => {
-      const i = Math.max(0, Math.min(2, Math.round(track.scrollLeft / (track.clientWidth || 1))));
+      const i = Math.max(0, Math.min(last, Math.round(track.scrollLeft / (track.clientWidth || 1))));
       dots.forEach((d, k) => d.classList.toggle('active', k === i));
-      ov.querySelector('.intro-start').textContent = i === 2 ? 'Начать ✨' : 'Дальше →';
+      ov.querySelector('.intro-start').textContent = i === last ? 'Начать ✨' : 'Дальше →';
     };
     track.addEventListener('scroll', sync, { passive: true });
     const done = () => {
@@ -121,6 +137,15 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
       } else done();
     });
     ov.querySelector('[data-intro-skip]').addEventListener('click', done);
+    // CTA финального слайда: гасим интро здесь, сам же клик ловит
+    // делегированный обработчик 13-events (data-act="chat-fn") и открывает
+    // чат Астролога с формой построения карты
+    if (needChart) {
+      ov.querySelector('[data-intro-chart]').addEventListener('click', () => {
+        try { localStorage.setItem('oracle_intro_seen', '1'); } catch (e) {}
+        ov.remove();
+      });
+    }
   };
 
   // Гайд первого захода в чат: лёгкий оверлей по окну чата, 4 шага, 1 раз.

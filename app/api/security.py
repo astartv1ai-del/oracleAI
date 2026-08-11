@@ -22,6 +22,9 @@ from ..config import settings
 log = logging.getLogger("oracle.api.security")
 
 MAX_AGE_SECONDS = 24 * 3600
+# Подпись из будущего — признак перехвата или сломанных часов клиента. Отклоняем
+# лишь заметный уход вперёд: десяток минут — обычный рассинхрон часовых поясов.
+MAX_FUTURE_SECONDS = 10 * 60
 
 
 def parse_init_data(init_data: str) -> dict | None:
@@ -41,9 +44,15 @@ def parse_init_data(init_data: str) -> dict | None:
             return None
 
         auth_date = int(pairs.get("auth_date", "0") or 0)
-        if auth_date and time.time() - auth_date > MAX_AGE_SECONDS:
-            log.info("initData просрочена (%.0f ч)", (time.time() - auth_date) / 3600)
-            return None
+        if auth_date:
+            now = time.time()
+            if now - auth_date > MAX_AGE_SECONDS:
+                log.info("initData просрочена (%.0f ч)", (now - auth_date) / 3600)
+                return None
+            if auth_date - now > MAX_FUTURE_SECONDS:
+                log.info("initData из будущего (%.0f мин) — отклоняю",
+                         (auth_date - now) / 60)
+                return None
 
         user = json.loads(pairs.get("user", "{}") or "{}")
         if not user.get("id"):
