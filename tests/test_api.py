@@ -198,6 +198,45 @@ async def test_draw_then_interpret(client, user):
     assert history.json()[0]["id"] == data["reading_id"]
 
 
+async def test_tarot_spreads_full_has_guide(client, user):
+    res = await client.get("/api/tarot/spreads/full", params=as_user(user))
+    assert res.status_code == 200
+    items = {s["code"]: s for s in res.json()}
+    assert "path" in items
+    assert all(s.get("guide") for s in items.values())
+    assert items["celtic"]["positions"]
+
+
+async def test_tarot_question_saved_and_draw_returns_guide(client, user):
+    """Question-first: вопрос клиентки доходит до расклада и истории."""
+    q = "Когда я встречу своего человека?"
+    drawn = await client.post("/api/tarot/draw", params=as_user(user, {"spread": "love"}),
+                              json={"question": q})
+    assert drawn.status_code == 200
+    data = drawn.json()
+    assert data["guide"], "draw не вернул guide расклада"
+    assert data["spread"] == "love"
+    # history показывает только трактованные расклады (answer<>''),
+    # поэтому сначала интерпретируем — и проверяем, что вопрос дошёл
+    await client.post(f"/api/tarot/interpret/{data['reading_id']}", params=as_user(user))
+    history = await client.get("/api/tarot/history", params=as_user(user))
+    row = next(r for r in history.json() if r["id"] == data["reading_id"])
+    assert row["question"] == q
+
+
+async def test_tarot_outcome_stats(client, user):
+    """Счётчик «сбылось» агрегирует отметки без изменений схемы."""
+    drawn = await client.post("/api/tarot/draw", params=as_user(user, {"spread": "one"}))
+    reading_id = drawn.json()["reading_id"]
+    await client.post(f"/api/tarot/outcome/{reading_id}", params=as_user(user),
+                      json={"outcome": "came_true"})
+    res = await client.get("/api/tarot/stats", params=as_user(user))
+    assert res.status_code == 200
+    stats = res.json()
+    assert stats["came_true"] >= 1
+    assert stats["marked"] == stats["came_true"] + stats["partly"] + stats["no"]
+
+
 async def test_premium_spread_is_paywalled(client, user):
     res = await client.post("/api/tarot/draw", params=as_user(user, {"spread": "celtic"}))
     # без права расклад берётся из лимита тарифа; после исчерпания — отказ
@@ -238,7 +277,8 @@ async def test_agents_list_has_threads(client, user):
     res = await client.get("/api/agents", params=as_user(user))
     assert res.status_code == 200
     agents = res.json()
-    assert len(agents) >= 5
+    assert len(agents) == 3
+    assert {a["code"] for a in agents} == {"oracle", "astro", "tarot"}
     assert all("greeting" in a and "code" in a for a in agents)
 
 
@@ -448,9 +488,9 @@ async def test_csp_absent_in_dev(client):
 
 async def test_cache_control_on_assets(client):
     """Ассеты кешируются коротко; HTML и API — всегда no-cache (G25)."""
-    js = await client.get("/app.js")
-    assert js.status_code == 200
-    assert js.headers.get("cache-control") == "public, max-age=3600"
+    css = await client.get("/styles.css")
+    assert css.status_code == 200
+    assert css.headers.get("cache-control") == "public, max-age=3600"
     admin_css = await client.get("/admin/static/admin.css")
     assert admin_css.status_code == 200
     assert admin_css.headers.get("cache-control") == "public, max-age=3600"

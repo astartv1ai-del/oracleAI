@@ -34,6 +34,7 @@ async def today(user=Depends(active_user), db=Depends(get_db)):
                  "img": card.get("img")},
         "moon": sky["moon"],
         "sun_season": sky["sun_season"],
+        "sphere": agent_core.daily_sphere(user),
         "day": users.user_today(user),
     }
 

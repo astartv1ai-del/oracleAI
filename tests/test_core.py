@@ -29,11 +29,26 @@ def test_draw_handles_large_spreads():
     assert len({c["name"] for c in cards}) == 12
 
 
-def test_all_spreads_have_positions():
+def test_tarot_spreads_have_positions_and_guide():
     for code, item in tarot.SPREADS.items():
         assert item["positions"], code
         assert item["tier"] in ("included", "premium"), code
         assert len(item["positions"]) <= len(tarot.DECK)
+        assert item.get("guide"), f"{code}: нет guide"
+
+
+def test_tarot_major_cards_have_depth():
+    """Старшие арканы — архетип+тень: каждая карта живая, с короткой
+    подписью и практическим советом, а не шаблоном."""
+    majors = [c for c in tarot.DECK if c["arcana"] == "major"]
+    assert len(majors) == 22
+    assert all(c.get("short") for c in majors)
+    assert all(c.get("advice") for c in majors)
+    meanings = {c["name"]: c["meaning"] for c in majors}
+    assert all(len(m) > 20 for m in meanings.values()), "meaning слишком шаблонный"
+    assert len({m for m in meanings.values()}) == len(meanings), "meaning повторяются"
+    first, last = majors[0], majors[-1]
+    assert first["num"] == "0" and last["num"] == "XXI"
 
 
 def test_spread_lookup_falls_back():

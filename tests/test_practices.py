@@ -43,6 +43,19 @@ def test_all_categories_have_practices():
     assert used == set(catalog.CATEGORIES), "есть раздел без единой практики"
 
 
+def test_every_practice_has_fit():
+    """«Выбрано для меня»: у каждой практики есть строка «кому она»."""
+    for code, item in catalog.PRACTICES.items():
+        assert item.get("fit"), f"{code}: нет строки «кому»"
+
+
+def test_heavy_practices_have_referral():
+    """Тяжёлые запросы мягко ведут к специалисту, а не к практике."""
+    for code in ("mantra_shiva", "love_release"):
+        assert catalog.PRACTICES[code].get("referral"), \
+            f"{code}: нет направления к специалисту"
+
+
 def test_mantras_have_text():
     """У мантры обязан быть текст — иначе её нечего повторять."""
     for code, item in catalog.PRACTICES.items():
@@ -133,6 +146,49 @@ async def test_stop_closes_program(db, user):
 async def test_unknown_practice_raises(db, user):
     with pytest.raises(LookupError):
         await practices_svc.start(db, user, "нет-такой")
+
+
+async def test_progress_card_enriched(db, user):
+    """Карточка отдаёт статус, остаток дней и горит ли стрик-огонь."""
+    await practices_svc.start(db, user, "money_mirror")
+    await practices_svc.mark_done(db, user, "money_mirror")
+
+    items = await practices_svc.list_for_user(db, user)
+    card = next(p for p in items if p["code"] == "money_mirror")
+    assert card["status"] == "active"
+    assert card["days_left"] == card["days"] - 1
+    assert card["streak"] == 1
+    assert card["streak_alive"] is True
+    assert card["started_at"]
+    assert card["fit"] and card["program"]
+
+    # остановленная программа — «завершена», остаток не обнуляется
+    await practices_svc.stop(db, user, "money_mirror")
+    items = await practices_svc.list_for_user(db, user)
+    card = next(p for p in items if p["code"] == "money_mirror")
+    assert card["status"] == "completed"
+    assert card["days_left"] == card["days"] - 1
+
+
+async def test_progress_card_after_finish(db, user):
+    """Дойдя до конца, карточка показывает 100% и нулевой остаток."""
+    code = "love_release"                       # самая короткая, 9 дней
+    total = catalog.PRACTICES[code]["days"]
+    await practices_svc.start(db, user, code)
+    for day in range(total):
+        result = await practices_svc.mark_done(db, user, code)
+        if result["finished"]:
+            break
+        async with _tx(db):
+            await db.execute(
+                "UPDATE practices SET last_done=date('now','-1 day') "
+                "WHERE tg_id=? AND code=?", (user["tg_id"], code))
+
+    items = await practices_svc.list_for_user(db, user)
+    card = next(p for p in items if p["code"] == code)
+    assert card["status"] == "completed"
+    assert card["days_left"] == 0
+    assert card["percent"] == 100
 
 
 async def test_reminder_targets_skip_marked_today(db, user):

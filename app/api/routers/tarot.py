@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from ...core import tarot
 from ...repo import readings
 from ...services import catalog
 from ...services import chat as chat_svc
@@ -17,6 +18,18 @@ router = APIRouter(prefix="/api/tarot", tags=["tarot"])
 async def spreads(user=Depends(current_user), db=Depends(get_db)):
     """Витрина раскладов: что входит в тариф, что куплено, что стоит денег."""
     return await catalog.spread_list(db, user)
+
+
+@router.get("/spreads/full")
+async def spreads_full(user=Depends(current_user)):
+    """Все встроенные расклады с `guide` — пояснения для страницы выбора.
+
+    `/spreads` (витрина) не несёт `guide`, а здесь он нужен фронту, чтобы
+    показать клиентке, что именно покажет расклад, до того как она заплатит.
+    """
+    fields = ("title", "positions", "tier", "emoji", "hint", "guide")
+    return [{"code": code, **{f: item.get(f) for f in fields}}
+            for code, item in tarot.SPREADS.items()]
 
 
 class DrawIn(BaseModel):
@@ -35,9 +48,12 @@ async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
     """
     q = (item.question if item and item.question else question or "").strip() or None
     try:
-        return await chat_svc.draw(db, user, spread, surface="miniapp", question=q)
+        result = await chat_svc.draw(db, user, spread, surface="miniapp", question=q)
     except chat_svc.ChatDenied as e:
         raise _deny(e.verdict) from e
+    # короткое описание расклада для страницы выбора / карточки результата
+    result["guide"] = tarot.spread(result["spread"]).get("guide", "")
+    return result
 
 
 @router.post("/interpret/{reading_id}", dependencies=[Depends(rate_limit("llm"))])
@@ -52,6 +68,12 @@ async def interpret(reading_id: int, user=Depends(current_user), db=Depends(get_
 @router.get("/history")
 async def history(user=Depends(current_user), db=Depends(get_db)):
     return await readings.recent_readings(db, user["tg_id"], limit=30)
+
+
+@router.get("/stats")
+async def stats(user=Depends(current_user), db=Depends(get_db)):
+    """Что сбывалось: счётчик отметок «сбылось / частично / нет»."""
+    return await readings.outcome_stats(db, user["tg_id"])
 
 
 class OutcomeIn(BaseModel):

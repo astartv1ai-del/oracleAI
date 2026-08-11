@@ -235,6 +235,19 @@ async def get_diary(db, tg_id: int, limit: int = 30) -> list[dict]:
     return [dict(r) for r in await cur.fetchall()]
 
 
+async def diary_entries_between(db, tg_id: int, start_iso: str,
+                                end_iso: str) -> list[dict]:
+    """Записи в окне [start, end) по UTC — для месячной сводки.
+
+    `created_at` лежит в UTC, месяц у клиентки «на сутки вперёд» Владивостока
+    только сползает по краям — для сводки это приемлемо.
+    """
+    cur = await db.execute(
+        "SELECT id, text, mood, created_at FROM diary WHERE tg_id=? "
+        "AND created_at>=? AND created_at<? ORDER BY id", (tg_id, start_iso, end_iso))
+    return [dict(r) for r in await cur.fetchall()]
+
+
 async def diary_streak(db, tg_id: int) -> int:
     """Дней подряд с записями. Сегодня ещё не писала — считаем от вчера."""
     cur = await db.execute(

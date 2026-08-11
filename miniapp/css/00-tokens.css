@@ -1,0 +1,58 @@
+/* =============================================
+   ОРАКУЛ · модуль 00-tokens — строки 1–54 styles.css
+   Дословный перенос, каскад сохранён (порядок = @import).
+   ============================================= */
+
+/* ============================================================================
+   ОРАКУЛ — ASTRAL MIDNIGHT · chat-first design system
+   Глубокий космос + тёплое золото + аметист. Главный инструмент — чат,
+   поэтому интерфейс — это лёгкая рамка вокруг диалога с агентом.
+   ============================================================================ */
+
+:root {
+  --nav-h: 66px;
+  /* палитра — ночь с золотом и аметистом */
+  --bg-0: #08070f;
+  --bg-1: #0e0d1e;
+  --bg-2: #151330;
+  --glass: rgba(24, 22, 48, 0.55);
+  --glass-strong: rgba(28, 26, 56, 0.72);
+  --gold: #e6c178;
+  --gold-bright: #ffd98f;
+  --gold-deep: #b98946;
+  --gold-glow: rgba(230, 193, 120, 0.35);
+  --violet: #a78bfa;
+  --violet-glow: rgba(167, 139, 250, 0.35);
+  --text: #f4f1ff;
+  --text-dim: #a49cc8;
+  --text-faint: #6f6890;
+  --border: rgba(190, 170, 255, 0.13);
+  --border-strong: rgba(230, 193, 120, 0.42);
+
+  --font-serif: 'Cinzel', serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-sans: var(--font-body);
+
+  --r-s: 14px;
+  --r-m: 20px;
+  --r-l: 28px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sh-card: 0 18px 50px -18px rgba(0, 0, 0, 0.85);
+  --sh-gold: 0 0 0 1px rgba(230,193,120,.06), 0 18px 50px -22px rgba(230,193,120,.18);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}

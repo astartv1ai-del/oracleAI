@@ -298,14 +298,14 @@ def _full_chart(d: date, birth_time, city, lat, lon, tz) -> dict:
 
 
 MOON_PHASES = [
-    ("Новолуние", "🌑", "время намерений: загадай и отпусти"),
-    ("Растущий серп", "🌒", "время первых шагов и новых знакомств"),
-    ("Первая четверть", "🌓", "время решений: убери сомнения"),
-    ("Растущая Луна", "🌔", "время набора силы: действуй смелее"),
-    ("Полнолуние", "🌕", "пик энергии: эмоции громче разума, будь мягче"),
-    ("Убывающая Луна", "🌖", "время благодарности и завершения дел"),
-    ("Последняя четверть", "🌗", "время отпускать лишнее"),
-    ("Старый серп", "🌘", "время тишины и восстановления"),
+    ("Новолуние", "🌑", "загадай намерение письменно и отпусти — Вселенная запомнит"),
+    ("Растущий серп", "🌒", "первые шаги: знакомства, отклики, начало дела"),
+    ("Первая четверть", "🌓", "пора решений: спорь с сомнениями, а не с миром"),
+    ("Растущая Луна", "🌔", "сила растёт — запускай, проси, подписывай"),
+    ("Полнолуние", "🌕", "эмоции громче фактов: будь мягче, не решай судьбоносно"),
+    ("Убывающая Луна", "🌖", "закрывай хвосты и благодари — освобождаешь место"),
+    ("Последняя четверть", "🌗", "отпускай лишнее: людей, привычки, старые долги"),
+    ("Старый серп", "🌘", "тишина и восстановление: не начинай нового, выдыхай"),
 ]
 
 
@@ -335,6 +335,166 @@ def today_sky(d: date | None = None) -> dict:
             "moon": moon_phase(d)}
 
 
+# ──────────────── профессиональные акценты карты (для chart_brief) ──────────
+
+# Стихия/крест по знаку и планета-управитель знака — таблицы фактов, без воли.
+_SIGN_ELEMENT = {s[0]: s[2] for s in SIGNS}
+_SIGN_CROSS = {
+    "Овен": "кардинальный", "Рак": "кардинальный", "Весы": "кардинальный",
+    "Козерог": "кардинальный", "Телец": "фиксированный", "Лев": "фиксированный",
+    "Скорпион": "фиксированный", "Водолей": "фиксированный",
+    "Близнецы": "мутабельный", "Дева": "мутабельный", "Стрелец": "мутабельный",
+    "Рыбы": "мутабельный",
+}
+_SIGN_RULER = {
+    "Овен": "Марс", "Телец": "Венера", "Близнецы": "Меркурий", "Рак": "Луна",
+    "Лев": "Солнце", "Дева": "Меркурий", "Весы": "Венера", "Скорпион": "Плутон",
+    "Стрелец": "Юпитер", "Козерог": "Сатурн", "Водолей": "Уран", "Рыбы": "Нептун",
+}
+_SIGN_IDX = {s[0]: i for i, s in enumerate(SIGNS)}
+_ANGLE_ORB = 10.0  # орб близости к угловым куспидам: классика сильной планеты
+
+
+def _planets_word(n: int) -> str:
+    """Склонение слова «планеты» для числа: 4 планеты, 5 планет."""
+    if 11 <= n % 100 <= 14:
+        return "планет"
+    last = n % 10
+    if last == 1:
+        return "планета"
+    if last in (2, 3, 4):
+        return "планеты"
+    return "планет"
+
+
+def _sign_abs(deg, sign_ru):
+    """Абсолютная долгота (0–360) из позиции в знаке и его названия."""
+    try:
+        return _SIGN_IDX[sign_ru] * 30 + deg
+    except (KeyError, TypeError):
+        return None
+
+
+def _chart_accents(chart: dict, time_known: bool | None) -> str:
+    """Профессиональные акценты карты, выведенные из данных, без домыслов.
+
+    Ничего не трактует за LLM — только факты (перевесы, стеллиумы, обиталища,
+    угловые планеты, эмоциональный и любовный маркеры) с краткими пояснениями.
+    Домовые факты зависят от точного времени рождения, поэтому при
+    `time_known is not True` дома и углы не упоминаются.
+    """
+    planets = chart.get("planets") or []
+    if not planets:
+        return ""
+    bits = []
+
+    # Перевес стихий: сколько планет в какой.
+    elements = {}
+    for p in planets:
+        el = _SIGN_ELEMENT.get(p.get("sign"))
+        if el:
+            elements[el] = elements.get(el, 0) + 1
+    if elements:
+        order = ["огонь", "земля", "воздух", "вода"]
+        rows = [(el, elements[el]) for el in order if elements.get(el)]
+        rows.sort(key=lambda x: (-x[1], order.index(x[0])))
+        top = max(elements.values())
+        bit = "стихии: " + ", ".join(f"{el} {n}" for el, n in rows)
+        if top >= 3:
+            lead = [el for el, n in rows if n == top]
+            bit += f"; акцент: {', '.join(lead)} ({top} {_planets_word(top)})"
+        bits.append(bit)
+
+    # Кардинальность: кардинальные/фиксированные/мутабельные.
+    crosses = {}
+    for p in planets:
+        cr = _SIGN_CROSS.get(p.get("sign"))
+        if cr:
+            crosses[cr] = crosses.get(cr, 0) + 1
+    if crosses:
+        rows = sorted(crosses.items(), key=lambda x: -x[1])
+        top = max(crosses.values())
+        bit = "кресты: " + ", ".join(f"{cr} {n}" for cr, n in rows)
+        if top >= 3:
+            lead = [cr for cr, n in rows if n == top]
+            bit += f"; акцент: {', '.join(lead)} ({top} {_planets_word(top)})"
+        bits.append(bit)
+
+    # Стеллиумы: 3+ планет в одном знаке или доме.
+    by_sign, by_house = {}, {}
+    for p in planets:
+        sign = p.get("sign")
+        if sign:
+            by_sign[sign] = by_sign.get(sign, 0) + 1
+        if time_known is True:
+            h = p.get("house")
+            if h:
+                by_house[h] = by_house.get(h, 0) + 1
+    stell = [f"{s} ({n})" for s, n in sorted(by_sign.items(), key=lambda x: -x[1])
+             if n >= 3]
+    if time_known is True:
+        stell += [f"{h} дом ({n})" for h, n in
+                  sorted(by_house.items(), key=lambda x: -x[1]) if n >= 3]
+    if stell:
+        bits.append("стеллиумы: " + ", ".join(stell))
+
+    # Планеты-акценты: обиталище (в своём знаке) и свой дом (управитель знака
+    # естественного дома).
+    dwell = []
+    for p in planets:
+        sign = p.get("sign")
+        if sign and _SIGN_RULER.get(sign) == p.get("name"):
+            dwell.append(f"{p['name']} в {sign} (обиталище)")
+        if time_known is True:
+            h = p.get("house")
+            if h and 1 <= h <= 12:
+                natural = SIGNS[h - 1][0]
+                if _SIGN_RULER.get(natural) == p.get("name"):
+                    dwell.append(f"{p['name']} в {h} доме (свой дом)")
+    if dwell:
+        bits.append("акценты: " + "; ".join(dwell))
+
+    # Ретроградные планеты — профессиональный маркер: внутренняя работа вместо
+    # внешнего действия, энергия, идущая внутрь.
+    retros = [p.get("name", "?") for p in planets if p.get("retro")]
+    if retros:
+        bits.append("ретро: " + ", ".join(retros))
+
+    # Самая близкая к угловым куспидам планета (ASC/MC).
+    if time_known is not False:
+        asc = chart.get("ascendant") or {}
+        mc = chart.get("mc") or {}
+        a_deg = asc.get("abs_deg")
+        m_deg = _sign_abs(mc.get("deg"), mc.get("sign"))
+        best = None  # (расстояние, угол, планета)
+        for p in planets:
+            pd = p.get("abs_deg")
+            if pd is None:
+                continue
+            for angle, ad in (("ASC", a_deg), ("MC", m_deg)):
+                if ad is None:
+                    continue
+                d = _delta360(pd, ad)
+                if best is None or d < best[0]:
+                    best = (d, angle, p.get("name", "?"))
+        if best and best[0] <= _ANGLE_ORB:
+            bits.append(f"{best[2]} в {best[0]:.0f}° от {best[1]}")
+
+    # Эмоции и любовь — маркеры по данным, трактовку делает LLM.
+    by_name = {p.get("name"): p for p in planets}
+    moon = by_name.get("Луна")
+    if moon and moon.get("sign"):
+        bits.append(f"Луна в {moon['sign']} — эмоциональная природа")
+    venus, mars = by_name.get("Венера"), by_name.get("Марс")
+    if venus and venus.get("sign"):
+        love = [f"Венера в {venus['sign']}"]
+        if mars and mars.get("sign"):
+            love.append(f"Марс в {mars['sign']}")
+        bits.append(", ".join(love) + " — любовный профиль")
+
+    return "; ".join(bits)
+
+
 def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
     """Краткая текстовая выжимка карты для промпта агента.
 
@@ -346,6 +506,9 @@ def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
         asc = chart.get("ascendant")
         if asc:
             parts.append(f"Асцендент в {asc['sign']}")
+        mc = chart.get("mc")
+        if mc and mc.get("sign"):
+            parts.append(f"MC в {mc['sign']}")
         for p in chart["planets"]:
             house = f", {p['house']} дом" if (p.get("house") and time_known) else ""
             parts.append(f"{p['name']} в {p['sign']}{house}"
@@ -358,6 +521,13 @@ def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
             brief += ". Ключевые аспекты: " + "; ".join(
                 f"{a['p1']} {a['glyph']} {a['p2']} (орб {a['orb']}°)"
                 for a in aspects[:6])
+        nodes = chart.get("nodes") or []
+        if nodes:
+            brief += ". Узлы и Лилит: " + "; ".join(
+                f"{n['name']} в {n['sign']}" for n in nodes if n.get("sign"))
+        accents = _chart_accents(chart, time_known)
+        if accents:
+            brief += ". АКЦЕНТЫ КАРТЫ: " + accents
         return brief
     s = chart.get("sun", {})
     return f"Солнце в {s.get('sign', '?')} (стихия: {s.get('element', '?')}); расчёт упрощённый"

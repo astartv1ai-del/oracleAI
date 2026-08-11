@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -137,6 +138,7 @@ class CompatIn(BaseModel):
     partner_date: str
     partner_name: str = Field(default="", max_length=30)
     save: bool = False
+    relation: Literal["love", "friend", "work", "family"] = "love"
 
 
 @router.post("/compat", dependencies=[Depends(rate_limit("write"))])
@@ -149,7 +151,11 @@ async def compat(item: CompatIn, user=Depends(current_user), db=Depends(get_db))
     if not user["birth_date"]:
         raise HTTPException(400, "нет даты рождения")
     partner_date = _parse_date(item.partner_date)
-    data = skills._compat(user["birth_date"], partner_date)
+    # Полные карты обеих сохранились (партнёр с городом и временем) — синастрия
+    # пары учесться в балле; иначе остаётся балл по датам (лёгкий путь).
+    aspects = await skills._pair_aspects(db, user, partner_date)
+    data = skills._compat(user["birth_date"], partner_date, relation=item.relation,
+                          aspects=aspects)
     if item.save and item.partner_name:
         await readings.add_partner(db, user["tg_id"], item.partner_name.strip(),
                                    partner_date)
@@ -189,7 +195,8 @@ async def compat_full(item: CompatIn, user=Depends(active_user), db=Depends(get_
         if item.save:
             await readings.add_partner(db, user["tg_id"], name, partner_date)
     await analytics.track(db, "compat_full", user["tg_id"], surface="miniapp")
-    return {"answer": text}
+    scores = skills._compat(user["birth_date"], partner_date, relation=item.relation)
+    return {"answer": text, "scores": scores}
 
 
 # ──────────────────────────────── партнёры ────────────────────────────────────

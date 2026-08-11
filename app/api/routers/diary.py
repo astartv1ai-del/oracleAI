@@ -5,7 +5,10 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import re
+from datetime import date, datetime, timezone
+
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from ...core import memory
@@ -54,7 +57,6 @@ async def diary_prompt(user=Depends(current_user), db=Depends(get_db)):
     if entries and entries[0]["created_at"]:
         # created_at в UTC, а «сегодня» — по зоне клиентки: вечером UTC
         # ещё вчера, и сравнение по подстроке даёт ложный False
-        from datetime import datetime
         local = datetime.fromisoformat(entries[0]["created_at"]).astimezone(
             users.user_tz(user))
         written_today = local.strftime("%Y-%m-%d") == today
@@ -92,3 +94,143 @@ def _prompt_for(streak: int, written_today: bool) -> str:
     pool = (_PROMPTS_STREAK if streak >= 5 else
             _PROMPTS_REGULAR if streak >= 1 else _PROMPTS_FIRST)
     return pool[stable_seed(str(streak), "diary") % len(pool)]
+
+
+# ─────────────────────── месячная сводка «что показала Вселенная» ─────────────
+# Счётчики и темы считает код, а не LLM: текст итога пишет агент, но факты —
+# реальные. Так сводка не выдумывает, сколько записей было и о чём они.
+
+_THEMES = {
+    "отношения": ["любов", "партнёр", "партнер", "муж", "отношени", "расставан",
+                  "вместе", "свидан", "бывший", "одино", "с ним"],
+    "деньги и работа": ["деньг", "работ", "зарплат", "долг", "плат", "заказ",
+                        "клиент", "проект", "начальн", "коллег", "отпуск", "увольн"],
+    "самочувствие": ["сон", "спать", "устал", "болит", "болею", "врач", "голова",
+                     "тревог", "паник"],
+    "энергия и практика": ["практик", "мантр", "медитац", "энерг", "восстанов",
+                           "зарядил", "утром", "настроил"],
+    "дом и близкие": ["мам", "пап", "семь", "дома", "домой", "ребен", "ребён",
+                      "подруг", "родител", "сестр", "брат"],
+}
+_CHANGE_WORDS = ("изменил", "перестал", "наконец", "по-другому", "решила",
+                 "поняла", "отпустил", "начала", "смел", "смогла")
+_STOPWORDS = {
+    "что", "как", "это", "меня", "мне", "было", "будет", "себя", "для", "она",
+    "его", "ее", "её", "так", "уже", "все", "когда", "если", "очень", "еще",
+    "ещё", "только", "быть", "стала", "был", "были", "потом", "сейчас", "сегодня",
+}
+
+
+def _month_bounds(month: str) -> tuple[str, str]:
+    """Начало и конец месяца в UTC — окно записей для сводки."""
+    start = datetime.strptime(month, "%Y-%m").replace(tzinfo=timezone.utc)
+    nxt = (start.replace(year=start.year + 1, month=1)
+           if start.month == 12 else start.replace(month=start.month + 1))
+    return start.isoformat(), nxt.isoformat()
+
+
+def _themes_of(entries: list[dict]) -> list[dict]:
+    counts = {t: 0 for t in _THEMES}
+    for e in entries:
+        text = (e.get("text") or "").lower()
+        for theme, kws in _THEMES.items():
+            if any(k in text for k in kws):
+                counts[theme] += 1
+    return [{"theme": t, "count": c} for t, c in counts.items() if c]
+
+
+def _top_words(entries: list[dict], limit: int = 8) -> list[list]:
+    freq: dict[str, int] = {}
+    for e in entries:
+        for w in re.findall(r"[а-яё]{3,}", (e.get("text") or "").lower()):
+            if w not in _STOPWORDS:
+                freq[w] = freq.get(w, 0) + 1
+    return [list(pair) for pair in
+            sorted(freq.items(), key=lambda kv: kv[1], reverse=True)[:limit]]
+
+
+def _max_streak(days: set[str]) -> int:
+    """Лучшая серия дней подряд в месяце."""
+    ordered = sorted(days)
+    best = run = 0
+    prev = None
+    for d in ordered:
+        run = run + 1 if (prev and (date.fromisoformat(d)
+                                    - date.fromisoformat(prev)).days == 1) else 1
+        best = max(best, run)
+        prev = d
+    return best
+
+
+@router.get("/diary/summary")
+async def diary_summary(month: str | None = Query(default=None),
+                        user=Depends(current_user), db=Depends(get_db)):
+    """Месячная сводка: сколько записей, о чём, что менялось.
+
+    Отдаёт факты и структуру для LLM (поле `data_for_prompt`), а не готовый
+    текст: «Книгу судьбы» формулирует Оракул, но не выдумывает цифры.
+    """
+    month = month or datetime.now(timezone.utc).strftime("%Y-%m")
+    try:
+        start_iso, end_iso = _month_bounds(month)
+    except ValueError:
+        return {"month": month, "empty": True, "error": "bad month"}
+
+    entries = await dialog.diary_entries_between(db, user["tg_id"], start_iso, end_iso)
+    if not entries:
+        return {"month": month, "empty": True, "count": 0, "days_written": 0,
+                "themes": [], "moods": {}, "data_for_prompt": ""}
+
+    days = {e["created_at"][:10] for e in entries if e["created_at"]}
+    moods: dict[str, int] = {}
+    for e in entries:
+        if e.get("mood"):
+            moods[e["mood"]] = moods.get(e["mood"], 0) + 1
+
+    def _day_num(entry) -> int:
+        try:
+            return int(datetime.fromisoformat(entry["created_at"]).day)
+        except ValueError:
+            return 16
+
+    first_half = sum(1 for e in entries if _day_num(e) <= 15)
+    second_half = len(entries) - first_half
+    direction = ("up" if second_half > first_half else
+                 "down" if second_half < first_half else "stable")
+    changes = sum(1 for e in entries
+                  if any(w in (e.get("text") or "").lower() for w in _CHANGE_WORDS))
+
+    themes = _themes_of(entries)
+    repeated = [t["theme"] for t in themes if t["count"] >= 2]
+    first, last = entries[0], entries[-1]
+    snippet = lambda e: (e.get("text") or "")[:120]
+
+    themes_line = (", ".join(f"{t['theme']} — {t['count']}" for t in themes)
+                   or "нет явных")
+    data_for_prompt = (
+        f"Записей за месяц: {len(entries)} (на {len(days)} дней, "
+        f"лучшая серия — {_max_streak(days)} подряд). "
+        f"Темы: {themes_line}. "
+        f"Настроения: {', '.join(f'{k} — {v}' for k, v in moods.items()) or 'не отмечались'}. "
+        f"Динамика: первая половина {first_half}, вторая {second_half} записей. "
+        f"Слов про перемены — {changes}. "
+        f"Первая запись: «{snippet(first)}». Последняя: «{snippet(last)}»."
+    )
+
+    return {
+        "month": month,
+        "empty": False,
+        "count": len(entries),
+        "days_written": len(days),
+        "streak_max": _max_streak(days),
+        "moods": moods,
+        "themes": themes,
+        "repeated_themes": repeated,
+        "top_words": _top_words(entries),
+        "trend": {"first_half": first_half, "second_half": second_half,
+                  "direction": direction},
+        "changes": changes,
+        "first": {"date": first["created_at"], "text": snippet(first)},
+        "last": {"date": last["created_at"], "text": snippet(last)},
+        "data_for_prompt": data_for_prompt,
+    }

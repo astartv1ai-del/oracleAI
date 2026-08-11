@@ -1,0 +1,130 @@
+/* =============================================
+   ОРАКУЛ · модуль 13-toolbar-sheet — строки 1628–1753 styles.css
+   Дословный перенос, каскад сохранён (порядок = @import).
+   ============================================= */
+
+/* ============================================================================
+   v5.2: ЧАТ-ПРОФИ — переключатель агентов, тулбар инструментов, панель
+   ============================================================================ */
+
+/* переключатель агентов: тонкая лента аватаров над лентой сообщений */
+.agent-tabs {
+  display: flex; align-items: center; gap: 6px; overflow-x: auto;
+  padding: 8px 14px 0; scrollbar-width: none; flex: none;
+}
+.agent-tabs::-webkit-scrollbar { display: none; }
+.atab {
+  display: inline-flex; align-items: center; gap: 7px; flex: none;
+  background: rgba(255,255,255,.045); border: 1px solid var(--border);
+  border-radius: 99px; padding: 3px 12px 3px 4px; cursor: pointer;
+  color: var(--text-dim); font-size: 12px; font-weight: 600; letter-spacing: .2px;
+  transition: .2s var(--ease); white-space: nowrap;
+}
+.atab-face {
+  width: 24px; height: 24px; border-radius: 50%; overflow: hidden; flex: none;
+  background: var(--ac, var(--gold)); box-shadow: 0 0 0 1px rgba(255,255,255,.08);
+}
+.atab-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.atab:hover { color: var(--gold-bright); border-color: var(--gold); transform: translateY(-1px); }
+.atab:active { transform: scale(.95); }
+.atab.active {
+  border-color: var(--gold); color: var(--gold-bright);
+  background: rgba(230,193,120,.1); box-shadow: 0 0 12px -4px rgba(230,193,120,.55);
+}
+.atab-x { padding: 3px 10px; font-size: 14px; }
+
+/* компактный тулбар вызова инструментов над полем ввода (чипы, а не карточки) */
+.toolbar {
+  display: flex; align-items: center; gap: 6px; overflow-x: auto;
+  padding: 8px 14px 2px; scrollbar-width: thin;
+  scrollbar-color: rgba(230,193,120,.3) transparent; flex: none;
+}
+.toolbar::-webkit-scrollbar { height: 3px; }
+.toolbar::-webkit-scrollbar-thumb { background: rgba(230,193,120,.35); border-radius: 99px; }
+.tchip {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  font-size: 12px; font-weight: 600; letter-spacing: .2px;
+  color: var(--text-dim); background: rgba(255,255,255,.045);
+  border: 1px solid var(--border); border-radius: 99px; padding: 6px 12px;
+  cursor: pointer; transition: .18s var(--ease); white-space: nowrap;
+}
+.tchip:hover { color: var(--gold-bright); border-color: var(--gold); transform: translateY(-1px); }
+.tchip:active { transform: translateY(0) scale(.96); }
+.tchip-ico { font-size: 13px; }
+
+/* панель «Все инструменты» — bottom sheet (свайп вверх у нижнего края ленты) */
+.tool-expand { position: fixed; inset: 0; z-index: 80; visibility: hidden; }
+.tool-expand.open { visibility: visible; }
+.te-mask {
+  position: absolute; inset: 0; background: rgba(5,4,12,.55);
+  opacity: 0; transition: opacity .25s var(--ease);
+}
+.tool-expand.open .te-mask { opacity: 1; }
+.te-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, #171233, #100c24);
+  border: 1px solid var(--border-strong); border-bottom: none; border-radius: 22px 22px 0 0;
+  padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+  max-height: 72vh; overflow-y: auto;
+  box-shadow: 0 -20px 50px rgba(0,0,0,.55);
+  transform: translateY(102%); transition: transform .28s var(--ease);
+}
+.tool-expand.open .te-sheet { transform: translateY(0); }
+.te-handle {
+  width: 40px; height: 4px; border-radius: 99px;
+  background: rgba(255,255,255,.16); margin: 2px auto 12px;
+}
+.te-title {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-serif); color: var(--gold); font-size: 15px; font-weight: 600;
+}
+.te-close { border: none; background: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 4px; }
+.te-group { margin-top: 12px; }
+.te-agent {
+  font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: var(--ac, var(--gold)); margin-bottom: 6px;
+}
+.te-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.te-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: var(--r-s);
+  padding: 10px 4px; cursor: pointer; color: var(--text-dim);
+  font-size: 10.5px; font-weight: 600; line-height: 1.25;
+  transition: .18s var(--ease);
+}
+.te-chip:hover { color: var(--gold-bright); border-color: var(--gold); background: rgba(230,193,120,.07); }
+.te-chip:active { transform: scale(.95); }
+.te-ico { font-size: 18px; }
+
+/* гайд первого захода в чат: лёгкий оверлей-карточка под модал/тост */
+#chat-guide {
+  position: fixed; inset: 0; z-index: 85; display: grid; place-items: center;
+  background: rgba(5,4,12,.6); backdrop-filter: blur(4px); padding: 24px;
+  animation: fadeIn .25s var(--ease);
+}
+.cg-card {
+  width: 100%; max-width: 330px; text-align: center;
+  background: linear-gradient(160deg, #1d1738, #120e26);
+  border: 1px solid var(--border-strong); border-radius: var(--r-l);
+  padding: 26px 22px 20px; box-shadow: var(--sh-card);
+  animation: popIn .3s var(--ease);
+}
+.cg-emoji { font-size: 44px; filter: drop-shadow(0 0 18px var(--gold-glow)); animation: orbFloat 5s ease-in-out infinite; }
+.cg-title { font-family: var(--font-serif); font-size: 19px; font-weight: 700; color: var(--gold-bright); margin-top: 12px; letter-spacing: .3px; }
+.cg-sub { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; margin-top: 8px; }
+.cg-dots { display: flex; justify-content: center; gap: 6px; margin: 16px 0; }
+.cg-dots span { width: 7px; height: 7px; border-radius: 50%; background: rgba(230,193,120,.25); transition: .25s var(--ease); }
+.cg-dots span.active { background: var(--gold); box-shadow: 0 0 8px var(--gold-glow); width: 18px; border-radius: 99px; }
+.cg-btns { display: flex; gap: 8px; }
+.cg-btns .btn { flex: 1; }
+
+/* деликатная подсветка свежего ответа агента */
+.msg.fresh { animation: msgIn .35s var(--ease), freshGlow 1.6s ease-out; }
+@keyframes freshGlow {
+  0% { box-shadow: 0 0 0 1px rgba(230,193,120,.45), 0 0 18px rgba(230,193,120,.25); }
+  100% { box-shadow: none; }
+}
+
+/* ============================================================================
+   v5.3: виджеты — утро, луна, матрица, карьерные окна, практики, дневник
+   ============================================================================ */

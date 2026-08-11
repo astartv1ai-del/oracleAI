@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 
 from ..core import practices as catalog
 from ..repo import content, readings, users
@@ -33,6 +34,7 @@ def _from_content(item: dict) -> dict | None:
         "emoji": meta.get("emoji", "✨"),
         "days": int(meta.get("days") or catalog.DEFAULT_DAYS),
         "goal": meta.get("goal", ""),
+        "fit": meta.get("fit", ""),
         "best_time": meta.get("best_time", ""),
         "moon": meta.get("moon", ""),
         "text": meta.get("text", ""),
@@ -40,6 +42,7 @@ def _from_content(item: dict) -> dict | None:
         "program": [str(s) for s in (meta.get("program") or [])][:40],
         "signs": [str(s) for s in (meta.get("signs") or [])][:10],
         "warning": meta.get("warning", ""),
+        "referral": meta.get("referral", ""),
     }
 
 
@@ -62,10 +65,37 @@ async def get_practice(db, code: str) -> dict | None:
     return (await all_practices(db)).get(code)
 
 
-def _view(item: dict, progress: dict | None) -> dict:
+def _streak_alive(progress: dict | None, today: str | None) -> bool:
+    """Стрик-огонь горит, пока последняя отметка не старше суток.
+
+    Число `streak` в БД стареет: пропустила день — стрик «заморожен», но цифра
+    осталась. Для интерфейса важно не число само по себе, а горит ли огонь
+    прямо сейчас: последняя отметка сегодня или вчера.
+    """
+    last = (progress or {}).get("last_done")
+    if not last:
+        return False
+    try:
+        gap = (date.fromisoformat(today or date.today().isoformat())
+               - date.fromisoformat(str(last)[:10])).days
+    except ValueError:
+        return False
+    return gap <= 1
+
+
+def _status(progress: dict | None) -> str:
+    if not progress:
+        return "not_started"
+    if progress.get("finished_at"):
+        return "completed"
+    return "active"
+
+
+def _view(item: dict, progress: dict | None, today: str | None = None) -> dict:
     """Карточка практики для интерфейса: описание + её текущий прогресс."""
     day_index = (progress or {}).get("day_index") or 0
     started = bool(progress and not progress.get("finished_at"))
+    finished = bool(progress and progress.get("finished_at"))
     days = item.get("days") or catalog.DEFAULT_DAYS
     return {
         "code": item["code"],
@@ -77,17 +107,25 @@ def _view(item: dict, progress: dict | None) -> dict:
         "emoji": item.get("emoji", "✨"),
         "days": days,
         "goal": item.get("goal", ""),
+        "fit": item.get("fit", ""),
         "best_time": item.get("best_time", ""),
         "moon": item.get("moon", ""),
         "text": item.get("text", ""),
         "steps": item.get("steps", []),
+        "program": item.get("program", []),
         "signs": item.get("signs", []),
         "warning": item.get("warning", ""),
+        "referral": item.get("referral", ""),
         "started": started,
-        "finished": bool(progress and progress.get("finished_at")),
+        "finished": finished,
+        "status": _status(progress),
         "day_index": day_index,
         "streak": (progress or {}).get("streak") or 0,
+        "streak_alive": _streak_alive(progress, today),
         "last_done": (progress or {}).get("last_done"),
+        "started_at": (progress or {}).get("started_at"),
+        "finished_at": (progress or {}).get("finished_at"),
+        "days_left": max(0, days - day_index),
         "today_step": catalog.today_step(item, max(day_index + 1, 1)),
         "percent": min(100, round(day_index * 100 / days)) if days else 0,
     }
@@ -102,7 +140,8 @@ async def list_for_user(db, user, *, category: str | None = None) -> list[dict]:
     mine: dict[str, dict] = {}
     for row in await readings.list_practices(db, user["tg_id"]):
         mine.setdefault(row["code"], row)
-    out = [_view(item, mine.get(code)) for code, item in items.items()
+    out = [_view(item, mine.get(code), users.user_today(user))
+           for code, item in items.items()
            if not category or item.get("category") == category]
     out.sort(key=lambda p: (not p["started"], p["finished"],
                             catalog.CATEGORIES.get(p["category"], {}).get("sort", 100),
@@ -122,7 +161,8 @@ async def start(db, user, code: str) -> dict:
         raise LookupError("такой практики нет")
     await readings.start_practice(db, user["tg_id"], code)
     progress = await readings.active_practice(db, user["tg_id"], code)
-    return _view(item, dict(progress) if progress else None)
+    return _view(item, dict(progress) if progress else None,
+                 users.user_today(user))
 
 
 async def stop(db, user, code: str) -> bool:
@@ -134,14 +174,14 @@ async def mark_done(db, user, code: str) -> dict:
     item = await get_practice(db, code)
     if not item:
         raise LookupError("такой практики нет")
+    today = users.user_today(user)
     result = await readings.mark_practice_done(
-        db, user["tg_id"], code, total_days=item.get("days"),
-        tz_today=users.user_today(user))
+        db, user["tg_id"], code, total_days=item.get("days"), tz_today=today)
     progress = await readings.active_practice(db, user["tg_id"], code)
     if progress is None:                       # программа только что закрылась
         rows = await readings.list_practices(db, user["tg_id"])
         progress = next((r for r in rows if r["code"] == code), None)
-    view = _view(item, dict(progress) if progress else None)
+    view = _view(item, dict(progress) if progress else None, today)
     merged = {**view, **result, "title": item["title"]}
     return {**merged, "message": congrats(item, result)}
 

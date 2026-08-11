@@ -83,6 +83,25 @@ async def readings_count_since(db, tg_id: int, days: int) -> int:
     return (await cur.fetchone())["c"]
 
 
+async def outcome_stats(db, tg_id: int) -> dict:
+    """Сводка отметок «сбылось»: доказательство ценности без схемы БД.
+
+    Агрегат по уже существующей колонке `outcome` — никаких миграций.
+    """
+    cur = await db.execute(
+        "SELECT outcome, COUNT(*) c FROM tarot_readings "
+        "WHERE tg_id=? AND outcome IS NOT NULL GROUP BY outcome", (tg_id,))
+    stats = {"came_true": 0, "partly": 0, "no": 0}
+    for r in await cur.fetchall():
+        if r["outcome"] in stats:
+            stats[r["outcome"]] = r["c"]
+    cur = await db.execute(
+        "SELECT COUNT(*) c FROM tarot_readings "
+        "WHERE tg_id=? AND outcome IS NOT NULL", (tg_id,))
+    stats["marked"] = (await cur.fetchone())["c"]
+    return stats
+
+
 # ───────────────────────── партнёры и синастрия ───────────────────────────────
 
 async def add_partner(db, tg_id: int, name: str, birth_date: str, *,

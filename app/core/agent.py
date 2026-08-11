@@ -15,6 +15,7 @@ import asyncio
 import json
 import logging
 import random
+from collections import Counter
 from datetime import date, datetime, timezone
 
 from ..repo import dialog as dialog_repo
@@ -53,7 +54,7 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
     cards_block = tarot.cards_text(cards, positions)
     if llm.enabled():
         try:
-            system = await agents.system_for(db, user, agents.get("oracle"))
+            system = await agents.system_for(db, user, agents.get("tarot"))
             q = f"Я спросила карты: «{question}».\n" if question else ""
             user_msg = (f"{await skills.guide(db, 'tarot')}\n\n"
                         f"Я сделала расклад «{title}». Выпали карты:\n{cards_block}\n\n"
@@ -130,15 +131,19 @@ async def daily_forecast(db, user, chart: dict) -> str:
                       f"{'; '.join(memories) or '-'}.\n"
                       f"{await skills.guide(db, 'transit')}")
             card = card_of_day(user)
-            user_msg = (f"Небо сегодня: Луна {sky['moon']['emoji']} "
-                        f"{sky['moon']['name']} ({sky['moon']['advice']}), "
-                        f"лунный день ~{sky['moon']['day']}, Солнце в "
+            sphere_title, sphere_hint = _sphere_slot(user)
+            moon = sky["moon"]
+            user_msg = (f"Небо сегодня: Луна {moon['emoji']} {moon['name']} "
+                        f"({moon['advice']}), лунный день ~{moon['day']}, Солнце в "
                         f"{sky['sun_season']['sign']}.\n"
                         f"Карта дня: {card['emoji']} {card['name']}"
                         f"{' (перевёрнутая)' if card['reversed'] else ''} — "
                         f"{card['meaning']}.\n"
-                        f"Напиши мой персональный прогноз на сегодня: 4-6 строк, "
-                        f"тепло, 1 конкретный совет, обыграй карту дня. Начни с 🌅.")
+                        f"Сфера внимания сегодня: {sphere_title} — {sphere_hint}.\n"
+                        f"Напиши мою персональную утреннюю карточку на сегодня, "
+                        f"4-6 строк, тепло и по-человечески: обыграй карту дня, "
+                        f"отметь лунный день, один конкретный совет завяжи на "
+                        f"сферу внимания. Начни с 🌅, обратись ко мне по имени.")
             text = await llm.complete(system, user_msg, tier="lite", max_tokens=400,
                                       purpose="forecast", tg_id=user["tg_id"], db=db)
             if text.strip():
@@ -152,16 +157,22 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
     rnd = random.Random(stable_seed(date.today().isoformat(), user["tg_id"]))
     sun = (chart or {}).get("sun") or {}
     sign = sun.get("sign", "твоего знака")
+    name = user["name"] or "милая"
     moon = sky["moon"]
     card = card_of_day(user)
+    sphere_title, _hint = _sphere_slot(user)
     moods = ["день ясности", "день тихой силы", "день знаков", "день выбора",
              "день отдачи"]
+    rev = ("Карта идёт перевёрнутой — сегодня мягче, без гонки и лишних решений."
+           if card["reversed"] else
+           "Карта прямого хода — смелый шаг в первой половине дня принесёт больше.")
     return (
-        f"🌅 Доброе утро! Сегодня для {sign} — {rnd.choice(moods)}.\n"
-        f"{moon['emoji']} Луна: {moon['name']} — {moon['advice']}.\n"
+        f"🌅 {name}, доброе утро! Сегодня для {sign} — {rnd.choice(moods)}.\n"
+        f"{moon['emoji']} Луна {moon['name']} (~{moon['day']} лунный день): "
+        f"{moon['advice']}.\n"
         f"Карта дня: {card['emoji']} <b>{card['name']}</b> — {card['meaning']}.\n"
-        f"Совет: "
-        f"{'не торопи события' if card['reversed'] else 'действуй в первой половине дня'}. ✨"
+        f"Зона внимания — <b>{sphere_title}</b>. {rev}\n"
+        f"Загляни вечером — разложу карты подробнее. ✨"
     )
 
 
@@ -175,6 +186,26 @@ def card_of_day(user) -> dict:
     card = dict(tarot.DECK[rnd.randrange(len(tarot.DECK))])
     card["reversed"] = bool(rnd.getrandbits(1))
     return card
+
+
+#: Сфера внимания дня. Инвариант как у карты: слот выбирает код (одна и та же
+#: колода — детерминированный слот на день на клиентку), раскрывает LLM.
+_SPHERE_SLOTS = [
+    ("любовь и отношения", "близкие, пара, чувства к себе"),
+    ("работа и дела", "задачи, деньги, твоё место в общем деле"),
+    ("энергия и состояние", "силы, настроение, забота о себе"),
+]
+
+
+def _sphere_slot(user) -> tuple[str, str]:
+    rnd = random.Random(stable_seed(users_repo.user_today(user), user["tg_id"], "sphere"))
+    return _SPHERE_SLOTS[rnd.randrange(len(_SPHERE_SLOTS))]
+
+
+def daily_sphere(user) -> str:
+    """Сфера внимания дня: «любовь и отношения» / «работа и дела» / «энергия и
+    состояние». Код выбирает одну — та же у бота и в Mini App."""
+    return _sphere_slot(user)[0]
 
 
 # ---------------------------------------------------------------- совместимость
@@ -223,7 +254,13 @@ async def _synastry_data(db, user, partner_date: str) -> str | None:
 async def interpret_compat(db, user, partner_date: str,
                            partner_name: str = "") -> str:
     """Полный разбор пары. Настоящая синастрия берётся из сохранённых карт,
-    если они есть; иначе — разбор по датам (Солнце/Луна/Венера)."""
+    если они есть; иначе — разбор по датам (Солнце/Луна/Венера).
+
+    Если в расчёте появились ключи `spheres` (список {slug,title,value,note}) и
+    `relation` (love/friend/work/family) — просим модель разобрать пару ПО СФЕРАМ
+    и типу связи, а не только общим баллом. Ключи опциональны: их нет — прежнее
+    поведение.
+    """
     key = f"syn:{partner_date}:{partner_name}"
     cached = await readings_repo.get_synastry(db, user["tg_id"], key)
     if cached and cached["answer"]:
@@ -236,12 +273,30 @@ async def interpret_compat(db, user, partner_date: str,
              f"балл {data['score']}/100")
     block = await _synastry_data(db, user, partner_date)
     synast = f"\n\nДанные синастрии (считает код):\n{block}" if block else ""
+
+    spheres_block = ""
+    spheres = data.get("spheres")
+    if spheres:
+        lines = "\n".join(
+            f"- {s.get('title') or s.get('slug') or 'сфера'}: {s.get('value')}/100"
+            f"{' — ' + str(s.get('note')) if s.get('note') else ''}"
+            for s in spheres)
+        relation = data.get("relation")
+        relation_txt = (" Тип связи: "
+                        + {"love": "любовный союз", "friend": "дружба",
+                           "work": "работа/дело", "family": "семья"}
+                        .get(relation, str(relation)) + "." if relation else "")
+        spheres_block = (f"\n\nБаллы по сферам (считает код):\n{lines}.{relation_txt}\n"
+                         f"Разбери отношения ПО КАЖДОЙ сфере отдельно: что в этой "
+                         f"сфере связывает, где трение и что укрепит именно её. "
+                         f"Общий балл упомяни, но не превращай разбор в один вердикт.")
+
     text = ""
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("astro"))
             user_msg = (f"{await skills.guide(db, 'compat')}\n\nРазбор совместимости: "
-                        f"{brief}.{synast}\n"
+                        f"{brief}.{synast}{spheres_block}\n"
                         f"Расскажи, что нас соединяет, где будет трение и что укрепит "
                         f"союз. Опирайся на данные расчёта, не выдумывай аспекты."
                         f" Тепло, конкретно, 5-7 абзацев.")
@@ -316,18 +371,30 @@ async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
             user_msg = (
                 f"{await skills.guide(db, 'natal')}\n\n"
                 f"Натальная карта клиентки ({(user['name'] or 'она') if user else 'она'}):\n{brief}\n\n"
-                "Напиши понятный разбор карты для человека без астрологических "
-                "знаний. Текст живой, тёплый, от второго лица (обращайся к ней на "
-                "'ты'). Разделы (каждый начни с заголовка в **жирном**):\n"
-                "**Ты и твой характер** — 2-3 предложения, что за человек;\n"
-                "**Сильные стороны** — что даёт ей опору;\n"
-                "**Слабые стороны и зоны роста** — честно, но мягко;\n"
-                "**Страхи и тени** — что её тревожит подсознательно;\n"
-                "**Предназначение этой жизни** — опирайся на Раху;\n"
-                "**Кармический багаж** — опирайся на Кету, что уже наработано из "
-                "прошлого;\n"
-                "**Планеты и дома простыми словами** — только ключевое, 3-5 строк.\n"
-                "Опирайся только на данные выше, не выдумывай планеты и аспекты.")
+                "Напиши понятный и глубокий разбор карты для человека без "
+                "астрологических знаний. Текст живой, тёплый, от второго лица "
+                "(обращайся к ней на 'ты'). Ссылайся на КОНКРЕТНЫЕ планеты, знаки, "
+                "дома и аспекты из карты выше и объясняй их по-человечески — как "
+                "каждая деталь звучит в её обычной жизни, а не в учебнике. "
+                "Разделы (каждый начни с заголовка в **жирном**):\n"
+                "**Ты и твой характер** — 3-4 предложения: Солнце и Асцендент, как "
+                "они прорастают в поведении;\n"
+                "**Сильные стороны** — что даёт ей опору, назови 1-2 конкретные "
+                "планеты и что именно они дают;\n"
+                "**Слабые стороны и зоны роста** — честно, но мягко, и предложи, "
+                "как с этим обходиться;\n"
+                "**Страхи и тени** — что её тревожит подсознательно, опирайся на "
+                "напряжённые аспекты и сложные дома;\n"
+                "**Предназначение этой жизни** — опирайся на Раху и его дом;\n"
+                "**Кармический багаж** — опирайся на Кету: что уже наработано в "
+                "прошлых воплощениях и что она несёт как базу;\n"
+                "**Планетные правила простыми словами** — 3-5 строк о ключевых "
+                "планетах: планета в знаке (её врождённый почерк), дом (сфера "
+                "жизни), ретро-градус если он есть;\n"
+                "**Один совет на ближайшее время** — практический шаг, созвучный "
+                "её сильной планете или текущей теме карты.\n"
+                "Опирайся только на данные выше, не выдумывай планеты, градусы и "
+                "аспекты.")
             text = await llm.complete(system, user_msg, tier="main",
                                       max_tokens=2200, purpose="chart_interpret",
                                       tg_id=user["tg_id"], db=db)
@@ -376,7 +443,7 @@ REPORTS = {
     },
     "matrix": {
         "title": "Матрица Судьбы — полный разбор",
-        "agent": "numero",
+        "agent": "oracle",
         "guide": "matrix",
         "sections": ["Личный аркан: твой характер",
                      "Духовный аркан: внутренняя опора",
@@ -532,17 +599,30 @@ async def monthly_report(db, user) -> str:
     diary_n = await dialog_repo.diary_count_since(db, user["tg_id"], 30)
     streak = await dialog_repo.diary_streak(db, user["tg_id"])
     memories = await dialog_repo.get_memories(db, user["tg_id"], limit=12)
+    recent = await readings_repo.recent_readings(db, user["tg_id"], limit=10)
+    diary_entries = await dialog_repo.get_diary(db, user["tg_id"], limit=12)
+
+    # Повторы: один и тот же вопрос в раскладах звучал не раз — тема, что тревожит.
+    qcounts = Counter(q.strip().lower() for r in recent
+                      for q in [r.get("question") or ""] if q.strip())
+    repeats = [f"«{q.strip()}» ×{n}" for q, n in qcounts.items() if n > 1]
+    reads_block = "\n".join(f"- {r.get('question') or '…'}" for r in recent) or "-"
+    diary_block = "\n".join(f"- {e['text'][:90]}" for e in diary_entries[:8]) or "-"
 
     body = ""
     if llm.enabled() and (readings_n or diary_n or memories):
         try:
-            system = await agents.system_for(db, user, agents.get("keeper"))
+            system = await agents.system_for(db, user, agents.get("oracle"))
             user_msg = (f"Мой месяц: раскладов {readings_n}, записей в дневнике "
-                        f"{diary_n}, стрик {streak} дн. Что ты обо мне узнала за это "
-                        f"время: {'; '.join(memories) or '-'}.\n"
-                        f"Напиши тёплый итог месяца: что менялось, что повторялось, "
-                        f"на что обратить внимание в следующем. 5-7 абзацев, "
-                        f"начни с 🌙.")
+                        f"{diary_n}, стрик сейчас {streak} дн.\n"
+                        f"Что прошло через дневник:\n{diary_block}\n\n"
+                        f"О чём я спрашивала карты:\n{reads_block}\n"
+                        f"Повторяющиеся запросы: {'; '.join(repeats) or '-'}.\n\n"
+                        f"Что ты обо мне узнала за это время: "
+                        f"{'; '.join(memories) or '-'}.\n"
+                        f"Напиши тёплый итог месяца: что менялось, какие темы "
+                        f"повторялись (найди их в вопросах и дневнике), на что "
+                        f"обратить внимание в следующем. 5-7 абзацев, начни с 🌙.")
             body = await llm.complete(system, user_msg, tier="main", max_tokens=1200,
                                       purpose="report:monthly", tg_id=user["tg_id"],
                                       db=db)
