@@ -2,33 +2,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-
 from ...core import agents
 from ...repo import dialog
 from ...services import chat as chat_svc
+from ..common.errors import access_denied
+from ..contracts.chat import AskIn
 from ..deps import current_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["chat"])
-
-# Что показать клиентке за кодом отказа. Тексты здесь, а не в интерфейсе:
-# причина отказа — часть продуктового сценария продажи.
-DENY_TEXT = {
-    "sub_over": "Доступ завершён 🌙 Продли подписку — я сохранила всё о тебе.",
-    "limit_reached": "Вопросы исчерпаны. Вернись на рассвете 🌘 "
-                     "или открой поле силой Кристаллов ✦",
-}
-
-
-def _deny(verdict) -> HTTPException:
-    status = 402 if verdict.reason == "sub_over" else 429
-    return HTTPException(status, DENY_TEXT.get(verdict.reason, "Сейчас нельзя"))
-
-
-class AskIn(BaseModel):
-    text: str = Field(min_length=1, max_length=1000)
-    allow_paid: bool = True
-
 
 @router.get("/agents")
 async def agent_list(user=Depends(current_user), db=Depends(get_db)):
@@ -59,7 +40,7 @@ async def ask_agent(agent: str, item: AskIn, user=Depends(current_user),
         return await chat_svc.ask(db, user, item.text, agent=agent,
                                   surface="miniapp", allow_paid=item.allow_paid)
     except chat_svc.ChatDenied as e:
-        raise _deny(e.verdict) from e
+        raise access_denied(e.verdict) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 
@@ -71,7 +52,7 @@ async def ask(item: AskIn, user=Depends(current_user), db=Depends(get_db)):
         result = await chat_svc.ask(db, user, item.text,
                                    agent=agents.DEFAULT_AGENT, surface="miniapp")
     except chat_svc.ChatDenied as e:
-        raise _deny(e.verdict) from e
+        raise access_denied(e.verdict) from e
     return {"answer": result["answer"],
             "questions_left": result["allowance"]["left"],
             "allowance": result["allowance"]}
@@ -144,7 +125,7 @@ async def ask_session(agent: str, thread_id: int, item: AskIn,
                                   surface="miniapp", allow_paid=item.allow_paid,
                                   thread_id=thread_id)
     except chat_svc.ChatDenied as e:
-        raise _deny(e.verdict) from e
+        raise access_denied(e.verdict) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 

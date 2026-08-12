@@ -49,6 +49,7 @@ flowchart LR
 
 * Используйте type hints, Pydantic для входных данных и явные `HTTPException` с безопасными текстами.
 * Router отвечает за HTTP и dependencies; бизнес-правило находится в service/core; SQL — в repo/data.
+* Не импортируйте один API-router из другого. Общий HTTP-код размещается в `app/api/common/`, DTO — в `app/api/contracts/`, workflow из нескольких операций — в `app/services/`.
 * Любой пользовательский ресурс проверяет ownership на сервере. Нельзя доверять `tg_id`, plan, price или permission из тела браузерного запроса.
 * Любая mutation получает соответствующий `rate_limit`; LLM-путь использует категорию `llm`.
 * При новой колонке обновляйте DDL **и** миграцию для существующей SQLite БД. `CREATE TABLE IF NOT EXISTS` не изменяет старую таблицу.[1]
@@ -60,7 +61,8 @@ flowchart LR
 
 * Код размещается в существующем нумерованном модуле `miniapp/js/` или в новом модуле с согласованным порядком подключения.
 * Сетевые вызовы проходят через общий API-слой. Не дублируйте server-side access/limits на клиенте как единственную проверку.
-* Для взаимодействий используйте `data-act` и делегирование в `13-events.js`; inline `onclick` и inline scripts запрещены CSP.[2]
+* Для взаимодействий используйте `data-act` и единый command registry `15-actions.js`; `13-events.js` остаётся тонким DOM transport. Inline `onclick` и inline scripts запрещены CSP.[2]
+* Изменяемые client-данные добавляйте в `app.state`. `window.app` — только документированный legacy-facade, а новый глобальный runtime namespace — `window.OracleRuntime`.
 * Новый текст вводится одновременно для RU и EN, если поверхность поддерживает переключение языка.
 * Стили используют токены и существующий каскад; не вносите произвольные значения без причины.
 * После изменения JS/CSS/HTML обновляйте cache-busting версию в `miniapp/index.html` и `miniapp/styles.css`.
@@ -72,7 +74,7 @@ flowchart LR
 Минимальный набор зависит от изменения, но все изменённые пути должны быть проверены до pull request.
 
 ```bash
-# Python tests
+# Python tests, включая architecture guardrails
 pytest -q
 
 # Проектная диагностика

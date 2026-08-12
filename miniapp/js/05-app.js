@@ -1,9 +1,15 @@
 /* ── приложение ─────────────────────────────────────────────────────────── */
 const app = window.app = {};
 
-app.me = null; app.agents = []; app.today = null; app.spreads = null;
-app.view = 'home';
-app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, tid: null, sessions: [], draft: '' };
+app.state = window.OracleRuntime
+  ? window.OracleRuntime.createState()
+  : {
+      me: null, agents: [], today: null, spreads: null, moonWeek: null,
+      dailyPulse: null, view: 'home',
+      chat: { key: null, spec: null, messages: [], pending: null,
+              busy: false, tid: null, sessions: [], draft: '' }
+    };
+if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 
   app.boot = async function() {
     if (tg()) {

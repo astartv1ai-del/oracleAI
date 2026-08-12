@@ -3,31 +3,20 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ...core import agent as agent_core
-from ...core import astro, geo, memory, skills
+from ...core import astro, geo, memory
 from ...core.matrix import compute_matrix
-from ...repo import billing, dialog, readings, users
-from ...services import analytics
+from ...repo import billing, readings, users
+from ...services import analytics, compatibility as compatibility_svc
+from ..common.validation import parse_birth_date
+from ..contracts.compatibility import CompatIn
 from ..deps import active_user, current_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["chart"])
-
-
-def _parse_date(value: str) -> str:
-    """Принимаем YYYY-MM-DD и ДД.ММ.ГГГГ — интерфейс и бот дают разный формат."""
-    value = (value or "").strip()
-    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(value, fmt).date().isoformat()
-        except ValueError:
-            continue
-    raise HTTPException(400, "нужна дата в формате ДД.ММ.ГГГГ")
 
 
 @router.get("/chart")
@@ -134,13 +123,6 @@ async def matrix(user=Depends(current_user)):
 
 # ─────────────────────────────── совместимость ────────────────────────────────
 
-class CompatIn(BaseModel):
-    partner_date: str
-    partner_name: str = Field(default="", max_length=30)
-    save: bool = False
-    relation: Literal["love", "friend", "work", "family"] = "love"
-
-
 @router.post("/compat", dependencies=[Depends(rate_limit("write"))])
 async def compat(item: CompatIn, user=Depends(current_user), db=Depends(get_db)):
     """«Спидометр любви»: балл и его разбор считает сервер.
@@ -150,58 +132,23 @@ async def compat(item: CompatIn, user=Depends(current_user), db=Depends(get_db))
     """
     if not user["birth_date"]:
         raise HTTPException(400, "нет даты рождения")
-    partner_date = _parse_date(item.partner_date)
-    # Полные карты обеих сохранились (партнёр с городом и временем) — синастрия
-    # пары учесться в балле; иначе остаётся балл по датам (лёгкий путь).
-    aspects = await skills._pair_aspects(db, user, partner_date)
-    data = skills._compat(user["birth_date"], partner_date, relation=item.relation,
-                          aspects=aspects)
-    if item.save and item.partner_name:
-        await readings.add_partner(db, user["tg_id"], item.partner_name.strip(),
-                                   partner_date)
-    return {**data, "partner_date": partner_date}
+    partner_date = parse_birth_date(item.partner_date)
+    return await compatibility_svc.calculate(
+        db, user, partner_date, relation=item.relation,
+        partner_name=item.partner_name, save=item.save)
 
 
 @router.post("/compat/full", dependencies=[Depends(rate_limit("llm"))])
 async def compat_full(item: CompatIn, user=Depends(active_user), db=Depends(get_db)):
     """Разбор пары Астрологом — расходует вопрос дня."""
-    from ...services import limits
-    from .chat import _deny
-
-    if not user["birth_date"]:
-        raise HTTPException(400, "нет даты рождения")
-    partner_date = _parse_date(item.partner_date)
-    name = item.partner_name.strip()[:30]
-
-    verdict = await limits.check(db, user)
-    if not verdict.allowed:
-        raise _deny(verdict)
-    if not await limits.consume(db, user, verdict):
-        raise _deny(verdict)
-
-    thread = await dialog.ensure_thread(db, user["tg_id"], "astro")
-    await dialog.save_message(
-        db, user["tg_id"], "user", f"Совместимость с {name or 'партнёром'}",
-        is_question=limits.counts_toward_limit(verdict), thread_id=thread["id"],
-        agent="astro", surface="miniapp")
-    text = await agent_core.interpret_compat(db, user, partner_date, name,
-                                             relation=item.relation)
-    await dialog.save_message(db, user["tg_id"], "assistant", text,
-                              thread_id=thread["id"], agent="astro",
-                              surface="miniapp")
-    if name:
-        await memory.remember(db, user["tg_id"],
-                              f"Партнёр {name}, дата рождения {partner_date}",
-                              kind="person")
-        if item.save:
-            await readings.add_partner(db, user["tg_id"], name, partner_date)
-    await analytics.track(db, "compat_full", user["tg_id"], surface="miniapp")
-    # Балл в ответе — ровно тот, что лёг в текст: те же аспекты и тип связи,
-    # иначе шкала и разбор показывали бы разные числа на одном экране.
-    aspects = await skills._pair_aspects(db, user, partner_date)
-    scores = skills._compat(user["birth_date"], partner_date, relation=item.relation,
-                            aspects=aspects)
-    return {"answer": text, "scores": scores}
+    partner_date = parse_birth_date(item.partner_date)
+    try:
+        return await compatibility_svc.explain(
+            db, user, partner_date, partner_name=item.partner_name,
+            relation=item.relation, save=item.save)
+    except compatibility_svc.CompatibilityDenied as exc:
+        from ..common.errors import access_denied
+        raise access_denied(exc.verdict) from exc
 
 
 # ──────────────────────────────── партнёры ────────────────────────────────────
@@ -223,7 +170,7 @@ async def partners(user=Depends(current_user), db=Depends(get_db)):
 async def add_partner(item: PartnerIn, user=Depends(current_user),
                       db=Depends(get_db)):
     """Сохраняет человека из окружения — чтобы агент понимал «он»/«она»."""
-    birth_date = _parse_date(item.birth_date)
+    birth_date = parse_birth_date(item.birth_date)
     lat = lon = tz = None
     chart_data = None
     if item.birth_city:
@@ -291,7 +238,7 @@ async def build_report(kind: str, item: ReportIn | None = None,
     if not await billing.available_entitlements(db, user["tg_id"], "report", kind):
         raise HTTPException(402, "этот разбор нужно открыть в лавке 💎")
 
-    partner_date = _parse_date(item.partner_date) if item.partner_date else None
+    partner_date = parse_birth_date(item.partner_date) if item.partner_date else None
     if kind == "synastry" and not partner_date:
         raise HTTPException(400, "для синастрии нужна дата партнёра")
 

@@ -53,6 +53,13 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Проведён безопасный архитектурный рефакторинг модульного монолита без изменения публичных URL, JSON-контрактов, лимитов или кодов ошибок.
+- Сценарии совместимости вынесены из HTTP-роутера в `app.services.compatibility`; общие HTTP-адаптеры и DTO распределены по `app/api/common/` и `app/api/contracts/`.
+- Mini App получил единый `app.state`, совместимый facade `window.app`, data-driven command registry и тонкий DOM event layer.
+- Добавлены автоматические architectural guardrails для запрета импортов между API-роутерами и проверки порядка frontend runtime-модулей.
+
 ### Planned documentation discipline
 
 - Каждое пользовательское, API-, security- или deployment-изменение добавляется сюда в том же pull request.

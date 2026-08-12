@@ -8,8 +8,8 @@ from ...core import tarot
 from ...repo import readings
 from ...services import catalog
 from ...services import chat as chat_svc
+from ..common.errors import access_denied
 from ..deps import current_user, get_db, rate_limit
-from .chat import _deny
 
 router = APIRouter(prefix="/api/tarot", tags=["tarot"])
 
@@ -50,7 +50,7 @@ async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
     try:
         result = await chat_svc.draw(db, user, spread, surface="miniapp", question=q)
     except chat_svc.ChatDenied as e:
-        raise _deny(e.verdict) from e
+        raise access_denied(e.verdict) from e
     # короткое описание расклада для страницы выбора / карточки результата
     result["guide"] = tarot.spread(result["spread"]).get("guide", "")
     return result

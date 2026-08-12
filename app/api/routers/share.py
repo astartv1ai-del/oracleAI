@@ -15,8 +15,8 @@ from ...core import agent as agent_core
 from ...core import astro, cards, skills
 from ...repo import content, readings, users
 from ...services import analytics, catalog
+from ..common.validation import parse_birth_date
 from ..deps import current_user, get_db, rate_limit
-from .chart import _parse_date
 
 log = logging.getLogger("oracle.api.share")
 
@@ -94,10 +94,10 @@ async def compat_png(partner_date: str, partner_name: str = "", relation: str = 
     """
     if not user["birth_date"]:
         raise HTTPException(400, "нет даты рождения — заполни её в боте")
-    pdate = _parse_date(partner_date)
-    aspects = await skills._pair_aspects(db, user, pdate)
-    data = skills._compat(user["birth_date"], pdate, relation=relation,
-                          aspects=aspects)
+    pdate = parse_birth_date(partner_date)
+    aspects = await skills.pair_aspects(db, user, pdate)
+    data = skills.compatibility_score(user["birth_date"], pdate,
+                                      relation=relation, aspects=aspects)
     symbol = {name: s for name, s, _ in astro.SIGNS}
     image = await asyncio.to_thread(
         cards.compat_card,
@@ -107,7 +107,7 @@ async def compat_png(partner_date: str, partner_name: str = "", relation: str = 
                  "symbol": symbol.get(data["partner"]["sign"], ""),
                  "name": partner_name.strip()[:30]},
         total=data["total"], verdict=data["verdict"], spheres=data["spheres"],
-        relation=skills._RELATION_LABEL.get(relation, ""),
+        relation=skills.relation_label(relation),
         bot_username=await _bot_username(db))
     await analytics.track(db, "share_card", user["tg_id"],
                           props={"kind": "compat"}, surface="miniapp")

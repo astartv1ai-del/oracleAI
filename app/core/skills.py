@@ -224,6 +224,13 @@ _RELATION_LABEL = {
     "love": "любовная пара", "friend": "друзья и подруги",
     "work": "коллеги", "family": "родные",
 }
+
+
+def relation_label(relation: str) -> str:
+    """Публичная подпись типа связи для интерфейсных адаптеров."""
+    return _RELATION_LABEL.get(relation, "")
+
+
 # Вес сферы зависит от того, кем люди друг другу приходятся.
 _RELATION_WEIGHTS = {
     "love":   {"love": 0.40, "harmony": 0.20, "career": 0.10,
@@ -368,6 +375,13 @@ def _compat(user_birth: str, partner_birth: str, relation: str = "love",
             "breakdown": breakdown, "spheres": spheres}
 
 
+def compatibility_score(user_birth: str, partner_birth: str,
+                        relation: str = "love",
+                        aspects: list[dict] | None = None) -> dict:
+    """Публичный доменный API расчёта совместимости."""
+    return _compat(user_birth, partner_birth, relation=relation, aspects=aspects)
+
+
 _ELEMENT_VERB = {
     ("огонь", "огонь"): "союз-пламя: вы зажигаете друг друга",
     ("земля", "земля"): "союз-основа: вы строите надёжное",
@@ -386,7 +400,7 @@ def _verdict(score: int, e1: str, e2: str) -> str:
     return "союз-урок: трение сильное, но именно оно шлифует"
 
 
-async def _pair_aspects(db, user: dict, partner_birth: str) -> list[dict] | None:
+async def pair_aspects(db, user: dict, partner_birth: str) -> list[dict] | None:
     """Мажорные аспекты пары из двух полных карт; None, если карт нет.
 
     Карта партнёра — из сохранённых людей по дате рождения (её полную строим,
@@ -409,6 +423,10 @@ async def _pair_aspects(db, user: dict, partner_birth: str) -> list[dict] | None
         return astro.synastry_aspects(chart["planets"], pchart["planets"])
     except (json.JSONDecodeError, TypeError, ValueError, KeyError, AttributeError):
         return None
+
+
+# Legacy alias: bot and older agent tools migrate incrementally.
+_pair_aspects = pair_aspects
 
 
 # ---------------------------------------------------------------- skills
