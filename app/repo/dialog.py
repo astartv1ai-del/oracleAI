@@ -9,6 +9,26 @@ from . import users as users_repo
 # ─────────────────────────────── треды ────────────────────────────────────────
 
 
+def auto_thread_title(text: str, agent: str = "oracle") -> str:
+    """Returns a short non-quoting category for the first user message.
+
+    The title intentionally does not copy personal text into a more visible
+    session label; it is a reversible UI convenience, not a memory feature.
+    """
+    lower = (text or "").casefold()
+    if any(word in lower for word in ("любов", "отношен", "партн", "relationship", "love")):
+        return "Отношения"
+    if any(word in lower for word in ("работ", "карьер", "деньг", "work", "career")):
+        return "Дело и ресурсы"
+    if any(word in lower for word in ("тревог", "устал", "чувств", "страш", "anxious", "tired")):
+        return "Состояние"
+    if agent == "tarot":
+        return "Вопрос к картам"
+    if agent == "astro":
+        return "Ориентир по карте"
+    return "Разговор о важном"
+
+
 async def ensure_thread(db, tg_id: int, agent: str = "oracle", title: str | None = None):
     """Возвращает активный тред пользователя с этим агентом, создавая при нужде.
 
@@ -82,7 +102,13 @@ async def save_message(db, tg_id: int, role: str, text: str,
             (tg_id, thread_id, agent, role, text, int(is_question), surface,
              tokens, utcnow()))
         msg_id = cur.lastrowid
-        if thread_id:
+        if thread_id and role == "user":
+            await db.execute(
+                "UPDATE threads SET msg_count=msg_count+1, last_text=?, last_at=?, "
+                "title=CASE WHEN msg_count=0 THEN ? ELSE title END WHERE id=?",
+                (text[:160], utcnow(), auto_thread_title(text, agent), thread_id),
+            )
+        elif thread_id:
             await db.execute(
                 "UPDATE threads SET msg_count=msg_count+1, last_text=?, last_at=? "
                 "WHERE id=?", (text[:160], utcnow(), thread_id))

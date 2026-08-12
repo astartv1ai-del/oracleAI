@@ -25,10 +25,12 @@
 
 - GitHub Actions now requires ruff, Python/JavaScript syntax checks, migration-focused tests, cache-busting policy, full pytest, dependency audit, golden-set evaluator smoke and selfcheck.
 - Synthetic 120-case LLM golden set and deterministic scoring cover grounding, safety, language, next step, calibration and latency before provider/prompt release.
+- Chat sessions receive a generic category title after the first meaningful question without copying personal text; tool palette now explains required data, duration and result before launch.
 
 ### Security
 
 - Backup production mode fails closed without a dedicated encryption key; structured logs and Sentry scrub secrets, query parameters and Telegram identifiers.
+- Mini App assets bumped to v82 after the chat/tool UI contract change.
 
 ## [2.0.0] — 2026-08-12
 

@@ -311,7 +311,7 @@
                   <div class="te-grid">
                     ${currentFeatures.map(f => `
                       <button class="te-chip" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
-                        <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span><span class="te-arrow" aria-hidden="true">›</span>
+                        <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}${f.m ? ' · ' + esc(f.m) : ''}</small></span><span class="te-arrow" aria-hidden="true">›</span>
                       </button>`).join('')}
                   </div>
                 </div>` : ''}

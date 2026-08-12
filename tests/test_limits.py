@@ -15,6 +15,25 @@ async def _ask_n_times(db, user, n: int) -> None:
                                   is_question=True)
 
 
+async def test_first_message_sets_privacy_safe_thread_title(db, user):
+    thread = await dialog.ensure_thread(db, user["tg_id"], "oracle", title="Личный Оракул")
+    await dialog.save_message(
+        db, user["tg_id"], "user", "Мне тревожно из-за работы и денег",
+        is_question=True, thread_id=thread["id"], agent="oracle",
+    )
+    await dialog.save_message(
+        db, user["tg_id"], "assistant", "Один маленький шаг",
+        thread_id=thread["id"], agent="oracle",
+    )
+    await dialog.save_message(
+        db, user["tg_id"], "user", "Ещё один вопрос про отношения",
+        is_question=False, thread_id=thread["id"], agent="oracle",
+    )
+    fresh = await dialog.get_thread(db, thread["id"], user["tg_id"])
+    assert fresh["title"] == "Дело и ресурсы"
+    assert "тревожно" not in fresh["title"]
+
+
 async def test_vip_gets_three_questions_per_day(db, user):
     allowance = await limits.allowance(db, user)
     assert allowance.period == "day"

@@ -74,6 +74,6 @@ def test_chat_exposes_one_visible_tool_entry_point() -> None:
 def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
     styles = (ROOT / "miniapp" / "styles.css").read_text(encoding="utf-8")
-    assert '/static/styles.css?v=81' in index
-    assert '?v=81' in styles
-    assert '?v=80' not in styles
+    assert '/static/styles.css?v=82' in index
+    assert '?v=82' in styles
+    assert '?v=81' not in styles
