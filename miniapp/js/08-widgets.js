@@ -38,10 +38,11 @@ const widgetShell = (p, { title, body, tail = '' }) => {
     const moon = p.moon || {};
     const sphere = p.sphere || '';
     const sphereTxt = { love: '💞 Любовь и отношения', work: '💼 Работа и дела', energy: '⚡ Энергия и состояние' }[sphere] || (sphere ? esc(sphere) : '');
-    const name = (this.me && this.me.name ? this.me.name.split(' ')[0] : 'милая');
+    const name = (this.me && this.me.name ? this.me.name.split(' ')[0] : '');
+    const greeting = name ? `доброе утро, ${esc(name)} ✨` : 'доброе утро ✨';
     return `<div class="msg assistant">
       <div class="chat-widget day-card">
-        <div class="dc-head"><span class="dc-date">${fmtDate()}</span><span class="dc-hi">доброе утро, ${esc(name)} ✨</span></div>
+        <div class="dc-head"><span class="dc-date">${fmtDate()}</span><span class="dc-hi">${greeting}</span></div>
         ${card.img ? `
         <div class="dc-row">
           <div class="dc-card${p.flipped ? ' flipped' : ''}" data-act="day-flip" title="Тапни — раскроется смысл">

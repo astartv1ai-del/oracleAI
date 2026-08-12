@@ -105,9 +105,10 @@ CREATE TABLE IF NOT EXISTS forecasts (
     tg_id         INTEGER,
     day           TEXT,
     text          TEXT,
+    lang          TEXT DEFAULT 'ru',     -- язык текста прогноза (ru|en)
     audio_file_id TEXT,                   -- озвучка прогноза: file_id Telegram
     created_at    TEXT,
-    PRIMARY KEY (tg_id, day)
+    PRIMARY KEY (tg_id, day, lang)
 );
 CREATE TABLE IF NOT EXISTS reports (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,

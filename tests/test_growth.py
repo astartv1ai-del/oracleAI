@@ -279,3 +279,34 @@ async def test_webhook_event_is_processed_once(db):
     """Повтор доставки не должен выдавать подписку второй раз."""
     assert not await _already_seen(db, "evt_42", "paddle", "test", "{}")
     assert await _already_seen(db, "evt_42", "paddle", "test", "{}")
+
+
+async def test_daily_forecast_separates_languages_under_concurrency(db, user, monkeypatch):
+    """Одна учётная запись может параллельно открыть RU и EN без смешивания кэша."""
+    import asyncio
+
+    from app.core import agent as agent_core
+    from app.repo import readings, users
+
+    await users.update(db, user["tg_id"], lang="ru")
+    ru_user = await users.get(db, user["tg_id"])
+    await users.update(db, user["tg_id"], lang="en")
+    en_user = await users.get(db, user["tg_id"])
+    calls: list[str] = []
+
+    async def fake_forecast(db_, user_, chart):
+        calls.append(user_["lang"])
+        await asyncio.sleep(0.02)
+        return f"🌅 forecast-{user_['lang']}"
+
+    monkeypatch.setattr(agent_core, "daily_forecast", fake_forecast)
+    results = await asyncio.gather(
+        *[agent_core.daily_forecast_cached(db, ru_user) for _ in range(5)],
+        *[agent_core.daily_forecast_cached(db, en_user) for _ in range(5)])
+
+    day = users.user_today(ru_user)
+    assert calls.count("ru") == 1 and calls.count("en") == 1
+    assert results.count("🌅 forecast-ru") == 5
+    assert results.count("🌅 forecast-en") == 5
+    assert await readings.get_forecast(db, user["tg_id"], day, lang="ru") == "🌅 forecast-ru"
+    assert await readings.get_forecast(db, user["tg_id"], day, lang="en") == "🌅 forecast-en"

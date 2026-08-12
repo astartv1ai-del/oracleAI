@@ -90,7 +90,11 @@ async def stats(db, tg_id: int) -> dict:
     return data
 
 
-def share_text(bonus: int) -> str:
+def share_text(bonus: int, lang: str = "ru") -> str:
+    """Return invite copy in the profile language without using gendered forms."""
+    if lang == "en":
+        return ("My personal AI Oracle knows my natal chart, reads Tarot and remembers "
+                f"what I choose to share 🔮 Try it with my link — we both receive ✦{bonus} ✨")
     return ("Мой личный AI-Оракул: знает мою натальную карту, раскладывает Таро "
             f"и помнит всё, что я ему рассказываю 🔮 Попробуй — по моей ссылке "
-            f"нам обеим по ✦{bonus} ✨")
+            f"каждому по ✦{bonus} ✨")

@@ -244,6 +244,7 @@ async def _voice_forecast(bot, db, user, text: str, day: str) -> None:
     plan = await billing_repo.get_plan(db, user["sub_level"] or "free")
     if "Аудио" not in " ".join(plan.get("features") or []):
         return
+    lang = "en" if user["lang"] == "en" else "ru"
     clean = (text or "").replace("<b>", "").replace("</b>", "") \
                         .replace("<i>", "").replace("</i>", "")
     audio = await llm.speak(clean)
@@ -253,13 +254,15 @@ async def _voice_forecast(bot, db, user, text: str, day: str) -> None:
         from aiogram.types import BufferedInputFile
         message = await bot.send_voice(
             user["tg_id"], BufferedInputFile(audio, filename="forecast.ogg"),
-            caption="🎧 Твой прогноз голосом")
+            caption=("🎧 Your forecast in audio" if lang == "en"
+                     else "🎧 Твой прогноз голосом"))
         from ..data.session import transaction
         async with transaction(db):
             await db.execute(
-                "UPDATE forecasts SET audio_file_id=? WHERE tg_id=? AND day=?",
+                "UPDATE forecasts SET audio_file_id=? "
+                "WHERE tg_id=? AND day=? AND lang=?",
                 (message.voice.file_id if message.voice else None,
-                 user["tg_id"], day))
+                 user["tg_id"], day, lang))
     except Exception as e:  # noqa: BLE001
         log.info("озвучка прогноза не отправлена %s: %s", user["tg_id"], e)
 

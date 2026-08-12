@@ -169,18 +169,25 @@ async def get_synastry(db, tg_id: int, partner_key: str):
 
 # ─────────────────────────── прогнозы и отчёты ───────────────────────────────
 
-async def get_forecast(db, tg_id: int, day: str) -> str | None:
+async def get_forecast(db, tg_id: int, day: str, *, lang: str = "ru") -> str | None:
+    """Возвращает прогноз только на запрошенном языке.
+
+    У старых строк ``lang`` после миграции равен ``ru``. Когда пользователь меняет
+    язык, несовпадающая запись не выдаётся — прогноз будет пересобран в новой
+    локали и перезапишет персональный дневной кэш.
+    """
     cur = await db.execute(
-        "SELECT text FROM forecasts WHERE tg_id=? AND day=?", (tg_id, day))
+        "SELECT text FROM forecasts WHERE tg_id=? AND day=? AND lang=?",
+        (tg_id, day, lang))
     row = await cur.fetchone()
     return row["text"] if row else None
 
 
-async def save_forecast(db, tg_id: int, day: str, text: str) -> None:
+async def save_forecast(db, tg_id: int, day: str, text: str, *, lang: str = "ru") -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO forecasts(tg_id, day, text, created_at) "
-            "VALUES(?,?,?,?)", (tg_id, day, text, utcnow()))
+            "INSERT OR REPLACE INTO forecasts(tg_id, day, text, lang, created_at) "
+            "VALUES(?,?,?,?,?)", (tg_id, day, text, lang, utcnow()))
 
 
 async def save_report(db, tg_id: int, kind: str, title: str, body: str, *,

@@ -193,7 +193,7 @@ async def referral(user=Depends(current_user), db=Depends(get_db)):
     return {
         "link": link,
         "bot_username": bot_username,
-        "share_text": referrals.share_text(stats["bonus_per_invite"]),
+        "share_text": referrals.share_text(stats["bonus_per_invite"], user["lang"]),
         **stats,
     }
 

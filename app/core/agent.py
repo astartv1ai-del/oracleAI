@@ -47,6 +47,14 @@ def _name_prefix(user) -> str:
     return f"{user['name']}, " if user["name"] else ""
 
 
+def _user_lang(user) -> str:
+    """Нормализует язык и поддерживает старые неполные профили."""
+    try:
+        return user["lang"] if user["lang"] in ("ru", "en") else "ru"
+    except (IndexError, KeyError):
+        return "ru"
+
+
 # ---------------------------------------------------------------- вопрос
 
 async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
@@ -125,31 +133,41 @@ def _reading_offline(user, title: str, cards: list[dict], cards_block: str,
 # ---------------------------------------------------------------- прогноз дня
 
 #: Генерация прогноза — LLM-вызов; Mini App и бот могут спросить прогноз на
-#: одно утро одновременно. Замок по (клиентка, день): второй ждущий после замка
-#: перепроверяет кеш и берёт готовый текст, а не генерирует свой.
-_forecast_locks: dict[tuple[int, str], asyncio.Lock] = {}
+#: одно утро одновременно. Замок по (event loop, пользователь, день, язык):
+#: второй ждущий после замка перепроверяет кэш и берёт готовый текст, не
+#: генерируя дубликат. Привязка к loop обязательна: asyncio.Lock нельзя
+#: безопасно ожидать из нового loop после тестового/серверного перезапуска.
+_forecast_locks: dict[tuple[int, int, str, str], asyncio.Lock] = {}
 
 
 async def daily_forecast_cached(db, user, chart: dict | None = None) -> str:
-    """Прогноз дня — один раз в сутки на клиентку.
+    """Прогноз дня — один раз в сутки для пользователя и языка.
 
-    Без кеша каждое открытие Mini App заново оплачивало бы генерацию и показывало
+    Без кэша каждое открытие Mini App заново оплачивало бы генерацию и показывало
     другой прогноз на тот же день; бот и приложение обязаны говорить одно и то же.
     """
     day = users_repo.user_today(user)
-    cached = await readings_repo.get_forecast(db, user["tg_id"], day)
+    lang = _user_lang(user)
+    cached = await readings_repo.get_forecast(db, user["tg_id"], day, lang=lang)
     if cached:
         return cached
+    loop_id = id(asyncio.get_running_loop())
     if len(_forecast_locks) > 5000:
-        _forecast_locks.clear()   # ключи прошлых дней не нужны
-    lock = _forecast_locks.setdefault((user["tg_id"], day), asyncio.Lock())
+        # Не сбрасываем живые локи: иначе одновременно запущенные запросы могут
+        # пройти через разные замки и оплатить два LLM-вызова. Убираем только
+        # неактивные ключи прошлого дня или другого event loop.
+        for key, candidate in list(_forecast_locks.items()):
+            if (key[0] != loop_id or key[2] != day) and not candidate.locked():
+                _forecast_locks.pop(key, None)
+    lock_key = (loop_id, user["tg_id"], day, lang)
+    lock = _forecast_locks.setdefault(lock_key, asyncio.Lock())
     async with lock:
-        cached = await readings_repo.get_forecast(db, user["tg_id"], day)
+        cached = await readings_repo.get_forecast(db, user["tg_id"], day, lang=lang)
         if cached:
             return cached
         text = await daily_forecast(db, user, chart if chart is not None
                                    else users_repo.chart_of(user))
-        await readings_repo.save_forecast(db, user["tg_id"], day, text)
+        await readings_repo.save_forecast(db, user["tg_id"], day, text, lang=lang)
         return text
 
 
@@ -190,12 +208,28 @@ async def daily_forecast(db, user, chart: dict) -> str:
 
 
 def _forecast_offline(user, chart: dict, sky: dict) -> str:
+    """Надёжный локализованный запасной прогноз без вызова модели."""
     rnd = random.Random(stable_seed(date.today().isoformat(), user["tg_id"]))
+    moon = sky["moon"]
+    card = card_of_day(user)
+    if _user_lang(user) == "en":
+        prefix = f"{user['name']}, " if user["name"] else ""
+        moods = ["clarity", "quiet strength", "meaningful signs", "a conscious choice",
+                 "giving and receiving"]
+        direction = ("Take the softer route today: slow down and leave room to adjust."
+                     if card["reversed"] else
+                     "Make one brave, practical move while your energy is fresh.")
+        return (
+            f"🌅 {prefix}good morning. Today invites {rnd.choice(moods)}.\n"
+            f"{moon['emoji']} Let your feelings inform you, but keep your footing in what is real.\n"
+            f"Your card of the day is {card['emoji']} — notice what it reflects back to you.\n"
+            f"{direction}\n"
+            "Come back this evening for a deeper reading. ✨"
+        )
+
     sun = (chart or {}).get("sun") or {}
     sign = sun.get("sign", "твоего знака")
     prefix = _name_prefix(user)
-    moon = sky["moon"]
-    card = card_of_day(user)
     sphere_title, _hint = _sphere_slot(user)
     moods = ["день ясности", "день тихой силы", "день знаков", "день выбора",
              "день отдачи"]
@@ -384,10 +418,10 @@ async def interpret_compat(db, user, partner_date: str,
             log.warning("разбор пары ушёл в офлайн: %s", e)
     if len(text.strip()) < 120:
         text = (
-            f"💞 <b>Совместимость</b>\n\n"
+            f"💞 Совместимость\n\n"
             f"Ты — {data['you']['sign']} ({data['you']['element']}), "
             f"{who} — {data['partner']['sign']} ({data['partner']['element']}).\n"
-            f"Балл пары: <b>{data['score']}/100</b> — {data['verdict']}.\n\n"
+            f"Балл пары: {data['score']}/100 — {data['verdict']}.\n\n"
             f"Стихии подсказывают: не пытайся переделать партнёра, а используй разность как "
             f"опору. Спроси меня про конкретную ситуацию между вами — разложу "
             f"карты. 🌙")

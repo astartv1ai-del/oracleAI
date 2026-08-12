@@ -123,3 +123,95 @@ async def test_expiring_audience_scales_beyond_cap(db):
     assert len(audience) == 6000, "курсор обрезал expiring-аудиторию"
     ids = [u["tg_id"] for u in audience]
     assert ids == sorted(ids) and len(set(ids)) == 6000
+
+
+async def test_pregen_caches_ru_and_en_independently(db, monkeypatch):
+    """Смена языка создаёт отдельный прогноз, не подменяя уже готовую локаль."""
+    tg_id = await _moscow_at_8(db)
+    now = datetime(2026, 8, 3, 5, 0, tzinfo=timezone.utc)
+    calls: list[str] = []
+
+    async def localized_forecast(db_, user, chart):
+        calls.append(user["lang"])
+        return f"forecast-{user['lang']}"
+
+    monkeypatch.setattr(scheduler.agent_core, "daily_forecast", localized_forecast)
+    scheduler._KNOWN_ZONES = ["Europe/Moscow"]
+    await scheduler._pregen_forecasts(db, now, {"morning_hour": 9})
+
+    await users.update(db, tg_id, lang="en")
+    await scheduler._pregen_forecasts(db, now, {"morning_hour": 9})
+    day = users.user_today(await users.get(db, tg_id))
+
+    assert await readings.get_forecast(db, tg_id, day, lang="ru") == "forecast-ru"
+    assert await readings.get_forecast(db, tg_id, day, lang="en") == "forecast-en"
+    assert calls == ["ru", "en"], "кэш не должен повторно собирать одну и ту же локаль"
+
+
+async def test_forecast_language_key_migrates_legacy_cache(db):
+    """Миграция старой таблицы сохраняет RU-кэш и разрешает новый EN-кэш."""
+    from app.data import migrations
+
+    await db.execute("DROP TABLE forecasts")
+    await db.execute(
+        "CREATE TABLE forecasts (tg_id INTEGER, day TEXT, text TEXT, "
+        "lang TEXT DEFAULT 'ru', audio_file_id TEXT, created_at TEXT, "
+        "PRIMARY KEY (tg_id, day))")
+    await db.execute(
+        "INSERT INTO forecasts(tg_id, day, text, lang) VALUES(1, '2026-08-03', 'ru-old', 'ru')")
+    await db.commit()
+
+    await migrations._m_forecasts_language_key(db)
+    await readings.save_forecast(db, 1, "2026-08-03", "en-new", lang="en")
+
+    cur = await db.execute("PRAGMA table_info(forecasts)")
+    primary_key = [row[1] for row in sorted(await cur.fetchall(), key=lambda row: row[5])
+                   if row[5]]
+    assert primary_key == ["tg_id", "day", "lang"]
+    assert await readings.get_forecast(db, 1, "2026-08-03", lang="ru") == "ru-old"
+    assert await readings.get_forecast(db, 1, "2026-08-03", lang="en") == "en-new"
+
+
+async def test_voice_forecast_updates_only_current_language(db, monkeypatch):
+    """Аудиоверсия EN-прогноза не должна перезаписывать file_id версии RU."""
+    from app.core import llm
+    from app.repo import billing, content
+
+    tg_id = await _moscow_at_8(db)
+    await users.update(db, tg_id, lang="en")
+    user = await users.get(db, tg_id)
+    day = users.user_today(user)
+    await readings.save_forecast(db, tg_id, day, "ru-text", lang="ru")
+    await readings.save_forecast(db, tg_id, day, "en-text", lang="en")
+
+    async def enabled_content(*_args, **_kwargs):
+        return True
+
+    async def enabled_plan(*_args, **_kwargs):
+        return {"features": ["Аудио"]}
+
+    async def voice_bytes(*_args, **_kwargs):
+        return b"ogg"
+
+    class FakeVoice:
+        file_id = "en-file-id"
+
+    class FakeMessage:
+        voice = FakeVoice()
+
+    class FakeBot:
+        async def send_voice(self, *_args, **_kwargs):
+            return FakeMessage()
+
+    monkeypatch.setattr(llm, "tts_enabled", lambda: True)
+    monkeypatch.setattr(llm, "speak", voice_bytes)
+    monkeypatch.setattr(content, "is_on", enabled_content)
+    monkeypatch.setattr(billing, "get_plan", enabled_plan)
+
+    await scheduler._voice_forecast(FakeBot(), db, user, "en-text", day)
+
+    cur = await db.execute(
+        "SELECT lang, audio_file_id FROM forecasts WHERE tg_id=? AND day=? ORDER BY lang",
+        (tg_id, day))
+    versions = {row["lang"]: row["audio_file_id"] for row in await cur.fetchall()}
+    assert versions == {"en": "en-file-id", "ru": None}

@@ -192,7 +192,7 @@ def profile_kb(*, push_on: bool, sub_active: bool) -> InlineKeyboardMarkup:
                                           callback_data="plans")])
     rows += [
         [InlineKeyboardButton(text="💎 Лавка", callback_data="shop")],
-        [InlineKeyboardButton(text="🌟 Пригласить подругу", callback_data="invite")],
+        [InlineKeyboardButton(text="🌟 Пригласить близкого", callback_data="invite")],
         [InlineKeyboardButton(
             text=f"🌅 Утренний прогноз: {'вкл ✅' if push_on else 'выкл ☑️'}",
             callback_data="toggle_push")],

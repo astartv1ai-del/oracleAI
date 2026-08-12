@@ -41,33 +41,40 @@ async def today(user=Depends(active_user), db=Depends(get_db)):
 
 
 async def _next_action(db, user) -> dict:
-    """«Что дальше» — один шаг на главной, ведущий к следующему артефакту.
-
-    Приоритет простой: нет карты → собрать её; нет партнёра → совместимость;
-    не было раскладов → вопрос картам; иначе — вернуться завтра.
-    """
+    """Возвращает один локализованный следующий шаг для домашнего экрана."""
+    lang = user["lang"] if user["lang"] in ("ru", "en") else "ru"
+    copy = {
+        "ru": {
+            "chart": ("Собери натальную карту", "Планеты, дома и предназначение — по дате и времени рождения.", "Собрать карту ✨"),
+            "compat": ("Проверь совместимость с партнёром", "Спидометр любви — балл и разбор пары по картам.", "Проверить 💞"),
+            "spread": ("Расклад на твой вопрос", "Задай вопрос картам — колода Райдера-Уэйта ляжет в расклад.", "Вытянуть карты 🎴"),
+            "tomorrow": ("Вернись завтра за картой дня", "Сегодня достаточно наблюдений. Завтра — новый прогноз и новая карта.", "Завтра снова ✨"),
+        },
+        "en": {
+            "chart": ("Create your birth chart", "Planets, houses and themes based on your birth date and time.", "Create chart ✨"),
+            "compat": ("Explore compatibility", "A connection score and an insightful reading for the two of you.", "Explore 💞"),
+            "spread": ("A reading for your question", "Ask the cards a question and let the Rider–Waite deck reveal a spread.", "Draw cards 🎴"),
+            "tomorrow": ("Return tomorrow for your card", "Today is complete. Tomorrow brings a fresh forecast and a new card.", "See you tomorrow ✨"),
+        },
+    }[lang]
     chart = users.chart_of(user)
     partners = await readings.list_partners(db, user["tg_id"])
     readings_done = bool(await readings.recent_readings(db, user["tg_id"], limit=1))
     if not chart:
-        return {"kind": "chart", "emoji": "🌌",
-                "title": "Собери натальную карту",
-                "text": "Планеты, дома и предназначение — по дате и времени рождения.",
-                "cta": "Собрать карту ✨", "chat": "astro", "fn": "featureChart"}
+        title, text, cta = copy["chart"]
+        return {"kind": "chart", "emoji": "🌌", "title": title, "text": text,
+                "cta": cta, "chat": "astro", "fn": "featureChart"}
     if not partners:
-        return {"kind": "compat", "emoji": "💞",
-                "title": "Проверь совместимость с партнёром",
-                "text": "Спидометр любви — балл и разбор пары по картам.",
-                "cta": "Проверить 💞", "chat": "astro", "fn": "featureCompat"}
+        title, text, cta = copy["compat"]
+        return {"kind": "compat", "emoji": "💞", "title": title, "text": text,
+                "cta": cta, "chat": "astro", "fn": "featureCompat"}
     if not readings_done:
-        return {"kind": "spread", "emoji": "🎴",
-                "title": "Расклад на твой вопрос",
-                "text": "Задай вопрос картам — колода Райдера-Уэйта ляжет в расклад.",
-                "cta": "Вытянуть карты 🎴", "chat": "tarot", "fn": "featureTarot"}
-    return {"kind": "tomorrow", "emoji": "🌙",
-            "title": "Вернись завтра за картой дня",
-            "text": "Сегодня всё увидела. Завтра — новый прогноз и новая карта.",
-            "cta": "Завтра снова ✨", "chat": "", "fn": ""}
+        title, text, cta = copy["spread"]
+        return {"kind": "spread", "emoji": "🎴", "title": title, "text": text,
+                "cta": cta, "chat": "tarot", "fn": "featureTarot"}
+    title, text, cta = copy["tomorrow"]
+    return {"kind": "tomorrow", "emoji": "🌙", "title": title, "text": text,
+            "cta": cta, "chat": "", "fn": ""}
 
 
 @router.get("/moon/week")

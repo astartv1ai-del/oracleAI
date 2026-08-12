@@ -6,6 +6,7 @@
 геокодинг не вызывается.
 
     python -m scripts.seed_load --count 10000 --db /tmp/load.db
+    python -m scripts.seed_load --count 5000 --db /tmp/http-load.db --all-active
     python -m scripts.seed_load --count 1000  --db /tmp/load.db --force  # переткнуть
 
 По умолчанию цель — data/load_seed.db. Боевую data/oracle.db перepисать можно
@@ -64,7 +65,7 @@ def _birth(rnd: random.Random) -> tuple[str, str, int]:
     return birth_date, birth_time, int(known)
 
 
-def _rows(count: int) -> list[tuple]:
+def _rows(count: int, *, all_active: bool = False) -> list[tuple]:
     rnd = random.Random(42)
     now = datetime.now(timezone.utc)
     rows = []
@@ -87,24 +88,24 @@ def _rows(count: int) -> list[tuple]:
             time_known, city, lat, lon, sub_level, sub_until,
             5, onboarded, morning_push, rnd.choice(GOALS), rnd.choice(SOURCES),
             (now - timedelta(days=rnd.randint(0, 30))).isoformat() if onboarded else None,
-            "active" if rnd.random() > 0.02 else "blocked",
+            "active" if all_active or rnd.random() > 0.02 else "blocked",
             (now - timedelta(days=created_days_ago)).isoformat(),
         ))
     return rows
 
 
-async def _seed(db, count: int) -> None:
+async def _seed(db, count: int, *, all_active: bool = False) -> None:
     await db.executemany(
         "INSERT OR REPLACE INTO users(tg_id, name, username, lang, tz, birth_date, "
         "birth_time, birth_time_known, birth_city, birth_lat, birth_lon, sub_level, "
         "sub_until, crystals, onboarded, morning_push, goal, source, last_seen, "
         "status, created_at) "
         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        _rows(count))
+        _rows(count, all_active=all_active))
     await db.commit()
 
 
-async def main(count: int, db_path: str, force: bool) -> None:
+async def main(count: int, db_path: str, force: bool, all_active: bool) -> None:
     from app.config import settings
     path = Path(db_path)
     if not force and path.resolve() == Path(settings.db_path).resolve():
@@ -114,7 +115,7 @@ async def main(count: int, db_path: str, force: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     db = await connect(path)
     try:
-        await _seed(db, count)
+        await _seed(db, count, all_active=all_active)
     finally:
         await db.close()
     print(f"засеяно {count} юзеров в {db_path}")
@@ -125,6 +126,8 @@ if __name__ == "__main__":
     ap.add_argument("--count", type=int, default=10_000)
     ap.add_argument("--db", default="data/load_seed.db")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--all-active", action="store_true",
+                    help="не добавлять заблокированные профили (для HTTP-потока)")
     args = ap.parse_args()
     import asyncio
-    asyncio.run(main(args.count, args.db, args.force))
+    asyncio.run(main(args.count, args.db, args.force, args.all_active))

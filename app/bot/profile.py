@@ -49,7 +49,7 @@ async def profile(cb: CallbackQuery, db):
         f"📖 Стрик дневника: {streak} дн. {'🔥' if streak >= 3 else ''}",
     ]
     if ref["level1"]:
-        lines.append(f"🌟 Привела подруг: {ref['level1']}"
+        lines.append(f"🌟 Приглашено людей: {ref['level1']}"
                      + (f" · из них платят: {ref['paying']}" if ref["paying"] else ""))
     if entitlements:
         names = {"spread": "расклады", "report": "разборы", "question": "вопросы"}
@@ -94,24 +94,24 @@ async def invite(cb: CallbackQuery, db):
     stats = await referrals.stats(db, cb.from_user.id)
 
     lines = [
-        "🌟 <b>Подари подруге встречу с Оракулом</b>",
+        "🌟 <b>Поделись встречей с Оракулом</b>",
         "",
         f"Твоя личная ссылка:\n<code>{link}</code>",
         "",
-        f"За каждую подругу — по ✦{stats['bonus_per_invite']} вам обеим.",
-        f"Когда она оформит доступ — тебе ещё ✦{stats['revenue_share']}. ✨",
+        f"За каждого приглашённого — по ✦{stats['bonus_per_invite']} каждому.",
+        f"Когда приглашённый оформит доступ — тебе ещё ✦{stats['revenue_share']}. ✨",
     ]
     if stats["level1"]:
         lines += ["",
                   f"Уже пришло по твоей ссылке: <b>{stats['level1']}</b>"
-                  + (f" · подруг подруг: {stats['level2']}" if stats["level2"] else ""),
+                  + (f" · второй уровень: {stats['level2']}" if stats["level2"] else ""),
                   f"Из них оформили доступ: <b>{stats['paying']}</b>",
                   f"Начислено всего: ✦{stats['bonus_total']}"]
 
     await cb.message.answer(
         "\n".join(lines),
         reply_markup=share_kb(link, referrals.share_text(stats["bonus_per_invite"]),
-                              label="💌 Отправить подруге"))
+                              label="💌 Поделиться ссылкой"))
     await cb.answer()
 
 

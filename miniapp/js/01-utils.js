@@ -118,6 +118,118 @@ const I18N = {
 };
 const t = (key, fallback = '') => (I18N[oracleLang()] || I18N.ru)[key] || fallback || key;
 
+// Тексты профиля живут отдельным словарём: экран рендерится большими шаблонами,
+// поэтому так проще держать RU/EN-паритет и не смешивать перевод с логикой данных.
+const PROFILE_I18N = {
+  ru: {
+    you: 'Ты', birth: 'Рождение', time: 'Время', city: 'Город', unknown: 'не известно',
+    buildChartTitle: 'Соберём твою карту?', buildChartCopy: 'Три коротких шага — и Оракул сможет говорить с тобой точнее, бережнее и по твоему ритму.',
+    date: 'дата', openMyChart: 'Открыть мою карту', space: 'Твоё пространство', path: 'твой путь',
+    spaceCopy: 'Здесь собираются знаки, вопросы и мысли, которые хочется оставить рядом.',
+    streakLabel: 'Серия: {count} дн.', firstRitual: 'Первый ритуал', summary: 'Сводка', chart: 'Карта', history: 'История', memory: 'Память',
+    yourStreak: 'Твоя серия', streakHeadline: 'Ты в ритуале уже {count} дн.', streakContinue: 'Завтра откроется новый прогноз, чтобы мягко продолжить серию.',
+    firstSign: 'Твой первый знак уже ждёт', firstSignCopy: 'Начни с одного вопроса — так рождается личный ритуал.',
+    rituals: 'Ритуалы', sparks: 'Искры', questions: 'Вопросы', notes: 'Заметки', yourFoundation: 'Твоя основа', birthData: 'Данные рождения',
+    natalChart: '🌌 Натальная карта', latestReadings: '🎴 Последние расклады', reports: '📜 Разборы', memoryAbout: '🧠 Что я помню о тебе',
+    referralTitle: 'Поделись с близким человеком — получите {bonus} ✦', referralFallback: 'Поделись ссылкой — и получите бонус', copy: 'Скопировать',
+    ascendant: 'Асцендент {sign}', chartNoTime: 'Время рождения не указано — ASC, MC и дома не показываем.', ask: 'Спросить', fullChart: 'Полная карта',
+    chartDetailExact: 'Раху · Кету · дома · аспекты — в «Полной карте»', chartDetailApprox: 'Планеты и аспекты доступны без времени; ASC, MC и дома — после уточнения времени рождения.',
+    chartEyebrow: 'Твоя основа', chartMissing: 'Карта ещё не собрана', chartMissingCopy: 'Укажи дату и город рождения. Время — только если ты его знаешь.', collectChart: 'Собрать карту',
+    firstReadingEyebrow: 'Твой первый расклад', firstReadingTitle: 'Карты ждут твой вопрос', firstReadingCopy: 'Выбери бережный расклад — он сохранится здесь, чтобы к нему можно было вернуться.', askCards: 'Задать вопрос картам',
+    allReadings: 'Все {count} раскладов ›', archive: 'Личный архив', reportsEmpty: 'Здесь появятся твои разборы', reportsEmptyCopy: 'Сохраняй важные ответы из диалогов, чтобы возвращаться к ним в нужный момент.',
+    reportsUnavailable: 'Разборы временно недоступны', tryLater: 'Попробуй открыть этот раздел немного позже.', readingsHistory: 'История раскладов', readingsUnavailable: 'Не получилось открыть историю', readingsUnavailableCopy: 'Это временно. Новый расклад по-прежнему можно сделать в чате.', openTarot: 'Открыть Таролога',
+    readingFallback: 'Расклад', saveStory: '📸 Сохранить в сторис', outcomeQuestion: 'Сбылось?', outcomeYes: '✓ Да', outcomePartial: 'Частично', outcomeNo: 'Нет',
+    memoryTitle: 'Что я помню о тебе', memoryEyebrow: 'Личная память', memoryUnavailable: 'Память пока недоступна', memoryUnavailableCopy: 'Твои сохранённые факты остаются под защитой. Попробуй открыть их чуть позже.',
+    noDate: 'без даты', deleteFact: 'Удалить факт', memoryOnCopy: 'Лилит использует только этот список, чтобы помнить важное между диалогами.', memoryPausedCopy: 'Память на паузе: новые факты не сохраняются и не попадают в ответы. Этот архив видишь только ты.',
+    searchFacts: 'Найти в {count} {noun}', factOne: 'факте', factMany: 'фактах', searchFactAria: 'Найти факт в памяти', searchEmpty: 'Ничего не нашлось. Попробуй другое слово или очисти поиск.',
+    memoryQuiet: 'Здесь пока тихо', memoryEmptyEnabled: 'Добавь факт вручную или расскажи о важном в диалоге — Лилит спросит разрешение сохранить его.', memoryEmptyPaused: 'Включи память, когда захочешь сохранять важное между диалогами.',
+    context: 'Личный контекст', memoryAboutTitle: 'Память о тебе', pauseMemory: 'Поставить память на паузу', enableMemory: 'Включить память', active: 'Активна', paused: 'На паузе', factCountOne: 'факт', factCountFew: 'факта', factCountMany: 'фактов', deleteAny: 'Ты можешь удалить любой',
+    addFactExample: 'Например: я люблю тихие утра', addFact: 'Добавить факт', archiveTitle: 'Твой архив', archiveUsed: 'используется в новых ответах', archiveHidden: 'сохранён и скрыт от Оракула',
+    allReadingsTitle: 'Все расклады', readingsNone: 'Раскладов пока нет', firstCard: 'Вытянуть первую карту 🎴',
+    fullChartTitle: '🌌 Полная натальная карта', chartPrecision: 'Точность карты', chartNoTimeShort: 'Время рождения не указано.', chartPrecisionCopy: 'Планеты и аспекты рассчитаны по дате. ASC, MC и дома не отображаются без времени рождения.', house: 'дом', orb: 'орб',
+    signAndRise: 'Твой знак и восход', solarFoundation: 'Твоя солнечная основа', sun: 'Солнце', signRiseCopy: 'твоя суть, воля и энергия.', ascendantCopy: 'как тебя видят со стороны.', mcCopy: 'направление и цель.', noTimeAssumptions: 'Время рождения не указано, поэтому не добавляем предположения об асценденте и направлении MC.',
+    planets: 'Планеты', nodes: 'Узлы и точки', rahu: 'Предназначение этой жизни (Раху — северный узел)', ketu: 'Кармический багаж (Кету — южный узел)', lilith: 'Лилит · тёмная Луна', lilithCopy: 'Зона подсознательных желаний, тени, страсти и скрытой силы.',
+    aspects: 'Аспекты (до 8)', aspectsCopy: 'Ключевые углы между планетами — как они разговаривают друг с другом.', conjunction: 'соединение', sextile: 'секстиль', trine: 'трин', square: 'квадрат', opposition: 'оппозиция', houses: 'Дома',
+    askAstrologer: 'Спросить Астролога про карту', shareChart: '📸 Сохранить карту в сторис', simpleReading: '🧠 Разбор простыми словами', chartUnavailable: 'Карта пока недоступна', chartUnavailableCopy: 'Проверь соединение и попробуй открыть её чуть позже.', close: 'Закрыть', chartReading: 'Разбор карты', chartReadingUnavailable: 'Смысл пока не раскрылся', chartReadingUnavailableCopy: 'Попробуй ещё раз немного позже — твоя карта никуда не исчезнет.',
+    saveGenderFailed: 'Не удалось сохранить пол', closeAria: 'Закрыть', changeLanguageFailed: 'Не удалось сменить язык', notifications: 'Уведомления', today: 'Сегодня', morningForecast: 'Утренний прогноз в боте', on: 'вкл', off: 'выкл', notificationCopy: 'Напоминания и прогнозы приходят в Telegram-боте. Включить их можно там же.', quiet: 'Пока тихо', quietCopy: 'Когда появится новый знак дня или важное напоминание, оно будет ждать тебя здесь.',
+    memoryCount: '{count} записей · нажми, чтобы посмотреть и править', memoryEmpty: 'Пока пусто — нажми, чтобы добавить первое',
+  },
+  en: {
+    you: 'You', birth: 'Birth', time: 'Time', city: 'City', unknown: 'unknown',
+    buildChartTitle: 'Build your chart?', buildChartCopy: 'Three quick steps help Oracle respond with more precision, care and attention to your rhythm.',
+    date: 'date', openMyChart: 'Open my chart', space: 'Your space', path: 'your path',
+    spaceCopy: 'This is where signs, questions and thoughts worth keeping come together.',
+    streakLabel: 'Streak: {count} days', firstRitual: 'First ritual', summary: 'Overview', chart: 'Chart', history: 'History', memory: 'Memory',
+    yourStreak: 'Your streak', streakHeadline: 'Your ritual streak is {count} days strong', streakContinue: 'A new forecast will open tomorrow to gently continue your streak.',
+    firstSign: 'Your first sign is waiting', firstSignCopy: 'Start with one question — that is how a personal ritual begins.',
+    rituals: 'Rituals', sparks: 'Sparks', questions: 'Questions', notes: 'Notes', yourFoundation: 'Your foundation', birthData: 'Birth details',
+    natalChart: '🌌 Natal chart', latestReadings: '🎴 Recent readings', reports: '📜 Insights', memoryAbout: '🧠 What I remember about you',
+    referralTitle: 'Invite someone close — you both receive {bonus} ✦', referralFallback: 'Share your link and receive a bonus together', copy: 'Copy',
+    ascendant: 'Ascendant {sign}', chartNoTime: 'Birth time is not set — ASC, MC and houses are hidden.', ask: 'Ask', fullChart: 'Full chart',
+    chartDetailExact: 'Rahu · Ketu · houses · aspects — in “Full chart”', chartDetailApprox: 'Planets and aspects are available without a birth time; ASC, MC and houses appear after you add it.',
+    chartEyebrow: 'Your foundation', chartMissing: 'Your chart is not ready yet', chartMissingCopy: 'Add your birth date and city. Include the time only if you know it.', collectChart: 'Build chart',
+    firstReadingEyebrow: 'Your first reading', firstReadingTitle: 'The cards are waiting for your question', firstReadingCopy: 'Choose a gentle spread — it will be saved here so you can return to it later.', askCards: 'Ask the cards',
+    allReadings: 'All {count} readings ›', archive: 'Personal archive', reportsEmpty: 'Your insights will appear here', reportsEmptyCopy: 'Save meaningful answers from your conversations so you can return to them when you need to.',
+    reportsUnavailable: 'Insights are temporarily unavailable', tryLater: 'Please try this section again a little later.', readingsHistory: 'Reading history', readingsUnavailable: 'Could not open reading history', readingsUnavailableCopy: 'This is temporary. You can still start a new reading in chat.', openTarot: 'Open Tarot guide',
+    readingFallback: 'Reading', saveStory: '📸 Save to story', outcomeQuestion: 'Did it come true?', outcomeYes: '✓ Yes', outcomePartial: 'Partly', outcomeNo: 'No',
+    memoryTitle: 'What I remember about you', memoryEyebrow: 'Personal memory', memoryUnavailable: 'Memory is temporarily unavailable', memoryUnavailableCopy: 'Your saved facts remain protected. Please try opening them again a little later.',
+    noDate: 'no date', deleteFact: 'Delete fact', memoryOnCopy: 'Lilith uses only this list to remember what matters between conversations.', memoryPausedCopy: 'Memory is paused: new facts are not saved or used in responses. Only you can see this archive.',
+    searchFacts: 'Search {count} {noun}', factOne: 'fact', factMany: 'facts', searchFactAria: 'Find a fact in memory', searchEmpty: 'Nothing found. Try another word or clear your search.',
+    memoryQuiet: 'It is quiet here for now', memoryEmptyEnabled: 'Add one fact yourself or share something important in a conversation — Lilith will ask permission before saving it.', memoryEmptyPaused: 'Turn memory on when you want to keep important things between conversations.',
+    context: 'Personal context', memoryAboutTitle: 'Memory about you', pauseMemory: 'Pause memory', enableMemory: 'Enable memory', active: 'Active', paused: 'Paused', factCountOne: 'fact', factCountFew: 'facts', factCountMany: 'facts', deleteAny: 'You can delete any item',
+    addFactExample: 'For example: I love quiet mornings', addFact: 'Add fact', archiveTitle: 'Your archive', archiveUsed: 'used in new responses', archiveHidden: 'saved and hidden from Oracle',
+    allReadingsTitle: 'All readings', readingsNone: 'No readings yet', firstCard: 'Draw your first card 🎴',
+    fullChartTitle: '🌌 Full natal chart', chartPrecision: 'Chart precision', chartNoTimeShort: 'Birth time is not set.', chartPrecisionCopy: 'Planets and aspects are calculated from the date. ASC, MC and houses are hidden without a birth time.', house: 'house', orb: 'orb',
+    signAndRise: 'Your sign and rising', solarFoundation: 'Your solar foundation', sun: 'Sun', signRiseCopy: 'your essence, will and energy.', ascendantCopy: 'how others see you.', mcCopy: 'direction and purpose.', noTimeAssumptions: 'Birth time is not set, so we do not make assumptions about the ascendant or MC.',
+    planets: 'Planets', nodes: 'Nodes and points', rahu: 'Purpose in this life (Rahu — north node)', ketu: 'Karmic background (Ketu — south node)', lilith: 'Lilith · dark moon', lilithCopy: 'A space of subconscious desires, shadow, passion and hidden strength.',
+    aspects: 'Aspects (up to 8)', aspectsCopy: 'Key angles between planets — how they relate to one another.', conjunction: 'conjunction', sextile: 'sextile', trine: 'trine', square: 'square', opposition: 'opposition', houses: 'Houses',
+    askAstrologer: 'Ask the Astrologer about my chart', shareChart: '📸 Save chart to story', simpleReading: '🧠 Explain in simple words', chartUnavailable: 'Chart is temporarily unavailable', chartUnavailableCopy: 'Check your connection and try opening it again a little later.', close: 'Close', chartReading: 'Chart reading', chartReadingUnavailable: 'Meaning has not unfolded yet', chartReadingUnavailableCopy: 'Try again a little later — your chart is still here.',
+    saveGenderFailed: 'Could not save gender', closeAria: 'Close', changeLanguageFailed: 'Could not change language', notifications: 'Notifications', today: 'Today', morningForecast: 'Morning forecast in the bot', on: 'on', off: 'off', notificationCopy: 'Reminders and forecasts arrive in the Telegram bot. You can enable them there.', quiet: 'Quiet for now', quietCopy: 'A new sign of the day or an important reminder will wait for you here.',
+    memoryCount: '{count} entries · tap to view and edit', memoryEmpty: 'Nothing here yet — tap to add your first entry',
+  },
+};
+const profileT = (key, fallback = '') => (PROFILE_I18N[oracleLang()] || PROFILE_I18N.ru)[key] || fallback || key;
+const profileFormat = (key, values = {}) => Object.entries(values).reduce(
+  (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), profileT(key));
+
+const HOME_I18N = {
+  ru: {
+    ritualLabel: 'Твой мягкий ритуал дня', ritualCta: 'Получить мой знак дня', seasonalAria: 'Сезонный ритуал', seasonalKicker: 'Сезонный знак',
+    rhythmAria: 'Твой ритм на сегодня', rhythmKicker: 'Твой ритм', rhythmTitle: 'Вернуться к себе', stepsAria: '{count} из 2 бережных шагов',
+    diaryDoneAria: 'Дневник заполнен, открыть записи', diaryOpenAria: 'Открыть дневник состояния', diaryDone: 'Дневник уже заполнен', diaryOpen: 'Отметить своё состояние',
+    diaryDoneCopy: 'Дневник уже ждёт тебя в личной библиотеке.', diaryPromptFallback: 'Одно честное предложение о том, как ты сейчас.',
+    practiceDoneAria: 'Отметить шаг практики', practiceStartAria: 'Начать практику', practiceStepFallback: 'Отметить маленький шаг', practiceFallback: 'Мягкая практика на сегодня',
+    ritualNote: 'Без штрафов за пропуски. Это не чек-лист «идеальной жизни», а две мягкие точки опоры для тебя.',
+    week: 'Вся неделя', today: 'сегодня', lunarDay: '{day}-й лунный день', moonTitle: '🌙 Лунный календарь', moonWeek: 'Неделя',
+    personal: 'Только для тебя', todaySign: 'Знак на сегодня', forecastFallbackTitle: 'Начни с того, что уже чувствуешь.', forecastFallbackCopy: 'Открой личный знак дня или задай Оракулу вопрос — это тоже хороший способ вернуться к себе.',
+    daySymbol: 'Символ дня', cardNearby: 'Карта, которая рядом', cardCopy: 'Носи эту энергию сегодня — карта дня задаёт тон всему: от решений до встреч.', cardHint: 'Тапни карту — она развернётся со смыслом ↻',
+    nextKicker: 'Один бережный шаг', nextTitle: 'Продолжить ритуал', chooseMood: 'Выбери настроение', talkTo: 'С кем поговорим?',
+    guidesTitle: 'Твои проводники', guidesCopy: 'Не нужно знать «правильный» вопрос. Выбери того, с кем хочется побыть сегодня — он поможет разложить мысли по местам.',
+    listening: 'Готов слушать тебя', nearby: 'рядом для тебя', start: 'Начать', openChatAria: 'Открыть диалог с {name}', ask: 'Можно спросить',
+    ritualOneDone: 'Одна опора уже есть. Второй шаг — только если захочется.', ritualNoneDone: 'Выбери одну маленькую точку опоры. Этого достаточно.',
+    seasonal: [['Зимний свет', 'Разреши себе меньше спешки и больше тёплых пауз.'], ['Время расцветать', 'Выбери один маленький шаг, который хочется начать для себя.'], ['Сезон полноты', 'Заметь, что уже стало твоей опорой, и поблагодари себя.'], ['Время бережно отпустить', 'Освободи место для того, что действительно важно сейчас.']],
+  },
+  en: {
+    ritualLabel: 'Your gentle daily ritual', ritualCta: 'Get my sign for today', seasonalAria: 'Seasonal ritual', seasonalKicker: 'Seasonal sign',
+    rhythmAria: 'Your rhythm for today', rhythmKicker: 'Your rhythm', rhythmTitle: 'Return to yourself', stepsAria: '{count} of 2 gentle steps',
+    diaryDoneAria: 'Diary completed, open entries', diaryOpenAria: 'Open mood diary', diaryDone: 'Diary completed', diaryOpen: 'Check in with yourself',
+    diaryDoneCopy: 'Your entry is waiting in your private library.', diaryPromptFallback: 'One honest sentence about how you are right now.',
+    practiceDoneAria: 'Mark this practice step', practiceStartAria: 'Start practice', practiceStepFallback: 'Mark one small step', practiceFallback: 'A gentle practice for today',
+    ritualNote: 'No penalties for skipping. This is not an “ideal life” checklist — just two gentle anchors for your day.',
+    week: 'Full week', today: 'today', lunarDay: 'lunar day {day}', moonTitle: '🌙 Moon calendar', moonWeek: 'Week',
+    personal: 'Just for you', todaySign: 'Today’s sign', forecastFallbackTitle: 'Begin with what you already feel.', forecastFallbackCopy: 'Open your personal sign for today or ask the Oracle a question — both are gentle ways to return to yourself.',
+    daySymbol: 'Symbol of the day', cardNearby: 'A card by your side', cardCopy: 'Carry this energy through the day — this card sets a tone for choices and encounters.', cardHint: 'Tap the card to reveal its meaning ↻',
+    nextKicker: 'One gentle step', nextTitle: 'Continue your ritual', chooseMood: 'Choose a mood', talkTo: 'Who would you like to talk to?',
+    guidesTitle: 'Your guides', guidesCopy: 'You do not need the “right” question. Choose the voice you want to spend time with today — it will help you sort through your thoughts.',
+    listening: 'Ready to listen', nearby: 'here for you', start: 'Start', openChatAria: 'Open chat with {name}', ask: 'You can ask',
+    ritualOneDone: 'One anchor is already here. Take the second step only if you want to.', ritualNoneDone: 'Choose one small anchor. That is enough.',
+    seasonal: [['Winter light', 'Give yourself permission to hurry less and take warmer pauses.'], ['A time to bloom', 'Choose one small step you would like to begin for yourself.'], ['A season of fullness', 'Notice what has already become your anchor and thank yourself for it.'], ['A time to gently let go', 'Make room for what truly matters now.']],
+  },
+};
+const homeT = (key, fallback = '') => (HOME_I18N[oracleLang()] || HOME_I18N.ru)[key] || fallback || key;
+const homeFormat = (key, values = {}) => Object.entries(values).reduce(
+  (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), homeT(key));
+
 // P3: детерминированный вариант без сторонних трекеров. В событие уходят только
 // имя эксперимента и вариант; вопрос, дневник и другие личные данные не передаются.
 function experimentVariant(experiment, variants = ['control', 'variant']) {

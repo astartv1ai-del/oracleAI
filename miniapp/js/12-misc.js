@@ -23,7 +23,7 @@
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(link);
-        this.toast('Ссылка скопирована — отправь подруге ✨');
+        this.toast('Ссылка скопирована — можно поделиться ✨');
       } else {
         this.toast(link);
       }
@@ -52,56 +52,56 @@
 
   app.renderProfile = async function(main) {
     const me = this.me;
-    const firstName = me && me.name ? esc(me.name.split(' ')[0]) : 'Ты';
+    const firstName = me && me.name ? esc(me.name.split(' ')[0]) : profileT('you');
     const streak = me && me.global_streak ? me.global_streak : 0;
     const questions = me && me.allowance && typeof me.allowance.left !== 'undefined' ? me.allowance.left : '—';
     const genderLabel = gendered(me, t('female'), t('male'), t('notSpecified'));
     const identityBlock = me && me.birth_date ? `
       <div class="glass" style="padding:14px 16px;font-size:13px">
-        <div class="planet-line"><div class="p-ico">◌</div><div class="p-name">Рождение</div><div class="p-val">${esc(me.birth_date)}</div></div>
-        <div class="planet-line"><div class="p-ico">⌁</div><div class="p-name">Время</div><div class="p-val">${esc(me.birth_time_known ? me.birth_time : 'не известно')}</div></div>
-        <div class="planet-line"><div class="p-ico">⌖</div><div class="p-name">Город</div><div class="p-val">${esc(me.birth_city || '—')}</div></div>
+        <div class="planet-line"><div class="p-ico">◌</div><div class="p-name">${profileT('birth')}</div><div class="p-val">${esc(me.birth_date)}</div></div>
+        <div class="planet-line"><div class="p-ico">⌁</div><div class="p-name">${profileT('time')}</div><div class="p-val">${esc(me.birth_time_known ? me.birth_time : profileT('unknown'))}</div></div>
+        <div class="planet-line"><div class="p-ico">⌖</div><div class="p-name">${profileT('city')}</div><div class="p-val">${esc(me.birth_city || '—')}</div></div>
       </div>` : `
       <div class="profile-empty">
-        <div class="profile-empty-title">Соберём твою карту?</div>
-        <div class="profile-empty-copy">Три коротких шага — и Оракул сможет говорить с тобой точнее, бережнее и по твоему ритму.</div>
-        <div class="profile-empty-steps"><span class="profile-empty-step"><b>01</b>дата</span><span class="profile-empty-step"><b>02</b>время</span><span class="profile-empty-step"><b>03</b>город</span></div>
-        <button class="btn btn-primary" style="width:100%;margin-top:14px" data-act="chat" data-chat="astro">Открыть мою карту</button>
+        <div class="profile-empty-title">${profileT('buildChartTitle')}</div>
+        <div class="profile-empty-copy">${profileT('buildChartCopy')}</div>
+        <div class="profile-empty-steps"><span class="profile-empty-step"><b>01</b>${profileT('date')}</span><span class="profile-empty-step"><b>02</b>${profileT('time').toLowerCase()}</span><span class="profile-empty-step"><b>03</b>${profileT('city').toLowerCase()}</span></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:14px" data-act="chat" data-chat="astro">${profileT('openMyChart')}</button>
       </div>`;
     main.innerHTML = `
       <div class="screen">
         <div class="profile-hero">
-          <div class="profile-kicker">Твоё пространство</div>
-          <div class="profile-name">${firstName}, твой путь</div>
-          <div class="profile-copy">Здесь собираются знаки, вопросы и мысли, которые хочется оставить рядом.</div>
-          <div class="ritual-meter"><span class="ritual-meter-label">${streak ? 'Серия: ' + streak + ' дн.' : 'Первый ритуал'}</span><span class="ritual-meter-track"><span class="ritual-meter-fill" style="width:${Math.min(100, Math.max(18, streak ? 18 + streak * 8 : 18))}%"></span></span></div>
+          <div class="profile-kicker">${profileT('space')}</div>
+          <div class="profile-name">${firstName}, ${profileT('path')}</div>
+          <div class="profile-copy">${profileT('spaceCopy')}</div>
+          <div class="ritual-meter"><span class="ritual-meter-label">${streak ? profileFormat('streakLabel', { count: streak }) : profileT('firstRitual')}</span><span class="ritual-meter-track"><span class="ritual-meter-fill" style="width:${Math.min(100, Math.max(18, streak ? 18 + streak * 8 : 18))}%"></span></span></div>
         </div>
 
         <div class="ptab-bar">
-          <button class="ptab active" data-act="ptab" data-tab="summary">Сводка</button>
-          <button class="ptab" data-act="ptab" data-tab="chart">Карта</button>
-          <button class="ptab" data-act="ptab" data-tab="history">История</button>
-          <button class="ptab" data-act="ptab" data-tab="memory">Память</button>
+          <button class="ptab active" data-act="ptab" data-tab="summary">${profileT('summary')}</button>
+          <button class="ptab" data-act="ptab" data-tab="chart">${profileT('chart')}</button>
+          <button class="ptab" data-act="ptab" data-tab="history">${profileT('history')}</button>
+          <button class="ptab" data-act="ptab" data-tab="memory">${profileT('memory')}</button>
         </div>
 
         <div class="ptab-pane active" id="ptab-summary">
-          <div class="section-kicker">Твоя серия</div>
+          <div class="section-kicker">${profileT('yourStreak')}</div>
           <div class="glass" style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:11px">
             <span style="width:43px;height:43px;display:grid;place-items:center;border-radius:14px;background:rgba(245,212,139,.13);color:var(--champagne-300);font-size:21px;flex-shrink:0">✦</span>
             <div style="flex:1;min-width:0">
-              <div style="color:var(--text-main);font-family:var(--font-serif);font-weight:700;font-size:17px">${streak ? 'Ты уже ' + streak + ' ' + (streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней') + ' рядом с собой' : 'Твой первый знак уже ждёт'}</div>
-              <div style="font-size:12.5px;color:var(--text-soft);line-height:1.45;margin-top:3px">${streak ? 'Завтра откроется новый прогноз, чтобы мягко продолжить серию.' : 'Начни с одного вопроса — так рождается личный ритуал.'}</div>
+              <div style="color:var(--text-main);font-family:var(--font-serif);font-weight:700;font-size:17px">${streak ? profileFormat('streakHeadline', { count: streak }) : profileT('firstSign')}</div>
+              <div style="font-size:12.5px;color:var(--text-soft);line-height:1.45;margin-top:3px">${streak ? profileT('streakContinue') : profileT('firstSignCopy')}</div>
             </div>
           </div>
           <div class="stat-row">
-            <div class="stat"><div class="sv">${streak || '—'}</div><div class="sl">Ритуалы</div></div>
-            <div class="stat"><div class="sv">${me && typeof me.crystals !== 'undefined' ? me.crystals : '—'}</div><div class="sl">Искры</div></div>
-            <div class="stat"><div class="sv">${questions}</div><div class="sl">Вопросы</div></div>
-            <div class="stat"><div class="sv">${me && me.diary_streak ? me.diary_streak : '—'}</div><div class="sl">Заметки</div></div>
+            <div class="stat"><div class="sv">${streak || '—'}</div><div class="sl">${profileT('rituals')}</div></div>
+            <div class="stat"><div class="sv">${me && typeof me.crystals !== 'undefined' ? me.crystals : '—'}</div><div class="sl">${profileT('sparks')}</div></div>
+            <div class="stat"><div class="sv">${questions}</div><div class="sl">${profileT('questions')}</div></div>
+            <div class="stat"><div class="sv">${me && me.diary_streak ? me.diary_streak : '—'}</div><div class="sl">${profileT('notes')}</div></div>
           </div>
           <div class="spacer"></div>
-          <div class="section-kicker">Твоя основа</div>
-          <div class="section-title">Данные рождения</div>
+          <div class="section-kicker">${profileT('yourFoundation')}</div>
+          <div class="section-title">${profileT('birthData')}</div>
           ${identityBlock}
           <button class="glass language-row" data-act="gender" type="button" aria-label="${esc(t('changeGender'))}">
             <span class="language-row__copy"><b>${esc(t('gender'))}</b><small>${esc(genderLabel)}</small></span>
@@ -116,20 +116,20 @@
         </div>
 
         <div class="ptab-pane" id="ptab-chart">
-          <div class="section-title">🌌 Натальная карта</div>
+          <div class="section-title">${profileT('natalChart')}</div>
           <div id="profile-chart"><div class="glass"><div class="center-block"><div class="loader-ring"></div></div></div></div>
         </div>
 
         <div class="ptab-pane" id="ptab-history">
-          <div class="section-title">🎴 Последние расклады</div>
+          <div class="section-title">${profileT('latestReadings')}</div>
           <div id="profile-tarot"><div class="skeleton" style="height:80px;border-radius:16px"></div></div>
           <div class="spacer"></div>
-          <div class="section-title">📜 Разборы</div>
+          <div class="section-title">${profileT('reports')}</div>
           <div id="profile-reports"><div class="skeleton" style="height:60px;border-radius:16px"></div></div>
         </div>
 
         <div class="ptab-pane" id="ptab-memory">
-          <div class="section-title">🧠 Что я помню о тебе</div>
+          <div class="section-title">${profileT('memoryAbout')}</div>
           <div id="profile-memories"><div class="skeleton" style="height:60px;border-radius:16px"></div></div>
         </div>
       </div>`;
@@ -147,10 +147,10 @@
             <div class="ref-card">
               <div class="ref-ico">🌙</div>
               <div class="ref-body">
-                <div class="ref-title">Пригласи подругу — получи ${ref.bonus_per_invite || ''} ✦</div>
-                <div class="ref-desc">${esc(ref.share_text || 'Поделись ссылкой — и обе получите бонус')}</div>
+                <div class="ref-title">${profileFormat('referralTitle', { bonus: ref.bonus_per_invite || '' })}</div>
+                <div class="ref-desc">${esc(ref.share_text || profileT('referralFallback'))}</div>
               </div>
-              <button class="btn btn-primary ref-btn" data-act="ref-copy">Скопировать</button>
+              <button class="btn btn-primary ref-btn" data-act="ref-copy">${profileT('copy')}</button>
             </div>`;
           this._refLink = ref.link;
         } else {
@@ -175,8 +175,8 @@
       const sun = c.sun || {}, asc = c.ascendant || {};
       const exactChart = c.precision === 'exact';
       const precisionCopy = exactChart
-        ? `Асцендент ${esc(asc.sign || '—')}`
-        : esc(c.note || 'Время рождения не указано — ASC, MC и дома не показываем.');
+        ? profileFormat('ascendant', { sign: esc(asc.sign || '—') })
+        : esc(c.note || profileT('chartNoTime'));
       const planets = (c.planets || []).slice(0, 8).map(p => `
         <div class="planet-line">
           <div class="p-ico">${SIGNS[p.sign] || ''}</div>
@@ -193,19 +193,19 @@
               <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:14.5px">${esc(sun.sign || '—')}</div>
               <div style="color:var(--text-dim);font-size:12px;line-height:1.4">${precisionCopy}</div>
               <div style="margin-top:10px;display:flex;gap:8px">
-                <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="chat" data-chat="astro">Спросить</button>
-                <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="full-chart">Полная карта</button>
+                <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="chat" data-chat="astro">${profileT('ask')}</button>
+                <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="full-chart">${profileT('fullChart')}</button>
               </div>
             </div>
           </div>
           <div style="margin-top:10px">${planets}</div>
-          <div style="color:var(--text-faint);font-size:11px;margin-top:6px">${exactChart ? 'Раху · Кету · дома · аспекты — в «Полной карте»' : 'Планеты и аспекты доступны без времени; ASC, MC и дома — после уточнения времени рождения.'}</div>
+          <div style="color:var(--text-faint);font-size:11px;margin-top:6px">${exactChart ? profileT('chartDetailExact') : profileT('chartDetailApprox')}</div>
         </div>`;
     } catch (e) {
       if (chartEl) chartEl.innerHTML = this.softEmpty({
-        icon: '🌌', eyebrow: 'Твоя основа', title: 'Карта ещё не собрана',
-        copy: 'Укажи дату и город рождения. Время — только если ты его знаешь.',
-        action: '<button class="btn btn-primary" data-act="chat" data-chat="astro">Собрать карту</button>'
+        icon: '🌌', eyebrow: profileT('chartEyebrow'), title: profileT('chartMissing'),
+        copy: profileT('chartMissingCopy'),
+        action: `<button class="btn btn-primary" data-act="chat" data-chat="astro">${profileT('collectChart')}</button>`
       });
     }
 
@@ -215,9 +215,9 @@
       if (tarotEl) {
         if (!rows.length) {
           tarotEl.innerHTML = this.softEmpty({
-            icon: '🎴', eyebrow: 'Твой первый расклад', title: 'Карты ждут твой вопрос',
-            copy: 'Выбери бережный расклад — он сохранится здесь, чтобы к нему можно было вернуться.',
-            action: '<button class="btn btn-primary" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Задать вопрос картам</button>'
+            icon: '🎴', eyebrow: profileT('firstReadingEyebrow'), title: profileT('firstReadingTitle'),
+            copy: profileT('firstReadingCopy'),
+            action: `<button class="btn btn-primary" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">${profileT('askCards')}</button>`
           });
         } else {
           const shown = rows.slice(0, 3).map(r => `
@@ -230,16 +230,16 @@
               <span class="tc-open">›</span>
             </div>`).join('');
           const more = rows.length > 3
-            ? `<button class="more-row" data-act="all-readings">Все ${rows.length} раскладов ›</button>` : '';
+            ? `<button class="more-row" data-act="all-readings">${profileFormat('allReadings', { count: rows.length })}</button>` : '';
           tarotEl.innerHTML = shown + more;
         }
       }
       this._readingsCache = rows;
     } catch (e) {
       if (tarotEl) tarotEl.innerHTML = this.softEmpty({
-        icon: '🎴', eyebrow: 'История раскладов', title: 'Не получилось открыть историю',
-        copy: 'Это временно. Новый расклад по-прежнему можно сделать в чате.', tone: 'recovery',
-        action: '<button class="btn btn-ghost" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Открыть Таролога</button>'
+        icon: '🎴', eyebrow: profileT('readingsHistory'), title: profileT('readingsUnavailable'),
+        copy: profileT('readingsUnavailableCopy'), tone: 'recovery',
+        action: `<button class="btn btn-ghost" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">${profileT('openTarot')}</button>`
       });
     }
 
@@ -255,13 +255,13 @@
             <span class="rc-open">›</span>
           </div>
         </div>`).join('') : this.softEmpty({
-          icon: '✦', eyebrow: 'Личный архив', title: 'Здесь появятся твои разборы',
-          copy: 'Сохраняй важные ответы из диалогов, чтобы возвращаться к ним в нужный момент.'
+          icon: '✦', eyebrow: profileT('archive'), title: profileT('reportsEmpty'),
+          copy: profileT('reportsEmptyCopy')
         });
     } catch (e) {
       if (repEl) repEl.innerHTML = this.softEmpty({
-        icon: '✦', eyebrow: 'Личный архив', title: 'Разборы временно недоступны',
-        copy: 'Попробуй открыть этот раздел немного позже.', tone: 'recovery'
+        icon: '✦', eyebrow: profileT('archive'), title: profileT('reportsUnavailable'),
+        copy: profileT('tryLater'), tone: 'recovery'
       });
     }
 
@@ -271,8 +271,8 @@
         <button class="memory-open" data-act="memories">
           <span style="font-size:18px">🧠</span>
           <span style="flex:1;text-align:left">
-            <div style="font-weight:600;font-size:14px">Что я помню о тебе</div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${mems.length ? mems.length + ' записей · нажми, чтобы посмотреть и править' : 'Пока пусто — нажми, чтобы добавить первое'}</div>
+            <div style="font-weight:600;font-size:14px">${profileT('memoryAbout')}</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${mems.length ? profileFormat('memoryCount', { count: mems.length }) : profileT('memoryEmpty')}</div>
           </span>
           <span style="color:var(--gold)">›</span>
         </button>`;
@@ -295,16 +295,16 @@
         <div class="rc-strip"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
           <span>${esc(c.name)}${c.reversed ? ' ↺' : ''}</span></div>`).join('');
       const cards = (r.cards || []).map(c => `${c.emoji} ${c.name}${c.reversed ? ' ↺' : ''} — ${c.meaning}`).join('\n');
-      this.showModal(`<h3>🎴 ${esc(r.question || 'Расклад')}</h3><button class="m-close" data-act="modal-close">✕</button>
+      this.showModal(`<h3>🎴 ${esc(r.question || profileT('readingFallback'))}</h3><button class="m-close" data-act="modal-close">✕</button>
         <div class="rc-strip-row">${cardStrip}</div>
         <div style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;margin:8px 0">${esc(cards)}</div>
         <div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap">${esc(r.answer || '—')}</div>
-        <button class="btn btn-primary" style="margin-top:14px" data-act="share-reading" data-id="${id}">📸 Сохранить в сторис</button>
+        <button class="btn btn-primary" style="margin-top:14px" data-act="share-reading" data-id="${id}">${esc(profileT('saveStory'))}</button>
         <div class="outcome-row">
-          <span class="outcome-q">Сбылось?</span>
-          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="came_true">✓ Да</button>
-          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="partly">Частично</button>
-          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="no">Нет</button>
+          <span class="outcome-q">${esc(profileT('outcomeQuestion'))}</span>
+          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="came_true">${esc(profileT('outcomeYes'))}</button>
+          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="partly">${esc(profileT('outcomePartial'))}</button>
+          <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="no">${esc(profileT('outcomeNo'))}</button>
         </div>`);
     } catch (e) { alert(e.message); }
   };
@@ -318,7 +318,7 @@
   // Память: управление — просмотр с датой, удалить, добавить вручную.
 
   app.openMemories = async function() {
-    this.showModal(`<h3>Что я помню о тебе</h3><button class="m-close" data-act="modal-close">✕</button>
+    this.showModal(`<h3>${esc(profileT('memoryTitle'))}</h3><button class="m-close" data-act="modal-close">✕</button>
       <div id="mem-body" style="margin-top:6px"><div class="loader-ring"></div></div>`);
     try {
       // «На паузе» означает, что Оракул не использует и не сохраняет новые факты.
@@ -330,8 +330,8 @@
     } catch (e) {
       const body = document.getElementById('mem-body');
       if (body) body.innerHTML = this.softEmpty({
-        icon: '🧠', eyebrow: 'Личная память', title: 'Память пока недоступна',
-        copy: 'Твои сохранённые факты остаются под защитой. Попробуй открыть их чуть позже.', tone: 'recovery'
+        icon: '🧠', eyebrow: profileT('memoryEyebrow'), title: profileT('memoryUnavailable'),
+        copy: profileT('memoryUnavailableCopy'), tone: 'recovery'
       });
     }
   };
@@ -348,48 +348,46 @@
       return `<article class="mem-manage-row" data-mem-item data-mem-text="${haystack}">
         <div class="mem-manage-row__top">
           <span class="mem-manage-index" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
-          <time class="mem-manage-meta">${esc((m.created_at || '').slice(0, 10)) || 'без даты'}</time>
-          <button class="mem-del" data-act="del-mem" data-id="${m.id}" title="Удалить факт" aria-label="Удалить факт">${sigilIcon('spark')}</button>
+          <time class="mem-manage-meta">${esc((m.created_at || '').slice(0, 10)) || esc(profileT('noDate'))}</time>
+          <button class="mem-del" data-act="del-mem" data-id="${m.id}" title="${esc(profileT('deleteFact'))}" aria-label="${esc(profileT('deleteFact'))}">${sigilIcon('spark')}</button>
         </div>
         <div class="mem-manage-txt">${esc(fact)}</div>
       </article>`;
     }).join('');
-    const stateCopy = enabled
-      ? 'Лилит использует только этот список, чтобы помнить важное между диалогами.'
-      : 'Память на паузе: новые факты не сохраняются и не попадают в ответы. Этот архив видишь только ты.';
+    const stateCopy = enabled ? profileT('memoryOnCopy') : profileT('memoryPausedCopy');
     const archive = rows.length ? `
       <div class="mem-search">
         ${sigilIcon('spark')}
-        <input class="ipt" id="mem-search" type="search" placeholder="Найти в ${rows.length} ${rows.length === 1 ? 'факте' : 'фактах'}" autocomplete="off" aria-label="Найти факт в памяти">
+        <input class="ipt" id="mem-search" type="search" placeholder="${esc(profileFormat('searchFacts', { count: rows.length, noun: rows.length === 1 ? profileT('factOne') : profileT('factMany') }))}" autocomplete="off" aria-label="${esc(profileT('searchFactAria'))}">
         <span class="mem-search-count" data-mem-count>${rows.length}</span>
       </div>
       <div class="mem-manage-list" data-mem-list>${list}</div>
-      <div class="memory-search-empty" data-mem-empty hidden>Ничего не нашлось. Попробуй другое слово или очисти поиск.</div>`
+      <div class="memory-search-empty" data-mem-empty hidden>${esc(profileT('searchEmpty'))}</div>`
       : `<div class="memory-empty">
           <span class="memory-empty__sigil">${sigilIcon('spark')}</span>
-          <b>Здесь пока тихо</b>
-          <p>${enabled ? 'Добавь один факт сама или расскажи о важном в диалоге — Лилит спросит разрешение сохранить его.' : 'Включи память, когда захочешь сохранять важное между диалогами.'}</p>
+          <b>${esc(profileT('memoryQuiet'))}</b>
+          <p>${esc(enabled ? profileT('memoryEmptyEnabled') : profileT('memoryEmptyPaused'))}</p>
         </div>`;
     el.innerHTML = `
       <section class="memory-hero ${enabled ? 'is-enabled' : 'is-paused'}">
         <div class="memory-hero__top">
           <div>
-            <span class="memory-eyebrow">Личный контекст</span>
-            <h4>Память о тебе</h4>
+            <span class="memory-eyebrow">${esc(profileT('context'))}</span>
+            <h4>${esc(profileT('memoryAboutTitle'))}</h4>
           </div>
-          <button class="memory-switch ${enabled ? 'is-on' : ''}" data-act="toggle-memory" type="button" role="switch" aria-checked="${enabled}" aria-label="${enabled ? 'Поставить память на паузу' : 'Включить память'}">
+          <button class="memory-switch ${enabled ? 'is-on' : ''}" data-act="toggle-memory" type="button" role="switch" aria-checked="${enabled}" aria-label="${esc(enabled ? profileT('pauseMemory') : profileT('enableMemory'))}">
             <span class="memory-switch__track" aria-hidden="true"><span></span></span>
-            <span>${enabled ? 'Активна' : 'На паузе'}</span>
+            <span>${esc(enabled ? profileT('active') : profileT('paused'))}</span>
           </button>
         </div>
-        <p>${stateCopy}</p>
-        <div class="memory-hero__foot"><span>${rows.length} ${rows.length === 1 ? 'факт' : rows.length < 5 ? 'факта' : 'фактов'}</span><span>Ты можешь удалить любой</span></div>
+        <p>${esc(stateCopy)}</p>
+        <div class="memory-hero__foot"><span>${rows.length} ${esc(rows.length === 1 ? profileT('factCountOne') : rows.length < 5 ? profileT('factCountFew') : profileT('factCountMany'))}</span><span>${esc(profileT('deleteAny'))}</span></div>
       </section>
       ${enabled ? `<div class="mem-add memory-add">
-        <input class="ipt" id="mem-new" placeholder="Например: я люблю тихие утра" autocomplete="off" maxlength="500"/>
-        <button class="send-btn" data-act="add-mem" title="Добавить факт" aria-label="Добавить факт">${sigilIcon('spark')}</button>
+        <input class="ipt" id="mem-new" placeholder="${esc(profileT('addFactExample'))}" autocomplete="off" maxlength="500"/>
+        <button class="send-btn" data-act="add-mem" title="${esc(profileT('addFact'))}" aria-label="${esc(profileT('addFact'))}">${sigilIcon('spark')}</button>
       </div>` : ''}
-      <div class="memory-archive-head"><b>Твой архив</b><span>${enabled ? 'используется в новых ответах' : 'сохранён и скрыт от Оракула'}</span></div>
+      <div class="memory-archive-head"><b>${esc(profileT('archiveTitle'))}</b><span>${esc(enabled ? profileT('archiveUsed') : profileT('archiveHidden'))}</span></div>
       ${archive}`;
 
     const search = el.querySelector('#mem-search');
@@ -452,39 +450,39 @@
   app.openAllReadings = async function() {
     let rows = this._readingsCache;
     if (!rows) { try { rows = await api('/api/tarot/history'); } catch (e) { rows = []; } }
-    const items = (rows || []).map(r => `
+      const items = (rows || []).map(r => `
       <div class="tight-card" data-act="reading" data-id="${r.id}">
         <span class="tc-emoji">${r.cards && r.cards[0] ? r.cards[0].emoji : '🎴'}</span>
         <div style="flex:1;min-width:0">
-          <div class="tc-title">${esc(r.question || 'Расклад')}</div>
+          <div class="tc-title">${esc(r.question || profileT('readingFallback'))}</div>
           <div class="tc-meta">${fmtDay(r.created_at.slice(0, 10))} · ${esc(r.spread || '')}</div>
         </div>
         <span class="tc-open">›</span>
       </div>`).join('');
-    this.showModal(`<h3>Все расклады</h3><button class="m-close" data-act="modal-close">✕</button>
-      <div style="margin-top:8px">${items || `<div style="color:var(--text-faint);font-size:13px;text-align:center;padding:6px 0">Раскладов пока нет</div>
-        <button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Вытянуть первую карту 🎴</button>`}</div>`);
+    this.showModal(`<h3>${esc(profileT('allReadingsTitle'))}</h3><button class="m-close" data-act="modal-close">✕</button>
+      <div style="margin-top:8px">${items || `<div style="color:var(--text-faint);font-size:13px;text-align:center;padding:6px 0">${esc(profileT('readingsNone'))}</div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">${esc(profileT('firstCard'))}</button>`}</div>`);
   };
 
   // Полная натальная карта: планеты, узлы (Раху/Кету/Лилит), дома, аспекты, ASC/MC
 
   app.openFullChart = async function() {
-    this.showModal(`<h3>🌌 Полная натальная карта</h3><button class="m-close" data-act="modal-close">✕</button>
+    this.showModal(`<h3>${esc(profileT('fullChartTitle'))}</h3><button class="m-close" data-act="modal-close">✕</button>
       <div id="fc-body" style="margin-top:8px"><div class="loader-ring"></div></div>`);
     try {
       const c = await api('/api/chart');
       this.chart = c; // B2: для шаринга из полной карты
       const exactChart = c.precision === 'exact';
-      const precisionNotice = !exactChart ? `<div class="chart-precision-note"><b>Точность карты</b><span>${esc(c.note || 'Время рождения не указано.')}</span><small>Планеты и аспекты рассчитаны по дате. ASC, MC и дома не отображаются без времени рождения.</small></div>` : '';
+      const precisionNotice = !exactChart ? `<div class="chart-precision-note"><b>${esc(profileT('chartPrecision'))}</b><span>${esc(c.note || profileT('chartNoTimeShort'))}</span><small>${esc(profileT('chartPrecisionCopy'))}</small></div>` : '';
       const row = (ico, name, val) => `<div class="fc-row"><span class="fc-ico">${ico}</span><span class="fc-name">${esc(name)}</span><span class="fc-val">${val}</span></div>`;
       const pRows = (c.planets || []).map(p =>
-        row(SIGNS[p.sign] || '•', p.name, `${esc(p.sign)} ${p.deg}°${exactChart && p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ℞' : ''}`)).join('');
+        row(SIGNS[p.sign] || '•', p.name, `${esc(p.sign)} ${p.deg}°${exactChart && p.house ? ' · ' + profileT('house') + ' ' + p.house : ''}${p.retro ? ' ℞' : ''}`)).join('');
       const nRows = (c.nodes || []).map(n =>
-        row('☊', n.name, `${esc(n.sign)} ${n.deg}°${exactChart && n.house ? ' · дом ' + n.house : ''}${n.retro ? ' ℞' : ''}`)).join('');
+        row('☊', n.name, `${esc(n.sign)} ${n.deg}°${exactChart && n.house ? ' · ' + profileT('house') + ' ' + n.house : ''}${n.retro ? ' ℞' : ''}`)).join('');
       const hRows = (c.houses || []).map(h =>
-        row(`${h.n}`, `${h.n}-й дом`, `${esc(h.sign)} ${h.deg}°`)).join('');
+        row(`${h.n}`, `${h.n} ${profileT('house')}`, `${esc(h.sign)} ${h.deg}°`)).join('');
       const aRows = (c.aspects || []).slice(0, 12).map(a =>
-        row(a.glyph || '◈', `${a.p1} — ${a.p2}`, `${a.aspect}${a.orb != null ? ' · орб ' + a.orb + '°' : ''}`)).join('');
+        row(a.glyph || '◈', `${a.p1} — ${a.p2}`, `${a.aspect}${a.orb != null ? ' · ' + profileT('orb') + ' ' + a.orb + '°' : ''}`)).join('');
       document.getElementById('fc-body').innerHTML = `
         ${precisionNotice}
         <div class="fc-hero" style="margin-bottom:6px;display:flex;justify-content:center;align-items:center;background:rgba(14,13,30,.7);border-radius:var(--r-m);padding:10px;box-shadow:var(--sh-card);">
@@ -493,19 +491,19 @@
         <div class="fc-card">
           <span class="fc-ico">☉</span>
           <div class="fc-card-body">
-            <h4 class="fc-t">${exactChart ? 'Твой знак и восход' : 'Твоя солнечная основа'}</h4>
-            <div class="fc-desc"><b>Солнце ${esc(c.sun && c.sun.sign || '')}</b> (${esc(c.sun && c.sun.element || '')}) — твоя суть, воля и энергия.${exactChart ? ` <b>Асцендент ${esc(c.ascendant && c.ascendant.sign || '—')}</b> (${esc(c.ascendant && c.ascendant.deg ? Math.round(c.ascendant.deg) : '—')}°) — как тебя видят со стороны. <b>MC ${esc(c.mc && c.mc.sign || '—')}</b> — направление и цель.` : ' Время рождения не указано, поэтому не добавляем предположения об асценденте и направлении MC.'}</div>
+            <h4 class="fc-t">${esc(exactChart ? profileT('signAndRise') : profileT('solarFoundation'))}</h4>
+            <div class="fc-desc"><b>${esc(profileT('sun'))} ${esc(c.sun && c.sun.sign || '')}</b> (${esc(c.sun && c.sun.element || '')}) — ${esc(profileT('signRiseCopy'))}${exactChart ? ` <b>${esc(profileT('ascendant'))} ${esc(c.ascendant && c.ascendant.sign || '—')}</b> (${esc(c.ascendant && c.ascendant.deg ? Math.round(c.ascendant.deg) : '—')}°) — ${esc(profileT('ascendantCopy'))} <b>MC ${esc(c.mc && c.mc.sign || '—')}</b> — ${esc(profileT('mcCopy'))}` : ` ${esc(profileT('noTimeAssumptions'))}`}</div>
           </div>
         </div>
         <div class="fc-card">
           <span class="fc-ico">🌌</span>
           <div class="fc-card-body">
-            <h4 class="fc-t">Планеты</h4>
+            <h4 class="fc-t">${esc(profileT('planets'))}</h4>
             <div class="fc-planets-grid">
               ${(c.planets || []).map(p => `
               <div class="fc-planet">
                 <span class="pl-ico">${SIGNS[p.sign] || '•'}</span>
-                <span class="pl-info"><span class="pl-t">${esc(p.name)} · ${esc(p.sign)}${exactChart && p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ℞' : ''}</span><span class="pl-d">${p.deg ? p.deg + '°' : ''}</span></span>
+                <span class="pl-info"><span class="pl-t">${esc(p.name)} · ${esc(p.sign)}${exactChart && p.house ? ' · ' + esc(profileT('house')) + ' ' + p.house : ''}${p.retro ? ' ℞' : ''}</span><span class="pl-d">${p.deg ? p.deg + '°' : ''}</span></span>
               </div>`).join('')}
             </div>
           </div>
@@ -513,22 +511,22 @@
         <div class="fc-card">
           <span class="fc-ico">☊</span>
           <div class="fc-card-body">
-            <h4 class="fc-t">Узлы и точки</h4>
+            <h4 class="fc-t">${esc(profileT('nodes'))}</h4>
             <div class="fc-planets-grid">
               ${(c.nodes || []).map(n => {
-                const label = n.name && n.name.includes('Раху') ? 'Предназначение этой жизни (Раху — северный узел)' : (n.name && n.name.includes('Кету') ? 'Кармический багаж (Кету — южный узел)' : n.name);
+                const label = n.name && n.name.includes('Раху') ? profileT('rahu') : (n.name && n.name.includes('Кету') ? profileT('ketu') : n.name);
                 return `<div class="fc-planet" style="min-width:190px;max-width:none">
                   <span class="pl-ico">☊</span>
-                  <span class="pl-info"><span class="pl-t">${esc(n.sign)} ${n.deg}°${exactChart && n.house ? ' · дом ' + n.house : ''}${n.retro ? ' ℞' : ''}</span>
-                  <span class="pl-d">${label}</span>
+                  <span class="pl-info"><span class="pl-t">${esc(n.sign)} ${n.deg}°${exactChart && n.house ? ' · ' + esc(profileT('house')) + ' ' + n.house : ''}${n.retro ? ' ℞' : ''}</span>
+                  <span class="pl-d">${esc(label)}</span>
                 </span>
                 </div>`;
               }).join('')}
               ${(c.nodes || []).find(n => n.name && n.name.includes('Лилит')) ? `
               <div class="fc-planet" style="min-width:190px;max-width:none">
                 <span class="pl-ico">⚫</span>
-                <span class="pl-info"><span class="pl-t">Лилит · тёмная Луна</span>
-                <span class="pl-d">Зона подсознательных желаний, тени, страсти и скрытой силы.</span>
+                <span class="pl-info"><span class="pl-t">${esc(profileT('lilith'))}</span>
+                <span class="pl-d">${esc(profileT('lilithCopy'))}</span>
                 </span>
               </div>` : ''}
             </div>
@@ -537,37 +535,37 @@
         <div class="fc-card">
           <span class="fc-ico">◈</span>
           <div class="fc-card-body">
-            <h4 class="fc-t">Аспекты (до 8)</h4>
-            <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px">Ключевые углы между планетами — как они разговаривают друг с другом.</div>
+            <h4 class="fc-t">${esc(profileT('aspects'))}</h4>
+            <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px">${esc(profileT('aspectsCopy'))}</div>
             <div class="asp-legend" style="margin-bottom:8px">
-              <span class="asp-chip" style="color:var(--gold)">☌ соединение</span><span class="asp-chip" style="color:var(--gold)">⚹ секстиль</span><span class="asp-chip" style="color:var(--gold)">△ трин</span>
-              <span class="asp-chip" style="color:var(--violet)">□ квадрат</span><span class="asp-chip" style="color:#ff6b6b">☍ оппозиция</span>
+              <span class="asp-chip" style="color:var(--gold)">☌ ${esc(profileT('conjunction'))}</span><span class="asp-chip" style="color:var(--gold)">⚹ ${esc(profileT('sextile'))}</span><span class="asp-chip" style="color:var(--gold)">△ ${esc(profileT('trine'))}</span>
+              <span class="asp-chip" style="color:var(--violet)">□ ${esc(profileT('square'))}</span><span class="asp-chip" style="color:#ff6b6b">☍ ${esc(profileT('opposition'))}</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:5px">
               ${(c.aspects || []).slice(0, 8).map(a => `
-              <span class="chip" style="font-size:11.5px;padding:4px 8px">${esc(a.glyph || '◈')} <b>${esc(a.p1)} — ${esc(a.p2)}</b> · <em style="color:var(--text-faint)">${esc(a.aspect)}</em> · орб ${esc(a.orb != null ? a.orb + '°' : '')}</span>`).join('')}
+              <span class="chip" style="font-size:11.5px;padding:4px 8px">${esc(a.glyph || '◈')} <b>${esc(a.p1)} — ${esc(a.p2)}</b> · <em style="color:var(--text-faint)">${esc(a.aspect)}</em> · ${esc(profileT('orb'))} ${esc(a.orb != null ? a.orb + '°' : '')}</span>`).join('')}
             </div>
           </div>
         </div>
         ${exactChart ? `<div class="fc-card">
           <span class="fc-ico">🏠</span>
           <div class="fc-card-body">
-            <h4 class="fc-t">Дома</h4>
+            <h4 class="fc-t">${esc(profileT('houses'))}</h4>
             <div style="font-size:12px;color:var(--text-dim);line-height:1.55">
-              ${(c.houses || []).map((h, i) => `<b style="color:var(--gold-bright)">${i + 1}-й дом · ${esc(h.sign || '')}</b> ${h.deg ? h.deg + '°' : ''}${i < 11 ? ' · ' : ''}`).join('')}
+              ${(c.houses || []).map((h, i) => `<b style="color:var(--gold-bright)">${i + 1} ${esc(profileT('house'))} · ${esc(h.sign || '')}</b> ${h.deg ? h.deg + '°' : ''}${i < 11 ? ' · ' : ''}`).join('')}
             </div>
           </div>
         </div>` : ''}
-        <button class="btn btn-primary" style="margin-top:14px" data-act="chat" data-chat="astro">Спросить Астролога про карту</button>
-        <button class="btn btn-primary" style="width:100%;margin-top:8px" data-act="share-chart">📸 Сохранить карту в сторис</button>
-        <button class="btn btn-ghost" style="width:100%;margin-top:8px" data-act="fc-explain">🧠 Разбор простыми словами</button>
+        <button class="btn btn-primary" style="margin-top:14px" data-act="chat" data-chat="astro">${esc(profileT('askAstrologer'))}</button>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px" data-act="share-chart">${esc(profileT('shareChart'))}</button>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px" data-act="fc-explain">${esc(profileT('simpleReading'))}</button>
         <div id="fc-explain" style="margin-top:12px"></div>`;
     } catch (e) {
       const body = document.getElementById('fc-body');
       if (body) body.innerHTML = this.softEmpty({
-        icon: '🌌', eyebrow: 'Полная карта', title: 'Карта пока недоступна',
-        copy: 'Проверь соединение и попробуй открыть её чуть позже.', tone: 'recovery',
-        action: '<button class="btn btn-ghost" data-act="modal-close">Закрыть</button>'
+        icon: '🌌', eyebrow: profileT('fullChartTitle'), title: profileT('chartUnavailable'),
+        copy: profileT('chartUnavailableCopy'), tone: 'recovery',
+        action: `<button class="btn btn-ghost" data-act="modal-close">${esc(profileT('close'))}</button>`
       });
     }
   };
@@ -588,15 +586,15 @@
       box.innerHTML = '<div class="glass fc-explain">' + richMd(r.text) + '</div>';
     } catch (e) {
       box.innerHTML = this.softEmpty({
-        icon: '✦', eyebrow: 'Разбор карты', title: 'Смысл пока не раскрылся',
-        copy: 'Попробуй ещё раз немного позже — твоя карта никуда не исчезнет.', tone: 'recovery'
+        icon: '✦', eyebrow: profileT('chartReading'), title: profileT('chartReadingUnavailable'),
+        copy: profileT('chartReadingUnavailableCopy'), tone: 'recovery'
       });
     }
   };
 
   app.openGender = function() {
     const current = (this.me && this.me.gender) || null;
-    this.showModal(`<h3>${esc(t('gender'))}</h3><button class="m-close" data-act="modal-close" aria-label="Close">✕</button>
+    this.showModal(`<h3>${esc(t('gender'))}</h3><button class="m-close" data-act="modal-close" aria-label="${esc(profileT('closeAria'))}">✕</button>
       <p class="modal-soft-copy">${esc(t('genderCopy'))}</p>
       <div class="language-picker gender-picker">
         <button class="language-choice ${current === 'f' ? 'active' : ''}" data-act="set-gender" data-gender="f"><b>${esc(t('female'))} ♀</b><small>${esc(t('femaleCopy'))}</small></button>

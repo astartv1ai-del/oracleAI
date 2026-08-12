@@ -19,8 +19,8 @@
 Ограничения SQLite, которые формируют правила игры:
 - `ADD COLUMN` умеет только константный DEFAULT — никаких `CURRENT_TIMESTAMP`;
 - `ADD COLUMN` не умеет UNIQUE/PRIMARY KEY: такие поля вводятся только новой
-  таблицей в `schema.py` (для существующих — через пересоздание, которого мы
-  пока сознательно избегаем).
+  таблицей в `schema.py`; редкое изменение ключа существующей таблицы требует
+  отдельной именованной миграции с атомарным пересозданием таблицы.
 """
 from __future__ import annotations
 
@@ -60,6 +60,7 @@ COLUMNS: dict[str, dict[str, str]] = {
         "last_used": "TEXT",
     },
     "forecasts": {
+        "lang": "TEXT DEFAULT 'ru'",   # язык текста прогноза (ru|en)
         "audio_file_id": "TEXT",       # file_id озвучки в Telegram (переиспользуем)
     },
     "diary": {
@@ -198,6 +199,41 @@ async def _m_users_sub_level_codes(db) -> None:
         (utcnow_str(),))
 
 
+async def _m_forecasts_language_key(db) -> None:
+    """Делает язык частью ключа прогнозов без потери ранее созданного кэша.
+
+    До v80 строка `(tg_id, day)` была единственной: английский прогноз заменял
+    русский и наоборот. SQLite не умеет расширять PRIMARY KEY через ALTER,
+    поэтому переносим таблицу внутри одной write-транзакции. Повторный запуск
+    безопасен: в новой схеме миграция сразу завершится.
+    """
+    cur = await db.execute("PRAGMA table_info(forecasts)")
+    columns = await cur.fetchall()
+    primary_key = [row[1] for row in sorted(columns, key=lambda row: row[5])
+                   if row[5]]
+    if primary_key == ["tg_id", "day", "lang"]:
+        return
+
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        await db.execute("DROP TABLE IF EXISTS forecasts_v81")
+        await db.execute(
+            "CREATE TABLE forecasts_v81 ("
+            "tg_id INTEGER, day TEXT, text TEXT, lang TEXT DEFAULT 'ru', "
+            "audio_file_id TEXT, created_at TEXT, "
+            "PRIMARY KEY (tg_id, day, lang))")
+        await db.execute(
+            "INSERT INTO forecasts_v81(tg_id, day, text, lang, audio_file_id, created_at) "
+            "SELECT tg_id, day, text, COALESCE(NULLIF(lang, ''), 'ru'), "
+            "audio_file_id, created_at FROM forecasts")
+        await db.execute("DROP TABLE forecasts")
+        await db.execute("ALTER TABLE forecasts_v81 RENAME TO forecasts")
+    except Exception:
+        await db.rollback()
+        raise
+    await db.commit()
+
+
 # (имя, функция). Имя навсегда — по нему стоит отметка о применении.
 DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_07_referrals_from_ref_by", _m_referrals_from_ref_by),
@@ -205,6 +241,7 @@ DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_07_reading_spread_from_question", _m_reading_spread_from_question),
     ("2026_07_events_day_backfill", _m_events_day_backfill),
     ("2026_07_users_sub_level_codes", _m_users_sub_level_codes),
+    ("2026_08_forecasts_language_key", _m_forecasts_language_key),
 ]
 
 TRACKER = """
