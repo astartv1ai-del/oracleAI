@@ -267,7 +267,7 @@ SYNASTRY_TTL = timedelta(hours=24)
 
 def _synastry_fresh(cached) -> bool:
     """Свежий ли кеш синастрии. Сломанная дата — мисс: пересоберём без риска."""
-    created = cached.get("created_at") or ""
+    created = cached["created_at"] or ""
     try:
         age = datetime.now(timezone.utc) - datetime.fromisoformat(created)
         return age <= SYNASTRY_TTL

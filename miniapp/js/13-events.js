@@ -12,7 +12,10 @@ document.addEventListener('click', e => {
   switch (act) {
     case 'go': app.go(v.goto); break;
     case 'chat': app.openChat(v.chat); break;
-    case 'chat-fn': app.openChat(v.chat, () => app[v.fn] && app[v.fn]()); break;
+    case 'chat-fn':
+      app.setToolbox(false);
+      app.openChat(v.chat, () => app[v.fn] && app[v.fn]());
+      break;
     case 'back': app.closeChat(); break;
     case 'clear': app.clearThread(); break;
     case 'feature': haptic('light'); app[v.fn] && app[v.fn](); break;

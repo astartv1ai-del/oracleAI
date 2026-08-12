@@ -39,6 +39,15 @@
 }
 .send-btn:hover { transform: scale(1.06); }
 .send-btn:active { transform: scale(.96); }
+.tool-btn {
+  border: none; border-radius: 50%; cursor: pointer; flex: none;
+  width: 40px; height: 40px; padding: 0; display: grid; place-items: center;
+  font-size: 17px; color: var(--gold-bright);
+  background: rgba(230,193,120,.12); border: 1px solid rgba(230,193,120,.4);
+  transition: .2s var(--ease);
+}
+.tool-btn:hover { background: rgba(230,193,120,.22); transform: scale(1.06); }
+.tool-btn:active { transform: scale(.94); }
 .suggest-chips { display: flex; gap: 6px; overflow-x: auto; padding: 9px 4px 0; }
 .suggest-chips .chip { flex: none; }
 
@@ -69,6 +78,11 @@
   margin-bottom: 12px; font-weight: 600; letter-spacing: .4px;
   display: flex; align-items: center; gap: 8px;
 }
+.chat-widget .w-sub {
+  font-size: 13px; color: var(--text-dim); line-height: 1.55;
+  margin: -5px 0 12px;
+}
+.chat-widget .w-sub b { color: var(--gold-bright); }
 
 /* таро-карты — выразительнее */
 

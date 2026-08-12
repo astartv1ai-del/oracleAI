@@ -181,11 +181,10 @@
     const messages = this.chat.messages;
     const busy = this.chat.busy;
     const pending = this.chat.pending;
-    const features = FEATURES[a.code] || [];
     const agents = this.agents.length ? this.agents : AGENT_FALLBACK;
     const suggest = (TEMPLATES[a.code] || a.suggestions || []).slice(0, 3);
     const last = messages[messages.length - 1];
-    const cheer = messages.length > 1 && last.role === 'assistant' && !busy && !last.text.startsWith('😔');
+    const cheer = messages.length > 1 && last.role === 'assistant' && !busy && !(last.text || '').startsWith('😔');
 
     // виджет-сообщение (спидометр любви и т.п.) — это готовый HTML, не текст:
     // rich() его экранировал бы, поэтому рендерим как есть в .msg.assistant
@@ -233,15 +232,7 @@
             <span class="atab ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}">
               <span class="atab-face"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span>${esc(b.name.split(' ')[0])}
             </span>`).join('')}
-          <span class="atab atab-x" data-act="tool-toggle" title="Все инструменты">🧰</span>
         </div>
-        ${features.length ? `
-        <div class="toolbar" id="chat-toolbar">
-          ${features.map(f => `
-            <span class="tchip" data-act="tool-fn" data-fn="${f.h}">
-              <span class="tchip-ico">${f.e}</span>${esc(f.t)}
-            </span>`).join('')}
-        </div>` : ''}
         <div class="chat-messages" id="chat-messages">
           ${introHtml}
           ${body}
@@ -250,6 +241,7 @@
         </div>
         <div class="composer">
           <div class="composer-top">
+            <button class="tool-btn" id="tool-btn" data-act="tool-toggle" title="Все инструменты" aria-label="Все инструменты">🧰</button>
             <input class="ipt" id="chat-input" placeholder="Спроси ${esc(a.name)}…" autocomplete="off" value="${esc(this.chat.draft || '')}"/>
             <button class="send-btn" id="send-btn" data-act="send">➤</button>
           </div>
@@ -262,17 +254,29 @@
           <div class="te-mask" data-act="tool-toggle"></div>
           <div class="te-sheet">
             <div class="te-handle"></div>
-            <div class="te-title">🧰 Инструменты<button class="te-close" data-act="tool-toggle">✕</button></div>
-            ${agents.map(b => `
-              <div class="te-group">
-                <div class="te-agent" style="--ac:${esc(b.accent || 'var(--gold)')}">${esc(b.name)}</div>
-                <div class="te-grid">
-                  ${(FEATURES[b.code] || []).map(f => `
-                    <button class="te-chip" data-act="chat-fn" data-chat="${b.code}" data-fn="${f.h}">
-                      <span class="te-ico">${f.e}</span>${esc(f.t)}
-                    </button>`).join('')}
-                </div>
-              </div>`).join('')}
+            <div class="te-head">
+              <span class="te-title">🧰 Все инструменты</span>
+              <button class="te-close" data-act="tool-toggle" aria-label="Закрыть">✕</button>
+            </div>
+            <div class="te-body">
+              ${agents.map(b => {
+                const feats = FEATURES[b.code] || [];
+                if (!feats.length) return '';
+                return `
+                <div class="te-group">
+                  <div class="te-agent" style="--ac:${esc(b.accent || 'var(--gold)')}">
+                    <span class="te-av"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span>
+                    <span>${esc(b.name)}</span>
+                  </div>
+                  <div class="te-grid">
+                    ${feats.map(f => `
+                      <button class="te-chip" data-act="chat-fn" data-chat="${b.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
+                        <span class="te-ico">${f.e}</span><span class="te-chip-t">${esc(f.t)}</span>
+                      </button>`).join('')}
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
           </div>
         </div>
       </div>`;
@@ -307,8 +311,9 @@
 
       case 'tarot-cards':
         return `<div class="msg assistant">
-          Карты вытянуты. Твой вопрос: <b>«${esc(p.question)}»</b>
           <div class="chat-widget">
+            <div class="w-title">🎴 Карты вытянуты</div>
+            ${p.question ? `<div class="w-sub">Твой вопрос: <b>«${esc(p.question)}»</b></div>` : ''}
             <div class="tarot-grid sh-${esc(p.spread || 'three')}">
               ${p.positions.map((pos, i) => {
                 const c = p.cards[i] || {};
@@ -339,8 +344,9 @@
 
       case 'compat':
         return `<div class="msg assistant">
-          Расскажи, кто твой партнёр — и я разложу вашу совместимость по картам.
           <div class="chat-widget">
+            <div class="w-title">💞 Совместимость</div>
+            <div class="w-sub">Расскажи, кто твой партнёр — и я разложу вашу совместимость по картам</div>
             <div class="rel-chips">
               ${[['love','💞','Вторая половинка'],['friend','💛','Подруга / Друг'],['work','💼','Коллега / Дело'],['family','🏡','Родные']].map(([k, e, t]) =>
                 `<span class="rel-chip${p.relation === k ? ' sel' : ''}" data-act="compat-rel" data-rel="${k}">${e} ${t}</span>`).join('')}
