@@ -30,6 +30,15 @@ TRIAL_OVER_FALLBACK = (
     "💫 Наша связь истончилась — твой доступ завершился.\n"
     "Я сохранила всё, что знаю о тебе. Продли связь со Вселенной 🎟"
 )
+TRIAL_OVER_FALLBACK_EN = (
+    "💫 Our connection has grown thin — your access has ended.\n"
+    "I have kept everything you shared. Renew your connection with the Universe 🎟"
+)
+LIMIT_REACHED_FALLBACK_EN = (
+    "🌙 <i>The stars are resting and the threads of possibility have grown quiet...</i>\n\n"
+    "You have reached today's question limit. Save your next question for dawn — "
+    "or open the space with Crystals."
+)
 
 
 class Ask(StatesGroup):
@@ -70,17 +79,24 @@ async def _send_long(message: Message, text: str, reply_markup=None) -> None:
 
 async def _deny(message: Message, db, verdict) -> None:
     """Отказ — это тоже сценарий продажи: объясняем и даём выходы."""
+    user = await users.get(db, message.chat.id)
+    lang = "en" if user and user["lang"] == "en" else "ru"
     if verdict.reason == "sub_over":
-        text = await content.get_text(db, "copy", "sub_over", TRIAL_OVER_FALLBACK)
-        await message.answer(text, reply_markup=limit_kb(0, has_crystals=False))
+        text = await content.get_text(
+            db, "copy", "sub_over",
+            TRIAL_OVER_FALLBACK_EN if lang == "en" else TRIAL_OVER_FALLBACK,
+            lang=lang)
+        await message.answer(text, reply_markup=limit_kb(0, has_crystals=False, lang=lang))
         return
     allowance = verdict.allowance
     cost = allowance.emergency_cost if allowance else 20
     has = bool(allowance and allowance.crystals >= cost)
     text = await content.get_text(
         db, "copy", "limit_reached",
-        "🌙 <i>Звёзды утомлены...</i>\n\nВопросы на сегодня исчерпаны, милая.")
-    await message.answer(text, reply_markup=limit_kb(cost, has_crystals=has))
+        (LIMIT_REACHED_FALLBACK_EN if lang == "en" else
+         "🌙 <i>Звёзды утомлены...</i>\n\nВопросы на сегодня исчерпаны, друг."),
+        lang=lang)
+    await message.answer(text, reply_markup=limit_kb(cost, has_crystals=has, lang=lang))
 
 
 # ─────────────────────────── выбор собеседника ────────────────────────────────

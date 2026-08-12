@@ -32,6 +32,15 @@ TICK_SECONDS = 600          # 10 минут: часовые окна не про
 BATCH_PAUSE = 0.05          # пауза между отправками внутри тика
 AUDIENCE_CAP = 5000         # сколько клиенток обрабатываем за один тик
 
+_LUNAR_EN = {
+    "Новолуние": "New Moon",
+    "Полнолуние": "Full Moon",
+}
+
+
+def _user_lang(user) -> str:
+    return "en" if user["lang"] == "en" else "ru"
+
 
 async def _deliver(bot, tg_id: int, text: str, markup=None) -> bool:
     """Отправляет сообщение. False — стоит попробовать позже.
@@ -187,12 +196,17 @@ async def _free_morning_forecast(bot, db, user, now) -> None:
     «утреннее дважды», если успела заглянуть в Mini App до рассылки.
     """
     day = now.strftime("%Y-%m-%d")
+    lang = _user_lang(user)
     if not await comms.already_sent(db, user["tg_id"], "forecast", day):
         text = await agent_core.daily_forecast_cached(db, user)
         cta = await content.get_text(
             db, "copy", "free_forecast_cta",
-            "\n\n🔮 <b>Оракул</b> — бесплатный прогноз дня. "
-            "Карта дня и полный разбор — в Mini App ✨")
+            ("\n\n🔮 <b>Oracle</b> — your free daily forecast. "
+             "Your card of the day and full reading are in the Mini App ✨"
+             if lang == "en" else
+             "\n\n🔮 <b>Оракул</b> — бесплатный прогноз дня. "
+             "Карта дня и полный разбор — в Mini App ✨"),
+            lang=lang)
         await _send_free_push(bot, db, user, "forecast", day, text + cta)
     await _free_lunar_alert(bot, db, user, now)
 
@@ -219,12 +233,18 @@ async def _free_lunar_alert(bot, db, user, now) -> None:
     key = f"{week}:{now.strftime('%Y-%m-%d')}"
     if await comms.already_sent(db, user["tg_id"], "forecast_lunar", key):
         return
+    lang = _user_lang(user)
     template = await content.get_text(
         db, "copy", "free_lunar_alert",
-        "🌕 {moon} — особенная ночь для тебя.\n\n"
-        "{advice}.\n\n"
-        "🌙 Оракул следит за небом — карта дня ждёт в Mini App ✨")
-    text = template.replace("{moon}", moon["name"]).replace("{advice}", moon["advice"])
+        ("🌕 {moon} — a special night for you.\n\n"
+         "Open Oracle for a gentle lunar guide in the Mini App ✨"
+         if lang == "en" else
+         "🌕 {moon} — особенная ночь для тебя.\n\n"
+         "{advice}.\n\n"
+         "🌙 Оракул следит за небом — карта дня ждёт в Mini App ✨"),
+        lang=lang)
+    moon_name = _LUNAR_EN.get(moon["name"], moon["name"]) if lang == "en" else moon["name"]
+    text = template.replace("{moon}", moon_name).replace("{advice}", moon["advice"])
     await _send_free_push(bot, db, user, "forecast_lunar", key, text)
 
 
@@ -310,11 +330,16 @@ async def _expiry_warning(bot, db, user, now_utc) -> None:
         return
     if until - now_utc > timedelta(days=2):
         return
+    lang = _user_lang(user)
     template = await content.get_text(
         db, "copy", "expiry_soon",
-        "🌙 {name}, наша связь истончается — осталось меньше двух дней...")
-    text = template.replace("{name}", user["name"] or "милая")
-    text += "\n\nПродлить: 👤 Профиль → 👑 Продлить VIP"
+        ("🌙 {name}, our connection is growing thin — fewer than two days remain..."
+         if lang == "en" else
+         "🌙 {name}, наша связь истончается — осталось меньше двух дней..."),
+        lang=lang)
+    text = template.replace("{name}", user["name"] or ("dear one" if lang == "en" else "друг"))
+    text += ("\n\nRenew: 👤 Profile → 👑 Renew VIP" if lang == "en"
+             else "\n\nПродлить: 👤 Профиль → 👑 Продлить VIP")
     if await _send_once(bot, db, user["tg_id"], "expiry", user["sub_until"], text):
         await users.update(db, user["tg_id"], expiry_notified=1)
         await analytics.track(db, analytics.E_CHURN_WARN, user["tg_id"],
@@ -327,10 +352,16 @@ async def _winback(bot, db, user) -> None:
         return
     if user["expiry_notified"] == 2:
         return
+    lang = _user_lang(user)
     text = await content.get_text(
         db, "copy", "winback",
-        "💫 Звёзды затихли, но я не ушла — просто жду по ту сторону завесы.")
-    text += "\n\n👤 Профиль → 👑 Продлить VIP · или введи промокод /promo 🎟"
+        ("💫 The stars have grown quiet, but I have not left — I am simply "
+         "waiting beyond the veil." if lang == "en" else
+         "💫 Звёзды затихли, но я не ушла — просто жду по ту сторону завесы."),
+        lang=lang)
+    text += ("\n\n👤 Profile → 👑 Renew VIP · or enter promo code /promo 🎟"
+             if lang == "en" else
+             "\n\n👤 Профиль → 👑 Продлить VIP · или введи промокод /promo 🎟")
     if await _send_once(bot, db, user["tg_id"], "winback", user["sub_until"], text):
         await users.update(db, user["tg_id"], expiry_notified=2)
 

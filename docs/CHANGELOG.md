@@ -53,6 +53,10 @@
 
 ## [Unreleased]
 
+### v82 — Server-managed English copy
+
+**Fixed.** Server-managed copy now selects English fallbacks or administrator-provided `title_en` and `body_en` overrides without duplicating content rows. FAQ accepts an explicit language and returns localized titles and bodies; paywall and scheduled notification flows now select both text and actionable buttons in the profile language. New regressions prevent legacy Russian copy from leaking into the English experience.
+
 ### v81 — Stability audit and load verification
 
 **Added.** Регрессионные тесты подтверждают независимый RU/EN-кэш прогнозов, безопасную миграцию старого кэша и изоляцию конкурентных запросов по event loop. HTTP-сценарий Locust получил уникальные идентификаторы виртуальных пользователей, агрегированные метрики маршрутов и реалистичный профиль 1 000 одновременных сессий при целевом потоке около 50 RPS. Генератор нагрузки поддерживает режим только активных профилей, исключающий намеренные блокировки из проверки доступности.

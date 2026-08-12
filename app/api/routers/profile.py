@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ...config import settings
@@ -228,7 +228,9 @@ async def forget(memory_id: int, user=Depends(current_user), db=Depends(get_db))
 
 
 @router.get("/faq")
-async def faq(db=Depends(get_db)):
+async def faq(lang: Literal["ru", "en"] = Query("ru"), db=Depends(get_db)):
+    """Публичный FAQ; язык выбирается явно, поэтому endpoint остаётся без auth."""
     items = await content.list_content(db, "faq", active_only=True)
+    localized = [content.localized_item(item, lang) for item in items]
     return [{"code": i["code"], "title": i["title"], "body": i["body"]}
-            for i in items]
+            for i in localized]

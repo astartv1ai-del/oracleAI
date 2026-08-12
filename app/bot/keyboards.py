@@ -124,16 +124,20 @@ def spread_offer_kb(item: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def limit_kb(cost: int, *, has_crystals: bool) -> InlineKeyboardMarkup:
-    """Лимит исчерпан. Порядок кнопок = порядок выгоды для клиентки."""
+def limit_kb(cost: int, *, has_crystals: bool, lang: str = "ru") -> InlineKeyboardMarkup:
+    """Лимит исчерпан. Порядок кнопок = порядок выгоды для пользователя."""
+    en = lang == "en"
     rows = []
     if has_crystals:
         rows.append([InlineKeyboardButton(
-            text=f"🔮 Экстренный вопрос · ✦{cost}", callback_data="emergency")])
+            text=(f"🔮 Emergency question · ✦{cost}" if en
+                  else f"🔮 Экстренный вопрос · ✦{cost}"), callback_data="emergency")])
     rows += [
-        [InlineKeyboardButton(text="👑 Больше вопросов в день", callback_data="plans")],
-        [InlineKeyboardButton(text="💎 Купить Кристаллы", callback_data="shop_crystals")],
-        [InlineKeyboardButton(text="← Меню", callback_data=CB_MENU)],
+        [InlineKeyboardButton(text=("👑 More questions each day" if en
+                                    else "👑 Больше вопросов в день"), callback_data="plans")],
+        [InlineKeyboardButton(text=("💎 Buy Crystals" if en else "💎 Купить Кристаллы"),
+                              callback_data="shop_crystals")],
+        [InlineKeyboardButton(text=("← Menu" if en else "← Меню"), callback_data=CB_MENU)],
     ]
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

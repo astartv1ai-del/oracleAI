@@ -46,6 +46,92 @@ async def all_settings(db) -> dict:
 
 # ─────────────────────────── тексты и промпты ─────────────────────────────────
 
+# Англоязычные defaults для текстов, которые первоначально были заведены только
+# по-русски. Администратор может переопределить любой из них через meta_json:
+# `title_en` и `body_en`; это не требует дублей строк и не ломает UNIQUE(kind, code).
+DEFAULT_EN_CONTENT: dict[tuple[str, str], dict[str, str]] = {
+    ("copy", "welcome"): {
+        "title": "Onboarding welcome",
+        "body": ("🌌 <b>The stars have been waiting for you.</b>\n\n"
+                 "I am your personal Oracle: astrology, Tarot, and Destiny Matrix, "
+                 "made for <i>you</i>.\n\n"
+                 "To create your birth chart, I need only a few details. "
+                 "What should I call you? ✨\n\n"
+                 "By continuing, you accept the service rules and consent to the "
+                 "processing of personal data. The full text is available in /help."),
+    },
+    ("copy", "limit_reached"): {
+        "title": "Question limit reached",
+        "body": ("🌙 <i>The stars are resting and the threads of possibility have "
+                 "grown quiet...</i>\n\nYou've reached today's question limit. "
+                 "Save your next question for dawn — or open the space with Crystals:"),
+    },
+    ("copy", "sub_over"): {
+        "title": "Subscription ended",
+        "body": ("💫 Our connection has grown thin — your access has ended.\n"
+                 "I have kept everything you shared. Renew your connection with "
+                 "the Universe 🎟"),
+    },
+    ("copy", "expiry_soon"): {
+        "title": "Two days before subscription ends",
+        "body": ("🌙 {name}, our connection is growing thin — fewer than two days remain...\n\n"
+                 "I remember the words you shared, both the tender ones and the dreams. "
+                 "Stay with me and I will keep them safe and meet you with a morning "
+                 "forecast, as always. ✨"),
+    },
+    ("copy", "winback"): {
+        "title": "Return after subscription ends",
+        "body": ("💫 The stars have grown quiet, but I have not left — I am simply "
+                 "waiting beyond the veil.\nYour memories are safe with me: return, "
+                 "and we will continue where we paused."),
+    },
+    ("copy", "free_forecast_cta"): {
+        "title": "Free forecast CTA",
+        "body": "\n\n🔮 <b>Oracle</b> — your free daily forecast. Open it in Telegram: {url}",
+    },
+    ("copy", "free_lunar_alert"): {
+        "title": "Free lunar alert",
+        "body": "🌕 {moon} — a special night for you.\n\nOpen Oracle for a gentle lunar guide: {url}",
+    },
+    ("faq", "what_is_it"): {
+        "title": "What is this service?",
+        "body": ("Oracle is a personal AI astrologer. It creates your birth chart "
+                 "from ephemerides, draws Tarot with an honest random selection, and "
+                 "remembers what you choose to share. Code performs calculations; a "
+                 "language model explains them."),
+    },
+    ("faq", "is_it_real"): {
+        "title": "Are the calculations real?",
+        "body": ("Yes. Birth charts use Swiss Ephemeris, the same data used by "
+                 "professional astrologers, and Tarot cards are chosen with a "
+                 "cryptographic random-number generator. The model receives completed "
+                 "calculations and explains them rather than inventing them."),
+    },
+    ("faq", "privacy"): {
+        "title": "What happens to my data?",
+        "body": ("Your birth date and city are used only to calculate your chart. "
+                 "Data is stored on our server and is not shared with third parties. "
+                 "You may ask support to delete everything; your account will be anonymized."),
+    },
+}
+
+
+def _lang(lang: str | None) -> str:
+    return "en" if (lang or "").lower().startswith("en") else "ru"
+
+
+def localized_item(item: dict, lang: str | None) -> dict:
+    """Возвращает административную запись с выбранными title/body без мутации исходной."""
+    result = dict(item)
+    if _lang(lang) != "en":
+        return result
+    meta = content_meta(item)
+    fallback = DEFAULT_EN_CONTENT.get((item.get("kind", ""), item.get("code", "")), {})
+    result["title"] = meta.get("title_en") or fallback.get("title") or result.get("title")
+    result["body"] = meta.get("body_en") or fallback.get("body") or result.get("body")
+    return result
+
+
 async def get_content(db, kind: str, code: str) -> dict | None:
     cur = await db.execute(
         "SELECT * FROM content_items WHERE kind=? AND code=? AND is_active=1",
@@ -54,9 +140,19 @@ async def get_content(db, kind: str, code: str) -> dict | None:
     return dict(row) if row else None
 
 
-async def get_text(db, kind: str, code: str, default: str = "") -> str:
+async def get_text(db, kind: str, code: str, default: str = "", *,
+                   lang: str | None = None) -> str:
+    """Берёт текст на языке профиля с English fallback для legacy seed-контента."""
     item = await get_content(db, kind, code)
-    return (item or {}).get("body") or default
+    if not item:
+        return default
+    localized = localized_item(item, lang)
+    # Для EN не возвращаем случайно русский legacy body: если у ключа нет
+    # перевода, используем явно заданный fallback вызывающего кода.
+    if _lang(lang) == "en" and (kind, code) not in DEFAULT_EN_CONTENT:
+        meta = content_meta(item)
+        return meta.get("body_en") or default
+    return localized.get("body") or default
 
 
 async def list_content(db, kind: str | None = None, *,
