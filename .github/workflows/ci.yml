@@ -43,6 +43,15 @@ jobs:
       - name: Cache-busting policy
         run: python scripts/check_cache_busting.py
 
+      - name: LLM golden-set evaluator smoke
+        run: |
+          python scripts/generate_eval_set.py
+          python scripts/evaluate_llm.py \
+            --cases data/llm_eval/golden_cases.jsonl \
+            --responses data/llm_eval/sample_responses.jsonl \
+            --out /tmp/oracle-llm-eval-report.json \
+            --min-score 0.75
+
       - name: Migration-focused tests
         run: python -m pytest tests/test_migrations.py tests/test_data.py -q -p no:cacheprovider --timeout=120
 

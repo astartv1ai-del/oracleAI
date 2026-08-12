@@ -23,7 +23,8 @@
 
 ### Changed
 
-- GitHub Actions now requires ruff, Python/JavaScript syntax checks, migration-focused tests, cache-busting policy, full pytest, dependency audit and selfcheck.
+- GitHub Actions now requires ruff, Python/JavaScript syntax checks, migration-focused tests, cache-busting policy, full pytest, dependency audit, golden-set evaluator smoke and selfcheck.
+- Synthetic 120-case LLM golden set and deterministic scoring cover grounding, safety, language, next step, calibration and latency before provider/prompt release.
 
 ### Security
 
