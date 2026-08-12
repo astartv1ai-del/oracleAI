@@ -310,3 +310,11 @@ async def test_daily_forecast_separates_languages_under_concurrency(db, user, mo
     assert results.count("🌅 forecast-en") == 5
     assert await readings.get_forecast(db, user["tg_id"], day, lang="ru") == "🌅 forecast-ru"
     assert await readings.get_forecast(db, user["tg_id"], day, lang="en") == "🌅 forecast-en"
+
+
+def test_signature_rotation_accepts_any_h1():
+    body = b'{"event_id":"evt_rotation"}'
+    valid = _signed(body).split(";", 1)[1].split("=", 1)[1]
+    ts = str(int(time.time()))
+    assert verify_paddle(
+        body, f"ts={ts};h1=deadbeef;h1={valid}", SECRET)

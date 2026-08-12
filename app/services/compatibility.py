@@ -52,9 +52,10 @@ async def explain(db, user, partner_date: str, *, partner_name: str = "",
                               thread_id=thread["id"], agent="astro",
                               surface="miniapp")
     if name:
-        await memory.remember(db, user["tg_id"],
-                              f"Партнёр {name}, дата рождения {partner_date}",
-                              kind="person")
+        if bool(user["memory_enabled"]):
+            await memory.remember(db, user["tg_id"],
+                                  f"Партнёр {name}, дата рождения {partner_date}",
+                                  kind="person")
         if save:
             await readings.add_partner(db, user["tg_id"], name, partner_date)
     await analytics.track(db, "compat_full", user["tg_id"], surface="miniapp")

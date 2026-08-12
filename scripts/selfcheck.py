@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import os
 import pathlib
 import sys
 import tempfile
@@ -222,12 +223,11 @@ async def db_smoke():
             assert state["journal_mode"].lower() == "wal", "WAL не включён"
             assert state["schema_tables"] >= 20, "схема неполная"
 
-            user = await users.ensure(db, 999000111, "Тест")
+            await users.ensure(db, 999000111, "Тест")
             await users.update(db, 999000111, onboarded=1, birth_date="1990-06-21",
                                sub_level="vip")
-            user = await users.get(db, 999000111)
-
             assert await dialog.save_memory(db, 999000111, "тестовый факт")
+
             assert not await dialog.save_memory(db, 999000111, "тестовый факт"), \
                 "дубликаты памяти не отсекаются"
 
@@ -397,6 +397,8 @@ async def webhook_smoke():
 
 
 async def llm_smoke():
+    if os.getenv("SELF_CHECK_LIVE", "0") != "1":
+        raise SkipCheck("live LLM выключен; для staging выставь SELF_CHECK_LIVE=1")
     from app.config import settings
     if not settings.llm_enabled:
         raise SkipCheck("LLM выключен — продукт работает в офлайн-режиме, это ок")

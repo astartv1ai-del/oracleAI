@@ -575,6 +575,10 @@ async def _run_list_partners(db, user, args) -> str:
 
 
 async def _run_save_memory(db, user, args) -> str:
+    # Privacy is enforced here as well as in the HTTP/service layer. Tool calls
+    # are model-generated and must never be able to override the user's setting.
+    if not bool(user["memory_enabled"]):
+        return "память выключена — факт не сохранён"
     fact = str(args.get("fact", "") or "").strip()
     if not fact:
         return "нечего сохранять"
@@ -584,12 +588,16 @@ async def _run_save_memory(db, user, args) -> str:
 
 
 async def _run_recall_memory(db, user, args) -> str:
+    if not bool(user["memory_enabled"]):
+        return "память выключена — сохранённые факты не используются"
     query = str(args.get("query", "") or "")
     mems = await memory.recall(db, user["tg_id"], query, limit=12)
     return "\n".join(f"- {m}" for m in mems) or "память пуста"
 
 
 async def _run_recall_diary(db, user, args) -> str:
+    if not bool(user["memory_enabled"]):
+        return "память выключена — дневник не передаётся проводнику"
     entries = await dialog_repo.get_diary(db, user["tg_id"], limit=10)
     if not entries:
         return "дневник пока пуст"

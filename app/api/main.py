@@ -13,6 +13,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
@@ -34,6 +35,26 @@ ADMIN_DIR = ROOT / "admin"
 WEB_DIR = ROOT / "web"                 # публичный лендинг и SEO-файлы (G36)
 
 
+def _validate_production_config() -> None:
+    """Fail closed before serving an unauthenticated or misdirected app."""
+    if settings.dev_mode or os.getenv("APP_ENV", "").lower() in {"dev", "test"}:
+        return
+    missing = []
+    if not settings.bot_token:
+        missing.append("BOT_TOKEN")
+    if not settings.admin_id:
+        missing.append("ADMIN_ID")
+    if not settings.webapp_url:
+        missing.append("WEBAPP_URL")
+    else:
+        parsed = urlsplit(settings.webapp_url)
+        if (parsed.scheme != "https" or not parsed.netloc or
+                parsed.username or parsed.password):
+            missing.append("WEBAPP_URL должен быть HTTPS URL без учётных данных")
+    if missing:
+        raise RuntimeError("production-конфигурация не готова: " + ", ".join(missing))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Подключаемся к БД на старте, чтобы миграции прошли до первого запроса."""
@@ -44,6 +65,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(
             "DEV_MODE=1 включает вход по ?dev_user=<id> БЕЗ подписи Telegram. "
             "Допустимо только в dev: выстави APP_ENV=dev либо выключи DEV_MODE=0")
+    _validate_production_config()
     sentry.init()
     db = await get_db()
     from ..data.session import healthcheck
@@ -94,8 +116,12 @@ async def access_log(request: Request, call_next):
     if not settings.dev_mode:
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self' https://telegram.org; "
-            "style-src 'self'; img-src 'self' data:; connect-src 'self'; "
-            "base-uri 'self'; form-action 'self'; frame-ancestors 'self'")
+            # Static templates use data-dependent inline style attributes; keep
+            # scripts strict while allowing those layout tokens to render.
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+            "font-src 'self'; connect-src 'self'; media-src 'self'; "
+            "object-src 'none'; base-uri 'self'; form-action 'self'; "
+            "frame-ancestors 'self'")
     _cache_control(request.url.path, response)
     return response
 
@@ -155,9 +181,10 @@ if WEB_DIR.is_dir():
 
 
 def _public_base(request: Request) -> str:
-    # На бою всегда задаётся WEBAPP_URL. Fallback помогает локальному preview,
-    # но не фиксирует тестовый домен в canonical/robots/sitemap.
-    return settings.webapp_url or str(request.base_url).rstrip("/")
+    # Production startup requires WEBAPP_URL, so Host headers cannot poison
+    # canonical, robots or sitemap URLs. A request-derived fallback is dev-only.
+    return settings.webapp_url or (str(request.base_url).rstrip("/")
+                                   if settings.dev_mode else "")
 
 
 def _public_template(name: str, request: Request) -> HTMLResponse:

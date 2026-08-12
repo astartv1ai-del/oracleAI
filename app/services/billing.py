@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from ..config import settings
 from ..data.session import transaction
 from ..repo import analytics, billing as repo, content, growth, users
 
@@ -42,6 +43,10 @@ GRANT_KINDS = ("plan", "crystals", "spread", "report", "question")
 
 class PurchaseError(Exception):
     """Покупка невозможна — текст предназначен клиентке."""
+
+    def __init__(self, message: str, *, status_code: int = 400):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 # ─────────────────────────────── витрина ──────────────────────────────────────
@@ -104,6 +109,45 @@ async def checkout_plan(db, tg_id: int, plan_code: str, *,
     return {**order, "description": plan.get("tagline") or plan["title"], "plan": plan}
 
 
+async def checkout_web_plan(db, tg_id: int, plan_code: str, *,
+                            surface: str = "web") -> dict:
+    """Создаёт pending-заказ, связанный с Paddle checkout.
+
+    Browser-controlled parameters are never used as the source of a grant. The
+    signed webhook resolves this payload back to the immutable server order.
+    """
+    plan = await repo.get_plan(db, plan_code)
+    if not plan or not plan.get("is_active") or not plan.get("is_public"):
+        raise PurchaseError("Этот тариф сейчас недоступен 🌙")
+    if not plan.get("price_usd") or float(plan["price_usd"]) <= 0:
+        raise PurchaseError("у этого тарифа нет web-цены")
+    order = await repo.create_order(
+        db, tg_id, "plan", sku=plan_code, title=plan["title"],
+        amount_stars=0, surface=surface,
+        meta={"grant_kind": "plan", "grant_code": plan_code,
+              "grant_qty": 1, "valid_days": plan["period_days"],
+              "provider": "paddle", "price_usd": float(plan["price_usd"])})
+    from . import paddle
+    try:
+        created = await paddle.create_transaction(
+            price_id=settings.paddle_price_id(plan_code),
+            custom_data={"order_payload": order["payload"]},
+        )
+        if not await repo.set_order_meta(
+                db, order["payload"], paddle_transaction_id=created["id"]):
+            raise paddle.PaddleError("локальный заказ исчез")
+    except (paddle.PaddleError, KeyError, TypeError) as exc:
+        await repo.mark_order_failed(db, order["payload"])
+        raise PurchaseError(
+            "web-оплата сейчас недоступна, попробуй позже 🌙",
+            status_code=503) from exc
+    await analytics.track(db, "web_checkout", tg_id,
+                          props={"plan": plan_code}, surface=surface)
+    return {**order, "link": created["link"],
+            "description": plan.get("tagline") or plan["title"],
+            "plan": plan}
+
+
 async def pay_with_crystals(db, tg_id: int, sku: str, *,
                             surface: str = "bot") -> dict:
     """Покупка товара за Кристаллы — без Telegram-инвойса, сразу."""
@@ -143,7 +187,9 @@ async def pay_with_crystals(db, tg_id: int, sku: str, *,
 # ──────────────────────────── приём оплаты ────────────────────────────────────
 
 async def apply_payment(db, payload: str, *, charge_id: str | None = None,
-                        amount_stars: int | None = None) -> dict | None:
+                        amount_stars: int | None = None,
+                        provider: str = "telegram_stars",
+                        currency: str = "XTR") -> dict | None:
     """Обрабатывает успешную оплату Stars. None — заказ уже обработан.
 
     Идемпотентность целиком на стороне БД (`mark_order_paid` меняет статус только
@@ -155,7 +201,8 @@ async def apply_payment(db, payload: str, *, charge_id: str | None = None,
     """
     async with transaction(db):
         order = await repo.mark_order_paid(db, payload, charge_id=charge_id,
-                                           amount_stars=amount_stars)
+                                           amount_stars=amount_stars,
+                                           provider=provider, currency=currency)
         if not order:
             log.info("оплата %s уже обработана или заказ не найден", payload)
             return None

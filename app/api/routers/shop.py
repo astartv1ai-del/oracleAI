@@ -7,9 +7,7 @@
 """
 from __future__ import annotations
 
-import json
 import logging
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -79,18 +77,15 @@ async def web_checkout(item: InvoiceIn, user=Depends(current_user),
     if not settings.paddle_checkout_url:
         raise HTTPException(503, "web-оплата не настроена")
 
-    plan_code = item.plan or "vip"
-    plan = await billing_repo.get_plan(db, plan_code)
-    if not plan or not plan.get("price_usd"):
-        raise HTTPException(400, "у этого тарифа нет web-цены")
+    plan_code = (item.plan or "vip").strip()
+    try:
+        order = await billing_svc.checkout_web_plan(
+            db, user["tg_id"], plan_code, surface="web")
+    except billing_svc.PurchaseError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from exc
 
-    payload = json.dumps({"tg_id": user["tg_id"], "plan": plan_code},
-                         ensure_ascii=False)
-    link = (f"{settings.paddle_checkout_url}"
-            f"?custom_data={quote(payload)}&plan={quote(plan_code)}")
-    await analytics.track(db, "web_checkout", user["tg_id"],
-                          props={"plan": plan_code}, surface="miniapp")
-    return {"link": link, "plan": plan_code, "price_usd": plan["price_usd"]}
+    return {"link": order["link"], "plan": order["sku"],
+            "price_usd": order["plan"]["price_usd"]}
 
 
 class CrystalsIn(BaseModel):

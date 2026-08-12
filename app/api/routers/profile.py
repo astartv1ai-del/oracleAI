@@ -11,7 +11,7 @@ from ...config import settings
 from ...core import agents
 from ...core.personas import persona_list
 from ...data.session import healthcheck
-from ...repo import billing, content, dialog, growth, readings, users
+from ...repo import billing, content, dialog, readings, users
 from ...services import analytics, chat, limits, referrals
 from ..deps import current_user, get_db, rate_limit, touched_user
 
@@ -48,15 +48,20 @@ async def _global_streak(db, tg_id: int) -> int:
 
 @router.get("/health")
 async def health(db=Depends(get_db)):
-    """Проверка живости для мониторинга и docker healthcheck."""
+    """Минимальный liveness для Caddy/Docker без внутренней телеметрии."""
     db_state = await healthcheck(db)
-    return {
-        "ok": db_state["ok"],
-        "db": db_state,
-        "llm": {"enabled": settings.llm_enabled,
-                "chain": list(settings.provider_chain)},
-        "dev_mode": settings.dev_mode,
-    }
+    if settings.dev_mode:
+        return {
+            "ok": db_state["ok"],
+            "db": db_state,
+            "llm": {"enabled": settings.llm_enabled,
+                    "chain": list(settings.provider_chain)},
+            "dev_mode": True,
+        }
+    if not db_state["ok"]:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"ok": False}, status_code=503)
+    return {"ok": True}
 
 
 @router.get("/me")

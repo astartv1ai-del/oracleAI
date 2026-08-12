@@ -26,6 +26,7 @@ OpenAI-совместимые серверы читаются ТОЛЬКО по�
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import time
@@ -184,6 +185,15 @@ def _anthropic_client():
     return anthropic.AsyncAnthropic(api_key=settings.anthropic_key, timeout=TIMEOUT)
 
 
+async def _close_client(client) -> None:
+    close = getattr(client, "close", None)
+    if not close:
+        return
+    result = close()
+    if inspect.isawaitable(result):
+        await result
+
+
 async def _stream_chat(client, model: str, messages: list[dict], max_tokens: int,
                        tools: list[dict] | None = None,
                        meter: "_Meter | None" = None) -> tuple[str, list[dict]]:
@@ -295,25 +305,31 @@ async def _complete_with(provider, system, user_text, tier, max_tokens,
                          meter: _Meter) -> str:
     if provider == "anthropic":
         client = _anthropic_client()
-        # Система батча (гороскоп на 12 знаков, разбор) не меняется между
-        # вызовами — кешируем её, чтобы за повторное вхождение не платить.
-        sys_block = [{"type": "text", "text": system,
-                      "cache_control": {"type": "ephemeral"}}]
-        resp = await client.messages.create(
-            model=_models(provider, tier), max_tokens=max_tokens,
-            system=sys_block,
-            messages=[{"role": "user", "content": user_text}],
-        )
-        meter.add(getattr(resp, "usage", None))
-        return "".join(b.text for b in resp.content if b.type == "text").strip()
+        try:
+            # Система батча (гороскоп на 12 знаков, разбор) не меняется между
+            # вызовами — кешируем её, чтобы за повторное вхождение не платить.
+            sys_block = [{"type": "text", "text": system,
+                          "cache_control": {"type": "ephemeral"}}]
+            resp = await client.messages.create(
+                model=_models(provider, tier), max_tokens=max_tokens,
+                system=sys_block,
+                messages=[{"role": "user", "content": user_text}],
+            )
+            meter.add(getattr(resp, "usage", None))
+            return "".join(b.text for b in resp.content if b.type == "text").strip()
+        finally:
+            await _close_client(client)
 
     client = _openai_client(provider)
-    text, _ = await _stream_chat(
-        client, _models(provider, tier),
-        [{"role": "system", "content": system}, {"role": "user", "content": user_text}],
-        max_tokens, meter=meter,
-    )
-    return text
+    try:
+        text, _ = await _stream_chat(
+            client, _models(provider, tier),
+            [{"role": "system", "content": system}, {"role": "user", "content": user_text}],
+            max_tokens, meter=meter,
+        )
+        return text
+    finally:
+        await _close_client(client)
 
 
 # ---------------------------------------------------------------- run_agent
@@ -382,33 +398,36 @@ async def _gather_tools(execute: ToolExecutor, calls: list[tuple[str, dict]]
 async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
                          meter: _Meter, max_iters: int = MAX_ITERS) -> str:
     client = _anthropic_client()
-    sys_block = [{"type": "text", "text": system,
-                  "cache_control": {"type": "ephemeral"}}]
-    msgs = [dict(m) for m in messages]
-    kept = ""
-    for _ in range(max_iters):
-        resp = await _with_retries(
-            lambda: client.messages.create(
-                model=_models("anthropic", tier), max_tokens=max_tokens,
-                system=sys_block, tools=tools, messages=msgs),
-            "anthropic", "agent")
-        meter.add(getattr(resp, "usage", None))
-        piece = "".join(b.text for b in resp.content
-                        if b.type == "text").strip()
-        if resp.stop_reason != "tool_use":
-            return piece
-        if piece:
-            # модель часто пишет предисловие до tool_use — не теряем его,
-            # если потолок итераций исчерпан (иначе уходит в офлайн-фолбэк)
-            kept = piece
-        msgs.append({"role": "assistant", "content": resp.content})
-        blocks = [b for b in resp.content if b.type == "tool_use"]
-        outputs = await _gather_tools(
-            execute, [(b.name, dict(b.input or {})) for b in blocks])
-        msgs.append({"role": "user", "content": [
-            {"type": "tool_result", "tool_use_id": b.id, "content": out}
-            for b, out in zip(blocks, outputs)]})
-    return kept or _fallback_text()
+    try:
+        sys_block = [{"type": "text", "text": system,
+                      "cache_control": {"type": "ephemeral"}}]
+        msgs = [dict(m) for m in messages]
+        kept = ""
+        for _ in range(max_iters):
+            resp = await _with_retries(
+                lambda: client.messages.create(
+                    model=_models("anthropic", tier), max_tokens=max_tokens,
+                    system=sys_block, tools=tools, messages=msgs),
+                "anthropic", "agent")
+            meter.add(getattr(resp, "usage", None))
+            piece = "".join(b.text for b in resp.content
+                            if b.type == "text").strip()
+            if resp.stop_reason != "tool_use":
+                return piece
+            if piece:
+                # модель часто пишет предисловие до tool_use — не теряем его,
+                # если потолок итераций исчерпан (иначе уходит в офлайн-фолбэк)
+                kept = piece
+            msgs.append({"role": "assistant", "content": resp.content})
+            blocks = [b for b in resp.content if b.type == "tool_use"]
+            outputs = await _gather_tools(
+                execute, [(b.name, dict(b.input or {})) for b in blocks])
+            msgs.append({"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": b.id, "content": out}
+                for b, out in zip(blocks, outputs)]})
+        return kept or _fallback_text()
+    finally:
+        await _close_client(client)
 
 
 def _to_openai_tools(tools: list[dict]) -> list[dict]:
@@ -472,6 +491,8 @@ async def _run_openai_like(provider, system, messages, tools, execute,
         log.info("%s без tool-use, включаю pre-tool режим", provider)
         return await _run_pretool(client, model, system, messages,
                                   execute, max_tokens, meter)
+    finally:
+        await _close_client(client)
 
 
 async def _run_pretool(client, model, system, messages, execute,

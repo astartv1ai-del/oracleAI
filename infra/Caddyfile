@@ -1,25 +1,28 @@
-# Замени oracle.example.com на свой домен (A-запись → IP VPS).
-# Caddy сам выпустит https-сертификат — это и будет WEBAPP_URL.
+# DOMAIN is supplied through ../.env. Caddy provisions the HTTPS certificate.
 
-oracle.example.com {
+{$DOMAIN} {
 	encode zstd gzip
 
-	# Mini App грузится во вебвью Telegram, поэтому фреймить его можно только
-	# нам самим. Остальные заголовки — базовая гигиена: без них панель админа
-	# открывается в чужом iframe, а браузер угадывает типы файлов.
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options    "nosniff"
-		Referrer-Policy           "no-referrer"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		-Server
 	}
 
-	# Вебхуки платёжек подписаны по сырому телу — ничего не переписываем
+	# Paddle signatures cover the raw request body; proxy it without rewriting.
 	handle /api/webhooks/* {
+		request_body {
+			max_size 512KB
+		}
 		reverse_proxy api:8080
 	}
 
 	handle {
+		request_body {
+			max_size 2MB
+		}
 		reverse_proxy api:8080 {
 			health_uri /api/health
 			health_interval 30s

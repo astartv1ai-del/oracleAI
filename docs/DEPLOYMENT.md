@@ -40,14 +40,14 @@ chmod 600 .env
 
 | Группа | Переменные | Требование production |
 |---|---|---|
-| Режим и URL | `APP_ENV`, `DEV_MODE`, `WEBAPP_URL`, `API_URL` | `APP_ENV=production`, `DEV_MODE=0`, публичный HTTPS URL. |
-| Telegram | `BOT_TOKEN`, `BOT_USERNAME`, `ADMIN_IDS`, `WEBHOOK_SECRET` | Реальные значения, не логировать и не передавать на клиент. |
-| LLM | `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `CUSTOM_*` | Достаточно ключа выбранного провайдера; не включать все ключи без необходимости. |
-| Платежи | `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, product/price IDs | Только при включении web checkout. |
+| Режим и URL | `APP_ENV`, `DEV_MODE`, `WEBAPP_URL` | В production `DEV_MODE=0`; `WEBAPP_URL` — публичный HTTPS URL без credentials. При отсутствии `BOT_TOKEN`, `ADMIN_ID` или `WEBAPP_URL` API не стартует. |
+| Telegram | `BOT_TOKEN`, `ADMIN_ID` | Реальные значения; не логировать и не передавать на клиент. |
+| LLM | `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `CUSTOM_*` | Достаточно ключа выбранного провайдера; offline fallback остаётся аварийным режимом. |
+| Платежи | `PADDLE_API_KEY`, `PADDLE_API_URL`, `PADDLE_CHECKOUT_URL`, `PADDLE_PRICE_IDS`, `PADDLE_WEBHOOK_SECRET` | Нужны вместе при включении web checkout; `PADDLE_PRICE_IDS` связывает внутренние планы с `pri_...` на сервере. |
 | Наблюдаемость | `SENTRY_DSN`, `LOG_LEVEL` | Sentry — опционально, но рекомендован для production. |
-| Контент и домен | `DOMAIN`, `CADDY_EMAIL`, `BRAND_*` | Согласованы с Caddyfile и публичным продуктом. |
+| Резервное копирование | `BACKUP_S3_URL`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`, `BACKUP_S3_BUCKET` | Рекомендуется off-site encrypted storage и регулярное восстановление. |
 
-Конфигурация валидируется Pydantic-настройками в `app/config.py`; неизвестные или небезопасные значения не следует «исправлять» прямо в контейнере.[2]
+Конфигурация читается dataclass-настройками в `app/config.py`; неизвестные или небезопасные значения не следует «исправлять» прямо в контейнере.[2]
 
 ## Первый релиз
 
@@ -67,7 +67,7 @@ docker compose -f infra/docker-compose.yml ps
 curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 ```
 
-Минимальный smoke test включает: `GET /api/health`, открытие русского и английского лендинга, запуск Mini App из Telegram, подтверждение 16+ тестовой учётной записью, смену языка, выключение/включение памяти и один ответ проводника. Платёжный webhook тестируйте только sandbox-данными провайдера.
+Минимальный smoke test включает: `GET /api/health` с ответом `{"ok":true}`, открытие русского и английского лендинга, запуск Mini App из Telegram, подтверждение 16+ тестовой учётной записью, смену языка, выключение/включение памяти и один ответ проводника. Для web checkout сначала создайте Paddle transaction через серверный API и проверьте sandbox webhook только по `transaction.completed`; не подставляйте `tg_id` или тариф вручную в hosted URL.
 
 ## Обновление версии
 
@@ -81,6 +81,8 @@ git checkout <approved-commit-or-tag>
 docker compose -f infra/docker-compose.yml build
 docker compose -f infra/docker-compose.yml up -d
 docker compose -f infra/docker-compose.yml exec api python -m scripts.selfcheck
+# После подтверждения ключей провайдера повторить с внешним smoke-test:
+# docker compose -f infra/docker-compose.yml exec -e SELF_CHECK_LIVE=1 api python -m scripts.selfcheck
 docker compose -f infra/docker-compose.yml logs --tail=100 api bot
 curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 ```
@@ -118,7 +120,7 @@ curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 |---|---|---|
 | `/api/health` не `ok` | Health endpoint / Docker healthcheck | Проверить `api` logs, доступ к томам и свободное место. |
 | Ошибки 5xx / latency | API logs, `X-Response-Time`, Sentry | Сопоставить с commit, провайдером LLM и БД. |
-| LLM недоступна | `/api/health.llm`, usage/logs | Убедиться, что работает offline fallback; не удалять данные. |
+| LLM недоступна | Usage/logs, Sentry | Убедиться, что работает offline fallback; не удалять данные. |
 | Не проходят платежи | Webhook logs, provider dashboard | Проверить подпись и sandbox/production-окружение; не повторять начисление вручную без idempotency. |
 | Подозрение на утечку | Audit/logs, обращение support | Ограничить доступ, сохранить логи, следовать SECURITY. |
 

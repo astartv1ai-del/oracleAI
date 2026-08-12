@@ -202,3 +202,80 @@ async def test_admin_horoscopes_build(client, db):
     assert res.json()["built"] == 12
     listed = await client.get("/api/admin/horoscopes", params={"dev_user": 1})
     assert len(listed.json()["items"]) == 12
+
+
+async def test_web_checkout_binds_server_order(client, db, user, monkeypatch):
+    import json
+
+    from app.config import settings
+    from app.repo import billing as billing_repo, content
+    from app.services import paddle
+
+    await content.set_flag(db, "web_payments", is_on=True)
+    monkeypatch.setattr(settings, "paddle_checkout_url",
+                        "https://pay.paddle.io/checkout/test")
+    monkeypatch.setattr(settings, "paddle_api_key", "test-key")
+    monkeypatch.setattr(settings, "paddle_price_ids", "vip:pri_test_vip")
+    captured = {}
+
+    async def fake_create_transaction(*, price_id, custom_data):
+        captured.update(price_id=price_id, custom_data=custom_data)
+        return {"id": "txn_test",
+                "link": "https://pay.paddle.io/checkout/test?transaction_id=txn_test"}
+
+    monkeypatch.setattr(paddle, "create_transaction", fake_create_transaction)
+    res = await client.post("/api/shop/web-checkout", params=as_user(user),
+                            json={"plan": "vip"})
+    assert res.status_code == 200
+    assert res.json()["link"].endswith("transaction_id=txn_test")
+    assert captured == {
+        "price_id": "pri_test_vip",
+        "custom_data": {"order_payload": captured["custom_data"]["order_payload"]},
+    }
+    order = await billing_repo.order_by_payload(db,
+                                                 captured["custom_data"]["order_payload"])
+    assert order and order["status"] == "pending"
+    assert order["tg_id"] == user["tg_id"]
+    assert order["sku"] == "vip"
+    assert json.loads(order["meta_json"])["paddle_transaction_id"] == "txn_test"
+
+
+async def test_paddle_webhook_grants_only_bound_pending_order(client, db, user, monkeypatch):
+    import hashlib
+    import hmac
+    import json
+    import time
+
+    from app.config import settings
+    from app.repo import billing as billing_repo
+
+    secret = "paddle-test-secret"
+    monkeypatch.setattr(settings, "paddle_webhook_secret", secret)
+    order = await billing_repo.create_order(
+        db, user["tg_id"], "plan", sku="vip", title="VIP", surface="web",
+        meta={"grant_kind": "plan", "grant_code": "vip", "grant_qty": 1,
+              "valid_days": 30, "provider": "paddle"})
+    await billing_repo.set_order_meta(
+        db, order["payload"], paddle_transaction_id="txn_bound_1")
+    body = json.dumps({
+        "event_id": "evt_bound_1",
+        "event_type": "transaction.completed",
+        "data": {
+            "id": "txn_bound_1", "status": "completed", "currency_code": "USD",
+            "custom_data": {"order_payload": order["payload"]},
+        },
+    }, separators=(",", ":")).encode()
+    ts = str(int(time.time()))
+    digest = hmac.new(secret.encode(), f"{ts}:".encode() + body,
+                      hashlib.sha256).hexdigest()
+    headers = {"Paddle-Signature": f"ts={ts};h1={digest}"}
+
+    first = await client.post("/api/webhooks/paddle", content=body, headers=headers)
+    assert first.status_code == 200
+    assert first.json()["granted"] is True
+    paid = await billing_repo.order_by_payload(db, order["payload"])
+    assert paid["status"] == "paid"
+
+    second = await client.post("/api/webhooks/paddle", content=body, headers=headers)
+    assert second.status_code == 200
+    assert second.json()["duplicate"] is True

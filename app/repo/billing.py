@@ -147,7 +147,8 @@ async def order_by_payload(db, payload: str):
 
 async def mark_order_paid(db, payload: str, *, charge_id: str | None = None,
                           amount_stars: int | None = None,
-                          provider: str = "telegram_stars"):
+                          provider: str = "telegram_stars",
+                          currency: str = "XTR"):
     """Помечает заказ оплаченным. Возвращает строку заказа или None.
 
     None означает «обрабатывать нечего»: либо payload неизвестен, либо заказ уже
@@ -166,12 +167,41 @@ async def mark_order_paid(db, payload: str, *, charge_id: str | None = None,
             (utcnow(), order["id"]))
         await db.execute(
             "INSERT INTO payments(order_id, tg_id, amount_stars, currency, charge_id, "
-            "provider, status, created_at) VALUES(?,?,?,'XTR',?,?,'succeeded',?)",
-            (order["id"], order["tg_id"], stars, charge_id, provider, utcnow()))
+            "provider, status, created_at) VALUES(?,?,?, ?, ?, ?,'succeeded',?)",
+            (order["id"], order["tg_id"], stars, currency[:8], charge_id,
+             provider[:32], utcnow()))
         if stars:
             await db.execute("UPDATE users SET ltv_stars=ltv_stars+? WHERE tg_id=?",
                              (stars, order["tg_id"]))
     return order
+
+
+async def mark_order_failed(db, payload: str) -> bool:
+    async with transaction(db):
+        cur = await db.execute(
+            "UPDATE orders SET status='failed' "
+            "WHERE payload=? AND status='pending'", (payload,))
+        return bool(cur.rowcount)
+
+
+async def set_order_meta(db, payload: str, **updates) -> bool:
+    """Merge trusted provider references into a pending order."""
+    async with transaction(db):
+        cur = await db.execute(
+            "SELECT meta_json FROM orders WHERE payload=? AND status='pending'",
+            (payload,))
+        row = await cur.fetchone()
+        if not row:
+            return False
+        try:
+            meta = json.loads(row["meta_json"] or "{}")
+        except (TypeError, ValueError):
+            meta = {}
+        meta.update(updates)
+        cur = await db.execute(
+            "UPDATE orders SET meta_json=? WHERE payload=? AND status='pending'",
+            (json.dumps(meta, ensure_ascii=False), payload))
+        return bool(cur.rowcount)
 
 
 async def refund_order(db, order_id: int) -> bool:

@@ -70,7 +70,11 @@ class Settings:
 
     # ── web-оплата (Paddle / LemonSqueezy): основной чек мимо комиссии Stars ──
     paddle_webhook_secret: str = os.getenv("PADDLE_WEBHOOK_SECRET", "")
+    paddle_api_key: str = os.getenv("PADDLE_API_KEY", "")
+    paddle_api_url: str = os.getenv("PADDLE_API_URL", "https://api.paddle.com").rstrip("/")
     paddle_checkout_url: str = os.getenv("PADDLE_CHECKOUT_URL", "").rstrip("/")
+    # `vip:pri_...,basic:pri_...` — never derive a provider price from client input.
+    paddle_price_ids: str = os.getenv("PADDLE_PRICE_IDS", "")
 
     # ── окружение ──
     dev_mode: bool = os.getenv("DEV_MODE", "0") == "1"
@@ -88,6 +92,13 @@ class Settings:
     ref_bonus: int = 15
     vip_stars_price: int = 1300
     crystal_packs: tuple = ((100, 550), (250, 1150), (600, 2250))
+
+    def paddle_price_id(self, plan_code: str) -> str:
+        for item in self.paddle_price_ids.split(","):
+            code, sep, price_id = item.partition(":")
+            if sep and code.strip() == plan_code:
+                return price_id.strip()
+        return ""
 
     @property
     def custom_ready(self) -> bool:

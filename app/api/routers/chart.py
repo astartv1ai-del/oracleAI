@@ -213,9 +213,10 @@ async def add_partner(item: PartnerIn, user=Depends(current_user),
         db, user["tg_id"], item.name.strip(), birth_date,
         relation=item.relation, birth_time=item.birth_time,
         birth_city=item.birth_city, lat=lat, lon=lon, tz=tz, chart=chart_data)
-    await memory.remember(db, user["tg_id"],
-                          f"{item.relation}: {item.name} ({birth_date})",
-                          kind="person")
+    if bool(user["memory_enabled"]):
+        await memory.remember(db, user["tg_id"],
+                              f"{item.relation}: {item.name} ({birth_date})",
+                              kind="person")
     return {"id": partner_id, "ok": True}
 
 

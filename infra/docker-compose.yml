@@ -29,8 +29,7 @@ services:
     # 1 воркер обязателен: rate-limiter `_hits` и бакет исходящих — in-process
     # (G22). Несколько воркеров дадут каждому свой запас и удвоят бюджет.
     command: >
-      uvicorn app.api.main:app --host 0.0.0.0 --port 8080
-      --proxy-headers --forwarded-allow-ips='*' --workers 1
+      uvicorn app.api.main:app --host 0.0.0.0 --port 8080 --workers 1
     env_file: ../.env
     volumes: [ oracle_data:/opt/oracle/data ]
     restart: unless-stopped
@@ -47,6 +46,7 @@ services:
 
   caddy:
     image: caddy:2
+    env_file: ../.env
     ports: [ "80:80", "443:443" ]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

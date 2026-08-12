@@ -16,7 +16,7 @@ from ..core import agent as agent_core
 from ..core import astro, cards, memory
 from ..core.matrix import compute_matrix
 from ..repo import admin as admin_repo
-from ..repo import content, dialog, readings, users
+from ..repo import dialog, readings, users
 from ..services import analytics, catalog, chat as chat_svc, referrals
 from .chat import _deny, _send_long
 from .keyboards import (back_menu, main_menu, reading_kb, spread_offer_kb,
@@ -394,9 +394,10 @@ async def compat_date(message: Message, state: FSMContext, db):
     await dialog.save_message(db, user["tg_id"], "assistant", text,
                               thread_id=thread["id"], agent="astro")
     if name:
-        await memory.remember(db, user["tg_id"],
-                              f"Партнёр {name}, дата рождения {partner_date}",
-                              kind="person")
+        if bool(user["memory_enabled"]):
+            await memory.remember(db, user["tg_id"],
+                                  f"Партнёр {name}, дата рождения {partner_date}",
+                                  kind="person")
         await readings.add_partner(db, user["tg_id"], name, partner_date)
 
     try:
@@ -412,7 +413,11 @@ async def compat_date(message: Message, state: FSMContext, db):
 async def diary_menu(cb: CallbackQuery, state: FSMContext, db):
     entries = await dialog.get_diary(db, cb.from_user.id, limit=5)
     streak = await dialog.diary_streak(db, cb.from_user.id)
-    lines = [f"📖 <b>Твой дневник</b>"
+    user = await users.get(db, cb.from_user.id)
+    memory_copy = ("Запишу её в твою книгу и учту в прогнозах."
+                   if user and bool(user["memory_enabled"])
+                   else "Запись останется в дневнике; память Оракула сейчас на паузе.")
+    lines = ["📖 <b>Твой дневник</b>"
              + (f" · стрик {streak} дн. 🔥" if streak >= 2 else ""), ""]
     if entries:
         for entry in entries:
@@ -420,7 +425,7 @@ async def diary_menu(cb: CallbackQuery, state: FSMContext, db):
             lines.append(f"<i>{when}</i> — {entry['text'][:80]}")
     else:
         lines.append("<i>Пока пусто. Первая запись — самая важная.</i>")
-    lines.append("\n✍️ Напиши, как прошёл твой день — я запомню и учту в прогнозах.")
+    lines.append(f"\n✍️ Напиши, как прошёл твой день — {memory_copy}")
     await state.set_state(Diary.writing)
     await cb.message.answer("\n".join(lines), reply_markup=back_menu())
     await cb.answer()
@@ -431,8 +436,10 @@ async def diary_write(message: Message, state: FSMContext, db):
     await state.clear()
     text = message.text.strip()[:1000]
     await dialog.add_diary(db, message.from_user.id, text)
-    await memory.remember(db, message.from_user.id, f"Из дневника: {text[:150]}",
-                          kind="event")
+    user = await users.get(db, message.from_user.id)
+    if user and bool(user["memory_enabled"]):
+        await memory.remember(db, message.from_user.id, f"Из дневника: {text[:150]}",
+                              kind="event")
     streak = await dialog.diary_streak(db, message.from_user.id)
     await analytics.track(db, "diary_write", message.from_user.id,
                           props={"streak": streak})
