@@ -101,3 +101,26 @@ async def test_failover_exhausts_all_providers(monkeypatch):
     with pytest.raises(RuntimeError):
         await llm.complete("s", "u")
     assert len(calls) == 2 * llm.RETRIES, "каждый провайдер пробуется до упора"
+
+
+async def test_tool_results_are_bounded(monkeypatch):
+    monkeypatch.setattr(llm, "MAX_TOOL_OUTPUT", 32)
+
+    async def execute(_name, _args):
+        return "x" * 100
+
+    result = (await llm._gather_tools(execute, [("chart", {})]))[0]
+    assert len(result) <= 32 + len("\n[данные сокращены; опирайся на доступную часть]")
+    assert "данные сокращены" in result
+
+
+async def test_tool_timeout_returns_safe_fallback(monkeypatch):
+    monkeypatch.setattr(llm, "TOOL_TIMEOUT", 0.01)
+
+    async def execute(_name, _args):
+        await asyncio.sleep(0.05)
+        return "late"
+
+    result = (await llm._gather_tools(execute, [("chart", {})]))[0]
+    assert "временно недоступны" in result
+    assert "late" not in result

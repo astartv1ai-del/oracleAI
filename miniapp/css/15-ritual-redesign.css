@@ -1965,3 +1965,59 @@ html { scroll-behavior: smooth; }
   .sess-panel { animation: none; }
   .chat-thread-toggle, .chat-new-session, .sess-create, .command-card { transition: none; }
 }
+
+
+/* ── v77 · Calm command surface and navigation dock ──────────────────────── */
+/* One visible entry point for tools; quick feature cards are intentionally gone. */
+#tool-btn { display: none !important; }
+.composer-tools-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 9px 0 7px;
+  border: 1px solid rgba(245,212,139,.24);
+  border-radius: 999px;
+  color: var(--text-soft);
+  background: rgba(245,212,139,.055);
+  font: 800 10.5px/1 var(--font-sans);
+  letter-spacing: .01em;
+  transition: border-color 180ms var(--ease-ritual), background 180ms var(--ease-ritual), color 180ms var(--ease-ritual), transform 180ms var(--ease-ritual);
+}
+.composer-tools-copy:hover { border-color: rgba(245,212,139,.5); color: var(--champagne-200); background: rgba(245,212,139,.1); }
+.composer-tools-copy:active { transform: scale(.97); }
+.composer-tools-copy[aria-expanded="true"] { border-color: rgba(245,212,139,.62); color: var(--champagne-200); background: rgba(245,212,139,.13); }
+.composer-tools-copy > span { font-size: inherit; line-height: 1; }
+.composer-tools-copy__icon { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--champagne-300); background: rgba(245,212,139,.12); }
+.composer-tools-copy__icon .sigil { width: 13px; height: 13px; }
+.composer-tools-copy__chevron { color: var(--champagne-300); font-size: 14px !important; line-height: .75 !important; transition: transform 180ms var(--ease-ritual); }
+.composer-tools-copy[aria-expanded="true"] .composer-tools-copy__chevron { transform: rotate(180deg); }
+
+/* A single, current-agent palette is enough; the sheet should feel like a choice, not a catalog. */
+.te-head > div { min-width: 0; flex: 1; }
+.te-intro { max-width: 270px; margin: 7px 0 0; }
+.te-current { box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+.te-current-title small { text-transform: none; }
+
+/* The dock is a quiet anchor: one active signal, no oversized yellow tile. */
+.app-nav { padding: 7px 12px calc(8px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent 0%, rgba(8,7,25,.76) 32%, rgba(8,7,25,.98) 100%); border-top: 0; }
+.main-nav { gap: 3px; padding: 4px; border: 1px solid rgba(225,214,255,.14); border-radius: 22px; background: rgba(20,16,43,.86); box-shadow: 0 15px 34px -22px #000, inset 0 1px 0 rgba(255,255,255,.045); backdrop-filter: blur(20px) saturate(1.1); }
+.nav-btn { position: relative; min-height: 52px; flex-direction: column; gap: 4px; padding: 5px 4px 7px; border: 1px solid transparent; border-radius: 16px; color: var(--text-muted); text-align: center; }
+.nav-btn:not(.active):hover { color: var(--text-soft); background: rgba(255,255,255,.035); }
+.nav-ico { width: 22px; height: 22px; color: var(--text-muted); }
+.nav-ico .sigil { width: 19px; height: 19px; stroke-width: 1.65; }
+.nav-copy { display: block; width: 100%; text-align: center; line-height: 1; }
+.nav-copy b { display: block; overflow: visible; font-size: 10.5px; font-weight: 800; letter-spacing: .01em; }
+.nav-copy small { display: none; }
+.nav-btn.active { color: var(--text-main); border-color: rgba(245,212,139,.22); background: linear-gradient(180deg, rgba(245,212,139,.14), rgba(185,166,255,.08)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 18px -17px rgba(245,212,139,.85); }
+.nav-btn.active .nav-ico { color: var(--champagne-300); filter: none; }
+.nav-btn.active::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--champagne-300); box-shadow: 0 0 8px rgba(245,212,139,.8); transform: translateX(-50%); }
+@media (max-width: 380px) {
+  .app-nav { padding-inline: 9px; }
+  .main-nav { border-radius: 20px; }
+  .nav-btn { min-height: 50px; padding-inline: 2px; }
+  .nav-copy b { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-tools-copy, .composer-tools-copy__chevron { transition: none; }
+}

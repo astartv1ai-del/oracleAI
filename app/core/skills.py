@@ -792,6 +792,6 @@ async def execute(db, user, name: str, args: dict) -> str:
         return "неизвестный инструмент"
     try:
         return await skill["run"](db, user, args or {})
-    except Exception as e:  # noqa: BLE001
-        log.warning("скилл %s упал: %s", name, e)
-        return f"ошибка инструмента: {e}"
+    except Exception:  # noqa: BLE001
+        log.exception("скилл %s упал", name)
+        return "инструмент временно недоступен — не выдумывай данные и продолжи без него"

@@ -201,11 +201,7 @@
     const agents = this.agents.length ? this.agents : AGENT_FALLBACK;
     const suggest = (TEMPLATES[a.code] || a.suggestions || []).slice(0, 3);
     const currentFeatures = FEATURES[a.code] || [];
-    // Быстрые команды ведут к реальному сценарию проводника, а не только
-    // подставляют абстрактную фразу в поле ввода.
-    const quickFeatures = currentFeatures.slice(0, a.code === 'tarot' ? 1 : 3);
     const sessionCount = (this.chat.sessions || []).length;
-    const otherAgents = agents.filter(b => b.code !== a.code);
     const last = messages[messages.length - 1];
     const cheer = messages.length > 1 && last.role === 'assistant' && !busy && !(last.text || '').startsWith('😔') && !last.widget;
 
@@ -287,17 +283,12 @@
         <div class="composer">
           <div class="composer-context">
             <span class="composer-presence"><i aria-hidden="true"></i>${esc(a.name || 'Проводник')} рядом</span>
-            <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть инструменты и проводников">Инструменты <span aria-hidden="true">↑</span></button>
+            <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть палитру инструментов" aria-expanded="false" aria-controls="tool-expand"><span class="composer-tools-copy__icon">${sigilIcon('spark')}</span><span>Инструменты</span><span class="composer-tools-copy__chevron" aria-hidden="true">↑</span></button>
           </div>
           <div class="composer-top">
-            <button class="tool-btn" id="tool-btn" data-act="tool-toggle" title="Открыть инструменты" aria-label="Открыть инструменты" aria-expanded="false" aria-controls="tool-expand">${sigilIcon('spark')}</button>
             <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
             <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
           </div>
-          ${quickFeatures.length ? `<section class="command-tray" aria-label="Быстрые команды ${esc(a.name || 'проводника')}">
-            <div class="command-tray__head"><span>Быстрый шаг</span><small>в этом диалоге</small></div>
-            <div class="command-tray__list">${quickFeatures.map(f => `<button type="button" class="command-card" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" aria-label="${esc(f.t)}: ${esc(f.d || '')}"><span class="command-card__icon">${sigilIcon(f.id)}</span><span><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span><i aria-hidden="true">›</i></button>`).join('')}</div>
-          </section>` : ''}
           ${suggest.length ? `
           <div class="suggest-chips" aria-label="Идеи для своего вопроса">
             ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
@@ -305,14 +296,11 @@
         </div>
         <div class="tool-expand" id="tool-expand" aria-hidden="true">
           <div class="te-mask" data-act="tool-toggle"></div>
-          <section class="te-sheet" role="dialog" aria-modal="true" aria-label="Инструменты и проводники">
+          <section class="te-sheet" role="dialog" aria-modal="true" aria-label="Инструменты текущего проводника">
             <div class="te-handle" aria-hidden="true"></div>
             <div class="te-head">
-              <div><span class="te-eyebrow">БЫСТРЫЙ ВЫБОР</span><span class="te-title">Что откликается сейчас?</span></div>
+              <div><span class="te-eyebrow">ИНСТРУМЕНТЫ ДИАЛОГА</span><span class="te-title">С чем поработаем?</span><p class="te-intro">Выбери один точный шаг — результат появится прямо в этом разговоре.</p></div>
               <button class="te-close" data-act="tool-toggle" aria-label="Закрыть инструменты">✕</button>
-            </div>
-            <div class="te-agent-switcher" role="tablist" aria-label="Быстрый выбор проводника">
-              ${agents.slice(0, 3).map(b => `<button type="button" class="te-agent-switch ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}"><span class="te-av"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span><span>${esc(b.name.split(' ')[0])}</span></button>`).join('')}
             </div>
             <div class="te-body">
               ${currentFeatures.length ? `
@@ -327,26 +315,6 @@
                       </button>`).join('')}
                   </div>
                 </div>` : ''}
-              ${otherAgents.length ? `
-                <details class="te-more">
-                  <summary><span>Инструменты других проводников</span><small>ещё ${otherAgents.length}</small></summary>
-                  ${otherAgents.map(b => {
-                    const feats = FEATURES[b.code] || [];
-                    if (!feats.length) return '';
-                    return `<div class="te-group">
-                      <div class="te-agent" style="--ac:${esc(b.accent || 'var(--gold)')}">
-                        <span class="te-av"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span>
-                        <span>${esc(b.name)}</span>
-                      </div>
-                      <div class="te-grid">
-                        ${feats.map(f => `
-                          <button class="te-chip" data-act="chat-fn" data-chat="${b.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
-                            <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span><span class="te-arrow" aria-hidden="true">›</span>
-                          </button>`).join('')}
-                      </div>
-                    </div>`;
-                  }).join('')}
-                </details>` : ''}
             </div>
           </section>
         </div>
@@ -517,14 +485,14 @@
 
   app.setToolbox = function(open) {
     const el = document.getElementById('tool-expand');
-    const trigger = document.getElementById('tool-btn');
+    const triggers = document.querySelectorAll('.composer-tools-copy');
     const next = !!open;
     if (!el) return;
 
     el.classList.toggle('open', next);
     el.setAttribute('aria-hidden', next ? 'false' : 'true');
     document.body.classList.toggle('toolbox-open', next);
-    if (trigger) trigger.setAttribute('aria-expanded', next ? 'true' : 'false');
+    triggers.forEach(trigger => trigger.setAttribute('aria-expanded', next ? 'true' : 'false'));
 
     if (!this._toolboxKeydownReady) {
       this._toolboxKeydownReady = true;
@@ -538,10 +506,10 @@
 
     if (next) {
       haptic('soft');
-      const first = el.querySelector('.te-agent-switch, .te-chip, .te-close');
+      const first = el.querySelector('.te-chip, .te-close');
       if (first) setTimeout(() => first.focus(), 180);
-    } else if (trigger) {
-      trigger.focus();
+    } else if (triggers[0]) {
+      triggers[0].focus();
     }
   };
 

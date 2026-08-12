@@ -46,6 +46,8 @@ RETRIES = 2
 # и очередь других запросов ~6 минут — 180с*2 ретрая. Ответ дольше 35с
 # пользователь всё равно не дождётся; лучше быстрый отказ и фейловер.
 TIMEOUT = 35.0
+TOOL_TIMEOUT = 15.0
+MAX_TOOL_OUTPUT = 12000
 
 
 class _RateLimit:
@@ -380,17 +382,27 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
 
 async def _gather_tools(execute: ToolExecutor, calls: list[tuple[str, dict]]
                         ) -> list[str]:
-    """Исполняет запрошенные скиллы параллельно.
+    """Исполняет скиллы параллельно с защитой контекста и latency.
 
-    Модель часто просит сразу карту и транзиты; последовательное исполнение
-    складывало задержки, а скиллы независимы и почти все — обращения к БД.
+    Модель часто просит сразу карту и транзиты; независимые calls выполняются
+    параллельно. Каждый результат имеет потолок размера, а зависший или упавший
+    инструмент превращается в нейтральный сигнал для модели без внутренних
+    exception details.
     """
     async def one(name: str, args: dict) -> str:
         try:
-            return await execute(name, args)
-        except Exception as e:  # noqa: BLE001
-            log.warning("скилл %s упал в цикле агента: %s", name, e)
-            return f"ошибка инструмента {name}: {e}"
+            result = await asyncio.wait_for(execute(name, args), TOOL_TIMEOUT)
+            text = str(result or "").strip()
+            if len(text) > MAX_TOOL_OUTPUT:
+                log.info("скилл %s вернул большой результат (%d символов)", name, len(text))
+                return text[:MAX_TOOL_OUTPUT] + "\n[данные сокращены; опирайся на доступную часть]"
+            return text
+        except asyncio.TimeoutError:
+            log.warning("скилл %s превысил лимит %s с", name, TOOL_TIMEOUT)
+            return "данные инструмента временно недоступны — продолжи без них или уточни вопрос"
+        except Exception:  # noqa: BLE001
+            log.exception("скилл %s упал в цикле агента", name)
+            return "данные инструмента временно недоступны — не выдумывай их"
 
     return list(await asyncio.gather(*(one(n, a) for n, a in calls)))
 
@@ -532,6 +544,7 @@ async def transcribe(file_bytes: bytes, filename: str = "voice.ogg") -> str | No
     """Расшифровка голосового (Whisper, только настоящий OpenAI)."""
     if not settings.openai_key:
         return None
+    client = None
     try:
         from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=settings.openai_key, timeout=60)
@@ -541,6 +554,9 @@ async def transcribe(file_bytes: bytes, filename: str = "voice.ogg") -> str | No
         return (resp.text or "").strip() or None
     except Exception:
         return None
+    finally:
+        if client is not None:
+            await _close_client(client)
 
 
 def tts_enabled() -> bool:
@@ -555,6 +571,7 @@ async def speak(text: str, *, voice: str | None = None) -> bytes | None:
     """
     if not tts_enabled() or not (text or "").strip():
         return None
+    client = None
     try:
         from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=settings.openai_key, timeout=120)
@@ -568,3 +585,6 @@ async def speak(text: str, *, voice: str | None = None) -> bytes | None:
     except Exception as e:  # noqa: BLE001
         log.info("озвучка не удалась: %s", e)
         return None
+    finally:
+        if client is not None:
+            await _close_client(client)

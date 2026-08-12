@@ -40,8 +40,8 @@ def test_frontend_runtime_boundaries_have_stable_order() -> None:
 
     assert position("00-runtime.js") < position("05-app.js")
     assert position("15-actions.js") < position("13-events.js")
-    assert "/static/js/00-runtime.js?v=80" in html
-    assert "/static/js/15-actions.js?v=80" in html
+    assert "/static/js/00-runtime.js?v=81" in html
+    assert "/static/js/15-actions.js?v=81" in html
 
 
 def test_refactored_backend_boundaries_exist() -> None:

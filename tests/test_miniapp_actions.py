@@ -59,3 +59,21 @@ def test_every_explicit_action_target_is_implemented_on_app() -> None:
         "Action registry calls methods not implemented on app: "
         + ", ".join(sorted(missing))
     )
+
+
+
+def test_chat_exposes_one_visible_tool_entry_point() -> None:
+    chat = (JS_DIR / "07-chat.js").read_text(encoding="utf-8")
+    assert chat.count('class="composer-tools-copy"') == 1
+    assert 'id="tool-btn"' not in chat
+    assert 'class="command-tray"' not in chat
+    assert 'class="te-agent-switcher"' not in chat
+    assert 'otherAgents' not in chat
+
+
+def test_miniapp_stylesheet_imports_match_asset_version() -> None:
+    index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
+    styles = (ROOT / "miniapp" / "styles.css").read_text(encoding="utf-8")
+    assert '/static/styles.css?v=81' in index
+    assert '?v=81' in styles
+    assert '?v=80' not in styles
