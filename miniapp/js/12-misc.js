@@ -316,8 +316,11 @@
     this.showModal(`<h3>Что я помню о тебе</h3><button class="m-close" data-act="modal-close">✕</button>
       <div id="mem-body" style="margin-top:6px"><div class="loader-ring"></div></div>`);
     try {
-      const rows = this.me && !this.me.memory_enabled ? [] : await api('/api/memories');
+      // «На паузе» означает, что Оракул не использует и не сохраняет новые факты.
+      // Это не скрывает уже сохранённое от её владелицы: архив всегда остаётся доступен.
+      const rows = await api('/api/memories');
       this._memFull = rows;
+      this._memSearch = '';
       this.renderMemModal();
     } catch (e) {
       const body = document.getElementById('mem-body');
@@ -334,26 +337,73 @@
     if (!el) return;
     const enabled = !(this.me && this.me.memory_enabled === false);
     const rows = this._memFull || [];
-    const list = rows.map(m => `
-      <div class="mem-manage-row">
-        <div class="mem-manage-txt">${esc(m.fact)}</div>
-        <div class="mem-manage-meta">${esc((m.created_at || '').slice(0, 10))}</div>
-        <button class="mem-del" data-act="del-mem" data-id="${m.id}" title="Удалить">✕</button>
-      </div>`).join('');
-    el.innerHTML = `
-      <div class="glass" style="padding:12px 13px;margin:0 0 10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="flex:1"><div style="font-size:13.5px;font-weight:650">Личная память</div><div style="font-size:11.5px;color:var(--text-dim);line-height:1.4;margin-top:2px">${enabled ? 'Оракул использует выбранные тобой факты, чтобы отвечать точнее.' : 'Оракул не использует и не сохраняет новые факты. Ранее сохранённое остаётся под твоим контролем.'}</div></div>
-          <button class="btn ${enabled ? 'btn-primary' : 'btn-ghost'}" style="padding:7px 10px;font-size:11px;white-space:nowrap" data-act="toggle-memory">${enabled ? 'Включена' : 'Выключена'}</button>
+    const list = rows.map((m, index) => {
+      const fact = String(m.fact || '');
+      const haystack = esc(fact.toLowerCase());
+      return `<article class="mem-manage-row" data-mem-item data-mem-text="${haystack}">
+        <div class="mem-manage-row__top">
+          <span class="mem-manage-index" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
+          <time class="mem-manage-meta">${esc((m.created_at || '').slice(0, 10)) || 'без даты'}</time>
+          <button class="mem-del" data-act="del-mem" data-id="${m.id}" title="Удалить факт" aria-label="Удалить факт">${sigilIcon('spark')}</button>
         </div>
+        <div class="mem-manage-txt">${esc(fact)}</div>
+      </article>`;
+    }).join('');
+    const stateCopy = enabled
+      ? 'Лилит использует только этот список, чтобы помнить важное между диалогами.'
+      : 'Память на паузе: новые факты не сохраняются и не попадают в ответы. Этот архив видишь только ты.';
+    const archive = rows.length ? `
+      <div class="mem-search">
+        ${sigilIcon('spark')}
+        <input class="ipt" id="mem-search" type="search" placeholder="Найти в ${rows.length} ${rows.length === 1 ? 'факте' : 'фактах'}" autocomplete="off" aria-label="Найти факт в памяти">
+        <span class="mem-search-count" data-mem-count>${rows.length}</span>
       </div>
-      ${enabled ? `<div class="mem-add">
-        <input class="ipt" id="mem-new" placeholder="Добавь важное о себе…" autocomplete="off"/>
-        <button class="send-btn" data-act="add-mem" title="Добавить">+</button>
-      </div>
-      ${rows.length ? `<div class="mem-manage-list">${list}</div>`
-                    : '<div style="color:var(--text-faint);font-size:13px;padding:8px 2px">Пока ничего не помню. Добавь первый факт выше или просто расскажи мне в чате.</div>'}`
-      : '<div style="color:var(--text-faint);font-size:13px;padding:10px 2px">Включи память, если хочешь, чтобы Оракул учитывал важные детали между диалогами. Ты в любой момент можешь удалить отдельный факт или выключить её снова.</div>'}`;
+      <div class="mem-manage-list" data-mem-list>${list}</div>
+      <div class="memory-search-empty" data-mem-empty hidden>Ничего не нашлось. Попробуй другое слово или очисти поиск.</div>`
+      : `<div class="memory-empty">
+          <span class="memory-empty__sigil">${sigilIcon('spark')}</span>
+          <b>Здесь пока тихо</b>
+          <p>${enabled ? 'Добавь один факт сама или расскажи о важном в диалоге — Лилит спросит разрешение сохранить его.' : 'Включи память, когда захочешь сохранять важное между диалогами.'}</p>
+        </div>`;
+    el.innerHTML = `
+      <section class="memory-hero ${enabled ? 'is-enabled' : 'is-paused'}">
+        <div class="memory-hero__top">
+          <div>
+            <span class="memory-eyebrow">Личный контекст</span>
+            <h4>Память о тебе</h4>
+          </div>
+          <button class="memory-switch ${enabled ? 'is-on' : ''}" data-act="toggle-memory" type="button" role="switch" aria-checked="${enabled}" aria-label="${enabled ? 'Поставить память на паузу' : 'Включить память'}">
+            <span class="memory-switch__track" aria-hidden="true"><span></span></span>
+            <span>${enabled ? 'Активна' : 'На паузе'}</span>
+          </button>
+        </div>
+        <p>${stateCopy}</p>
+        <div class="memory-hero__foot"><span>${rows.length} ${rows.length === 1 ? 'факт' : rows.length < 5 ? 'факта' : 'фактов'}</span><span>Ты можешь удалить любой</span></div>
+      </section>
+      ${enabled ? `<div class="mem-add memory-add">
+        <input class="ipt" id="mem-new" placeholder="Например: я люблю тихие утра" autocomplete="off" maxlength="500"/>
+        <button class="send-btn" data-act="add-mem" title="Добавить факт" aria-label="Добавить факт">${sigilIcon('spark')}</button>
+      </div>` : ''}
+      <div class="memory-archive-head"><b>Твой архив</b><span>${enabled ? 'используется в новых ответах' : 'сохранён и скрыт от Оракула'}</span></div>
+      ${archive}`;
+
+    const search = el.querySelector('#mem-search');
+    if (search) search.addEventListener('input', event => this.filterMemories(event.target.value));
+  };
+
+  app.filterMemories = function(query) {
+    const normalized = String(query || '').trim().toLowerCase();
+    const rows = Array.from(document.querySelectorAll('[data-mem-item]'));
+    let visible = 0;
+    rows.forEach(row => {
+      const matched = !normalized || String(row.dataset.memText || '').includes(normalized);
+      row.hidden = !matched;
+      if (matched) visible += 1;
+    });
+    const count = document.querySelector('[data-mem-count]');
+    const empty = document.querySelector('[data-mem-empty]');
+    if (count) count.textContent = normalized ? visible + ' / ' + rows.length : rows.length;
+    if (empty) empty.hidden = visible !== 0;
   };
 
 
@@ -362,7 +412,9 @@
     try {
       await api('/api/profile', { method: 'POST', body: JSON.stringify({ memory_enabled: !current }) });
       this.me = await api('/api/me');
-      this._memFull = this.me.memory_enabled ? await api('/api/memories') : [];
+      // Факты остаются доступны владелице, даже когда новые сохранения и recall поставлены на паузу.
+      this._memFull = await api('/api/memories');
+      this._memSearch = '';
       this.renderMemModal();
       haptic('light');
     } catch (e) { alert(e.message); }

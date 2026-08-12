@@ -37,6 +37,7 @@
     'moon-expand': (el, data) => call('expandMoonDay', parseInt(data.i, 10)),
     'p-action': (el, data) => call('practiceAction', data.code, data.a),
     'diary-add': () => call('diaryAdd'),
+    'diary-mood': (el, data) => call('setDiaryMood', data.mood),
     'diary-summary': () => call('diarySummary'),
     'career-day': (el, data) => call('careerDay', parseInt(data.i, 10)),
     'career-ask': () => call('careerAsk'),

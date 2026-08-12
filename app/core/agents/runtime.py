@@ -23,6 +23,7 @@ from .. import matrix as mx
 from ..personas import persona_style
 from ..stable import stable_seed
 from .base import build_system_prompt
+from .context import build_bounded_history
 from .specs import DEFAULT_AGENT, REGISTRY, get
 
 log = logging.getLogger("oracle.agents")
@@ -116,9 +117,13 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
             premium = users_repo.sub_active(user) if db else False
             history_limit = (max(spec.history_limit, 20)
                              if premium else spec.history_limit)
+            # Берём небольшой запас для детерминированной выжимки ранней части
+            # текущего треда. Новый тред не имеет истории, поэтому это и есть
+            # явный сброс краткосрочного контекста без затрагивания памяти.
             history = await dialog_repo.history(
-                db, user["tg_id"], limit=history_limit, thread_id=thread_id)
-            messages = history + [{"role": "user", "content": question}]
+                db, user["tg_id"], limit=history_limit * 3, thread_id=thread_id)
+            messages = build_bounded_history(history, question,
+                                              recent_limit=history_limit)
 
             async def executor(name: str, args: dict) -> str:
                 return await skills.execute(db, user, name, args)

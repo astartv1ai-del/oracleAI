@@ -11,7 +11,7 @@ from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
-from ...core import memory
+from ...core import astro, memory
 from ...repo import dialog, users
 from ...services import analytics
 from ..deps import current_user, get_db, rate_limit
@@ -31,9 +31,28 @@ async def diary_list(user=Depends(current_user), db=Depends(get_db)):
             "streak": await dialog.diary_streak(db, user["tg_id"])}
 
 
+_MOOD_ENTRY_CUES = {
+    "спокойно": "Можно заметить, что уже даёт тебе устойчивость, и не торопить следующий шаг.",
+    "радостно": "Разреши этому свету побыть рядом: назови, что именно сегодня тебя поддержало.",
+    "напряжённо": "Не обязательно решать всё сразу. Сначала выбери одну маленькую вещь, которую можно отпустить на сегодня.",
+    "устало": "Сделай ставку на минимум: вода, пауза, сон или просьба о поддержке — уже достаточно.",
+    "неясно": "Попробуй не искать готовый ответ, а оставить вопрос открытым ещё на один спокойный вдох.",
+}
+
+
+def _entry_reflection(moon: dict, mood: str | None) -> str:
+    """Короткий ориентир после записи: факт фазы + бережный, не-предсказательный шаг."""
+    cue = _MOOD_ENTRY_CUES.get(mood or "")
+    if cue:
+        return (f"Сегодня {moon['name'].lower()} · примерно {moon['day']}-й лунный день. "
+                f"{cue}")
+    return (f"Сегодня {moon['name'].lower()} · примерно {moon['day']}-й лунный день. "
+            f"Твой ориентир фазы: {moon['advice'].capitalize()}.")
+
+
 @router.post("/diary", dependencies=[Depends(rate_limit("write"))])
 async def diary_add(item: DiaryIn, user=Depends(current_user), db=Depends(get_db)):
-    """Запись в дневник. Первые 150 символов уходят в память агента."""
+    """Сохраняет личную заметку и возвращает краткий ориентир текущей лунной фазы."""
     text = item.text.strip()[:1000]
     await dialog.add_diary(db, user["tg_id"], text, mood=item.mood)
     # Дневник остаётся личной записью всегда; в память проводников он попадает
@@ -41,8 +60,14 @@ async def diary_add(item: DiaryIn, user=Depends(current_user), db=Depends(get_db
     if user["memory_enabled"]:
         await memory.remember(db, user["tg_id"], f"Из дневника: {text[:150]}",
                               kind="event")
+    moon = astro.moon_phase(date.fromisoformat(users.user_today(user)))
     await analytics.track(db, "diary_write", user["tg_id"], surface="miniapp")
-    return {"ok": True, "streak": await dialog.diary_streak(db, user["tg_id"])}
+    return {
+        "ok": True,
+        "streak": await dialog.diary_streak(db, user["tg_id"]),
+        "moon": {key: moon[key] for key in ("name", "emoji", "day")},
+        "reflection": _entry_reflection(moon, item.mood),
+    }
 
 
 @router.get("/diary/prompt")

@@ -77,8 +77,13 @@
 
 
   app.toggleSessions = function() {
-    const p = document.getElementById('sess-panel');
-    if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    haptic('light');
+    const panel = document.getElementById('sess-panel');
+    const trigger = document.querySelector('.chat-thread-toggle');
+    if (!panel) return;
+    const open = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    if (trigger) trigger.setAttribute('aria-expanded', String(open));
   };
 
   // Лунный календарь: компакт — «кратко о сегодня» + раскрытие всей недели по кнопке
@@ -196,6 +201,10 @@
     const agents = this.agents.length ? this.agents : AGENT_FALLBACK;
     const suggest = (TEMPLATES[a.code] || a.suggestions || []).slice(0, 3);
     const currentFeatures = FEATURES[a.code] || [];
+    // Быстрые команды ведут к реальному сценарию проводника, а не только
+    // подставляют абстрактную фразу в поле ввода.
+    const quickFeatures = currentFeatures.slice(0, a.code === 'tarot' ? 1 : 3);
+    const sessionCount = (this.chat.sessions || []).length;
     const otherAgents = agents.filter(b => b.code !== a.code);
     const last = messages[messages.length - 1];
     const cheer = messages.length > 1 && last.role === 'assistant' && !busy && !(last.text || '').startsWith('😔') && !last.widget;
@@ -240,21 +249,29 @@
             <div class="cname">${esc(a.name || 'Лилит')}</div>
             <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
           </div>
-          <button class="chat-reset" data-act="sessions" aria-label="Мои диалоги" title="Мои диалоги">☰</button>
-          <button class="chat-reset" data-act="clear" aria-label="Начать новый диалог" title="Новый диалог">↺</button>
+          <button type="button" class="chat-thread-toggle" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="Открыть мои чаты">
+            <span class="chat-thread-toggle__icon">${sigilIcon('monthly')}</span>
+            <span class="chat-thread-toggle__copy"><small>МОИ ЧАТЫ</small><b>${sessionCount || 1} из 5</b></span>
+            <span class="chat-thread-toggle__chevron" aria-hidden="true">⌄</span>
+          </button>
+          <button type="button" class="chat-new-session" data-act="new-session" aria-label="Начать новый чат" title="Начать новый чат">
+            ${sigilIcon('spark')}<span>Новый</span>
+          </button>
         </div>
-        <div class="sess-panel" id="sess-panel" style="display:none">
+        <section class="sess-panel" id="sess-panel" style="display:none" aria-label="Мои чаты с ${esc(a.name || 'проводником')}">
           <div class="sess-head">
-            <span>Чаты · ${(this.chat.sessions || []).length}/5</span>
-            <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" data-act="new-session">＋ Новый чат</button>
+            <div><span>Твои разговоры</span><small>${sessionCount || 0} из 5 · каждый чат хранит свой контекст</small></div>
+            <button type="button" class="sess-create" data-act="new-session">${sigilIcon('spark')}<span>Новый</span></button>
           </div>
-          ${(this.chat.sessions || []).map(s => `
-            <div class="sess-row ${s.id === this.chat.tid ? 'active' : ''}" data-act="open-session" data-tid="${s.id}">
-              <div class="sess-t">${esc(s.title || 'Новый чат')}</div>
-              <div class="sess-prev">${esc(s.last_text || '')}</div>
-              <button class="sess-del" data-act="del-session" data-tid="${s.id}" title="Удалить">✕</button>
-            </div>`).join('')}
-        </div>
+          <div class="sess-list">
+            ${sessionCount ? (this.chat.sessions || []).map(s => `
+              <div class="sess-row ${s.id === this.chat.tid ? 'active' : ''}" data-act="open-session" data-tid="${s.id}">
+                <span class="sess-status" aria-hidden="true"></span>
+                <div class="sess-copy"><div class="sess-t">${esc(s.title || 'Новый разговор')}</div><div class="sess-prev">${esc(s.last_text || 'Здесь можно продолжить диалог.')}</div></div>
+                <button type="button" class="sess-del" data-act="del-session" data-tid="${s.id}" aria-label="Удалить этот чат" title="Удалить чат">✕</button>
+              </div>`).join('') : '<div class="sess-empty">Первый разговор создастся, когда ты отправишь сообщение.</div>'}
+          </div>
+        </section>
         <div class="agent-tabs" role="tablist" aria-label="Выбор проводника">
           ${agents.slice(0, 3).map(b => `
             <button type="button" class="atab ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}">
@@ -277,8 +294,12 @@
             <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
             <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
           </div>
+          ${quickFeatures.length ? `<section class="command-tray" aria-label="Быстрые команды ${esc(a.name || 'проводника')}">
+            <div class="command-tray__head"><span>Быстрый шаг</span><small>в этом диалоге</small></div>
+            <div class="command-tray__list">${quickFeatures.map(f => `<button type="button" class="command-card" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" aria-label="${esc(f.t)}: ${esc(f.d || '')}"><span class="command-card__icon">${sigilIcon(f.id)}</span><span><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span><i aria-hidden="true">›</i></button>`).join('')}</div>
+          </section>` : ''}
           ${suggest.length ? `
-          <div class="suggest-chips" aria-label="Подсказки для вопроса">
+          <div class="suggest-chips" aria-label="Идеи для своего вопроса">
             ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
           </div>` : ''}
         </div>
@@ -287,18 +308,16 @@
           <section class="te-sheet" role="dialog" aria-modal="true" aria-label="Инструменты и проводники">
             <div class="te-handle" aria-hidden="true"></div>
             <div class="te-head">
-              <div><span class="te-eyebrow">ТВОЙ ОРАКУЛ В ОДНОМ ДВИЖЕНИИ</span><span class="te-title">Выбери опору на сейчас</span></div>
+              <div><span class="te-eyebrow">БЫСТРЫЙ ВЫБОР</span><span class="te-title">Что откликается сейчас?</span></div>
               <button class="te-close" data-act="tool-toggle" aria-label="Закрыть инструменты">✕</button>
             </div>
-            <p class="te-intro">Сначала выбери проводника или сразу запусти ритуал — результат останется в нужном диалоге.</p>
             <div class="te-agent-switcher" role="tablist" aria-label="Быстрый выбор проводника">
               ${agents.slice(0, 3).map(b => `<button type="button" class="te-agent-switch ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}"><span class="te-av"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span><span>${esc(b.name.split(' ')[0])}</span></button>`).join('')}
             </div>
             <div class="te-body">
               ${currentFeatures.length ? `
                 <div class="te-group te-current">
-                  <div class="te-agent" style="--ac:${esc(a.accent || 'var(--gold)')}">
-                    <span class="te-av"><img src="/static/img/agents/${esc(a.code)}.jpg" alt="" loading="lazy"></span>
+                  <div class="te-current-title" style="--ac:${esc(a.accent || 'var(--gold)')}">
                     <span>С ${esc(a.name || 'проводником')}</span><small>в этом диалоге</small>
                   </div>
                   <div class="te-grid">

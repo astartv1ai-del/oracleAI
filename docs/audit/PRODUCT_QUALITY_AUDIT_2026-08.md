@@ -187,3 +187,66 @@
 Проверки Таро, совместимости, ежедневного ритуала, натальной карты и чата подтверждают, что обновлённые сценарии сохраняют действующие API-контракты, честные ограничения интерпретаций и декларативные действия интерфейса. Отдельные тайм-ауты одиночных визуальных кликов в sandbox были сверены с доступными DOM-действиями и относятся к автоматизации браузера, а не к пользовательскому маршруту Mini App.
 
 **Статус:** готово к коммиту и публикации в `master`.
+
+
+## Visual QA — v76, 12 August 2026
+
+### Home screen (mobile viewport)
+
+| Check | Result | Evidence |
+|---|---|---|
+| Hero CTA layout | **Passed** | The “Получить мой знак дня” control occupies its own full-width row below the lunar copy; no overlap with the title or moon artwork was observed. |
+| Primary hierarchy | **Passed** | Greeting, lunar context, CTA, and the “Твой ритм” sequence remain readable at the initial viewport. |
+| Ritual wording | **Passed** | The entry action is framed as a state check-in rather than an unexplained diary; the companion practice is visibly secondary and contextualised. |
+| Bottom navigation | **Passed** | All three destinations remain visible and comfortably tappable. |
+
+The local development page was reviewed at `/?dev_user=1`. The next QA pass covers the chat header, thread drawer, compact tool sheet, and private memory archive.
+
+
+### Agent hub — v76 spot check
+
+The agent hub renders all three guides and their specialised actions. The Oracle card now exposes **«Личная опора»** and **«Астро-дневник»** as short, descriptive actions instead of the prior vague practice/mantra labels. The card hierarchy remains stable on the mobile viewport, with every functional row visible and tappable. A dedicated chat-surface check follows to verify the new thread controls and in-composer command tray.
+
+
+### QA finding — agent hub transition
+
+The **«Начать»** control on the visible Lilith card did not transition to the chat during the browser check. Browser console output contained no application exception, only an expected Telegram WebApp capability warning. The implementation requires a focused DOM/action-registry review before release; the observed result is tracked as a blocking interaction regression until the click path is verified.
+
+
+### Chat surface — v76 visual acceptance
+
+Direct verification of `openChat('oracle')` rendered the revised chat surface correctly. The mobile layout presents a clear return control, **«Мои чаты»** with session count, a separate **«Новый»** action, agent switching tabs, a compact composer, and a three-item command tray for the current guide. The initially observed hub-button non-transition was not reproduced through the public action method; it remains necessary to verify the physical card tap after this controlled render check, but the chat layout itself is accepted for visual hierarchy and space efficiency.
+
+
+### Thread navigation and tool tray — v76 visual acceptance
+
+**«Мои чаты»** now expands inline with the session count, an explicit new-chat control, the active conversation preview, and a distinct delete control. The tools sheet opens as a focused bottom sheet rather than an oversized blank panel: actions for the active guide are immediately visible, while other guides are grouped in a collapsed secondary section. This validates the intended compact hierarchy; functional feature invocation is covered by automated syntax and integration checks.
+
+
+### Profile entry — v76 spot check
+
+The profile remains readable at mobile width after the chat redesign. Its top tab bar exposes **«Память»** as a distinct entry point without crowding the primary summary. The next acceptance step is the memory archive itself: searching and scanning long facts, while confirming the pause toggle does not obstruct content.
+
+
+### Memory archive — v76 visual acceptance
+
+The new archive renders as a focused modal with an explicit **«Личный контекст»** explanation, a compact switch with a semantic accessibility label, an add-fact field, full-text search, and individually removable cards. Three existing facts remain fully readable; the status control sits in the header and no longer blocks the archive body. This confirms the intended separation: pausing future LLM recall does not hide the owner’s records.
+
+
+The archive search was exercised with **«Аня»**. It reduced the visible cards from 3 to **2 / 3**, retained full text and delete controls for the matched records, and left the active-status switch unobstructed. No state-changing toggle was exercised in visual QA to avoid altering the dev-user preference; API and regression tests cover the pause semantics.
+
+
+### Guide hub — v76 visual acceptance
+
+The profile-to-hub transition works through the bottom navigation. The guide catalogue exposes three independent **«Начать»** controls with descriptive accessibility labels, and Lilith’s visible tool set consistently uses **«Личная опора»** and **«Астро-дневник»** in place of ambiguous mantra wording. A physical click-through to Lilith is the remaining navigation confirmation.
+
+
+### QA finding — guide-start interaction (P0)
+
+A real browser click on Lilith’s **«Начать»** control left the guide catalogue visible, while direct invocation of the public `openChat('oracle')` route had previously rendered the chat surface successfully. This isolates the regression to event delegation or the button’s action payload, not the chat renderer. The interaction must be corrected before release and rechecked through a real tap.
+
+
+**P0 finding update.** Computed styles for Lilith’s start button are interactive (`pointer-events: auto`, visible, enabled). A native DOM `button.click()` invokes the same delegated route and renders the redesigned Lilith chat with the thread selector, explicit **«Новый»** control, compact tool trigger, command tray, and composer. The earlier automation click that remained on the catalogue is therefore not sufficient evidence of a production routing defect; it is being rechecked with a captured pointer event before any production-code change.
+
+
+**Pointer-diagnostics conclusion.** A capture listener confirmed that the sandbox’s indexed pointer operation did **not** dispatch a DOM click to Lilith’s visible start button (`guideTap: null`). The control is enabled and accepts a native DOM activation; its delegated `data-act="chat"` route opens the chat. This is a browser-automation interaction limitation, not a Mini App click-path regression. No production workaround was added, avoiding an unnecessary and potentially harmful duplicate event handler.

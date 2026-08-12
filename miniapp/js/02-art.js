@@ -2,18 +2,26 @@
 /* SVG-фаза луны по эмодзи от сервера (🌑…🌘): освещённая доля и терминатор.
    Почти точная визуализация классического цикла без эфемерид. */
 
-// Персонаж агента: портрет-арт из /static/img/agents/{code}.jpg + анимированный
-// проп-атрибут. cheer=true — персонаж «радуется» свежему ответу агента.
-const AGENT_PROPS = {
-  oracle: '🔮', astro: '🌠', tarot: '🃏', coach: '🍃', numero: '🌀', keeper: '🪶',
+// Персонаж агента: портрет-арт из /static/img/agents/{code}.jpg + сигил роли.
+// SVG не зависит от системного шрифта Telegram и сохраняет одинаковую массу в любом размере.
+const AGENT_SIGILS = {
+  oracle: '<path d="M3.2 12s3.15-5.35 8.8-5.35S20.8 12 20.8 12 17.65 17.35 12 17.35 3.2 12 3.2 12Z"/><circle cx="12" cy="12" r="2.35"/><path d="m12 2.55.95 3.25 3.25.95-3.25.95L12 10.95l-.95-3.25-3.25-.95 3.25-.95L12 2.55Z"/>',
+  astro: '<circle cx="12" cy="12" r="8.55"/><circle cx="12" cy="12" r="2"/><path d="M12 3.45v6.55M20.55 12H14M12 20.55V14M3.45 12H10M6.1 6.1l4.55 4.55m7.25-4.55-4.55 4.55"/>',
+  tarot: '<rect x="5.35" y="3.35" width="13.3" height="17.3" rx="2"/><path d="m12 6.65.95 3.3 3.3.95-3.3.95L12 15.15l-.95-3.3-3.3-.95 3.3-.95L12 6.65Z"/><path d="M8.3 17.7h7.4"/>',
+  coach: '<path d="M12 3.1c3.85 3.15 5.6 6.3 5.25 9.45-.34 3.17-2.1 5.7-5.25 7.35-3.15-1.65-4.91-4.18-5.25-7.35C6.4 9.4 8.15 6.25 12 3.1Z"/><path d="M12 7.2v8.65M12 12.2c-1.55-1.45-3.05-1.85-4.45-1.72M12 14.15c1.48-1.38 2.88-1.77 4.28-1.65"/>',
+  numero: '<circle cx="6" cy="6" r="1.55"/><circle cx="18" cy="6" r="1.55"/><circle cx="12" cy="12" r="1.9"/><circle cx="6" cy="18" r="1.55"/><circle cx="18" cy="18" r="1.55"/><path d="m7.35 7.2 3.15 3.2m2.98 0 3.15-3.2m-9.3 9.6 3.15-3.2m2.98 0 3.15 3.2"/>',
+  keeper: '<path d="M12 3.15c3.3 2.55 5.85 5.45 5.85 9.1 0 3.15-2.58 5.7-5.85 7.6-3.27-1.9-5.85-4.45-5.85-7.6 0-3.65 2.55-6.55 5.85-9.1Z"/><path d="M9.25 12.1h5.5M12 9.35v5.5"/><path d="m16.9 4.1.55 1.75 1.75.55-1.75.55-.55 1.75-.55-1.75-1.75-.55 1.75-.55.55-1.75Z"/>'
 };
+function agentSigil(code) {
+  const body = AGENT_SIGILS[code] || AGENT_SIGILS.oracle;
+  return `<svg class="agent-sigil" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+}
 function agentSprite(a, cheer) {
   if (!a) return '';
   const ac = a.accent || '#e6c178';
-  const prop = AGENT_PROPS[a.code] || a.emoji;
   return `<span class="agent-sprite${cheer ? ' cheer' : ''}" style="--ac:${esc(ac)}" role="img" aria-label="${esc(a.name || '')}">
       <img class="agent-face" src="/static/img/agents/${esc(a.code)}.jpg" alt="${esc(a.name || '')}" loading="eager">
-      <span class="as-prop">${esc(prop)}</span>
+      <span class="as-prop">${agentSigil(a.code)}</span>
     </span>`;
 }
 

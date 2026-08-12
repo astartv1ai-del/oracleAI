@@ -104,7 +104,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     const ov = document.createElement('div');
     ov.id = 'age-gate';
     ov.innerHTML = `<div class="age-gate-card">
-      <img src="/static/img/oracle-mark.png" class="age-gate-mark" alt="OracleAI">
+      <div class="age-gate-mark age-gate-sigil" aria-label="OracleAI">${sigilIcon('brand')}</div>
       <div class="age-gate-kicker">Твоё безопасное пространство</div>
       <h2>Сначала — бережная граница</h2>
       <p>OracleAI создан для пользователей от 16 лет. Здесь есть развлекательные астрологические практики и поддерживающие диалоги, но не медицинская, юридическая или психологическая помощь.</p>
@@ -248,7 +248,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
           <span class="user-name">${esc(name)}</span>
         </button>
         <div class="brand-lockup" aria-label="OracleAI — личное пространство ритуалов">
-          <span class="brand-mark"><img src="/static/img/oracle-mark.png" alt="" aria-hidden="true"></span>
+          <span class="brand-mark" aria-hidden="true">${sigilIcon('brand')}</span>
           <span class="brand-title">ORACLE<small>AI</small></span>
         </div>
         <button class="bell" data-act="bell" aria-label="Открыть уведомления" title="Уведомления">

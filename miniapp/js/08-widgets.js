@@ -139,34 +139,37 @@ const widgetShell = (p, { title, body, tail = '' }) => {
   app.practicesWidget = function(p) {
     const items = p.items || [];
     return widgetShell(p, {
-      title: t => '🧘 Практики' + (t.loading ? '' : ' · ' + items.length + ' программ'),
-      body: items.map(it => {
+      title: t => 'Ритуалы поддержки' + (t.loading ? '' : ' · ' + items.length),
+      body: `<div class="ritual-intro"><span class="ritual-intro__sigil">✦</span><div><b>Маленькие действия вместо абстрактных мантр</b><small>Выбери одну программу и возвращайся к её шагу в удобном темпе.</small></div></div>` + items.map(it => {
       const st = it.status;
       const active = st === 'active';
       const done = st === 'completed';
+      const anchor = active && it.today_step
+        ? `Сегодняшняя опора: «${esc(it.today_step)}»`
+        : 'Фраза-опора: «Я выбираю один бережный шаг для себя.»';
       return `
-        <div class="pr-card">
+        <div class="pr-card ritual-card${active ? ' is-active' : ''}">
           <div class="pr-top">
-            <span class="pr-ico">${esc(it.emoji || '✨')}</span>
+            <span class="pr-ico">${esc(it.emoji || '✦')}</span>
             <div style="flex:1;min-width:0">
               <div class="pr-t">${esc(it.title || it.code)}</div>
-              <div class="pr-fit">${esc(it.fit || it.goal || '')}</div>
+              <div class="pr-fit">${esc(it.fit || it.goal || it.about || 'Ритуал, который можно подстроить под свой день.')}</div>
             </div>
             <div class="pr-ring">${ringSvg(it.percent)}<span class="pr-pct">${it.percent || 0}%</span></div>
           </div>
+          <div class="ritual-anchor">${anchor}</div>
           <div class="pr-meta">
             <span class="pr-days">${it.day_index || 0}/${it.days || 0} дней</span>
-            ${it.streak_alive ? `<span class="pr-fire">🔥 ${it.streak || 0}</span>` : (it.streak > 0 ? '<span class="pr-fire off">🔥 погас</span>' : '')}
-            ${active && it.today_step ? `<span class="pr-step">Сегодня: ${esc(it.today_step)}</span>` : ''}
+            ${it.streak_alive ? `<span class="pr-fire">серия ${it.streak || 0}</span>` : (it.streak > 0 ? '<span class="pr-fire off">серия на паузе</span>' : '')}
           </div>
           <div class="pr-actions">
-            ${(!active && !done) ? `<button class="btn btn-primary" data-act="p-action" data-code="${it.code}" data-a="start">Начать</button>` : ''}
-            ${active ? `<button class="btn btn-primary" data-act="p-action" data-code="${it.code}" data-a="done">Отметить день ✓</button>
-              <button class="btn btn-ghost" data-act="p-action" data-code="${it.code}" data-a="stop">Стоп</button>` : ''}
-            ${done ? `<span class="pr-done">✓ Завершена — горжусь тобой</span>` : ''}
+            ${(!active && !done) ? `<button class="btn btn-primary" data-act="p-action" data-code="${it.code}" data-a="start">Выбрать ритуал</button>` : ''}
+            ${active ? `<button class="btn btn-primary" data-act="p-action" data-code="${it.code}" data-a="done">Я сделала этот шаг</button>
+              <button class="btn btn-ghost" data-act="p-action" data-code="${it.code}" data-a="stop">Поставить на паузу</button>` : ''}
+            ${done ? `<span class="pr-done">✓ Ритуал завершён — ты была рядом с собой</span>` : ''}
           </div>
         </div>`;
-    }).join('') || '<div style="color:var(--text-faint);font-size:12.5px">Практики не загрузились — попробуй ещё раз.</div>',
+    }).join('') || '<div class="ritual-unavailable">Ритуалы пока не загрузились. Попробуй открыть этот экран чуть позже.</div>',
     });
   };
 
@@ -174,29 +177,42 @@ const widgetShell = (p, { title, body, tail = '' }) => {
   app.diaryWidget = function(p) {
     const entries = p.entries || [];
     const streak = p.streak || 0;
+    const mood = p.mood || this._diaryMood || '';
+    const moods = [
+      ['спокойно', 'Спокойно'], ['радостно', 'Радостно'], ['напряжённо', 'Напряжённо'],
+      ['устало', 'Устало'], ['неясно', 'Неясно']
+    ];
+    const reflection = p.wroteToday
+      ? 'Сегодняшняя точка уже есть. Если хочется, добавь ещё одну мысль.'
+      : (p.prompt || 'Остановись на минуту и назови то, что сейчас важнее всего.');
     return widgetShell(p, {
-      title: '📖 Книга судьбы',
+      title: 'Астро-дневник',
       body: `
-      <div class="dy-head">
-        <span class="dy-streak${streak ? ' on' : ''}">${streak ? '🔥 ' + streak + ' дней подряд' : '🔥 начни серию'}</span>
-        <span class="dy-count">${entries.length} записей</span>
+      <div class="diary-hero">
+        <div class="diary-hero__top"><span class="diary-hero__sigil">◌</span><span>${streak ? 'Серия: ' + streak + ' ' + (streak === 1 ? 'день' : 'дней') : 'Одна минута для себя'}</span><span>${entries.length} заметок</span></div>
+        <div class="diary-hero__title">Заметь. Назови. Оставь рядом.</div>
+        <p>${esc(reflection)}</p>
       </div>
-      ${p.prompt ? `
-        <div class="dy-prompt">
-          <div class="dy-pq">Вечерний вопрос Оракула</div>
-          <div class="dy-pt">${esc(p.prompt)}</div>
-          ${p.wroteToday ? '' : `
-          <div class="dy-add">
-            <input class="ipt" id="diary-in" placeholder="Запиши строчку…" autocomplete="off"/>
-            <button class="send-btn" data-act="diary-add">+</button>
-          </div>`}
-        </div>` : ''}
-      ${entries.length ? `<div class="dy-list">
+      <div class="diary-moods" role="group" aria-label="Как ты сейчас?">
+        <span class="diary-moods__label">Как ты сейчас?</span>
+        <div class="diary-moods__list">${moods.map(([key, label]) => `<button class="diary-mood${mood === key ? ' is-selected' : ''}" data-act="diary-mood" data-mood="${key}" aria-pressed="${mood === key ? 'true' : 'false'}">${label}</button>`).join('')}</div>
+      </div>
+      <div class="dy-prompt diary-entry">
+        <div class="dy-pq">Вопрос дня</div>
+        <div class="dy-pt">${esc(p.prompt || 'Что тебе хочется услышать от себя прямо сейчас?')}</div>
+        <div class="dy-add diary-add">
+          <textarea class="ipt" id="diary-in" rows="3" maxlength="1000" placeholder="Напиши так, как есть. Здесь не нужно быть красивой или правильной."></textarea>
+          <button class="send-btn diary-send" data-act="diary-add" aria-label="Сохранить заметку">${sigilIcon('spark')}</button>
+        </div>
+        <div class="diary-privacy">Запись остаётся в дневнике. При включённой памяти первые 150 символов могут помочь Оракулу помнить контекст — это можно изменить в «Памяти».</div>
+      </div>
+      ${p.reflection ? `<aside class="diary-reflection" aria-live="polite"><span class="diary-reflection__sigil">${esc((p.moon && p.moon.emoji) || '◐')}</span><div><b>Ориентир после записи</b><p>${esc(p.reflection)}</p><small>Это мягкая подсказка по фазе Луны, а не предсказание.</small></div></aside>` : ''}
+      ${entries.length ? `<div class="diary-archive"><div class="diary-archive__head"><b>Последние заметки</b><span>только для тебя</span></div><div class="dy-list">
         ${entries.slice(0, 8).map(e => `
-          <div class="dy-row"><span class="dy-date">${esc((e.created_at || '').slice(0, 10))}</span><span class="dy-txt">${esc((e.text || '').slice(0, 90))}</span></div>`).join('')}
-      </div>` : '<div style="color:var(--text-faint);font-size:12.5px">Пока пусто — начни с вечернего вопроса ✨</div>'}
+          <div class="dy-row"><span class="dy-date">${esc(fmtDay((e.created_at || '').slice(0, 10)))}</span><span class="dy-txt">${esc((e.text || '').slice(0, 140))}</span>${e.mood ? `<span class="dy-row__mood">${esc(e.mood)}</span>` : ''}</div>`).join('')}
+      </div></div>` : '<div class="diary-empty">Первая запись не обязана быть большой. Одно честное предложение уже становится опорой.</div>'}
       ${p.summary ? this.diarySummaryHtml(p.summary) : ''}
-      <button class="btn btn-ghost" style="width:100%;margin-top:10px" data-act="diary-summary">${p.summary ? 'Обновить сводку' : 'Что показала Вселенная? 🌌'}</button>`,
+      <button class="btn btn-ghost diary-summary-action" data-act="diary-summary">${p.summary ? 'Обновить мою динамику' : 'Посмотреть динамику месяца'}</button>`,
     });
   };
 
@@ -204,11 +220,11 @@ const widgetShell = (p, { title, body, tail = '' }) => {
   app.diarySummaryHtml = function(s) {
     const moods = s.moods ? Object.entries(s.moods).map(([k, v]) => `<span class="dy-mood">${esc(k)} ${v}</span>`).join('') : '';
     return `<div class="dy-sum">
-      <div class="dy-sum-title">🌌 Что показала Вселенная · ${esc(s.month || '')}</div>
-      <div class="dy-nums"><span>${s.count || 0} записей</span><span>${s.days_written || 0} дней</span><span>🔥 макс. ${s.streak_max || 0}</span></div>
-      ${s.repeated_themes && s.repeated_themes.length ? `<div class="dy-th"><b>Повторялось:</b> ${s.repeated_themes.map(t => esc(t)).join(', ')}</div>` : ''}
-      ${s.trend ? `<div class="dy-tr"><b>Динамика:</b> ${esc(s.trend.direction === 'up' ? 'вверх ↑' : s.trend.direction === 'down' ? 'вниз ↓' : 'стабильно →')}</div>` : ''}
-      ${s.changes ? `<div class="dy-ch"><b>Перемен:</b> ${s.changes} записей «наконец/решила/перестала»</div>` : ''}
+      <div class="dy-sum-title">Твоя динамика · ${esc(s.month || '')}</div>
+      <div class="dy-nums"><span>${s.count || 0} заметок</span><span>${s.days_written || 0} дней рядом с собой</span><span>серия до ${s.streak_max || 0}</span></div>
+      ${s.repeated_themes && s.repeated_themes.length ? `<div class="dy-th"><b>Чаще всего звучало:</b> ${s.repeated_themes.map(t => esc(t)).join(', ')}</div>` : ''}
+      ${s.trend ? `<div class="dy-tr"><b>Ритм записей:</b> ${esc(s.trend.direction === 'up' ? 'усиливался к концу месяца' : s.trend.direction === 'down' ? 'был активнее в начале месяца' : 'держался ровно')}</div>` : ''}
+      ${s.changes ? `<div class="dy-ch"><b>Слов о переменах:</b> ${s.changes}</div>` : ''}
       ${moods ? `<div class="dy-moods">${moods}</div>` : ''}
     </div>`;
   };
@@ -320,22 +336,42 @@ const widgetShell = (p, { title, body, tail = '' }) => {
     if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
   };
 
+  app.setDiaryMood = function(mood) {
+    const allowed = new Set(['спокойно', 'радостно', 'напряжённо', 'устало', 'неясно']);
+    this._diaryMood = allowed.has(mood) ? mood : '';
+    const p = this.chat.pending;
+    if (p && p.kind === 'diary') {
+      p.mood = this._diaryMood;
+      haptic('soft');
+      this.renderChat(document.getElementById('app-main'));
+    }
+  };
+
   app.diaryAdd = async function() {
     const val = ((document.getElementById('diary-in') || {}).value || '').trim();
-    if (!val) { this.toast('Напиши строчку — даже одна мысль считается ✨'); return; }
+    if (!val) { this.toast('Оставь хотя бы одну честную строчку — этого достаточно.'); return; }
     haptic('light');
     const p = this.chat.pending;
+    const mood = this._diaryMood || (p && p.mood) || null;
     try {
-      await api('/api/diary', { method: 'POST', body: JSON.stringify({ text: val }) });
+      const saved = await api('/api/diary', { method: 'POST', body: JSON.stringify({ text: val, mood }) });
       haptic('success');
       vb([10, 40, 20]);
       const r = await api('/api/diary');
-      if (p) { p.entries = (r && r.entries) || []; p.streak = (r && r.streak) || 0; p.wroteToday = true; p.prompt = ''; }
+      if (p) {
+        p.entries = (r && r.entries) || [];
+        p.streak = (r && r.streak) || 0;
+        p.wroteToday = true;
+        p.mood = '';
+        p.moon = (saved && saved.moon) || null;
+        p.reflection = (saved && saved.reflection) || '';
+      }
+      this._diaryMood = '';
       if (this.dailyPulse) {
         this.dailyPulse.diary = r || this.dailyPulse.diary;
         this.dailyPulse.prompt = { ...(this.dailyPulse.prompt || {}), written_today: true };
       }
-      this.toast('Запись сохранена. Спасибо, что услышала себя.');
+      this.toast('Заметка сохранена. Спасибо, что была рядом с собой.');
     } catch (e) {
       this.toast(e.message || 'Не сохранилось — попробуй ещё раз');
     }
@@ -447,7 +483,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
   app.chatMonthly = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'diary') return; // B4 re-entry
     const key = this.chat.key, view = this.view;
-    const pend = this.chat.pending = { kind: 'diary', loading: true, entries: [], streak: 0, prompt: '', wroteToday: false, summary: null, error: '' };
+    const pend = this.chat.pending = { kind: 'diary', loading: true, entries: [], streak: 0, prompt: '', wroteToday: false, mood: '', summary: null, error: '' };
     this.renderChat(document.getElementById('app-main'));
     try {
       const [r, pr] = await Promise.all([
@@ -458,11 +494,10 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       const wroteToday = !!(pr && pr.written_today);
       this.chat.pending = { kind: 'diary', loading: false,
         entries: (r && r.entries) || [], streak: (r && r.streak) || 0,
-        prompt: wroteToday ? (pr.prompt || '') : ((pr && pr.prompt) || ''),
-        wroteToday, summary: null, error: '' };
+        prompt: (pr && pr.prompt) || '', wroteToday, mood: '', summary: null, moon: null, reflection: '', error: '' };
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'diary', loading: false, entries: [], streak: 0, prompt: '', wroteToday: false, summary: null, error: e.message };
+      this.chat.pending = { kind: 'diary', loading: false, entries: [], streak: 0, prompt: '', wroteToday: false, mood: '', summary: null, moon: null, reflection: '', error: e.message };
     }
     this.renderChat(document.getElementById('app-main'));
   };
