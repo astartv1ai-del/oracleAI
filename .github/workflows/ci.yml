@@ -43,6 +43,9 @@ jobs:
       - name: Cache-busting policy
         run: python scripts/check_cache_busting.py
 
+      - name: Design contract
+        run: python scripts/check_design_contract.py
+
       - name: LLM golden-set evaluator smoke
         run: |
           python scripts/generate_eval_set.py

@@ -1822,7 +1822,7 @@ html { scroll-behavior: smooth; }
 .te-current-title { display: flex; align-items: center; gap: 7px; min-height: 20px; margin: 0 1px 7px; color: var(--text-main); font-size: 10.5px; font-weight: 800; }
 .te-current-title::before { width: 6px; height: 6px; border-radius: 50%; content: ''; background: var(--ac, var(--champagne-300)); box-shadow: 0 0 9px var(--ac, var(--champagne-300)); }
 .te-current-title small { margin-left: auto; color: var(--text-faint); font-size: 9px; font-weight: 600; }
-.te-sheet .te-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.te-sheet .te-grid { grid-template-columns: 1fr; gap: 6px; }
 .te-sheet .te-chip { min-height: 66px; align-items: flex-start; gap: 7px; padding: 8px 7px; border-radius: 11px; }
 .te-sheet .te-ico { width: 25px; height: 25px; flex: 0 0 25px; border-radius: 8px; }
 .te-sheet .te-ico .sigil { width: 15px; height: 15px; }
