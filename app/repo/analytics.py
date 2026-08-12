@@ -29,6 +29,13 @@ E_PROMO = "promo_redeemed"
 E_REFERRAL = "referral_joined"
 E_MINIAPP_OPEN = "miniapp_open"
 E_CHURN_WARN = "expiry_notified"
+# Privacy-safe activation/retention milestones. Props for these events must stay
+# categorical and never contain user text, memory, birth data or model output.
+E_AGE_CONFIRMED = "age_confirmed"
+E_FIRST_RITUAL = "first_ritual"
+E_FIRST_QUESTION = "first_question"
+E_RETURN_D1 = "return_d1"
+E_RETURN_D7 = "return_d7"
 
 
 async def track(db, name: str, tg_id: int | None = None, *,
@@ -40,6 +47,31 @@ async def track(db, name: str, tg_id: int | None = None, *,
             "VALUES(?,?,?,?,?,?)",
             (tg_id, name, json.dumps(props, ensure_ascii=False) if props else None,
              surface, now.strftime("%Y-%m-%d"), now.isoformat()))
+
+
+async def track_once(db, name: str, tg_id: int, *,
+                     props: dict | None = None, surface: str = "miniapp") -> bool:
+    """Записывает milestone только один раз для владельца события.
+
+    SELECT и INSERT выполняются в одной транзакции через aiosqlite connection;
+    milestone names не зависят от client-supplied event names и props остаются
+    ограниченными вызывающим server-side кодом.
+    """
+    now = datetime.now(timezone.utc)
+    async with transaction(db):
+        cur = await db.execute(
+            "SELECT 1 FROM events WHERE tg_id=? AND name=? LIMIT 1",
+            (tg_id, name),
+        )
+        if await cur.fetchone():
+            return False
+        await db.execute(
+            "INSERT INTO events(tg_id, name, props_json, surface, day, created_at) "
+            "VALUES(?,?,?,?,?,?)",
+            (tg_id, name, json.dumps(props, ensure_ascii=False) if props else None,
+             surface, now.strftime("%Y-%m-%d"), now.isoformat()),
+        )
+    return True
 
 
 async def _scalar(db, sql: str, *args):
@@ -112,6 +144,38 @@ async def overview(db) -> dict:
         "crystals_outstanding": await _scalar(
             db, "SELECT SUM(crystals) FROM users"),
     }
+
+
+async def activation_funnel(db, days: int = 30) -> dict:
+    """Privacy-safe Mini App activation/return funnel by first-open cohort."""
+    since = _ago(days)
+    cohort_sql = (
+        "SELECT DISTINCT tg_id FROM events "
+        "WHERE name=? AND tg_id IS NOT NULL AND created_at>=?"
+    )
+    cohort = await _scalar(db, f"SELECT COUNT(*) FROM ({cohort_sql})", E_MINIAPP_OPEN, since)
+    names = [
+        ("age_gate", E_AGE_CONFIRMED),
+        ("first_ritual", E_FIRST_RITUAL),
+        ("first_question", E_FIRST_QUESTION),
+        ("d1_return", E_RETURN_D1),
+        ("d7_return", E_RETURN_D7),
+    ]
+    steps = []
+    for label, event_name in names:
+        value = await _scalar(
+            db,
+            "SELECT COUNT(DISTINCT tg_id) FROM events WHERE name=? "
+            "AND tg_id IN (" + cohort_sql + ")",
+            event_name, E_MINIAPP_OPEN, since,
+        )
+        steps.append({
+            "step": label,
+            "event": event_name,
+            "value": value,
+            "of_cohort": round(value * 100 / cohort, 1) if cohort else 0.0,
+        })
+    return {"days": days, "cohort": cohort, "steps": steps}
 
 
 async def funnel(db, days: int = 30) -> list[dict]:

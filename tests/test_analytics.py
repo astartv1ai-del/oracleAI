@@ -10,8 +10,9 @@ import asyncio
 import time
 from datetime import datetime, timedelta, timezone
 
+from app.repo import analytics as analytics_repo
 from app.repo import users
-from app.services import analytics
+from app.services import analytics, chat
 
 
 async def test_track_persists_after_drain(db):
@@ -21,6 +22,61 @@ async def test_track_persists_after_drain(db):
     cur = await db.execute(
         "SELECT COUNT(*) c FROM events WHERE name='test_event' AND tg_id=1001")
     assert (await cur.fetchone())["c"] == 1
+
+
+async def test_track_once_is_idempotent(db):
+    assert await analytics.track_once(
+        db, analytics.E_FIRST_RITUAL, 1001,
+        props={"surface_action": "practice_done"}, surface="miniapp",
+    )
+    assert not await analytics.track_once(
+        db, analytics.E_FIRST_RITUAL, 1001,
+        props={"surface_action": "practice_done"}, surface="miniapp",
+    )
+    cur = await db.execute(
+        "SELECT COUNT(*) c FROM events WHERE tg_id=1001 AND name=?",
+        (analytics.E_FIRST_RITUAL,),
+    )
+    assert (await cur.fetchone())["c"] == 1
+
+
+async def test_track_open_records_d1_d7_once(db):
+    await users.ensure(db, 1001, "А")
+    user = await users.get(db, 1001)
+    await chat.track_open(db, user)
+    old = datetime.now(timezone.utc) - timedelta(days=8)
+    await db.execute(
+        "UPDATE events SET day=?, created_at=? WHERE tg_id=? AND name=?",
+        (old.date().isoformat(), old.isoformat(), 1001, analytics.E_MINIAPP_OPEN),
+    )
+    await db.commit()
+    await chat.track_open(db, user)
+    await chat.track_open(db, user)
+    cur = await db.execute(
+        "SELECT name, COUNT(*) c FROM events WHERE tg_id=1001 AND name IN (?, ?, ?) "
+        "GROUP BY name",
+        (analytics.E_RETURN_D1, analytics.E_RETURN_D7, analytics.E_MINIAPP_OPEN),
+    )
+    counts = {row["name"]: row["c"] for row in await cur.fetchall()}
+    assert counts[analytics.E_MINIAPP_OPEN] == 3
+    assert counts[analytics.E_RETURN_D1] == 1
+    assert counts[analytics.E_RETURN_D7] == 1
+
+
+async def test_activation_funnel_uses_first_open_cohort(db):
+    await analytics.track_now(
+        db, analytics.E_MINIAPP_OPEN, 1001, surface="miniapp",
+    )
+    await analytics.track_once(
+        db, analytics.E_AGE_CONFIRMED, 1001,
+        props={"source": "miniapp"}, surface="miniapp",
+    )
+    funnel = await analytics_repo.activation_funnel(db, days=30)
+    assert funnel["cohort"] == 1
+    steps = {step["step"]: step for step in funnel["steps"]}
+    assert steps["age_gate"]["value"] == 1
+    assert steps["age_gate"]["of_cohort"] == 100.0
+    assert steps["first_question"]["value"] == 0
 
 
 async def test_prune_removes_old_events(db):

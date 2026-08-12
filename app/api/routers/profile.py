@@ -177,9 +177,15 @@ async def update_profile(item: ProfileIn, user=Depends(current_user),
             raise HTTPException(400, "неизвестная таймзона")
         fields["tz"] = item.tz
     if fields:
+        was_age_confirmed = bool(user["age_confirmed"])
         await users.update(db, user["tg_id"], **fields)
         await analytics.track(db, "profile_update", user["tg_id"],
                               props={"fields": list(fields)}, surface="miniapp")
+        if fields.get("age_confirmed") == 1 and not was_age_confirmed:
+            await analytics.track_once(
+                db, analytics.E_AGE_CONFIRMED, user["tg_id"],
+                props={"source": "miniapp"}, surface="miniapp",
+            )
     return {"ok": True, "updated": list(fields)}
 
 

@@ -158,6 +158,10 @@ async def practice_done(cb: CallbackQuery, db):
     if not result["already"]:
         await analytics.track(db, "practice_done", user["tg_id"],
                               props={"code": code, "streak": result["streak"]})
+        await analytics.track_once(
+            db, analytics.E_FIRST_RITUAL, user["tg_id"],
+            props={"surface_action": "practice_done"}, surface="bot",
+        )
     await cb.answer("Отмечено ✨" if not result["already"] else "Уже отмечено")
     tail = ""
     if not result["finished"] and result.get("today_step"):

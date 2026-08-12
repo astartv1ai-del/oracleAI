@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 
 from ..core import agent as agent_core
 from ..core import agents, safety, tarot
@@ -83,7 +84,12 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     # зовём вовсе, лимит не тратим: брать вопрос за деньги в такой момент нельзя.
     level, category = safety.classify(question)
     if level == safety.CRISIS:
-        return await _crisis_answer(db, user, question, category, agent, surface)
+        result = await _crisis_answer(db, user, question, category, agent, surface)
+        await analytics.track_once(
+            db, analytics.E_FIRST_QUESTION, user["tg_id"],
+            props={"agent": agent, "safety": "crisis"}, surface=surface,
+        )
+        return result
 
     # Зона бюджета заперта на пользователя: два устройства не должны пройти
     # «право есть» одновременно — раньше, чем запись вопроса зафиксирует расход
@@ -121,6 +127,10 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     await analytics.track(db, analytics.E_QUESTION, user["tg_id"],
                           props={"agent": spec.code, "charge": verdict.charge},
                           surface=surface)
+    await analytics.track_once(
+        db, analytics.E_FIRST_QUESTION, user["tg_id"],
+        props={"agent": spec.code}, surface=surface,
+    )
     # Память растёт только со свежих вопросов: уточнение за минуту до этого уже
     # получило свой контекст, экстракт с него плодил бы шум и жёг lite-вызов (G23).
     if verdict.charge != limits.FOLLOWUP and bool(user["memory_enabled"]):
@@ -289,5 +299,28 @@ async def thread_history(db, user, agent: str, limit: int = 60) -> dict:
 
 
 async def track_open(db, user, surface: str = "miniapp") -> None:
-    await analytics.track(db, analytics_repo.E_MINIAPP_OPEN, user["tg_id"],
-                          surface=surface)
+    """Writes an open and one-time D1/D7 return milestones server-side."""
+    tg_id = user["tg_id"]
+    await analytics.track_now(db, analytics_repo.E_MINIAPP_OPEN, tg_id,
+                              surface=surface)
+    cur = await db.execute(
+        "SELECT MIN(day) first_day FROM events WHERE tg_id=? AND name=?",
+        (tg_id, analytics_repo.E_MINIAPP_OPEN),
+    )
+    row = await cur.fetchone()
+    if not row or not row["first_day"]:
+        return
+    try:
+        first_day = datetime.fromisoformat(row["first_day"]).date()
+    except (TypeError, ValueError):
+        return
+    age_days = (datetime.now(timezone.utc).date() - first_day).days
+    for milestone, threshold in (
+        (analytics.E_RETURN_D1, 1),
+        (analytics.E_RETURN_D7, 7),
+    ):
+        if age_days >= threshold:
+            await analytics.track_once(
+                db, milestone, tg_id, props={"cohort_day": threshold},
+                surface=surface,
+            )

@@ -52,6 +52,10 @@ async def done(code: str, user=Depends(current_user), db=Depends(get_db)):
                               props={"code": code, "streak": result["streak"],
                                      "finished": result["finished"]},
                               surface="miniapp")
+        await analytics.track_once(
+            db, analytics.E_FIRST_RITUAL, user["tg_id"],
+            props={"surface_action": "practice_done"}, surface="miniapp",
+        )
     return result
 
 

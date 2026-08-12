@@ -31,6 +31,11 @@ E_PROMO = repo.E_PROMO
 E_REFERRAL = repo.E_REFERRAL
 E_MINIAPP_OPEN = repo.E_MINIAPP_OPEN
 E_CHURN_WARN = repo.E_CHURN_WARN
+E_AGE_CONFIRMED = repo.E_AGE_CONFIRMED
+E_FIRST_RITUAL = repo.E_FIRST_RITUAL
+E_FIRST_QUESTION = repo.E_FIRST_QUESTION
+E_RETURN_D1 = repo.E_RETURN_D1
+E_RETURN_D7 = repo.E_RETURN_D7
 
 
 async def track(db, name: str, tg_id: int | None = None, *,
@@ -54,6 +59,27 @@ async def _record(db, name: str, tg_id: int | None, props, surface: str) -> None
         log.warning("событие %s не записано: %s", name, e)
 
 
+async def track_now(db, name: str, tg_id: int | None = None, *,
+                   props: dict | None = None, surface: str = "system") -> bool:
+    """Синхронная запись для server-side milestone, где важен read-after-write."""
+    try:
+        await repo.track(db, name, tg_id, props=props, surface=surface)
+    except Exception as e:  # noqa: BLE001
+        log.warning("событие %s не записано: %s", name, e)
+        return False
+    return True
+
+
+async def track_once(db, name: str, tg_id: int, *,
+                     props: dict | None = None, surface: str = "miniapp") -> bool:
+    """Атомарно записывает milestone один раз; имена задаются сервером."""
+    try:
+        return await repo.track_once(db, name, tg_id, props=props, surface=surface)
+    except Exception as e:  # noqa: BLE001
+        log.warning("milestone %s не записан: %s", name, e)
+        return False
+
+
 async def drain() -> None:
     """Ждёт фоновые записи событий. Тесты и корректный шатдаун."""
     if _pending:
@@ -72,6 +98,7 @@ async def dashboard(db, *, days: int = 30) -> dict:
     return {
         "overview": await repo.overview(db),
         "funnel": await repo.funnel(db, days),
+        "activation": await repo.activation_funnel(db, days),
         "timeseries": await repo.timeseries(db, days),
         "retention": await repo.retention(db),
         "top_events": await repo.top_events(db, days=7),

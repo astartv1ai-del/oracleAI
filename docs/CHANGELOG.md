@@ -12,6 +12,23 @@
 | **Security** | Изменение защиты, приватности или безопасного поведения. |
 | **Deprecated / Removed** | Переходный или удалённый функционал. |
 
+## Unreleased
+
+### Added
+
+- Production baseline: structured JSONL logs with PII redaction, request/release IDs, Sentry environment/release tagging and operational alert checker for 5xx, webhook failures, LLM fallback rate and backup freshness.
+- Encrypted SQLite backup/restore helpers with checksum, integrity checks, retention and off-site compose upload.
+- Privacy-safe activation dictionary and server-owned milestones for age-gate completion, first ritual, first question and D1/D7 voluntary return; admin dashboard now exposes cohort activation funnel.
+- Public RU/EN Privacy Policy and Terms routes with explicit 16+ wording and deletion/support placeholders for legal review.
+
+### Changed
+
+- GitHub Actions now requires ruff, Python/JavaScript syntax checks, migration-focused tests, cache-busting policy, full pytest, dependency audit and selfcheck.
+
+### Security
+
+- Backup production mode fails closed without a dedicated encryption key; structured logs and Sentry scrub secrets, query parameters and Telegram identifiers.
+
 ## [2.0.0] — 2026-08-12
 
 ### Added

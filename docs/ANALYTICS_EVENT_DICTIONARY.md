@@ -1,0 +1,63 @@
+# OracleAI — privacy-safe event dictionary
+
+Этот словарь является контрактом между продуктом, кодом, аналитикой и privacy review. События отвечают на вопрос «какой этап опыта был завершён», но не должны восстанавливать содержание личного разговора.
+
+> **Запрещено во всех product events:** сообщение или его hash, diary text, memory/fact, birth date/time/place, partner data, model answer, payment details, raw Telegram initData, IP, arbitrary URL query, free-form user text и client-supplied event name.
+
+## Общие правила
+
+| Поле | Правило |
+|---|---|
+| `name` | Только server-owned allowlist из `app/repo/analytics.py`; клиент не может создать новое имя. |
+| `tg_id` | Используется только для ownership/cohort queries внутри защищённой БД; не выводится в dashboard export и logs. |
+| `surface` | Одно из `bot`, `miniapp`, `admin`, `system`; назначается server-side. |
+| `props_json` | Только перечисленные categorical/low-cardinality поля из таблицы ниже. |
+| `day` | UTC `YYYY-MM-DD` для агрегирования; не является датой рождения или пользовательским событием. |
+| Retention | Детальные `events` и `llm_usage` — rolling 120 дней; дневные агрегаты — отдельно после проверки юридической retention policy. |
+| Deletion | Удаление аккаунта удаляет или анонимизирует связанные event rows в соответствии с утверждённой deletion policy. |
+
+## Activation and retention funnel
+
+| Event | Момент | Allowed props | Surface | Owner | KPI |
+|---|---|---|---|---|---|
+| `miniapp_open` | Сервер успешно обработал `GET /api/me` для владельца. | none | `miniapp` | Product | Open rate, cohort start. |
+| `age_confirmed` | Переход `age_confirmed=false → true` через authenticated profile update. | `source`: `miniapp` | `miniapp` | Trust/Product | Age-gate completion. |
+| `first_ritual` | Первая успешная отметка дневной практики, не повторная отметка за день. | `surface_action`: `practice_done` | `bot`/`miniapp` | Product | First ritual completion, time-to-first-value. |
+| `first_question` | Первый завершённый обычный или crisis-safe вопрос с ответом. | `agent`, optional `safety=crisis` | caller surface | AI/Product | First question completion, first-value rate. |
+| `return_d1` | Open on or after UTC day +1 from first Mini App open; atomically recorded once. | `cohort_day`: `1` | `miniapp` | Product | D1 voluntary return. |
+| `return_d7` | Open on or after UTC day +7 from first Mini App open; atomically recorded once. | `cohort_day`: `7` | `miniapp` | Product | D7 voluntary return. |
+
+D1/D7 — это milestone пользователя, а не количество открытий. Если пользовательница вернулась на восьмой день, оба milestone могут быть записаны при этом открытии; dashboard должен считать cohort completion, а не складывать rows как sessions.
+
+## Existing product events
+
+| Event | Server-owned props | KPI/use |
+|---|---|---|
+| `start` | `source` from allowlist | Telegram acquisition and onboarding start. |
+| `onboard_done` | `source` from allowlist | Completed bot onboarding. |
+| `question` | `agent`, `charge` from server enums | Questions, cost/limit mix. |
+| `tarot_draw` | `spread`, `charge` from catalog/server | Tarot completion. |
+| `forecast_view` | `channel`: `bot`, `push`, `miniapp` | Daily content reach. |
+| `practice_start` | `code` from catalog | Practice intent. |
+| `practice_done` | `code`, `streak`, `finished` | Practice completion; not a shame/streak pressure metric. |
+| `practice_stop` | `code` from catalog | Voluntary stop and quality review. |
+| `limit_reached` | `reason`, `agent` or `spread` from server enums | Friction and paywall diagnostics. |
+| `experiment_exposure` | validated `experiment`, `variant` only | Experiment cohort assignment. |
+| `profile_update` | list of changed field names, never values | Settings adoption; not profile content. |
+| `web_payment` / `payment_success` | plan/sku and provider event category only | Payment completion and recovery. |
+| `safety_crisis` | category from safety enum | Safety volume and review; never expose excerpt in analytics. |
+| `llm_usage` | provider/model/purpose/tokens/cost/latency/ok | Quality, latency and unit economics; stored separately from product events. |
+
+## Dashboard definitions
+
+| KPI | Definition | Exclusions |
+|---|---|---|
+| Age-gate completion | Unique users with `age_confirmed` divided by unique users with first `miniapp_open` in cohort window. | No age value or birth data. |
+| First ritual rate | Unique users with `first_ritual` divided by age-confirmed users in same cohort. | Do not count `practice_start` alone. |
+| First question rate | Unique users with `first_question` divided by age-confirmed users in same cohort. | Failed/denied question is not completion. |
+| D1 / D7 return | Cohort users with milestone event divided by cohort users with first open. | No push/open pressure interpretation. |
+| Fallback rate | `llm_fallback` operational records divided by successful provider completions, segmented by purpose/provider/language outside event table. | Never attach prompt, answer or memory. |
+
+## Review and ownership
+
+The product owner reviews activation and voluntary return weekly. The AI owner reviews `first_question`, fallback and safety segments after prompt/provider changes. The technical owner reviews event retention, deletion, dashboards and alert noise monthly. Any new event requires an entry here, a privacy check, a test, and a documented owner before code merge.
