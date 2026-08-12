@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from datetime import date, datetime
 
 log = logging.getLogger("oracle.astro")
@@ -163,40 +164,75 @@ def synastry_aspects_text(aspects: list[dict]) -> str:
                      for a in aspects[:8])
 
 
+def _parse_birth_time(value: str | None) -> tuple[int, int] | None:
+    """Возвращает проверенное локальное время или `None`, не подменяя его полднем."""
+    if value in (None, ""):
+        return None
+    try:
+        parsed = datetime.strptime(value, "%H:%M")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Время рождения указывается в формате ЧЧ:ММ") from exc
+    return parsed.hour, parsed.minute
+
+
+def _has_valid_coordinates(lat: float | None, lon: float | None) -> bool:
+    """Проверяет полноту и физически допустимый диапазон координат."""
+    if lat is None or lon is None:
+        return False
+    try:
+        return (math.isfinite(float(lat)) and math.isfinite(float(lon))
+                and -90 <= float(lat) <= 90 and -180 <= float(lon) <= 180)
+    except (TypeError, ValueError):
+        return False
+
+
 def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
                   lat: float | None, lon: float | None,
-                  tz: str | None = None) -> dict:
-    """Возвращает dict карты. mode: 'full' | 'lite'.
+                  tz: str | None = None, *, time_known: bool | None = None) -> dict:
+    """Возвращает карту с честно указанной точностью входных данных.
 
-    tz обязателен для точных домов: время рождения — местное, и без таймзоны
-    эфемериды посчитают карту со сдвигом в несколько часов.
+    `mode=full` означает, что доступна Swiss Ephemeris. Поля `precision` и `note`
+    отдельно показывают, можно ли использовать дома/ASC/MC: для них требуются
+    подтверждённые время, координаты и таймзона. Планеты и аспекты между ними
+    остаются полезными при неполных данных, но не маскируются под точную карту.
     """
     d = datetime.strptime(birth_date, "%Y-%m-%d").date()
+    parsed_time = _parse_birth_time(birth_time)
+    # Старые вызовы без флага сохраняют прежнее поведение: валидное время считается
+    # подтверждённым. Новые product flows обязаны передавать `time_known=False`,
+    # когда «12:00» — лишь техническая опора для эфемерид.
+    time_confirmed = bool(parsed_time) if time_known is None else bool(parsed_time and time_known)
+    coordinates_known = _has_valid_coordinates(lat, lon)
     try:
-        return _full_chart(d, birth_time, city, lat, lon, tz)
+        return _full_chart(d, parsed_time, city, lat, lon, tz,
+                           coordinates_known=coordinates_known,
+                           time_confirmed=time_confirmed)
     except Exception as e:  # noqa: BLE001
         log.warning("полная карта недоступна (%s), считаю упрощённо", e)
-        sign, sym, element = sun_sign(d)
+        sign, sym, element = sun_sign_precise(d)
         return {
             "mode": "lite",
+            "precision": "sun_only",
             "sun": {"sign": sign, "symbol": sym, "element": element},
             "planets": [],
             "houses": [],
             "aspects": [],
-            "note": "Упрощённый расчёт (полные эфемериды недоступны).",
+            "note": "Упрощённый расчёт: доступны только данные Солнца; "
+                    "дома, ASC, MC и аспекты не определяются.",
         }
 
 
 async def compute_chart_async(birth_date: str, birth_time: str | None,
                               city: str | None, lat: float | None,
-                              lon: float | None, tz: str | None = None) -> dict:
+                              lon: float | None, tz: str | None = None,
+                              *, time_known: bool | None = None) -> dict:
     """`compute_chart` в отдельном потоке.
 
     Расчёт эфемерид занимает сотни миллисекунд и держит GIL: из async-хендлера
     это означало, что на время построения карты бот не отвечал никому.
     """
     return await asyncio.to_thread(compute_chart, birth_date, birth_time, city,
-                                   lat, lon, tz)
+                                   lat, lon, tz, time_known=time_known)
 
 
 def _aspects(subject) -> list[dict]:
@@ -219,18 +255,20 @@ def _aspects(subject) -> list[dict]:
     return out[:12]
 
 
-def _full_chart(d: date, birth_time, city, lat, lon, tz) -> dict:
+def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
+                *, coordinates_known: bool, time_confirmed: bool) -> dict:
     from kerykeion import AstrologicalSubject  # type: ignore
 
-    hour, minute = 12, 0
-    if birth_time:
-        hh, mm = birth_time.split(":")
-        hour, minute = int(hh), int(mm)
+    hour, minute = birth_time or (12, 0)
+    # Использовать углы и дома корректно можно только при локальном времени,
+    # координатах и таймзоне. В остальных случаях полдень — техническая опора для
+    # положений планет, а не подставное время рождения.
+    angular_data_available = bool(time_confirmed and coordinates_known and tz)
 
     kwargs = dict(name="user", year=d.year, month=d.month, day=d.day,
                   hour=hour, minute=minute, city=city or "-")
-    if lat is not None and lon is not None:
-        subject = AstrologicalSubject(**kwargs, lat=lat, lng=lon,
+    if coordinates_known:
+        subject = AstrologicalSubject(**kwargs, lat=float(lat), lng=float(lon),
                                       tz_str=tz or "Europe/Moscow", online=False)
     else:
         # без координат считаем по Москве — это честнее, чем поход в интернет,
@@ -250,18 +288,19 @@ def _full_chart(d: date, birth_time, city, lat, lon, tz) -> dict:
             "sign": SIGN_EN2RU.get(p.sign, p.sign),
             "deg": round(p.position, 1),
             "abs_deg": round(p.abs_pos, 1),
-            "house": HOUSE_NUM.get(str(p.house), None),
+            "house": HOUSE_NUM.get(str(p.house), None) if angular_data_available else None,
             "retro": bool(getattr(p, "retrograde", False)),
         })
 
     houses = []
-    for i, name in enumerate(HOUSE_ORDER, start=1):
-        h = getattr(m, f"{name.lower()}_house")
-        houses.append({"n": i, "sign": SIGN_EN2RU.get(h.sign, h.sign),
-                       "deg": round(h.position, 1), "abs_deg": round(h.abs_pos, 1)})
+    if angular_data_available:
+        for i, name in enumerate(HOUSE_ORDER, start=1):
+            h = getattr(m, f"{name.lower()}_house")
+            houses.append({"n": i, "sign": SIGN_EN2RU.get(h.sign, h.sign),
+                           "deg": round(h.position, 1), "abs_deg": round(h.abs_pos, 1)})
 
-    asc = m.ascendant
-    mc = m.medium_coeli
+    asc = m.ascendant if angular_data_available else None
+    mc = m.medium_coeli if angular_data_available else None
     sun = planets[0]
     sym = next((s[1] for s in SIGNS if s[0] == sun["sign"]), "☉")
     element = next((s[2] for s in SIGNS if s[0] == sun["sign"]), "")
@@ -281,19 +320,38 @@ def _full_chart(d: date, birth_time, city, lat, lon, tz) -> dict:
             "name": ru,
             "sign": SIGN_EN2RU.get(n.sign, n.sign),
             "deg": round(n.position, 1),
-            "house": HOUSE_NUM.get(str(getattr(n, "house", "")), None),
+            "house": HOUSE_NUM.get(str(getattr(n, "house", "")), None)
+                     if angular_data_available else None,
             "retro": bool(getattr(n, "retrograde", False)),
         })
+    precision = "exact" if angular_data_available else (
+        "time_without_location" if time_confirmed else "date_only"
+    )
+    note = ""
+    if precision == "date_only":
+        note = ("Время рождения не указано: показаны эфемеридные положения планет; "
+                "дома, ASC и MC намеренно скрыты.")
+    elif precision == "time_without_location":
+        note = ("Время рождения указано, но координаты или таймзона не подтверждены: "
+                "дома, ASC и MC намеренно скрыты.")
+    aspects = _aspects(subject)
+    if not angular_data_available:
+        aspects = [a for a in aspects if a["p1"] not in {"Асцендент", "Середина неба"}
+                   and a["p2"] not in {"Асцендент", "Середина неба"}]
     return {
         "mode": "full",
+        "precision": precision,
         "sun": {"sign": sun["sign"], "symbol": sym, "element": element},
-        "ascendant": {"sign": SIGN_EN2RU.get(asc.sign, asc.sign),
-                      "deg": round(asc.position, 1), "abs_deg": round(asc.abs_pos, 1)},
-        "mc": {"sign": SIGN_EN2RU.get(mc.sign, mc.sign), "deg": round(mc.position, 1)},
+        "ascendant": ({"sign": SIGN_EN2RU.get(asc.sign, asc.sign),
+                       "deg": round(asc.position, 1), "abs_deg": round(asc.abs_pos, 1)}
+                      if asc else None),
+        "mc": ({"sign": SIGN_EN2RU.get(mc.sign, mc.sign), "deg": round(mc.position, 1)}
+               if mc else None),
         "planets": planets,
         "houses": houses,
-        "aspects": _aspects(subject),
+        "aspects": aspects,
         "nodes": nodes,
+        "note": note,
     }
 
 
@@ -461,7 +519,7 @@ def _chart_accents(chart: dict, time_known: bool | None) -> str:
         bits.append("ретро: " + ", ".join(retros))
 
     # Самая близкая к угловым куспидам планета (ASC/MC).
-    if time_known is not False:
+    if time_known is True:
         asc = chart.get("ascendant") or {}
         mc = chart.get("mc") or {}
         a_deg = asc.get("abs_deg")
@@ -503,19 +561,24 @@ def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
     """
     if chart.get("mode") == "full" and chart.get("planets"):
         parts = []
-        asc = chart.get("ascendant")
+        # Старые сохранённые карты не содержат `precision`; при известном времени
+        # они считаются точными, а новые date-only карты явно блокируют углы.
+        angular_data_available = time_known is True and chart.get("precision", "exact") == "exact"
+        asc = chart.get("ascendant") if angular_data_available else None
         if asc:
             parts.append(f"Асцендент в {asc['sign']}")
-        mc = chart.get("mc")
+        mc = chart.get("mc") if angular_data_available else None
         if mc and mc.get("sign"):
             parts.append(f"MC в {mc['sign']}")
         for p in chart["planets"]:
-            house = f", {p['house']} дом" if (p.get("house") and time_known) else ""
+            house = f", {p['house']} дом" if (p.get("house") and angular_data_available) else ""
             parts.append(f"{p['name']} в {p['sign']}{house}"
                          + (" (R)" if p["retro"] else ""))
         brief = "; ".join(parts)
-        if time_known is False:
-            brief += ". ВНИМАНИЕ: время рождения неизвестно, дома рассчитаны по полдню — не используй их"
+        if not angular_data_available:
+            brief += (". ВНИМАНИЕ: время рождения неизвестно или недостаточно "
+                      "подтверждено; используется только техническая точка полдня. "
+                      "дома, ASC и MC отсутствуют — не выводи их и не заменяй предположением")
         aspects = chart.get("aspects") or []
         if aspects:
             brief += ". Ключевые аспекты: " + "; ".join(
@@ -525,7 +588,7 @@ def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
         if nodes:
             brief += ". Узлы и Лилит: " + "; ".join(
                 f"{n['name']} в {n['sign']}" for n in nodes if n.get("sign"))
-        accents = _chart_accents(chart, time_known)
+        accents = _chart_accents(chart, angular_data_available)
         if accents:
             brief += ". АКЦЕНТЫ КАРТЫ: " + accents
         return brief

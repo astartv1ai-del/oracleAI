@@ -21,7 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import users as users_repo
-from . import agents, astro, llm, memory, skills, tarot
+from . import agents, astro, interpretation, llm, memory, skills, tarot
 from . import matrix as mx
 from .stable import stable_seed
 
@@ -52,28 +52,35 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
     «про жизнь вообще».
     """
     cards_block = tarot.cards_text(cards, positions)
+    evidence = interpretation.tarot_evidence(cards, positions, title=title, question=question)
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("tarot"),
                                              question=question or "")
-            q = f"Я спросила карты: «{question}».\n" if question else ""
             summary = await memory.get_summary(db, user["tg_id"])
             mems = await memory.recall(db, user["tg_id"], question or "", limit=3)
             who_block = ""
             if summary:
-                who_block += f"Кто я для тебя: {summary}\n"
+                who_block += f"Контекст клиентки (не факт расклада): {summary}\n"
             if mems:
-                who_block += f"Что ты обо мне помнишь: {'; '.join(mems)}\n"
-            user_msg = (f"{await skills.guide(db, 'tarot')}\n\n"
-                        f"Я сделала расклад «{title}». Выпали карты:\n{cards_block}\n\n"
-                        f"{q}{who_block}Дай глубокую тёплую трактовку именно этих карт для меня: "
-                        f"разбери по позициям, свяжи в один сюжет и ответь на мой "
-                        f"вопрос{'. Закончи одним практическим шагом' if question else ''}.")
+                who_block += f"Релевантный контекст: {'; '.join(mems)}\n"
+            user_msg = (
+                f"{await skills.guide(db, 'tarot')}\n\n"
+                f"{evidence.as_prompt_block()}\n\n"
+                f"{interpretation.generation_rules('tarot')}\n\n"
+                f"{who_block}Дай тёплую трактовку расклада «{title}»: сначала разберись "
+                "с ролью каждой позиции, затем свяжи карты в один сюжет и ответь на вопрос "
+                "клиентки. Не пересказывай справочные значения подряд. Не добавляй карты, "
+                "сроки, гарантии или утверждения о мыслях третьего человека как факт."
+            )
             text = await llm.complete(system, user_msg, tier="main",
                                       max_tokens=min(1800, 320 * max(3, len(cards))),
                                       purpose="tarot", tg_id=user["tg_id"], db=db)
-            if len(text.strip()) >= 120:
+            grounding = interpretation.validate_tarot_text(text, cards, tarot.DECK)
+            if len(text.strip()) >= 120 and grounding.ok:
                 return text
+            if text.strip() and not grounding.ok:
+                log.info("tarot grounding rejected: %s", "; ".join(grounding.issues))
         except Exception as e:  # noqa: BLE001
             log.warning("трактовка расклада ушла в офлайн: %s", e)
     return _reading_offline(user, title, cards, cards_block, question)
@@ -88,10 +95,11 @@ def _reading_offline(user, title: str, cards: list[dict], cards_block: str,
     q_line = f"\n\nТы спросила: «{question}»." if question else ""
     return (
         f"🎴 <b>{title}</b>\n\n{cards_block}{q_line}\n\n"
-        f"{name}, сердце этого расклада — {key['emoji']} <b>{key['name']}</b>: "
-        f"{key['meaning']}. Карты легли так, что прошлое уже отпускает тебя, "
-        f"а будущее ждёт твоего шага. {reversed_note}"
-        f"Прислушайся к центральной карте — она про то, что происходит прямо сейчас. 🌙"
+        f"{name}, опорная карта этого расклада — {key['emoji']} <b>{key['name']}</b>: "
+        f"{key['meaning']}. Прочитай её не как приговор, а как тему, которую стоит "
+        f"заметить в текущей ситуации. {reversed_note}"
+        "Сделай один маленький шаг: запиши, где эта тема уже проявилась сегодня и "
+        "какой выбор остаётся в твоей власти. 🌙"
     )
 
 
@@ -325,26 +333,33 @@ async def interpret_compat(db, user, partner_date: str,
                          f"сфере связывает, где трение и что укрепит именно её. "
                          f"Общий балл упомяни, но не превращай разбор в один вердикт.")
 
+    relation_label = {
+        "love": "любовный союз", "friend": "дружба", "work": "работа/дело",
+        "family": "семья",
+    }.get(data.get("relation") or relation, "отношения")
+    evidence = interpretation.compatibility_evidence(
+        data, partner_name=who, relation_label=relation_label, synastry_block=block,
+    )
+
     text = ""
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("astro"),
                                              question=f"Совместимость: {who}")
-            summary = await memory.get_summary(db, user["tg_id"])
-            mems = await memory.recall(db, user["tg_id"], f"Совместимость: {who}",
-                                       limit=3)
-            who_block = ""
-            if summary:
-                who_block += f"\nКто я: {summary}"
-            if mems:
-                who_block += f"\nЧто ты знаешь обо мне: {'; '.join(mems)}"
-            user_msg = (f"{await skills.guide(db, 'compat')}\n\nРазбор совместимости: "
-                        f"{brief}.{synast}{spheres_block}{who_block}\n"
-                        f"Расскажи, что нас соединяет, где будет трение и что укрепит "
-                        f"союз. Опирайся на данные расчёта, не выдумывай аспекты."
-                        f" Тепло, конкретно, 5-7 абзацев.")
-            text = await llm.complete(system, user_msg, tier="main", max_tokens=1000,
-                                      purpose="compat", tg_id=user["tg_id"], db=db)
+            user_msg = (
+                f"{await skills.guide(db, 'compat')}\n\n{evidence.as_prompt_block()}\n\n"
+                f"{interpretation.generation_rules('compatibility')}\n"
+                "Разбери каждую доступную сферу отдельно: ресурс, возможное трение и "
+                "один наблюдаемый способ укрепить контакт. Общий балл — ориентир, не "
+                "вердикт. Пиши тепло, конкретно, 5–7 коротких абзацев."
+            )
+            candidate = await llm.complete(system, user_msg, tier="main", max_tokens=1000,
+                                           purpose="compat", tg_id=user["tg_id"], db=db)
+            check = interpretation.validate_compatibility_text(candidate, evidence)
+            if check.ok:
+                text = candidate
+            else:
+                log.warning("разбор пары отклонён quality guardrail: %s", "; ".join(check.issues))
         except Exception as e:  # noqa: BLE001
             log.warning("разбор пары ушёл в офлайн: %s", e)
     if len(text.strip()) < 120:
@@ -405,7 +420,8 @@ async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
     не понимает дома и карты: кто ты, характер, сильные/слабые стороны, страхи,
     предназначение (Раху) и кармический багаж (Кету).
     """
-    brief = _chart_brief(chart)
+    time_known = bool(user and user["birth_time_known"])
+    evidence = interpretation.chart_evidence(chart, time_known=time_known)
     text = ""
     live = False
     if llm.enabled():
@@ -413,36 +429,23 @@ async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
             system = await agents.system_for(db, user, agents.get("astro"))
             user_msg = (
                 f"{await skills.guide(db, 'natal')}\n\n"
-                f"Натальная карта клиентки ({(user['name'] or 'она') if user else 'она'}):\n{brief}\n\n"
-                "Напиши понятный и глубокий разбор карты для человека без "
-                "астрологических знаний. Текст живой, тёплый, от второго лица "
-                "(обращайся к ней на 'ты'). Ссылайся на КОНКРЕТНЫЕ планеты, знаки, "
-                "дома и аспекты из карты выше и объясняй их по-человечески — как "
-                "каждая деталь звучит в её обычной жизни, а не в учебнике. "
-                "Разделы (каждый начни с заголовка в **жирном**):\n"
-                "**Ты и твой характер** — 3-4 предложения: Солнце и Асцендент, как "
-                "они прорастают в поведении;\n"
-                "**Сильные стороны** — что даёт ей опору, назови 1-2 конкретные "
-                "планеты и что именно они дают;\n"
-                "**Слабые стороны и зоны роста** — честно, но мягко, и предложи, "
-                "как с этим обходиться;\n"
-                "**Страхи и тени** — что её тревожит подсознательно, опирайся на "
-                "напряжённые аспекты и сложные дома;\n"
-                "**Предназначение этой жизни** — опирайся на Раху и его дом;\n"
-                "**Кармический багаж** — опирайся на Кету: что уже наработано в "
-                "прошлых воплощениях и что она несёт как базу;\n"
-                "**Планетные правила простыми словами** — 3-5 строк о ключевых "
-                "планетах: планета в знаке (её врождённый почерк), дом (сфера "
-                "жизни), ретро-градус если он есть;\n"
-                "**Один совет на ближайшее время** — практический шаг, созвучный "
-                "её сильной планете или текущей теме карты.\n"
-                "Опирайся только на данные выше, не выдумывай планеты, градусы и "
-                "аспекты.")
+                f"{evidence.as_prompt_block()}\n\n"
+                f"{interpretation.generation_rules('chart')}\n\n"
+                "Напиши понятный разбор для человека без астрологических знаний, "
+                "на «ты». Используй 4–6 коротких разделов: главный мотив, ресурс, "
+                "зона внимательного роста, 1–2 связки факторов и безопасный шаг. "
+                "Не назначай диагнозов, не называй фатальную судьбу и не подменяй "
+                "астрологическую символику утверждениями о фактах. Если времени "
+                "рождения нет, не создавай разделы про дома, ASC, MC или узлы по домам."
+            )
             text = await llm.complete(system, user_msg, tier="main",
-                                      max_tokens=2200, purpose="chart_interpret",
+                                      max_tokens=1800, purpose="chart_interpret",
                                       tg_id=user["tg_id"], db=db)
-            if len(text.strip()) >= 160:
+            grounding = interpretation.validate_chart_text(text, evidence)
+            if len(text.strip()) >= 160 and grounding.ok:
                 live = True
+            elif text.strip() and not grounding.ok:
+                log.info("chart grounding rejected: %s", "; ".join(grounding.issues))
         except Exception as e:  # noqa: BLE001
             log.warning("разбор карты ушёл в офлайн: %s", e)
     if not live:
@@ -450,20 +453,24 @@ async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
         asc = chart.get("ascendant") or {}
         nodes = {n.get("name", ""): n for n in chart.get("nodes", [])}
         rahu = nodes.get("Раху (Северный узел)")
-        ketu = nodes.get("Кету (Южный узел)")
-        text = (
-            f"**Ты и твой характер**\n"
-            f"Солнце в {sun.get('sign') or '?'} ({sun.get('element')}) и Асцендент "
-            f"в {asc.get('sign') or '?'} делают тебя человеком, который чувствует "
-            f"глубоко, а действует осознанно.\n\n"
-            f"**Предназначение этой жизни**\n"
-            f"{rahu['sign'] + ' (дом ' + str(rahu.get('house')) + ')' if rahu else 'Раху'}"
-            f" — зона, куда тебя ведёт рост.\n\n"
-            f"**Кармический багаж**\n"
-            f"{ketu['sign'] + ' (дом ' + str(ketu.get('house')) + ')' if ketu else 'Кету'}"
-            f" — то, что уже наработано в прошлом.\n\n"
-            f"Попроси меня подробнее разобрать любой дом, планету или аспект — "
-            f"расскажу по-человечески. 🌙")
+        first_planet = next((p for p in chart.get("planets", []) if p.get("name")), None)
+        opening = f"Солнце в {sun.get('sign') or '?'}"
+        if time_known and asc.get("sign"):
+            opening += f" и Асцендент в {asc['sign']}"
+        text = f"**Главный мотив**\n{opening} — одна из опор этой карты. "
+        if first_planet:
+            text += (f"{first_planet['name']} в {first_planet.get('sign') or '?'} "
+                     "добавляет к этому свой способ проявляться в повседневности.")
+        if not time_known:
+            text += " Время рождения не указано, поэтому дома и Асцендент здесь не интерпретируются."
+        text += "\n\n**Точка наблюдения**\n"
+        if rahu:
+            text += (f"Раху в {rahu.get('sign') or '?'} можно читать как символическую тему "
+                     "роста и любопытства, а не как готовый сценарий жизни. ")
+        text += ("На этой неделе замечай один повторяющийся выбор: где ты действуешь "
+                 "по привычке, а где можешь попробовать более осознанный вариант.\n\n"
+                 "Попроси подробнее разобрать конкретную планету или вопрос — тогда "
+                 "интерпретация будет точнее. 🌙")
     return text, live
 
 
@@ -555,6 +562,13 @@ async def build_report(db, user, kind: str, *, partner_date: str | None = None,
                      "kind": kind, "period": period, "cached": True}
 
     data_block = await _report_data(db, user, kind, partner_date, partner_name)
+    evidence = interpretation.narrative_evidence(
+        "report", [data_block],
+        limits=(
+            "Сохраняй заданные разделы, но не заполняй их шаблонной водой: если факта для раздела нет, честно назови предел расчёта.",
+            "Фразы о предназначении, деньгах, любви или периодах — символические гипотезы и варианты действия, а не прогноз или гарантия.",
+        ),
+    )
     body = ""
     if llm.enabled():
         try:
@@ -562,15 +576,21 @@ async def build_report(db, user, kind: str, *, partner_date: str | None = None,
             sections = "\n".join(f"{i}. {s}" for i, s in enumerate(spec["sections"], 1))
             user_msg = (
                 f"{await skills.guide(db, spec['guide'])}\n\n"
-                f"Данные расчёта:\n{data_block}\n\n"
+                f"{evidence.as_prompt_block()}\n\n"
+                f"{interpretation.generation_rules('report')}\n\n"
                 f"Напиши для меня «{spec['title']}» строго по этим разделам:\n"
                 f"{sections}\n\n"
-                f"Каждый раздел — заголовок в теге <b> и 2-4 абзаца живой речи. "
-                f"Опирайся только на данные расчёта выше, ничего не выдумывай. "
-                f"Пиши обо мне лично, тепло и по делу.")
-            body = await llm.complete(system, user_msg, tier="main", max_tokens=4000,
-                                      purpose=f"report:{kind}", tg_id=user["tg_id"],
-                                      db=db)
+                f"Каждый раздел — заголовок в теге <b> и 2-4 коротких связанных абзаца. "
+                f"Не пересказывай источник и не выдумывай отсутствующие факты. Пиши лично, "
+                f"тепло и конкретно; последний раздел заверши одним наблюдаемым шагом.")
+            candidate = await llm.complete(system, user_msg, tier="main", max_tokens=4000,
+                                           purpose=f"report:{kind}", tg_id=user["tg_id"],
+                                           db=db)
+            check = interpretation.validate_nonfatal_text(candidate)
+            if check.ok:
+                body = candidate
+            else:
+                log.warning("разбор %s отклонён quality guardrail: %s", kind, "; ".join(check.issues))
         except Exception as e:  # noqa: BLE001
             log.warning("разбор %s ушёл в офлайн: %s", kind, e)
     if len(body.strip()) < 200:
@@ -641,9 +661,12 @@ async def monthly_report(db, user) -> str:
     readings_n = await readings_repo.readings_count_since(db, user["tg_id"], 30)
     diary_n = await dialog_repo.diary_count_since(db, user["tg_id"], 30)
     streak = await dialog_repo.diary_streak(db, user["tg_id"])
-    memories = await dialog_repo.get_memories(db, user["tg_id"], limit=12)
+    memory_enabled = bool(user["memory_enabled"])
+    memories = (await dialog_repo.get_memories(db, user["tg_id"], limit=12)
+                if memory_enabled else [])
     recent = await readings_repo.recent_readings(db, user["tg_id"], limit=10)
-    diary_entries = await dialog_repo.get_diary(db, user["tg_id"], limit=12)
+    diary_entries = (await dialog_repo.get_diary(db, user["tg_id"], limit=12)
+                     if memory_enabled else [])
 
     # Повторы: один и тот же вопрос в раскладах звучал не раз — тема, что тревожит.
     qcounts = Counter(q.strip().lower() for r in recent
@@ -652,23 +675,39 @@ async def monthly_report(db, user) -> str:
     reads_block = "\n".join(f"- {r.get('question') or '…'}" for r in recent) or "-"
     diary_block = "\n".join(f"- {e['text'][:90]}" for e in diary_entries[:8]) or "-"
 
+    monthly_evidence = interpretation.narrative_evidence(
+        "monthly",
+        [
+            f"За месяц: раскладов {readings_n}, записей в дневнике {diary_n}, стрик {streak} дн.",
+            f"Вопросы к картам:\n{reads_block}",
+            f"Повторяющиеся запросы: {'; '.join(repeats) or '-'}.",
+            f"Дневник (только при действующем согласии):\n{diary_block}",
+            f"Сохранённые факты (только при действующем согласии): {'; '.join(memories) or '-'}.",
+        ],
+        limits=(
+            "Если память отключена, не делай выводов о дневнике, личных записях или внутреннем состоянии: доступны только счётчики и заданные вопросы к картам.",
+            "Называй повторяющейся только тему, которая явно повторяется во входных вопросах или записях.",
+        ),
+    )
     body = ""
     if llm.enabled() and (readings_n or diary_n or memories):
         try:
             system = await agents.system_for(db, user, agents.get("oracle"))
-            user_msg = (f"Мой месяц: раскладов {readings_n}, записей в дневнике "
-                        f"{diary_n}, стрик сейчас {streak} дн.\n"
-                        f"Что прошло через дневник:\n{diary_block}\n\n"
-                        f"О чём я спрашивала карты:\n{reads_block}\n"
-                        f"Повторяющиеся запросы: {'; '.join(repeats) or '-'}.\n\n"
-                        f"Что ты обо мне узнала за это время: "
-                        f"{'; '.join(memories) or '-'}.\n"
-                        f"Напиши тёплый итог месяца: что менялось, какие темы "
-                        f"повторялись (найди их в вопросах и дневнике), на что "
-                        f"обратить внимание в следующем. 5-7 абзацев, начни с 🌙.")
-            body = await llm.complete(system, user_msg, tier="main", max_tokens=1200,
-                                      purpose="report:monthly", tg_id=user["tg_id"],
-                                      db=db)
+            user_msg = (
+                f"{monthly_evidence.as_prompt_block()}\n\n"
+                f"{interpretation.generation_rules('monthly')}\n\n"
+                "Напиши тёплый итог месяца в 5–7 коротких абзацах, начни с 🌙. "
+                "Отделяй наблюдение из фактов от мягкой гипотезы; не называй личные "
+                "записи при отключённой памяти и не приписывай клиентке невысказанные переживания."
+            )
+            candidate = await llm.complete(system, user_msg, tier="main", max_tokens=1200,
+                                           purpose="report:monthly", tg_id=user["tg_id"],
+                                           db=db)
+            check = interpretation.validate_nonfatal_text(candidate)
+            if check.ok:
+                body = candidate
+            else:
+                log.warning("месячный отчёт отклонён quality guardrail: %s", "; ".join(check.issues))
         except Exception as e:  # noqa: BLE001
             log.warning("месячный отчёт ушёл в офлайн: %s", e)
     if len(body.strip()) < 100:

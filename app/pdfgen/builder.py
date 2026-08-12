@@ -85,7 +85,8 @@ async def build_report_data(order: Order) -> dict:
         lat, lon, tz = await geo.resolve_city_async(order.birth_city)
     chart = await astro.compute_chart_async(
         order.birth_date, order.birth_time or "12:00", order.birth_city,
-        lat, lon, tz)
+        lat, lon, tz, time_known=order.time_known,
+    )
     matrix = compute_matrix(order.birth_date)
     return {
         "chart": chart,

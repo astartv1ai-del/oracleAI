@@ -180,8 +180,10 @@ async def onb_city(message: Message, state: FSMContext, db):
     # эфемерид держит GIL — синхронно они вешали бота для всех остальных
     lat, lon, tz = await geo.resolve_city_async(city, db)
     user = await users.get(db, message.from_user.id)
-    chart = await astro.compute_chart_async(user["birth_date"], user["birth_time"],
-                                            city, lat, lon, tz)
+    chart = await astro.compute_chart_async(
+        user["birth_date"], user["birth_time"], city, lat, lon, tz,
+        time_known=bool(user["birth_time_known"]),
+    )
     await users.update(db, message.from_user.id, birth_city=city, birth_lat=lat,
                        birth_lon=lon, tz=tz,
                        chart_json=json.dumps(chart, ensure_ascii=False))

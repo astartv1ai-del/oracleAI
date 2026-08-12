@@ -649,3 +649,89 @@ button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon
   .seasonal-moment { grid-template-columns: 36px minmax(0, 1fr); padding: 13px; }
   .seasonal-moment__sigil { width: 36px; height: 36px; border-radius: 12px; }
 }
+
+/* Interpretation clarity: progressive disclosure for Tarot and long-form guidance. */
+.tarot-thread {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(232, 200, 139, .2);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(232, 200, 139, .09), rgba(111, 73, 156, .08));
+}
+.tarot-thread-kicker {
+  color: var(--champagne-400);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.35px;
+}
+.tarot-thread p {
+  margin: 5px 0 9px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.42;
+}
+.tarot-thread-map { display: flex; flex-wrap: wrap; gap: 6px; }
+.tarot-thread-map span {
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: rgba(8, 7, 15, .34);
+  color: var(--text-soft);
+  font-size: 10.5px;
+  line-height: 1.28;
+}
+.tarot-thread-map b,
+.msg.assistant > b,
+.msg.assistant b { color: var(--champagne-300); }
+.msg.assistant { overflow-wrap: anywhere; }
+.msg.assistant > b { display: inline-block; margin-top: 5px; letter-spacing: .01em; }
+
+/* Chart progressive disclosure: concise insight first, evidence second. */
+.chart-takeaway {
+  margin: 10px 0 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--gold) 7%, transparent);
+}
+.chart-takeaway__label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--gold-bright);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+.chart-takeaway p {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.chart-details {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+}
+.chart-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  cursor: pointer;
+  color: var(--gold-light);
+  font-size: 12px;
+  font-weight: 650;
+  list-style: none;
+}
+.chart-details summary::-webkit-details-marker { display: none; }
+.chart-details summary::after {
+  content: '⌄';
+  margin-left: auto;
+  color: var(--gold);
+  font-size: 18px;
+  transition: transform .2s ease;
+}
+.chart-details[open] summary::after { transform: rotate(180deg); }
+.chart-details__body { padding: 2px 0 5px; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-details summary::after { transition: none; }
+}

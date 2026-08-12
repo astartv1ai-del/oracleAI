@@ -19,14 +19,18 @@ from ..deps import active_user, current_user, get_db, rate_limit
 router = APIRouter(prefix="/api", tags=["chart"])
 
 
-@router.get("/chart")
-async def chart(user=Depends(current_user), db=Depends(get_db)):
-    """Карта целиком: планеты, дома, аспекты — для колеса и списков."""
-    data = users.chart_of(user)
-    if not data:
-        raise HTTPException(400, "карта ещё не построена — пройди знакомство в боте")
-    return {
+def _chart_payload(data: dict, user, *, birth_time: str | None = None,
+                   birth_city: str | None = None,
+                   time_known: bool | None = None, **meta) -> dict:
+    """Единый публичный контракт карты для GET, кэша и свежего расчёта.
+
+    Точность — продуктовый факт, а не деталь UI: Mini App и другие клиенты должны
+    одинаково понимать, можно ли показывать дома, ASC и MC.
+    """
+    known = bool(user["birth_time_known"]) if time_known is None else bool(time_known)
+    payload = {
         "mode": data.get("mode", "lite"),
+        "precision": data.get("precision", "sun_only"),
         "sun": data.get("sun"),
         "ascendant": data.get("ascendant"),
         "mc": data.get("mc"),
@@ -35,10 +39,23 @@ async def chart(user=Depends(current_user), db=Depends(get_db)):
         "aspects": data.get("aspects", []),
         "nodes": data.get("nodes", []),
         "note": data.get("note"),
-        "birth": {"date": user["birth_date"], "time": user["birth_time"],
-                  "city": user["birth_city"],
-                  "time_known": bool(user["birth_time_known"])},
+        "birth": {
+            "date": user["birth_date"],
+            "time": user["birth_time"] if birth_time is None else birth_time,
+            "city": user["birth_city"] if birth_city is None else birth_city,
+            "time_known": known,
+        },
     }
+    return {**meta, **payload}
+
+
+@router.get("/chart")
+async def chart(user=Depends(current_user), db=Depends(get_db)):
+    """Карта целиком: планеты, дома, аспекты и честно указанная точность."""
+    data = users.chart_of(user)
+    if not data:
+        raise HTTPException(400, "карта ещё не построена — пройди знакомство в боте")
+    return _chart_payload(data, user)
 
 
 _TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
@@ -63,12 +80,8 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
 
     existing = users.chart_of(user)
     if existing and not (item and (item.birth_time or item.birth_city)):
-        return {"ok": True, "cached": True, "mode": existing.get("mode"),
-                "sun": existing.get("sun"), "ascendant": existing.get("ascendant"),
-                "planets": existing.get("planets", []),
-                "houses": existing.get("houses", []),
-                "nodes": existing.get("nodes", []), "mc": existing.get("mc"),
-                "aspects": existing.get("aspects", [])}
+        return _chart_payload(existing, user, ok=True, cached=True)
+
 
     item = item or ChartBuildIn()
     city = (item.birth_city or user["birth_city"] or "").strip()
@@ -78,17 +91,16 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
     if item.birth_time and not _TIME_RE.match(item.birth_time):
         raise HTTPException(400, "время в формате ЧЧ:ММ, например 14:30")
 
+    time_known = bool(item.birth_time or user["birth_time_known"])
     lat, lon, tz = await geo.resolve_city_async(city, db)
-    chart = await astro.compute_chart_async(user["birth_date"], time, city, lat, lon, tz)
+    chart = await astro.compute_chart_async(user["birth_date"], time, city, lat, lon, tz,
+                                             time_known=time_known)
     await users.update(db, user["tg_id"], birth_city=city, birth_lat=lat,
                        birth_lon=lon, tz=tz, birth_time=time,
-                       birth_time_known=1 if item.birth_time else user["birth_time_known"],
+                       birth_time_known=1 if time_known else 0,
                        chart_json=json.dumps(chart, ensure_ascii=False))
-    return {"ok": True, "cached": False, "mode": chart.get("mode"),
-            "sun": chart.get("sun"), "ascendant": chart.get("ascendant"),
-            "planets": chart.get("planets", []), "houses": chart.get("houses", []),
-            "nodes": chart.get("nodes", []), "mc": chart.get("mc"),
-            "aspects": chart.get("aspects", [])}
+    return _chart_payload(chart, user, birth_time=time, birth_city=city,
+                          time_known=time_known, ok=True, cached=False)
 
 
 @router.post("/chart/interpret", dependencies=[Depends(rate_limit("write"))])
@@ -175,8 +187,10 @@ async def add_partner(item: PartnerIn, user=Depends(current_user),
     chart_data = None
     if item.birth_city:
         lat, lon, tz = await geo.resolve_city_async(item.birth_city, db)
-        chart_data = await astro.compute_chart_async(birth_date, item.birth_time,
-                                                     item.birth_city, lat, lon, tz)
+        chart_data = await astro.compute_chart_async(
+            birth_date, item.birth_time, item.birth_city, lat, lon, tz,
+            time_known=bool(item.birth_time),
+        )
     partner_id = await readings.add_partner(
         db, user["tg_id"], item.name.strip(), birth_date,
         relation=item.relation, birth_time=item.birth_time,

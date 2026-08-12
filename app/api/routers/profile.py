@@ -79,6 +79,8 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
         "sun": chart.get("sun"),
         "ascendant": chart.get("ascendant"),
         "chart_mode": chart.get("mode"),
+        "chart_precision": chart.get("precision", "sun_only"),
+        "chart_note": chart.get("note"),
         "planets": chart.get("planets", []),
         "crystals": user["crystals"],
         "sub_active": users.sub_active(user),

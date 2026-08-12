@@ -201,7 +201,7 @@
     // rich() его экранировал бы, поэтому рендерим как есть в .msg.assistant
     const body = messages.map(m =>
       m.widget ? `<div class="msg assistant">${m.widget}</div>`
-        : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${rich(m.text)}</div>`).join('');
+        : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${richMd(m.text)}</div>`).join('');
 
     // первый экран чата: портрет агента + кто он (когда истории ещё нет)
     const introHtml = messages.length <= 1 ? `
@@ -361,8 +361,16 @@
                 </div>`;
               }).join('')}
             </div>
-            ${p.allRevealed ? `<button class="btn btn-primary" style="margin-top:14px" data-act="interpret">Что это значит для меня?</button>`
-              : `<div class="t-hint">Тапни карты — они раскроются ↻</div>`}
+            ${p.allRevealed ? `<section class="tarot-thread" aria-label="Нить расклада">
+                <div class="tarot-thread-kicker">НИТЬ РАСКЛАДА</div>
+                <p>Смотри на карты как на одну историю: каждая отвечает за свою позицию и меняет смысл соседних.</p>
+                <div class="tarot-thread-map">${p.positions.map((pos, i) => {
+                  const c = p.cards[i] || {};
+                  return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}</span>`;
+                }).join('')}</div>
+              </section>
+              <button class="btn btn-primary" style="margin-top:14px" data-act="interpret">Собрать личный смысл</button>`
+              : `<div class="t-hint">Тапни карты по очереди — сначала увидишь их роли, затем соберём общий смысл ↻</div>`}
           </div></div>`;
 
       case 'chart':

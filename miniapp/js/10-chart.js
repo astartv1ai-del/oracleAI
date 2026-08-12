@@ -23,6 +23,12 @@
     const sun = c.sun || {};
     const asc = c.ascendant || {};
     const planets = c.planets || [];
+    const anglesAvailable = c.precision === 'exact';
+    const precisionNotice = c.note ? `
+      <div role="status" style="margin:9px 0 10px;padding:9px 10px;border:1px solid rgba(201,160,255,.26);border-radius:12px;color:var(--text-dim);font-size:11.5px;line-height:1.45">
+        <b style="color:var(--gold-bright)">Точность карты</b> · ${esc(c.note)}
+        ${!c.birth?.time_known ? '<br><span style="color:var(--text-faint)">Укажи время рождения в профиле, чтобы открыть ASC, MC и дома.</span>' : ''}
+      </div>` : '';
     const aspects = c.aspects || [];
     const glyph = p => planetGlyph(p.name) || (p.sign ? SIGNS[p.sign] : '');
     const lines = planets.map(p => `
@@ -54,9 +60,19 @@
       <div style="text-align:center;color:var(--text-faint);font-size:10.5px;margin-bottom:6px">Тапни планету — она расскажет о себе · тап по колесу — полный разбор ↻</div>
       ${elLegend}
       ${accentChips}
-      <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:13px;margin-bottom:8px">Солнце в ${esc(sun.sign || '—')} · Асцендент ${esc(asc.sign || '—')}</div>
-      ${legend}
-      <div>${lines || '<div style="color:var(--text-faint);font-size:12.5px">Планеты ещё не рассчитаны</div>'}</div>
+      <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:13px;margin-bottom:8px">Солнце в ${esc(sun.sign || '—')}${anglesAvailable ? ' · Асцендент ' + esc(asc.sign || '—') : ''}</div>
+      ${precisionNotice}
+      <div class="chart-takeaway">
+        <span class="chart-takeaway__label">ГЛАВНОЕ В КАРТЕ</span>
+        <p>${anglesAvailable ? `Солнце в ${esc(sun.sign || '—')} и ASC в ${esc(asc.sign || '—')} задают твою базовую оптику.` : `Солнце в ${esc(sun.sign || '—')} — надёжная точка опоры для разбора без времени рождения.`}</p>
+      </div>
+      <details class="chart-details">
+        <summary>Планеты, аспекты и детали карты</summary>
+        <div class="chart-details__body">
+          ${legend}
+          <div>${lines || '<div style="color:var(--text-faint);font-size:12.5px">Планеты ещё не рассчитаны</div>'}</div>
+        </div>
+      </details>
       <div style="color:var(--text-faint);font-size:11.5px;margin:10px 0">✓ Сохранена в твоём профиле — всегда под рукой.</div>
       <div style="display:flex;gap:8px;margin-top:6px">
         <button class="btn btn-primary" style="flex:1" data-act="ask-chart">Спросить про карту</button>
@@ -72,6 +88,7 @@
       <div class="w-title">🌌 Построить натальную карту</div>
       <div style="color:var(--text-dim);font-size:12.5px;margin-bottom:10px">
         Дата рождения: <b style="color:var(--text)">${esc(me.birth_date || '—')}</b>. Уточни время и город — и я рассчитаю карту прямо здесь.
+        Если время неизвестно, оставь поле пустым: покажу планеты и аспекты, но не буду угадывать ASC, MC и дома.
       </div>
       <input class="ipt" id="ch-time" placeholder="Время рождения · 14:30 (если не знаешь — пусто)" style="margin-bottom:8px"/>
       <input class="ipt" id="ch-city" placeholder="Город рождения · Москва" style="margin-bottom:8px"/>

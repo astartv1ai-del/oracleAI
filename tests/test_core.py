@@ -233,3 +233,46 @@ def test_card_of_day_deterministic_for_user():
     second = agent_core.card_of_day(user)
     assert first["name"] == second["name"]
     assert first["reversed"] == second["reversed"]
+
+
+def test_date_only_chart_hides_angular_data_and_marks_precision():
+    """Полдень — техническая точка эфемерид, но не выдуманное время рождения."""
+    chart = astro.compute_chart("1990-06-21", None, "Казань", 55.79, 49.12,
+                                "Europe/Moscow")
+    assert chart["precision"] in ("date_only", "sun_only")
+    if chart["mode"] == "full":
+        assert chart["ascendant"] is None
+        assert chart["mc"] is None
+        assert chart["houses"] == []
+        assert all(p["house"] is None for p in chart["planets"])
+        assert "Асцендент" not in astro.chart_brief(chart, time_known=True)
+        assert "дома, ASC и MC отсутствуют" in astro.chart_brief(chart, time_known=True)
+
+
+def test_invalid_birth_time_is_rejected_instead_of_silently_rewritten():
+    try:
+        astro.compute_chart("1990-06-21", "25:90", "Казань", 55.79, 49.12,
+                            "Europe/Moscow")
+    except ValueError as exc:
+        assert "ЧЧ:ММ" in str(exc)
+    else:
+        raise AssertionError("некорректное время не должно превращаться в полдень")
+
+
+def test_coordinate_validator_requires_physical_ranges():
+    assert astro._has_valid_coordinates(55.79, 49.12) is True
+    assert astro._has_valid_coordinates(91, 49.12) is False
+    assert astro._has_valid_coordinates(55.79, 181) is False
+    assert astro._has_valid_coordinates(float("nan"), 49.12) is False
+
+
+def test_technical_noon_with_unconfirmed_time_hides_angular_data():
+    """Технический полдень из onboarding не должен притворяться временем рождения."""
+    chart = astro.compute_chart("1990-06-21", "12:00", "Казань", 55.79, 49.12,
+                                "Europe/Moscow", time_known=False)
+    assert chart["precision"] in ("date_only", "sun_only")
+    if chart["mode"] == "full":
+        assert chart["ascendant"] is None
+        assert chart["mc"] is None
+        assert chart["houses"] == []
+        assert all(planet["house"] is None for planet in chart["planets"])
