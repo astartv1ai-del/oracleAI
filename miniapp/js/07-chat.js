@@ -36,7 +36,7 @@
         this.chat.messages = [{ role: 'assistant', text: r.agent.greeting }];
       }
     } catch (e) {
-      this.chat.messages = [{ role: 'assistant', widget: this.chatRecoveryHtml() }];
+      this.chat.messages = [{ role: 'assistant', widget: this.chatRecoveryHtml('history') }];
     }
     await this.refreshSessions();
     if (this.chat.key === key) this.renderChat(document.getElementById('app-main'));
@@ -50,12 +50,13 @@
     setTimeout(() => t.remove(), 2400);
   };
 
-  // Ошибка — отдельное бережное состояние, а не «реплика» агента с техническим текстом.
-  app.chatRecoveryHtml = function() {
-    return `<div class="chat-recovery">
-      <strong>Ответ пока не открылся</strong>
-      <p>Твоя мысль никуда не делась. Попробуем спокойно ещё раз?</p>
-      <button class="chat-retry" data-act="retry-chat">Попробовать снова</button>
+  // Ошибки остаются отдельными бережными состояниями, без технического текста.
+  app.chatRecoveryHtml = function(kind) {
+    const history = kind === 'history';
+    return `<div class="chat-recovery" role="status">
+      <strong>${history ? 'История сейчас не открылась' : 'Ответ пока не пришёл'}</strong>
+      <p>${history ? 'Можно начать разговор прямо сейчас или попробовать загрузить сохранённые сообщения ещё раз.' : 'Твой вопрос не потерялся в этом диалоге. Проверь соединение и отправь его ещё раз, когда будешь готова.'}</p>
+      ${history ? '<button class="chat-retry" data-act="retry-chat">Загрузить историю</button>' : ''}
     </div>`;
   };
 
@@ -165,7 +166,7 @@
         this.chat.messages = [{ role: 'assistant', text: r.agent.greeting }];
       }
     } catch (e) {
-      this.chat.messages = [{ role: 'assistant', widget: this.chatRecoveryHtml() }];
+      this.chat.messages = [{ role: 'assistant', widget: this.chatRecoveryHtml('history') }];
     }
     await this.refreshSessions();
     this.renderChat(document.getElementById('app-main'));
@@ -195,7 +196,7 @@
     const currentFeatures = FEATURES[a.code] || [];
     const otherAgents = agents.filter(b => b.code !== a.code);
     const last = messages[messages.length - 1];
-    const cheer = messages.length > 1 && last.role === 'assistant' && !busy && !(last.text || '').startsWith('😔');
+    const cheer = messages.length > 1 && last.role === 'assistant' && !busy && !(last.text || '').startsWith('😔') && !last.widget;
 
     // виджет-сообщение (спидометр любви и т.п.) — это готовый HTML, не текст:
     // rich() его экранировал бы, поэтому рендерим как есть в .msg.assistant
@@ -203,15 +204,28 @@
       m.widget ? `<div class="msg assistant">${m.widget}</div>`
         : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${richMd(m.text)}</div>`).join('');
 
-    // первый экран чата: портрет агента + кто он (когда истории ещё нет)
+    // Первый экран чата — короткая, персональная точка входа вместо универсального hero-текста.
+    const introGuides = {
+      oracle: { kicker: 'ТВОЁ ПРОСТРАНСТВО ДЛЯ ЯСНОСТИ', title: 'Начни с того, что сейчас важнее всего', text: 'Можно написать одну мысль, чувство или вопрос — вместе найдём бережный ориентир.' },
+      astro: { kicker: 'АСТРОЛОГИЧЕСКИЙ ОРИЕНТИР', title: 'Посмотри на свой ритм через карту', text: 'Собери натальную карту или задай вопрос о ближайшем периоде — только на основе доступных данных.' },
+      tarot: { kicker: 'РАСКЛАД БЕЗ КАТЕГОРИЧНЫХ ОТВЕТОВ', title: 'Сформулируй вопрос к картам', text: 'Выберем схему и спокойно посмотрим на ситуацию с разных сторон.' }
+    };
+    const introGuide = introGuides[a.code] || introGuides.oracle;
     const introHtml = messages.length <= 1 ? `
-              <div class="agent-intro" style="--ac:${esc(a.accent || 'var(--gold)')}">
-          <div class="ai-face">${agentSprite(a, false)}</div>
-          <div class="ai-name">${esc(a.name || 'Лилит')}</div>
-          <div class="ai-role">${esc(a.title || 'Личный Оракул')}</div>
-          ${a.tagline ? `<div class="ai-tag">${esc(a.tagline)}</div>` : '<div class="ai-tag">Здесь можно начать с того, что сейчас важнее всего.</div>'}
-          <div class="ai-prompt">Не нужно формулировать идеально — просто напиши, что чувствуешь.</div>
-        </div>` : '';
+        <section class="agent-intro agent-intro--compact" style="--ac:${esc(a.accent || 'var(--gold)')}" aria-label="Знакомство с проводником">
+          <span class="ai-kicker">${introGuide.kicker}</span>
+          <div class="ai-persona">
+            <div class="ai-face">${agentSprite(a, false)}</div>
+            <div class="ai-persona-copy">
+              <div class="ai-name">${esc(a.name || 'Лилит')}</div>
+              <div class="ai-role">${esc(a.title || 'Личный Оракул')}</div>
+            </div>
+          </div>
+          <div class="ai-next">
+            <b>${introGuide.title}</b>
+            <span>${introGuide.text}</span>
+          </div>
+        </section>` : '';
 
     const pendHtml = pending ? this.pendingHtml(pending) : '';
 
@@ -508,7 +522,7 @@
       vb([10, 40, 14]);
       this.chat.messages.push({ role: 'assistant', text: r.answer });
     } catch (e) {
-      this.chat.messages.push({ role: 'assistant', widget: this.chatRecoveryHtml() });
+      this.chat.messages.push({ role: 'assistant', widget: this.chatRecoveryHtml('reply') });
     }
     this.chat.busy = false;
     this.renderChat(document.getElementById('app-main'));

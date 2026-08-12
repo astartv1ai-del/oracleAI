@@ -276,3 +276,44 @@ def test_technical_noon_with_unconfirmed_time_hides_angular_data():
         assert chart["mc"] is None
         assert chart["houses"] == []
         assert all(planet["house"] is None for planet in chart["planets"])
+
+
+def test_chart_payload_uses_fresh_birth_date_after_first_run():
+    """После заполнения формы карта сразу отражает введённую дату, а не stale Row."""
+    from app.api.routers.chart import _chart_payload
+
+    user = {
+        "birth_date": None,
+        "birth_time": "12:00",
+        "birth_city": "Казань",
+        "birth_time_known": 0,
+    }
+    payload = _chart_payload(
+        {"mode": "lite", "precision": "date_only", "planets": []},
+        user,
+        birth_date="1999-03-08",
+        time_known=False,
+    )
+    assert payload["birth"]["date"] == "1999-03-08"
+    assert payload["birth"]["time_known"] is False
+
+
+
+def test_chart_payload_can_clear_stale_birth_time_for_date_only_choice():
+    """Явный date-only выбор не должен возвращать старое время из профиля."""
+    from app.api.routers.chart import _chart_payload
+
+    user = {
+        "birth_date": "1999-03-08",
+        "birth_time": "14:30",
+        "birth_city": "Казань",
+        "birth_time_known": 1,
+    }
+    payload = _chart_payload(
+        {"mode": "lite", "precision": "date_only", "planets": []},
+        user,
+        birth_time=None,
+        time_known=False,
+    )
+    assert payload["birth"]["time"] is None
+    assert payload["birth"]["time_known"] is False

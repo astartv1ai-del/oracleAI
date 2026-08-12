@@ -19,8 +19,14 @@ from ..deps import active_user, current_user, get_db, rate_limit
 router = APIRouter(prefix="/api", tags=["chart"])
 
 
-def _chart_payload(data: dict, user, *, birth_time: str | None = None,
-                   birth_city: str | None = None,
+# В публичном контракте None — валидное значение «время неизвестно».
+# Отдельный sentinel нужен, чтобы отличать его от отсутствующего override.
+_UNSET = object()
+
+
+def _chart_payload(data: dict, user, *, birth_date=_UNSET,
+                   birth_time=_UNSET,
+                   birth_city=_UNSET,
                    time_known: bool | None = None, **meta) -> dict:
     """Единый публичный контракт карты для GET, кэша и свежего расчёта.
 
@@ -40,9 +46,9 @@ def _chart_payload(data: dict, user, *, birth_time: str | None = None,
         "nodes": data.get("nodes", []),
         "note": data.get("note"),
         "birth": {
-            "date": user["birth_date"],
-            "time": user["birth_time"] if birth_time is None else birth_time,
-            "city": user["birth_city"] if birth_city is None else birth_city,
+            "date": user["birth_date"] if birth_date is _UNSET else birth_date,
+            "time": user["birth_time"] if birth_time is _UNSET else birth_time,
+            "city": user["birth_city"] if birth_city is _UNSET else birth_city,
             "time_known": known,
         },
     }
@@ -62,6 +68,7 @@ _TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
 
 
 class ChartBuildIn(BaseModel):
+    birth_date: str | None = None
     birth_time: str | None = None
     birth_city: str | None = Field(default=None, max_length=60)
 
@@ -75,32 +82,43 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
     может заполнить/уточнить время и город, не заходя в бота. Если карта уже
     построена — возвращает её без пересчёта.
     """
-    if not user["birth_date"]:
-        raise HTTPException(400, "нет даты рождения — заполни её в боте")
+    item = item or ChartBuildIn()
+    # В body важно различать «поле отсутствует» и «пользовательница очистила поле».
+    # Второй вариант — осознанный date-only выбор, а не повод молча вернуть старое
+    # время профиля и показать ложные ASC/MC/дома.
+    supplied = item.model_fields_set
+    date_supplied = "birth_date" in supplied
+    time_supplied = "birth_time" in supplied
+    city_supplied = "birth_city" in supplied
+
+    birth_date = parse_birth_date(item.birth_date) if date_supplied and item.birth_date else user["birth_date"]
+    if not birth_date:
+        raise HTTPException(400, "укажи дату рождения — она нужна для расчёта карты")
 
     existing = users.chart_of(user)
-    if existing and not (item and (item.birth_time or item.birth_city)):
+    if existing and not supplied:
         return _chart_payload(existing, user, ok=True, cached=True)
 
-
-    item = item or ChartBuildIn()
-    city = (item.birth_city or user["birth_city"] or "").strip()
+    city = ((item.birth_city if city_supplied else user["birth_city"]) or "").strip()
     if not city:
         raise HTTPException(400, "укажи город рождения")
-    time = item.birth_time or user["birth_time"] or "12:00"
-    if item.birth_time and not _TIME_RE.match(item.birth_time):
-        raise HTTPException(400, "время в формате ЧЧ:ММ, например 14:30")
 
-    time_known = bool(item.birth_time or user["birth_time_known"])
+    raw_time = ((item.birth_time or "").strip() if time_supplied else (user["birth_time"] or "").strip())
+    if raw_time and not _TIME_RE.match(raw_time):
+        raise HTTPException(400, "время в формате ЧЧ:ММ, например 14:30")
+    time_known = bool(raw_time) if time_supplied else bool(user["birth_time_known"])
+    compute_time = raw_time or "12:00"
+    stored_time = raw_time or None
+
     lat, lon, tz = await geo.resolve_city_async(city, db)
-    chart = await astro.compute_chart_async(user["birth_date"], time, city, lat, lon, tz,
+    chart = await astro.compute_chart_async(birth_date, compute_time, city, lat, lon, tz,
                                              time_known=time_known)
-    await users.update(db, user["tg_id"], birth_city=city, birth_lat=lat,
-                       birth_lon=lon, tz=tz, birth_time=time,
+    await users.update(db, user["tg_id"], birth_date=birth_date, birth_city=city,
+                       birth_lat=lat, birth_lon=lon, tz=tz, birth_time=stored_time,
                        birth_time_known=1 if time_known else 0,
                        chart_json=json.dumps(chart, ensure_ascii=False))
-    return _chart_payload(chart, user, birth_time=time, birth_city=city,
-                          time_known=time_known, ok=True, cached=False)
+    return _chart_payload(chart, user, birth_date=birth_date, birth_time=stored_time,
+                          birth_city=city, time_known=time_known, ok=True, cached=False)
 
 
 @router.post("/chart/interpret", dependencies=[Depends(rate_limit("write"))])

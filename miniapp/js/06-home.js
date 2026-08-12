@@ -6,6 +6,10 @@
     const prompt = pulse.prompt || {};
     const practices = (pulse.practices && pulse.practices.items) || [];
     const activePractice = practices.find(p => p.started && !p.finished) || practices.find(p => !p.finished) || null;
+    // Домашний экран должен оставаться полезным даже при временной недоступности API.
+    const homeAgents = this.agents.length
+      ? this.agents
+      : AGENT_FALLBACK.map(a => this.normalizeAgent(a, a.code));
     const diaryDone = !!prompt.written_today;
     const seasonalVariant = experimentVariant('home_ritual_entry', ['control', 'seasonal']);
     trackExperiment('home_ritual_entry', seasonalVariant);
@@ -25,8 +29,8 @@
           <div class="hero-body" style="position:relative;z-index:2">
             <div class="hero-date">${fmtDate()}</div>
             <div class="hero-ritual-label">Твой мягкий ритуал дня</div>
-            <div class="hero-title">Привет, <em>${this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : 'ты'}</em>.</div>
-            ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : '<div class="hero-moon-txt">Собираем настроение твоего дня…</div>'}
+            <div class="hero-title">${this.me && this.me.name ? `Рада видеть тебя, <em>${esc(this.me.name.split(' ')[0])}</em>.` : 'Рада, что ты здесь.'}</div>
+            ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : '<div class="hero-moon-txt">Сегодня можно не искать идеальный ответ.<br><em>Выбери один бережный шаг для себя.</em></div>'}
           </div>
           <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="Открыть личный ритуал с Оракулом">Открыть мой знак дня</button>
         </div>
@@ -90,7 +94,7 @@
         <div class="section-kicker">Только для тебя</div>
         <div class="section-title">Знак на сегодня</div>
         <div class="forecast-flow">
-          ${t ? esc(t.forecast) : '<div class="forecast-loading"><span class="loading-star">✦</span><span><b>Собираем твой знак дня</b><span>Ещё мгновение — и появится личная подсказка.</span></span></div>'}
+          ${t ? esc(t.forecast) : '<div class="forecast-fallback"><b>Начни с того, что уже чувствуешь.</b><span>Открой личный знак дня или задай Оракулу вопрос — это тоже хороший способ вернуться к себе.</span></div>'}
         </div>
 
         ${t && t.card ? `
@@ -136,12 +140,12 @@
         <div class="section-kicker">Выбери настроение</div>
         <div class="section-title">С кем поговорим?</div>
         <div class="dock-grid">
-          ${this.agents.length ? this.agents.map(a => `
-            <div class="dock-item" data-act="chat" data-chat="${a.code}">
-              <div class="dock-orb" style="--ac:${esc(a.accent || 'var(--gold)')}"><img class="dock-face" src="/static/img/agents/${esc(a.code)}.jpg" alt="${esc(a.name)}"></div>
-              <div class="dock-name">${esc(a.name.split(' ')[0])}</div>
-              ${a.title ? `<div class="dock-role">${esc(a.title)}</div>` : ''}
-            </div>`).join('') : '<div class="agents-loading"><span class="loading-star">✦</span><span><b>Твои проводники уже рядом</b><span>Открываем тех, кто сможет поддержать сегодня.</span></span></div>'}
+          ${homeAgents.map(a => `
+            <button class="dock-item" type="button" data-act="chat" data-chat="${a.code}" aria-label="Открыть диалог с ${esc(a.name)}">
+              <span class="dock-orb" style="--ac:${esc(a.accent || 'var(--gold)')}"><img class="dock-face" src="/static/img/agents/${esc(a.code)}.jpg" alt="" loading="lazy"></span>
+              <span class="dock-name">${esc(a.name.split(' ')[0])}</span>
+              ${a.title ? `<span class="dock-role">${esc(a.title)}</span>` : ''}
+            </button>`).join('')}
         </div>
         <div class="home-agent-note">Каждый агент смотрит на твою историю под своим углом. Начни с того, кто откликается сегодня.</div>
       </div>`;

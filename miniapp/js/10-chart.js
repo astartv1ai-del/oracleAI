@@ -86,17 +86,18 @@
     const me = this.me || {};
     return `
       <div class="w-title">🌌 Построить натальную карту</div>
-      <div style="color:var(--text-dim);font-size:12.5px;margin-bottom:10px">
-        Дата рождения: <b style="color:var(--text)">${esc(me.birth_date || '—')}</b>. Уточни время и город — и я рассчитаю карту прямо здесь.
-        Если время неизвестно, оставь поле пустым: покажу планеты и аспекты, но не буду угадывать ASC, MC и дома.
-      </div>
-      <input class="ipt" id="ch-time" placeholder="Время рождения · 14:30 (если не знаешь — пусто)" style="margin-bottom:8px"/>
-      <input class="ipt" id="ch-city" placeholder="Город рождения · Москва" style="margin-bottom:8px"/>
-      <button class="btn btn-primary" data-act="build">Рассчитать карту ✨</button>`;
+      <div class="chart-form-intro"><b>Начнём с даты и города.</b><span>Время рождения — по желанию: без него покажем планеты и аспекты, но честно не будем добавлять ASC, MC и дома.</span></div>
+      <div class="chart-form">
+        <label class="chart-form__field" for="ch-date"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="ch-date" type="date" value="${esc(me.birth_date || '')}" required></label>
+        <label class="chart-form__field" for="ch-city"><span>Город рождения <em>обязательно</em></span><input class="ipt" id="ch-city" value="${esc(me.birth_city || '')}" placeholder="Например, Москва" autocomplete="address-level2"></label>
+        <label class="chart-form__field" for="ch-time"><span>Время рождения <em>если знаешь</em></span><input class="ipt" id="ch-time" type="time" value="${esc(me.birth_time_known ? (me.birth_time || '') : '')}" placeholder="14:30"></label>
+        <button class="btn btn-primary chart-form__submit" data-act="build">Рассчитать мою карту ✨</button>
+      </div>`;
   };
 
 
   app.doBuildChart = async function() {
+    const date = (document.getElementById('ch-date') || {}).value || '';
     const time = (document.getElementById('ch-time') || {}).value || '';
     const city = (document.getElementById('ch-city') || {}).value || '';
     this.chat.busy = true;
@@ -106,13 +107,13 @@
     try {
       const c = await api('/api/chart', {
         method: 'POST',
-        body: JSON.stringify({ birth_time: time.trim() || null, birth_city: city.trim() || null }),
+        body: JSON.stringify({ birth_date: date || null, birth_time: time.trim() || null, birth_city: city.trim() || null }),
       });
       if (!widAlive(key, view, pend)) { this.chat.busy = false; return; }
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartHtml(c) };
     } catch (e) {
       if (!widAlive(key, view, pend)) { this.chat.busy = false; return; }
-      this.chat.pending = { kind: 'chart', loading: false, html: '<div style="color:#ff9e9e;font-size:13px">😔 ' + esc(e.message) + '</div>' };
+      this.chat.pending = { kind: 'chart', loading: false, html: `<div class="chart-form-error"><b>Проверим данные ещё раз</b><span>${esc(e.message || 'Не удалось построить карту прямо сейчас.')}</span><button class="btn btn-ghost" data-act="build">Попробовать снова</button></div>` };
     }
     this.chat.busy = false;
     this.renderChat(document.getElementById('app-main'));

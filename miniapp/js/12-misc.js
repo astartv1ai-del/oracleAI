@@ -40,6 +40,16 @@
     } catch (e) { this.toast(e.message); }
   };
 
+  app.softEmpty = function({ icon = '✦', eyebrow = '', title, copy, action = '', tone = '' }) {
+    return `<div class="soft-empty ${tone ? 'soft-empty--' + tone : ''}">
+      <div class="soft-empty__orb" aria-hidden="true">${icon}</div>
+      ${eyebrow ? `<span class="soft-empty__eyebrow">${eyebrow}</span>` : ''}
+      <div class="soft-empty__title">${title}</div>
+      <div class="soft-empty__copy">${copy}</div>
+      ${action ? `<div class="soft-empty__action">${action}</div>` : ''}
+    </div>`;
+  };
+
   app.renderProfile = async function(main) {
     const me = this.me;
     const firstName = me && me.name ? esc(me.name.split(' ')[0]) : 'Ты';
@@ -158,11 +168,15 @@
     try {
       const c = await pChart;
       const sun = c.sun || {}, asc = c.ascendant || {};
+      const exactChart = c.precision === 'exact';
+      const precisionCopy = exactChart
+        ? `Асцендент ${esc(asc.sign || '—')}`
+        : esc(c.note || 'Время рождения не указано — ASC, MC и дома не показываем.');
       const planets = (c.planets || []).slice(0, 8).map(p => `
         <div class="planet-line">
           <div class="p-ico">${SIGNS[p.sign] || ''}</div>
           <div class="p-name">${esc(p.name)}</div>
-          <div class="p-val">${esc(p.sign)}${p.house ? ' · ' + p.house : ''}</div>
+          <div class="p-val">${esc(p.sign)}${exactChart && p.house ? ' · ' + p.house : ''}</div>
         </div>`).join('');
       if (chartEl) chartEl.innerHTML = `
         <div class="glass" style="padding:16px">
@@ -172,7 +186,7 @@
             </div>
             <div style="flex:1;font-size:13px">
               <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:14.5px">${esc(sun.sign || '—')}</div>
-              <div style="color:var(--text-dim);font-size:12px">Асцендент ${esc(asc.sign || '—')}</div>
+              <div style="color:var(--text-dim);font-size:12px;line-height:1.4">${precisionCopy}</div>
               <div style="margin-top:10px;display:flex;gap:8px">
                 <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="chat" data-chat="astro">Спросить</button>
                 <button class="btn btn-ghost" style="padding:8px 12px;font-size:12px" data-act="full-chart">Полная карта</button>
@@ -180,15 +194,14 @@
             </div>
           </div>
           <div style="margin-top:10px">${planets}</div>
-          <div style="color:var(--text-faint);font-size:11px;margin-top:6px">Раху · Кету · дома · аспекты — в «Полной карте»</div>
+          <div style="color:var(--text-faint);font-size:11px;margin-top:6px">${exactChart ? 'Раху · Кету · дома · аспекты — в «Полной карте»' : 'Планеты и аспекты доступны без времени; ASC, MC и дома — после уточнения времени рождения.'}</div>
         </div>`;
     } catch (e) {
-      if (chartEl) chartEl.innerHTML = `
-        <div class="glass" style="padding:16px;text-align:center">
-          <div style="font-size:34px">🌌</div>
-          <div style="font-size:13.5px;margin:8px 0 12px">Карта ещё не построена.<br>Собери её у Астролога — прямо в чате.</div>
-          <button class="btn btn-primary" data-act="chat" data-chat="astro">Построить карту</button>
-        </div>`;
+      if (chartEl) chartEl.innerHTML = this.softEmpty({
+        icon: '🌌', eyebrow: 'Твоя основа', title: 'Карта ещё не собрана',
+        copy: 'Укажи дату и город рождения. Время — только если ты его знаешь.',
+        action: '<button class="btn btn-primary" data-act="chat" data-chat="astro">Собрать карту</button>'
+      });
     }
 
     try {
@@ -196,11 +209,11 @@
       // компактно: до 3 строк + «Все N →» (тап открывает модал со всем списком)
       if (tarotEl) {
         if (!rows.length) {
-          tarotEl.innerHTML = `<div class="glass" style="padding:16px;text-align:center">
-            <div style="font-size:24px">🎴</div>
-            <div style="color:var(--text-faint);font-size:13px;margin:6px 0 10px">Раскладов пока нет — зайди к Тарологу и задай вопрос картам.</div>
-            <button class="btn btn-primary" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Задать вопрос картам ✨</button>
-          </div>`;
+          tarotEl.innerHTML = this.softEmpty({
+            icon: '🎴', eyebrow: 'Твой первый расклад', title: 'Карты ждут твой вопрос',
+            copy: 'Выбери бережный расклад — он сохранится здесь, чтобы к нему можно было вернуться.',
+            action: '<button class="btn btn-primary" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Задать вопрос картам</button>'
+          });
         } else {
           const shown = rows.slice(0, 3).map(r => `
             <div class="tight-card" data-act="reading" data-id="${r.id}">
@@ -217,7 +230,13 @@
         }
       }
       this._readingsCache = rows;
-    } catch (e) { if (tarotEl) tarotEl.innerHTML = ''; }
+    } catch (e) {
+      if (tarotEl) tarotEl.innerHTML = this.softEmpty({
+        icon: '🎴', eyebrow: 'История раскладов', title: 'Не получилось открыть историю',
+        copy: 'Это временно. Новый расклад по-прежнему можно сделать в чате.', tone: 'recovery',
+        action: '<button class="btn btn-ghost" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">Открыть Таролога</button>'
+      });
+    }
 
     try {
       const rep = await pReps;
@@ -230,8 +249,16 @@
             <div class="rc-meta">${r.period || fmtDay((r.created_at || '').slice(0, 10))}</div></div>
             <span class="rc-open">›</span>
           </div>
-        </div>`).join('') : '<div class="glass" style="padding:16px;color:var(--text-faint);font-size:13px">Разборов пока нет — они появляются в лавке.</div>';
-    } catch (e) { if (repEl) repEl.innerHTML = ''; }
+        </div>`).join('') : this.softEmpty({
+          icon: '✦', eyebrow: 'Личный архив', title: 'Здесь появятся твои разборы',
+          copy: 'Сохраняй важные ответы из диалогов, чтобы возвращаться к ним в нужный момент.'
+        });
+    } catch (e) {
+      if (repEl) repEl.innerHTML = this.softEmpty({
+        icon: '✦', eyebrow: 'Личный архив', title: 'Разборы временно недоступны',
+        copy: 'Попробуй открыть этот раздел немного позже.', tone: 'recovery'
+      });
+    }
 
     const mems = this.me && this.me.memories ? this.me.memories : [];
       // кнопка открывает модал управления памятью (просмотр/дата/удалить/добавить)
@@ -293,7 +320,11 @@
       this._memFull = rows;
       this.renderMemModal();
     } catch (e) {
-      document.getElementById('mem-body').innerHTML = '<div style="color:var(--text-faint)">😔 ' + esc(e.message) + '</div>';
+      const body = document.getElementById('mem-body');
+      if (body) body.innerHTML = this.softEmpty({
+        icon: '🧠', eyebrow: 'Личная память', title: 'Память пока недоступна',
+        copy: 'Твои сохранённые факты остаются под защитой. Попробуй открыть их чуть позже.', tone: 'recovery'
+      });
     }
   };
 
@@ -386,24 +417,27 @@
     try {
       const c = await api('/api/chart');
       this.chart = c; // B2: для шаринга из полной карты
+      const exactChart = c.precision === 'exact';
+      const precisionNotice = !exactChart ? `<div class="chart-precision-note"><b>Точность карты</b><span>${esc(c.note || 'Время рождения не указано.')}</span><small>Планеты и аспекты рассчитаны по дате. ASC, MC и дома не отображаются без времени рождения.</small></div>` : '';
       const row = (ico, name, val) => `<div class="fc-row"><span class="fc-ico">${ico}</span><span class="fc-name">${esc(name)}</span><span class="fc-val">${val}</span></div>`;
       const pRows = (c.planets || []).map(p =>
-        row(SIGNS[p.sign] || '•', p.name, `${esc(p.sign)} ${p.deg}°${p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ℞' : ''}`)).join('');
+        row(SIGNS[p.sign] || '•', p.name, `${esc(p.sign)} ${p.deg}°${exactChart && p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ℞' : ''}`)).join('');
       const nRows = (c.nodes || []).map(n =>
-        row('☊', n.name, `${esc(n.sign)} ${n.deg}°${n.house ? ' · дом ' + n.house : ''}${n.retro ? ' ℞' : ''}`)).join('');
+        row('☊', n.name, `${esc(n.sign)} ${n.deg}°${exactChart && n.house ? ' · дом ' + n.house : ''}${n.retro ? ' ℞' : ''}`)).join('');
       const hRows = (c.houses || []).map(h =>
         row(`${h.n}`, `${h.n}-й дом`, `${esc(h.sign)} ${h.deg}°`)).join('');
       const aRows = (c.aspects || []).slice(0, 12).map(a =>
         row(a.glyph || '◈', `${a.p1} — ${a.p2}`, `${a.aspect}${a.orb != null ? ' · орб ' + a.orb + '°' : ''}`)).join('');
       document.getElementById('fc-body').innerHTML = `
+        ${precisionNotice}
         <div class="fc-hero" style="margin-bottom:6px;display:flex;justify-content:center;align-items:center;background:rgba(14,13,30,.7);border-radius:var(--r-m);padding:10px;box-shadow:var(--sh-card);">
           <div style="width:260px;height:260px;">${nativitySvg(c, 260)}</div>
         </div>
         <div class="fc-card">
           <span class="fc-ico">☉</span>
           <div class="fc-card-body">
-            <h4 class="fc-t">Твой знак и восход</h4>
-            <div class="fc-desc"><b>Солнце ${esc(c.sun && c.sun.sign || '')}</b> (${esc(c.sun && c.sun.element || '')}) — твоя суть, воля и энергия. <b>Асцендент ${esc(c.ascendant && c.ascendant.sign || '—')}</b> (${esc(c.ascendant && c.ascendant.deg ? Math.round(c.ascendant.deg) : '—')}°) — как тебя видят со стороны. <b>MC ${esc(c.mc && c.mc.sign || '—')}</b> — направление и цель.</div>
+            <h4 class="fc-t">${exactChart ? 'Твой знак и восход' : 'Твоя солнечная основа'}</h4>
+            <div class="fc-desc"><b>Солнце ${esc(c.sun && c.sun.sign || '')}</b> (${esc(c.sun && c.sun.element || '')}) — твоя суть, воля и энергия.${exactChart ? ` <b>Асцендент ${esc(c.ascendant && c.ascendant.sign || '—')}</b> (${esc(c.ascendant && c.ascendant.deg ? Math.round(c.ascendant.deg) : '—')}°) — как тебя видят со стороны. <b>MC ${esc(c.mc && c.mc.sign || '—')}</b> — направление и цель.` : ' Время рождения не указано, поэтому не добавляем предположения об асценденте и направлении MC.'}</div>
           </div>
         </div>
         <div class="fc-card">
@@ -414,7 +448,7 @@
               ${(c.planets || []).map(p => `
               <div class="fc-planet">
                 <span class="pl-ico">${SIGNS[p.sign] || '•'}</span>
-                <span class="pl-info"><span class="pl-t">${esc(p.name)} · ${esc(p.sign)}${p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ℞' : ''}</span><span class="pl-d">${p.deg ? p.deg + '°' : ''}</span></span>
+                <span class="pl-info"><span class="pl-t">${esc(p.name)} · ${esc(p.sign)}${exactChart && p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ℞' : ''}</span><span class="pl-d">${p.deg ? p.deg + '°' : ''}</span></span>
               </div>`).join('')}
             </div>
           </div>
@@ -428,7 +462,7 @@
                 const label = n.name && n.name.includes('Раху') ? 'Предназначение этой жизни (Раху — северный узел)' : (n.name && n.name.includes('Кету') ? 'Кармический багаж (Кету — южный узел)' : n.name);
                 return `<div class="fc-planet" style="min-width:190px;max-width:none">
                   <span class="pl-ico">☊</span>
-                  <span class="pl-info"><span class="pl-t">${esc(n.sign)} ${n.deg}° · дом ${n.house || '—'}${n.retro ? ' ℞' : ''}</span>
+                  <span class="pl-info"><span class="pl-t">${esc(n.sign)} ${n.deg}°${exactChart && n.house ? ' · дом ' + n.house : ''}${n.retro ? ' ℞' : ''}</span>
                   <span class="pl-d">${label}</span>
                 </span>
                 </div>`;
@@ -458,7 +492,7 @@
             </div>
           </div>
         </div>
-        <div class="fc-card">
+        ${exactChart ? `<div class="fc-card">
           <span class="fc-ico">🏠</span>
           <div class="fc-card-body">
             <h4 class="fc-t">Дома</h4>
@@ -466,13 +500,18 @@
               ${(c.houses || []).map((h, i) => `<b style="color:var(--gold-bright)">${i + 1}-й дом · ${esc(h.sign || '')}</b> ${h.deg ? h.deg + '°' : ''}${i < 11 ? ' · ' : ''}`).join('')}
             </div>
           </div>
-        </div>
+        </div>` : ''}
         <button class="btn btn-primary" style="margin-top:14px" data-act="chat" data-chat="astro">Спросить Астролога про карту</button>
         <button class="btn btn-primary" style="width:100%;margin-top:8px" data-act="share-chart">📸 Сохранить карту в сторис</button>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" data-act="fc-explain">🧠 Разбор простыми словами</button>
         <div id="fc-explain" style="margin-top:12px"></div>`;
     } catch (e) {
-      document.getElementById('fc-body').innerHTML = '<div style="color:var(--text-faint)">😔 ' + esc(e.message) + '</div>';
+      const body = document.getElementById('fc-body');
+      if (body) body.innerHTML = this.softEmpty({
+        icon: '🌌', eyebrow: 'Полная карта', title: 'Карта пока недоступна',
+        copy: 'Проверь соединение и попробуй открыть её чуть позже.', tone: 'recovery',
+        action: '<button class="btn btn-ghost" data-act="modal-close">Закрыть</button>'
+      });
     }
   };
 
@@ -491,7 +530,10 @@
       box.dataset.loaded = '1';
       box.innerHTML = '<div class="glass fc-explain">' + richMd(r.text) + '</div>';
     } catch (e) {
-      box.innerHTML = '<div style="color:var(--text-faint)">😔 ' + esc(e.message) + '</div>';
+      box.innerHTML = this.softEmpty({
+        icon: '✦', eyebrow: 'Разбор карты', title: 'Смысл пока не раскрылся',
+        copy: 'Попробуй ещё раз немного позже — твоя карта никуда не исчезнет.', tone: 'recovery'
+      });
     }
   };
 
@@ -541,7 +583,11 @@
         </div>
         <div style="color:var(--text-faint);font-size:11.5px;margin-top:10px">Напоминания и прогнозы приходят в Telegram-боте. Включить их можно там же.</div>`;
     } catch (e) {
-      document.getElementById('bell-body').innerHTML = '<div style="color:var(--text-faint);font-size:13px">😔 ' + esc(e.message) + '</div>';
+      const body = document.getElementById('bell-body');
+      if (body) body.innerHTML = this.softEmpty({
+        icon: '🌙', eyebrow: 'Уведомления', title: 'Пока тихо',
+        copy: 'Когда появится новый знак дня или важное напоминание, оно будет ждать тебя здесь.', tone: 'quiet'
+      });
     }
   };
 
