@@ -34,6 +34,7 @@ COLUMNS: dict[str, dict[str, str]] = {
     "users": {
         "username": "TEXT",
         "lang": "TEXT DEFAULT 'ru'",
+        "gender": "TEXT DEFAULT NULL",
         "morning_push": "INTEGER DEFAULT 1",
         "memory_enabled": "INTEGER DEFAULT 1",
         "age_confirmed": "INTEGER DEFAULT 0",

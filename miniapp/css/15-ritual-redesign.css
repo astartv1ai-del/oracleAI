@@ -605,6 +605,7 @@ button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon
 .language-choice small { color: var(--text-soft); font-size: 12px; }
 .language-choice.active { border-color: rgba(245, 212, 139, .66); background: rgba(245, 212, 139, .11); box-shadow: inset 0 0 18px rgba(245, 212, 139, .05); }
 .language-choice:active, .language-row:active { transform: scale(.985); }
+.gender-choice--skip { grid-column: 1 / -1; min-height: 52px; }
 @media (max-width: 350px) { .language-picker { grid-template-columns: 1fr; } }
 
 /* P3: спокойный сезонный слой — появляется только в экспериментальном варианте. */

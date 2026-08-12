@@ -73,7 +73,7 @@ async def test_me_returns_full_state(client, user):
     assert res.status_code == 200
     data = res.json()
     for key in ("name", "plan", "allowance", "agents", "flags", "crystals",
-                "sub_active", "questions_left"):
+                "sub_active", "questions_left", "gender"):
         assert key in data, key
     assert data["allowance"]["limit"] == 3
     assert len(data["agents"]) >= 3
@@ -94,6 +94,25 @@ async def test_profile_update_validates_timezone(client, user):
     res = await client.post("/api/profile", params=as_user(user),
                             json={"tz": "Mars/Olympus"})
     assert res.status_code == 400
+
+
+async def test_profile_gender_can_be_set_and_cleared(client, user):
+    updated = await client.patch("/api/profile", params=as_user(user), json={"gender": "m"})
+    assert updated.status_code == 200
+    assert updated.json()["updated"] == ["gender"]
+
+    profile = await client.get("/api/me", params=as_user(user))
+    assert profile.json()["gender"] == "m"
+
+    cleared = await client.post("/api/profile", params=as_user(user), json={"gender": None})
+    assert cleared.status_code == 200
+    assert cleared.json()["updated"] == ["gender"]
+    assert (await client.get("/api/me", params=as_user(user))).json()["gender"] is None
+
+
+async def test_profile_gender_rejects_unknown_code(client, user):
+    res = await client.post("/api/profile", params=as_user(user), json={"gender": "other"})
+    assert res.status_code == 422
 
 
 async def test_referral_returns_link_and_stats(client, user):

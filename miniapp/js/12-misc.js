@@ -55,6 +55,7 @@
     const firstName = me && me.name ? esc(me.name.split(' ')[0]) : 'Ты';
     const streak = me && me.global_streak ? me.global_streak : 0;
     const questions = me && me.allowance && typeof me.allowance.left !== 'undefined' ? me.allowance.left : '—';
+    const genderLabel = gendered(me, t('female'), t('male'), t('notSpecified'));
     const identityBlock = me && me.birth_date ? `
       <div class="glass" style="padding:14px 16px;font-size:13px">
         <div class="planet-line"><div class="p-ico">◌</div><div class="p-name">Рождение</div><div class="p-val">${esc(me.birth_date)}</div></div>
@@ -102,6 +103,10 @@
           <div class="section-kicker">Твоя основа</div>
           <div class="section-title">Данные рождения</div>
           ${identityBlock}
+          <button class="glass language-row" data-act="gender" type="button" aria-label="${esc(t('changeGender'))}">
+            <span class="language-row__copy"><b>${esc(t('gender'))}</b><small>${esc(genderLabel)}</small></span>
+            <span class="language-row__chevron" aria-hidden="true">›</span>
+          </button>
           <button class="glass language-row" data-act="language" type="button" aria-label="${esc(t('changeLanguage'))}">
             <span class="language-row__copy"><b>${esc(t('language'))}</b><small>${esc((me && me.lang) === 'en' ? t('english') : t('russian'))}</small></span>
             <span class="language-row__chevron" aria-hidden="true">›</span>
@@ -587,6 +592,31 @@
         copy: 'Попробуй ещё раз немного позже — твоя карта никуда не исчезнет.', tone: 'recovery'
       });
     }
+  };
+
+  app.openGender = function() {
+    const current = (this.me && this.me.gender) || null;
+    this.showModal(`<h3>${esc(t('gender'))}</h3><button class="m-close" data-act="modal-close" aria-label="Close">✕</button>
+      <p class="modal-soft-copy">${esc(t('genderCopy'))}</p>
+      <div class="language-picker gender-picker">
+        <button class="language-choice ${current === 'f' ? 'active' : ''}" data-act="set-gender" data-gender="f"><b>${esc(t('female'))} ♀</b><small>${esc(t('femaleCopy'))}</small></button>
+        <button class="language-choice ${current === 'm' ? 'active' : ''}" data-act="set-gender" data-gender="m"><b>${esc(t('male'))} ♂</b><small>${esc(t('maleCopy'))}</small></button>
+        <button class="language-choice gender-choice--skip ${current === null ? 'active' : ''}" data-act="set-gender" data-gender=""><b>${esc(t('notSpecified'))}</b><small>${esc(t('notSpecifiedCopy'))}</small></button>
+      </div>`);
+  };
+
+  app.setGender = async function(gender) {
+    const next = ['f', 'm'].includes(gender) ? gender : null;
+    const previous = (this.me && this.me.gender) || null;
+    if (next === previous) { this.closeModal(); return; }
+    haptic('light');
+    try {
+      await api('/api/profile', { method: 'PATCH', body: JSON.stringify({ gender: next }) });
+      this.me = Object.assign({}, this.me, { gender: next });
+      this.closeModal();
+      this.go('profile');
+      this.toast(t('saved'));
+    } catch (e) { this.toast(e.message || 'Не удалось сохранить пол'); }
   };
 
   app.openLanguage = function() {

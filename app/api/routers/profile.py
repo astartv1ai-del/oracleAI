@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -98,6 +99,7 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
         "memory_enabled": bool(user["memory_enabled"]),
         "age_confirmed": bool(user["age_confirmed"]),
         "lang": user["lang"] or "ru",
+        "gender": user["gender"],
         "entitlements": await billing.list_entitlements(db, user["tg_id"]),
         "reports": await readings.list_reports(db, user["tg_id"]),
         "agents": await agents.agent_list(db, user),
@@ -129,11 +131,13 @@ class ProfileIn(BaseModel):
     memory_enabled: bool | None = None
     age_confirmed: bool | None = None
     lang: str | None = Field(default=None, max_length=8)
+    gender: Literal["f", "m"] | None = None
     tz: str | None = Field(default=None, max_length=64)
     goal: str | None = Field(default=None, max_length=40)
 
 
 @router.post("/profile", dependencies=[Depends(rate_limit("write"))])
+@router.patch("/profile", dependencies=[Depends(rate_limit("write"))])
 async def update_profile(item: ProfileIn, user=Depends(current_user),
                          db=Depends(get_db)):
     """Меняет настройки профиля. Пустые поля не трогаем."""
@@ -158,6 +162,8 @@ async def update_profile(item: ProfileIn, user=Depends(current_user),
         if lang not in {"ru", "en"}:
             raise HTTPException(400, "поддерживаются языки ru и en")
         fields["lang"] = lang
+    if "gender" in item.model_fields_set:
+        fields["gender"] = item.gender
     if item.tz:
         from zoneinfo import ZoneInfo
         try:

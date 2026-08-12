@@ -44,3 +44,4 @@ async def test_concurrent_reconcile_columns_no_lock_error(tmp_path):
         "миграцию должен выполнить ровно один из двух процессов"
     assert len(added1) + len(added2) == len(mig.COLUMNS["users"]), \
         "колонки добавлены за один проход, без двойной работы"
+    assert "users.gender" in {*added1, *added2}

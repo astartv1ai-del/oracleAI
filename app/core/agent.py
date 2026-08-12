@@ -23,9 +23,28 @@ from ..repo import readings as readings_repo
 from ..repo import users as users_repo
 from . import agents, astro, interpretation, llm, memory, skills, tarot
 from . import matrix as mx
+from .agents.base import language_and_gender_guidance
 from .stable import stable_seed
 
 log = logging.getLogger("oracle.agent")
+
+
+def _gendered(user, feminine: str, masculine: str, neutral: str) -> str:
+    """Возвращает русскую форму обращения, сохраняя нейтральный fallback."""
+    try:
+        gender = user["gender"]
+    except (IndexError, KeyError):
+        gender = None
+    if gender == "f":
+        return feminine
+    if gender == "m":
+        return masculine
+    return neutral
+
+
+def _name_prefix(user) -> str:
+    """Формирует безопасное обращение без гендерного имени по умолчанию."""
+    return f"{user['name']}, " if user["name"] else ""
 
 
 # ---------------------------------------------------------------- вопрос
@@ -47,8 +66,8 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
                             question: str | None = None) -> str:
     """Трактовка КОНКРЕТНЫХ вытянутых карт (карты выбрал код, не модель).
 
-    `question` — формулировка клиентки «что спросить у карт»: карты отвечают на
-    конкретное, и трактовка обязана отталкиваться от её вопроса, а не быть
+    `question` — формулировка пользователя «что спросить у карт»: карты отвечают на
+    конкретное, и трактовка обязана отталкиваться от вопроса, а не быть
     «про жизнь вообще».
     """
     cards_block = tarot.cards_text(cards, positions)
@@ -61,7 +80,7 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
             mems = await memory.recall(db, user["tg_id"], question or "", limit=3)
             who_block = ""
             if summary:
-                who_block += f"Контекст клиентки (не факт расклада): {summary}\n"
+                who_block += f"Контекст пользователя (не факт расклада): {summary}\n"
             if mems:
                 who_block += f"Релевантный контекст: {'; '.join(mems)}\n"
             user_msg = (
@@ -70,7 +89,7 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
                 f"{interpretation.generation_rules('tarot')}\n\n"
                 f"{who_block}Дай тёплую трактовку расклада «{title}»: сначала разберись "
                 "с ролью каждой позиции, затем свяжи карты в один сюжет и ответь на вопрос "
-                "клиентки. Не пересказывай справочные значения подряд. Не добавляй карты, "
+                "пользователя. Не пересказывай справочные значения подряд. Не добавляй карты, "
                 "сроки, гарантии или утверждения о мыслях третьего человека как факт."
             )
             text = await llm.complete(system, user_msg, tier="main",
@@ -88,14 +107,14 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
 
 def _reading_offline(user, title: str, cards: list[dict], cards_block: str,
                      question: str | None = None) -> str:
-    name = user["name"] or "милая"
+    prefix = _name_prefix(user)
     key = cards[len(cards) // 2]
     reversed_note = ("Перевёрнутые карты просят не торопиться. "
                      if any(c["reversed"] for c in cards) else "")
-    q_line = f"\n\nТы спросила: «{question}»." if question else ""
+    q_line = f"\n\nТвой вопрос: «{question}»." if question else ""
     return (
         f"🎴 <b>{title}</b>\n\n{cards_block}{q_line}\n\n"
-        f"{name}, опорная карта этого расклада — {key['emoji']} <b>{key['name']}</b>: "
+        f"{prefix}опорная карта этого расклада — {key['emoji']} <b>{key['name']}</b>: "
         f"{key['meaning']}. Прочитай её не как приговор, а как тему, которую стоит "
         f"заметить в текущей ситуации. {reversed_note}"
         "Сделай один маленький шаг: запиши, где эта тема уже проявилась сегодня и "
@@ -142,9 +161,10 @@ async def daily_forecast(db, user, chart: dict) -> str:
                      if chart else "-")
             memories = await dialog_repo.get_memories(db, user["tg_id"], limit=5)
             oracle_name = user["oracle_name"] or "Лилит"
-            system = (f"Ты — {oracle_name}, личный оракул клиентки {user['name']}. "
-                      f"Её карта: {brief}. Память о ней: "
-                      f"{'; '.join(memories) or '-'}.\n"
+            system = (f"Ты — {oracle_name}, личный оракул пользователя {user['name'] or 'без имени'}. "
+                      f"Карта пользователя: {brief}. Память: "
+                      f"{'; '.join(memories) or '-'}.\n\n"
+                      f"{language_and_gender_guidance(user)}\n\n"
                       f"{await skills.guide(db, 'transit')}")
             card = card_of_day(user)
             sphere_title, sphere_hint = _sphere_slot(user)
@@ -173,7 +193,7 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
     rnd = random.Random(stable_seed(date.today().isoformat(), user["tg_id"]))
     sun = (chart or {}).get("sun") or {}
     sign = sun.get("sign", "твоего знака")
-    name = user["name"] or "милая"
+    prefix = _name_prefix(user)
     moon = sky["moon"]
     card = card_of_day(user)
     sphere_title, _hint = _sphere_slot(user)
@@ -183,7 +203,7 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
            if card["reversed"] else
            "Карта прямого хода — смелый шаг в первой половине дня принесёт больше.")
     return (
-        f"🌅 {name}, доброе утро! Сегодня для {sign} — {rnd.choice(moods)}.\n"
+        f"🌅 {prefix}доброе утро! Сегодня для {sign} — {rnd.choice(moods)}.\n"
         f"{moon['emoji']} Луна {moon['name']} (~{moon['day']} лунный день): "
         f"{moon['advice']}.\n"
         f"Карта дня: {card['emoji']} <b>{card['name']}</b> — {card['meaning']}.\n"
@@ -246,7 +266,7 @@ async def _synastry_data(db, user, partner_date: str) -> str | None:
             return None
         aspects = astro.synastry_aspects(chart["planets"], pchart["planets"])
         lines = [
-            "Её карта:",
+            "Карта пользователя:",
             astro.chart_brief(chart, time_known=bool(user["birth_time_known"])),
             "",
             f"Карта {partner['name'] or 'партнёра'}:",
@@ -299,7 +319,7 @@ async def interpret_compat(db, user, partner_date: str,
     Версия ключа кеша зависит от наличия полных карт: добавили карту партнёра —
     балл пересобирается сразу, а не «залипает» старый.
     """
-    who = partner_name or "он"
+    who = partner_name or "партнёр"
     relation = relation if relation in skills.RELATIONS else "love"
     aspects = await skills._pair_aspects(db, user, partner_date)
     version = "full" if aspects is not None else "lite"
@@ -368,7 +388,7 @@ async def interpret_compat(db, user, partner_date: str,
             f"Ты — {data['you']['sign']} ({data['you']['element']}), "
             f"{who} — {data['partner']['sign']} ({data['partner']['element']}).\n"
             f"Балл пары: <b>{data['score']}/100</b> — {data['verdict']}.\n\n"
-            f"Стихии подсказывают: не переделывай его, а используй разность как "
+            f"Стихии подсказывают: не пытайся переделать партнёра, а используй разность как "
             f"опору. Спроси меня про конкретную ситуацию между вами — разложу "
             f"карты. 🌙")
     await readings_repo.cache_synastry(db, user["tg_id"], key, data["score"],
@@ -639,9 +659,9 @@ async def _report_data(db, user, kind: str, partner_date: str | None,
 
 def _report_offline(user, spec: dict, data_block: str) -> str:
     """Разбор без модели: структура и реальные данные, без «воды» от LLM."""
-    name = user["name"] or "милая"
+    prefix = _name_prefix(user)
     parts = [f"<b>{spec['title']}</b>", "",
-             f"{name}, вот что говорят твои расчёты.", "",
+             f"{prefix}вот что говорят твои расчёты.", "",
              "<i>Данные карты:</i>", data_block, "",
              "<b>Разделы разбора</b>"]
     parts += [f"• {s}" for s in spec["sections"]]
@@ -698,7 +718,7 @@ async def monthly_report(db, user) -> str:
                 f"{interpretation.generation_rules('monthly')}\n\n"
                 "Напиши тёплый итог месяца в 5–7 коротких абзацах, начни с 🌙. "
                 "Отделяй наблюдение из фактов от мягкой гипотезы; не называй личные "
-                "записи при отключённой памяти и не приписывай клиентке невысказанные переживания."
+                "записи при отключённой памяти и не приписывай пользователю невысказанные переживания."
             )
             candidate = await llm.complete(system, user_msg, tier="main", max_tokens=1200,
                                            purpose="report:monthly", tg_id=user["tg_id"],
@@ -724,15 +744,23 @@ async def monthly_report(db, user) -> str:
 
 # ---------------------------------------------------------------- память
 
-EXTRACT_PROMPT = (
-    "Ты ведёшь досье клиентки для личного астролога. Извлеки из её сообщения "
-    "0-3 факта, которые стоит помнить через месяц: люди и их имена, события, "
-    "страхи, цели, важные даты, работа, здоровье.\n"
-    "Правила: пиши фактами в третьем лице («её парня зовут Дима»), без оценок; "
-    "не сохраняй сам вопрос, вежливости и общие слова; если помнить нечего — "
-    "верни пустой массив.\n"
-    "Ответ — ТОЛЬКО JSON-массив строк, без пояснений и без markdown."
-)
+def _memory_extract_prompt(user) -> str:
+    """Даёт экстрактору форму третьего лица, не навязывая пользователю пол."""
+    example = _gendered(
+        user,
+        "«её партнёра зовут Дима»",
+        "«его партнёра зовут Дима»",
+        "«у пользователя есть партнёр по имени Дима»",
+    )
+    return (
+        "Ты ведёшь досье пользователя для личного астролога. Извлеки из сообщения "
+        "0-3 факта, которые стоит помнить через месяц: люди и их имена, события, "
+        "страхи, цели, важные даты, работа, здоровье.\n"
+        f"Правила: пиши фактами в третьем лице (например, {example}), без оценок; "
+        "не сохраняй сам вопрос, вежливости и общие слова; если помнить нечего — "
+        "верни пустой массив.\n"
+        "Ответ — ТОЛЬКО JSON-массив строк, без пояснений и без markdown."
+    )
 
 #: Короче этого ответа lite-вызов экстракции не окупается (G23): реплики в духе
 #: «поняла 🌙» фактов не несут, а стоимость — вызов модели и эмбеддинги.
@@ -772,7 +800,7 @@ async def extract_memory_llm(db, user, question: str, answer: str) -> None:
     if len((answer or "").strip()) < EXTRACT_MIN_ANSWER:
         return                     # короткая реплика — без lite-вызова (G23)
     try:
-        raw = await llm.complete(EXTRACT_PROMPT, question, tier="lite",
+        raw = await llm.complete(_memory_extract_prompt(user), question, tier="lite",
                                  max_tokens=300, purpose="memory_extract",
                                  tg_id=user["tg_id"], db=db)
     except Exception as e:  # noqa: BLE001

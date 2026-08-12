@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     name             TEXT,
     username         TEXT,
     lang             TEXT DEFAULT 'ru',
+    gender           TEXT DEFAULT NULL,       -- f|m; NULL = нейтральные обращения
     persona          TEXT DEFAULT 'friend',
     oracle_name      TEXT DEFAULT 'Лилит',
     tz               TEXT DEFAULT 'Europe/Moscow',

@@ -60,6 +60,19 @@ def main_menu(*, is_admin: bool = False) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def gender_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Выбор формы обращения в онбординге; пропуск сохраняет нейтральный язык."""
+    labels = (
+        ("Female ♀", "Male ♂", "Skip")
+        if lang == "en" else ("Женский ♀", "Мужской ♂", "Пропустить")
+    )
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=labels[0], callback_data="gender:f"),
+         InlineKeyboardButton(text=labels[1], callback_data="gender:m")],
+        [InlineKeyboardButton(text=labels[2], callback_data="gender:skip")],
+    ])
+
+
 def personas_kb(personas: list[dict]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=f"{p['emoji']} {p['title']}",

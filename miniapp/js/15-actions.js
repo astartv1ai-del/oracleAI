@@ -80,6 +80,8 @@
     ask: (el, data) => call('askAgent', data.chat, data.q),
     'all-readings': () => call('openAllReadings'),
     bell: () => call('openBell'),
+    gender: () => call('openGender'),
+    'set-gender': (el, data) => call('setGender', data.gender),
     language: () => call('openLanguage'),
     'set-lang': (el, data) => call('setLanguage', data.lang),
     'ask-chart': () => call('askChart'),

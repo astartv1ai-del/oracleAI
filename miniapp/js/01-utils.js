@@ -86,18 +86,34 @@ const richMd = s => rich(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 
 const oracleLang = () => (window.app && app.me && app.me.lang) ||
   localStorage.getItem('oracle_lang') || 'ru';
+
+// Русский род используем только при явном выборе; отсутствие значения не означает женский род.
+function gendered(user, feminine, masculine, neutral) {
+  if (user && user.gender === 'f') return feminine;
+  if (user && user.gender === 'm') return masculine;
+  return neutral || feminine;
+}
+
 const I18N = {
   ru: {
     today: 'Сегодня', chats: 'Диалоги', mine: 'Моё', ritual: 'Ритуал', guides: 'Проводники', profile: 'Профиль',
     language: 'Язык интерфейса', russian: 'Русский', english: 'English',
     languageCopy: 'Меняет язык основных экранов и новых сообщений. Сохранённые записи остаются на языке, на котором были созданы.',
-    saved: 'Сохранено', changeLanguage: 'Сменить язык',
+    gender: 'Пол', female: 'Женский', male: 'Мужской', notSpecified: 'Не указан',
+    femaleCopy: 'Обращения в женском роде', maleCopy: 'Обращения в мужском роде',
+    notSpecifiedCopy: 'Нейтральные формулировки',
+    genderCopy: 'Помогает Оракулу обращаться к тебе в правильном роде. Это можно изменить или не указывать.',
+    changeGender: 'Изменить пол', saved: 'Сохранено', changeLanguage: 'Сменить язык',
   },
   en: {
     today: 'Today', chats: 'Guides', mine: 'Mine', ritual: 'Ritual', guides: 'Guides', profile: 'Profile',
     language: 'App language', russian: 'Русский', english: 'English',
     languageCopy: 'Changes the language of core screens and new messages. Saved entries stay in their original language.',
-    saved: 'Saved', changeLanguage: 'Change language',
+    gender: 'Gender', female: 'Female', male: 'Male', notSpecified: 'Not specified',
+    femaleCopy: 'Feminine forms of address', maleCopy: 'Masculine forms of address',
+    notSpecifiedCopy: 'Gender-neutral wording',
+    genderCopy: 'Helps Oracle use the right form of address. You can change it later or leave it unspecified.',
+    changeGender: 'Change gender', saved: 'Saved', changeLanguage: 'Change language',
   },
 };
 const t = (key, fallback = '') => (I18N[oracleLang()] || I18N.ru)[key] || fallback || key;
