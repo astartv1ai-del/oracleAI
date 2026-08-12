@@ -28,6 +28,7 @@
 - Chat sessions receive a generic category title after the first meaningful question without copying personal text; tool palette now explains required data, duration and result before launch.
 - Design component inventory and viewport/accessibility matrix are now checked by a deterministic token/import/reduced-motion contract gate in CI.
 - Tool preflight metadata now uses a one-column mobile sheet so required data, duration and result remain readable at 360–430 px; assets bumped to v83 after visual smoke.
+- Added read-only SQLite/WAL health report, deterministic schema manifest, scale-trigger matrix and migration rehearsal runbook; no storage rewrite is enabled before measured thresholds.
 
 ### Security
 

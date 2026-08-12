@@ -15,6 +15,7 @@
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
 | [LLM_EVALUATION.md](LLM_EVALUATION.md) | AI, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
 | [DESIGN_COMPONENT_INVENTORY.md](DESIGN_COMPONENT_INVENTORY.md) | Design, frontend, QA | Чтобы сохранять состояния компонентов, accessibility и visual regression matrix. |
+| [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять SQLite/WAL triggers и репетировать migration без production риска. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 
