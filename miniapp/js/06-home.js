@@ -1,16 +1,49 @@
 /* home: домашний экран + хаб */
   app.renderHome = function(main) {
     const t = this.today;
+    const pulse = this.dailyPulse || {};
+    const diary = pulse.diary || {};
+    const prompt = pulse.prompt || {};
+    const practices = (pulse.practices && pulse.practices.items) || [];
+    const activePractice = practices.find(p => p.started && !p.finished) || practices.find(p => !p.finished) || null;
+    const diaryDone = !!prompt.written_today;
+    const seasonalVariant = experimentVariant('home_ritual_entry', ['control', 'seasonal']);
+    trackExperiment('home_ritual_entry', seasonalVariant);
+    const seasonIndex = Math.floor(((new Date().getMonth() + 1) % 12) / 3);
+    const seasonalMoments = [
+      { title: 'Зимний свет', copy: 'Разреши себе меньше спешки и больше тёплых пауз.' },
+      { title: 'Время расцветать', copy: 'Выбери один маленький шаг, который хочется начать для себя.' },
+      { title: 'Сезон полноты', copy: 'Заметь, что уже стало твоей опорой, и поблагодари себя.' },
+      { title: 'Время бережно отпустить', copy: 'Освободи место для того, что действительно важно сейчас.' },
+    ];
+    const seasonal = seasonalMoments[seasonIndex];
     main.innerHTML = `
       <div class="screen">
         <div class="hero-orb">
           <div class="orb"></div>
+          <div class="hero-moon-orb" aria-hidden="true">${t && t.moon ? moonSvg(t.moon.emoji) : moonSvg('🌙')}</div>
           <div class="hero-body" style="position:relative;z-index:2">
             <div class="hero-date">${fmtDate()}</div>
-            <div style="font-family:var(--font-serif);font-size:26px;font-weight:700;letter-spacing:.5px">Твой день, ${this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : 'милая'}</div>
-            ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день — <em>${esc(t.moon.advice)}</em></div>` : ''}
+            <div class="hero-ritual-label">Твой мягкий ритуал дня</div>
+            <div class="hero-title">Привет, <em>${this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : 'ты'}</em>.</div>
+            ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : '<div class="hero-moon-txt">Собираем настроение твоего дня…</div>'}
           </div>
+          <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="Открыть личный ритуал с Оракулом">Открыть мой знак дня</button>
         </div>
+
+        ${seasonalVariant === 'seasonal' ? `<section class="seasonal-moment" aria-label="Сезонный ритуал"><div class="seasonal-moment__sigil" aria-hidden="true">✦</div><div><div class="section-kicker">Сезонный знак</div><h2>${seasonal.title}</h2><p>${seasonal.copy}</p></div></section>` : ''}
+        <section class="daily-ritual" aria-label="Твой ритм на сегодня">
+          <div class="daily-ritual-head"><div><div class="section-kicker">Твой ритм</div><h2>Вернуться к себе</h2></div><div class="daily-ritual-score">${(diaryDone ? 1 : 0) + (activePractice && activePractice.last_done ? 1 : 0)}<span>/2</span></div></div>
+          <div class="daily-ritual-grid">
+            <button class="daily-step ${diaryDone ? 'is-done' : ''}" data-act="chat-fn" data-chat="oracle" data-fn="featureDiary" aria-label="${diaryDone ? 'Дневник заполнен, открыть записи' : 'Открыть дневник состояния'}">
+              <span class="daily-step-mark">${diaryDone ? '✓' : '◌'}</span><span class="daily-step-copy"><b>${diaryDone ? 'Ты уже услышала себя' : 'Отметить своё состояние'}</b><small>${diaryDone ? 'Дневник уже ждёт тебя в личной библиотеке.' : esc(prompt.prompt || 'Одно честное предложение о том, как ты сейчас.')}</small></span><span class="daily-step-arrow">›</span>
+            </button>
+            ${activePractice ? `<button class="daily-step ${activePractice.last_done ? 'is-done' : ''}" data-act="p-action" data-code="${esc(activePractice.code)}" data-a="${activePractice.started ? 'done' : 'start'}" aria-label="${activePractice.started ? 'Отметить шаг практики' : 'Начать практику'}">
+              <span class="daily-step-mark">${activePractice.last_done ? '✓' : esc(activePractice.emoji || '✦')}</span><span class="daily-step-copy"><b>${esc(activePractice.title)}</b><small>${esc(activePractice.started ? (activePractice.today_step || 'Отметить маленький шаг') : (activePractice.goal || activePractice.about || 'Мягкая практика на сегодня'))}</small></span><span class="daily-step-arrow">›</span>
+            </button>` : ''}
+          </div>
+          <p class="daily-ritual-note">Без штрафов за пропуски. Это не чек-лист «идеальной жизни», а две точки опоры для тебя.</p>
+        </section>
 
         ${this.moonWeek && this.moonWeek[0] ? (() => {
           const wd = WD_SHORT, mon = MON_RU;
@@ -54,14 +87,16 @@
         })() : ''}
 
         <div class="spacer"></div>
-        <div class="section-title">✨ Прогноз на сегодня</div>
+        <div class="section-kicker">Только для тебя</div>
+        <div class="section-title">Знак на сегодня</div>
         <div class="forecast-flow">
-          ${t ? esc(t.forecast) : '<div class="skeleton" style="height:90px;border-radius:12px"></div>'}
+          ${t ? esc(t.forecast) : '<div class="forecast-loading"><span class="loading-star">✦</span><span><b>Собираем твой знак дня</b><span>Ещё мгновение — и появится личная подсказка.</span></span></div>'}
         </div>
 
         ${t && t.card ? `
         <div class="spacer"></div>
-        <div class="section-title">🂠 Карта дня</div>
+        <div class="section-kicker">Символ дня</div>
+        <div class="section-title">Карта, которая рядом</div>
         <div class="card-day card-day-big">
           <div class="tarot-card-big" data-act="flip-card" title="Перевернуть карту">
             <div class="tb-inner">
@@ -84,7 +119,8 @@
 
         ${t && t.next_action && t.next_action.kind ? `
         <div class="spacer"></div>
-        <div class="section-title">🧭 Что дальше</div>
+        <div class="section-kicker">Один бережный шаг</div>
+        <div class="section-title">Продолжить ритуал</div>
         <div class="glass na-card">
           <span class="na-ico">${esc(t.next_action.emoji || '✨')}</span>
           <div class="na-body">
@@ -97,16 +133,17 @@
         </div>` : ''}
 
         <div class="spacer"></div>
-        <div class="section-title">🪐 Твои агенты</div>
+        <div class="section-kicker">Выбери настроение</div>
+        <div class="section-title">С кем поговорим?</div>
         <div class="dock-grid">
           ${this.agents.length ? this.agents.map(a => `
             <div class="dock-item" data-act="chat" data-chat="${a.code}">
               <div class="dock-orb" style="--ac:${esc(a.accent || 'var(--gold)')}"><img class="dock-face" src="/static/img/agents/${esc(a.code)}.jpg" alt="${esc(a.name)}"></div>
               <div class="dock-name">${esc(a.name.split(' ')[0])}</div>
               ${a.title ? `<div class="dock-role">${esc(a.title)}</div>` : ''}
-            </div>`).join('') : '<div class="skeleton" style="height:74px;border-radius:16px;grid-column:1/-1"></div>'}
+            </div>`).join('') : '<div class="agents-loading"><span class="loading-star">✦</span><span><b>Твои проводники уже рядом</b><span>Открываем тех, кто сможет поддержать сегодня.</span></span></div>'}
         </div>
-        <div style="color:var(--text-faint);font-size:11.5px;text-align:center;margin-top:6px">Открой агента — задай вопрос или используй его функцию прямо в чате</div>
+        <div class="home-agent-note">Каждый агент смотрит на твою историю под своим углом. Начни с того, кто откликается сегодня.</div>
       </div>`;
   };
 
@@ -122,8 +159,8 @@
     main.innerHTML = `
       <div class="screen">
         <div class="hub-head">
-          <h1>Твой Оракул</h1>
-          <p>Чат — главный инструмент. Выбери агента: задай вопрос или нажми его функцию.</p>
+          <h1>Твои проводники</h1>
+          <p>Не нужно знать «правильный» вопрос. Выбери того, с кем хочется побыть сегодня — он поможет разложить мысли по местам.</p>
         </div>
         <div class="agent-list">
           ${list.map(a => `
@@ -133,24 +170,25 @@
                 <div style="flex:1;min-width:0">
                   <div class="ac-head">
                     <div class="agent-title">${esc(a.name)}</div>
-                    <span class="online-dot" title="в сети"></span>
                   </div>
                   <div class="agent-role">${esc(a.title || a.code)}</div>
-                  <div class="agent-last">${esc(a.last_text || a.tagline || '')}</div>
+                  <div class="agent-last">${esc(a.last_text || a.tagline || 'Готова выслушать тебя')}</div>
+                  <span class="online-label">рядом для тебя</span>
                 </div>
-                <button class="btn btn-ghost" style="padding:7px 12px;font-size:12px" data-act="chat" data-chat="${a.code}">Написать</button>
+                <button class="btn btn-ghost" style="padding:7px 12px;font-size:12px" data-act="chat" data-chat="${a.code}" aria-label="Открыть диалог с ${esc(a.name)}">Начать</button>
               </div>
               ${(a.suggestions && a.suggestions.length) ? `
               <div class="agent-ask-chips">
                 ${a.suggestions.slice(0, 3).map(s => `
                   <span class="ask-chip" data-act="ask" data-chat="${a.code}" data-q="${esc(s)}">${esc(s)}</span>`).join('')}
               </div>` : ''}
+              <div class="section-kicker" style="margin:15px 0 7px;color:var(--ac)">Можно спросить</div>
               <div class="agent-chips">
                 ${(FEATURES[a.code] || []).slice(0, 4).map(f => `
-                  <span class="tool" style="--ac2:${esc(a.accent || 'var(--gold)')}" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}">
-                    <span class="tool-ico">${f.e}</span>
+                  <button class="tool" style="--ac2:${esc(a.accent || 'var(--gold)')}" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" aria-label="${esc(f.t)}: ${esc(f.d || '')}">
+                    <span class="tool-ico" aria-hidden="true">${sigilIcon(f.id)}</span>
                     <span class="tool-txt"><span class="tool-t">${esc(f.t)}</span>${f.d ? `<span class="tool-d">${esc(f.d)}</span>` : ''}</span>
-                  </span>`).join('')}
+                  </button>`).join('')}
               </div>
             </div>`).join('')}
         </div>

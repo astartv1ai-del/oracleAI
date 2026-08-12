@@ -726,6 +726,8 @@ async def extract_memory_llm(db, user, question: str, answer: str) -> None:
     Сохраняем через `core.memory`: он склеивает переформулировки одного и того же
     факта по близости векторов, иначе память быстро забивалась повторами.
     """
+    if not bool(user["memory_enabled"]):
+        return
     if not llm.enabled():
         return
     if len((answer or "").strip()) < EXTRACT_MIN_ANSWER:

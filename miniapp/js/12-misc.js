@@ -42,11 +42,28 @@
 
   app.renderProfile = async function(main) {
     const me = this.me;
+    const firstName = me && me.name ? esc(me.name.split(' ')[0]) : 'Ты';
+    const streak = me && me.global_streak ? me.global_streak : 0;
+    const questions = me && me.allowance && typeof me.allowance.left !== 'undefined' ? me.allowance.left : '—';
+    const identityBlock = me && me.birth_date ? `
+      <div class="glass" style="padding:14px 16px;font-size:13px">
+        <div class="planet-line"><div class="p-ico">◌</div><div class="p-name">Рождение</div><div class="p-val">${esc(me.birth_date)}</div></div>
+        <div class="planet-line"><div class="p-ico">⌁</div><div class="p-name">Время</div><div class="p-val">${esc(me.birth_time_known ? me.birth_time : 'не известно')}</div></div>
+        <div class="planet-line"><div class="p-ico">⌖</div><div class="p-name">Город</div><div class="p-val">${esc(me.birth_city || '—')}</div></div>
+      </div>` : `
+      <div class="profile-empty">
+        <div class="profile-empty-title">Соберём твою карту?</div>
+        <div class="profile-empty-copy">Три коротких шага — и Оракул сможет говорить с тобой точнее, бережнее и по твоему ритму.</div>
+        <div class="profile-empty-steps"><span class="profile-empty-step"><b>01</b>дата</span><span class="profile-empty-step"><b>02</b>время</span><span class="profile-empty-step"><b>03</b>город</span></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:14px" data-act="chat" data-chat="astro">Открыть мою карту</button>
+      </div>`;
     main.innerHTML = `
       <div class="screen">
-        <div class="hub-head">
-          <h1>Профиль</h1>
-          <p>Твоё небо и сохранённое</p>
+        <div class="profile-hero">
+          <div class="profile-kicker">Твоё пространство</div>
+          <div class="profile-name">${firstName}, твой путь</div>
+          <div class="profile-copy">Здесь собираются знаки, вопросы и мысли, которые хочется оставить рядом.</div>
+          <div class="ritual-meter"><span class="ritual-meter-label">${streak ? 'Серия: ' + streak + ' дн.' : 'Первый ритуал'}</span><span class="ritual-meter-track"><span class="ritual-meter-fill" style="width:${Math.min(100, Math.max(18, streak ? 18 + streak * 8 : 18))}%"></span></span></div>
         </div>
 
         <div class="ptab-bar">
@@ -57,26 +74,28 @@
         </div>
 
         <div class="ptab-pane active" id="ptab-summary">
-          <div class="glass" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:10px">
-            <span style="font-size:24px;flex-shrink:0">${(me && me.global_streak) ? '🔥' : '🌅'}</span>
+          <div class="section-kicker">Твоя серия</div>
+          <div class="glass" style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:11px">
+            <span style="width:43px;height:43px;display:grid;place-items:center;border-radius:14px;background:rgba(245,212,139,.13);color:var(--champagne-300);font-size:21px;flex-shrink:0">✦</span>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:14px">${(me && me.global_streak) ? 'День ' + me.global_streak + ' с Оракулом' : 'Начни свой путь с Оракулом'}</div>
-              <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${(me && me.global_streak) ? 'Не разрывай цепочку — завтра новый прогноз и карта дня' : 'Вернись завтра — заглянем в твоё небо вместе'}</div>
+              <div style="color:var(--text-main);font-family:var(--font-serif);font-weight:700;font-size:17px">${streak ? 'Ты уже ' + streak + ' ' + (streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней') + ' рядом с собой' : 'Твой первый знак уже ждёт'}</div>
+              <div style="font-size:12.5px;color:var(--text-soft);line-height:1.45;margin-top:3px">${streak ? 'Завтра откроется новый прогноз, чтобы мягко продолжить серию.' : 'Начни с одного вопроса — так рождается личный ритуал.'}</div>
             </div>
           </div>
           <div class="stat-row">
-            <div class="stat"><div class="sv">${me ? (me.sub_active ? '∞' : '—') : '…'}</div><div class="sl">Подписка</div></div>
-            <div class="stat"><div class="sv">${me ? me.crystals : '…'}</div><div class="sl">Кристаллы ✦</div></div>
-            <div class="stat"><div class="sv">${me ? me.allowance.left : '…'}</div><div class="sl">Вопросы</div></div>
-            <div class="stat"><div class="sv">${me ? (me.diary_streak || 0) : '…'}</div><div class="sl">Дневник·дн</div></div>
+            <div class="stat"><div class="sv">${streak || '—'}</div><div class="sl">Ритуалы</div></div>
+            <div class="stat"><div class="sv">${me && typeof me.crystals !== 'undefined' ? me.crystals : '—'}</div><div class="sl">Искры</div></div>
+            <div class="stat"><div class="sv">${questions}</div><div class="sl">Вопросы</div></div>
+            <div class="stat"><div class="sv">${me && me.diary_streak ? me.diary_streak : '—'}</div><div class="sl">Заметки</div></div>
           </div>
           <div class="spacer"></div>
-          <div class="section-title">👤 Твои данные</div>
-          <div class="glass" style="padding:14px 16px;font-size:13px">
-            <div class="planet-line"><div class="p-ico">🗓</div><div class="p-name">Рождение</div><div class="p-val">${me ? esc(me.birth_date || '—') : '…'}</div></div>
-            <div class="planet-line"><div class="p-ico">⏰</div><div class="p-name">Время</div><div class="p-val">${me ? esc(me.birth_time_known ? me.birth_time : 'не известно') : '…'}</div></div>
-            <div class="planet-line"><div class="p-ico">🏙</div><div class="p-name">Город</div><div class="p-val">${me ? esc(me.birth_city || '—') : '…'}</div></div>
-          </div>
+          <div class="section-kicker">Твоя основа</div>
+          <div class="section-title">Данные рождения</div>
+          ${identityBlock}
+          <button class="glass language-row" data-act="language" type="button" aria-label="${esc(t('changeLanguage'))}">
+            <span class="language-row__copy"><b>${esc(t('language'))}</b><small>${esc((me && me.lang) === 'en' ? t('english') : t('russian'))}</small></span>
+            <span class="language-row__chevron" aria-hidden="true">›</span>
+          </button>
           <div class="spacer"></div>
           <div id="profile-referral"></div>
         </div>
@@ -270,7 +289,7 @@
     this.showModal(`<h3>Что я помню о тебе</h3><button class="m-close" data-act="modal-close">✕</button>
       <div id="mem-body" style="margin-top:6px"><div class="loader-ring"></div></div>`);
     try {
-      const rows = await api('/api/memories');
+      const rows = this.me && !this.me.memory_enabled ? [] : await api('/api/memories');
       this._memFull = rows;
       this.renderMemModal();
     } catch (e) {
@@ -282,6 +301,7 @@
   app.renderMemModal = function() {
     const el = document.getElementById('mem-body');
     if (!el) return;
+    const enabled = !(this.me && this.me.memory_enabled === false);
     const rows = this._memFull || [];
     const list = rows.map(m => `
       <div class="mem-manage-row">
@@ -290,14 +310,32 @@
         <button class="mem-del" data-act="del-mem" data-id="${m.id}" title="Удалить">✕</button>
       </div>`).join('');
     el.innerHTML = `
-      <div class="mem-add">
+      <div class="glass" style="padding:12px 13px;margin:0 0 10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1"><div style="font-size:13.5px;font-weight:650">Личная память</div><div style="font-size:11.5px;color:var(--text-dim);line-height:1.4;margin-top:2px">${enabled ? 'Оракул использует выбранные тобой факты, чтобы отвечать точнее.' : 'Оракул не использует и не сохраняет новые факты. Ранее сохранённое остаётся под твоим контролем.'}</div></div>
+          <button class="btn ${enabled ? 'btn-primary' : 'btn-ghost'}" style="padding:7px 10px;font-size:11px;white-space:nowrap" data-act="toggle-memory">${enabled ? 'Включена' : 'Выключена'}</button>
+        </div>
+      </div>
+      ${enabled ? `<div class="mem-add">
         <input class="ipt" id="mem-new" placeholder="Добавь важное о себе…" autocomplete="off"/>
         <button class="send-btn" data-act="add-mem" title="Добавить">+</button>
       </div>
       ${rows.length ? `<div class="mem-manage-list">${list}</div>`
-                    : '<div style="color:var(--text-faint);font-size:13px;padding:8px 2px">Пока ничего не помню. Добавь первый факт выше или просто расскажи мне в чате.</div>'}`;
+                    : '<div style="color:var(--text-faint);font-size:13px;padding:8px 2px">Пока ничего не помню. Добавь первый факт выше или просто расскажи мне в чате.</div>'}`
+      : '<div style="color:var(--text-faint);font-size:13px;padding:10px 2px">Включи память, если хочешь, чтобы Оракул учитывал важные детали между диалогами. Ты в любой момент можешь удалить отдельный факт или выключить её снова.</div>'}`;
   };
 
+
+  app.toggleMemory = async function() {
+    const current = !(this.me && this.me.memory_enabled === false);
+    try {
+      await api('/api/profile', { method: 'POST', body: JSON.stringify({ memory_enabled: !current }) });
+      this.me = await api('/api/me');
+      this._memFull = this.me.memory_enabled ? await api('/api/memories') : [];
+      this.renderMemModal();
+      haptic('light');
+    } catch (e) { alert(e.message); }
+  };
 
   app.delMem = async function(id) {
     try {
@@ -455,6 +493,31 @@
     } catch (e) {
       box.innerHTML = '<div style="color:var(--text-faint)">😔 ' + esc(e.message) + '</div>';
     }
+  };
+
+  app.openLanguage = function() {
+    const current = (this.me && this.me.lang) || 'ru';
+    this.showModal(`<h3>${esc(t('language'))}</h3><button class="m-close" data-act="modal-close" aria-label="Закрыть">✕</button>
+      <p class="modal-soft-copy">${esc(t('languageCopy'))}</p>
+      <div class="language-picker">
+        <button class="language-choice ${current === 'ru' ? 'active' : ''}" data-act="set-lang" data-lang="ru"><b>${esc(t('russian'))}</b><small>Русский</small></button>
+        <button class="language-choice ${current === 'en' ? 'active' : ''}" data-act="set-lang" data-lang="en"><b>${esc(t('english'))}</b><small>English</small></button>
+      </div>`);
+  };
+
+  app.setLanguage = async function(lang) {
+    if (!['ru', 'en'].includes(lang)) return;
+    const previous = (this.me && this.me.lang) || 'ru';
+    if (lang === previous) { this.closeModal(); return; }
+    try {
+      await api('/api/profile', { method: 'POST', body: JSON.stringify({ lang }) });
+      localStorage.setItem('oracle_lang', lang);
+      this.me = Object.assign({}, this.me, { lang });
+      this.closeModal();
+      this.renderFrame();
+      this.go(this.view || 'profile');
+      this.toast(t('saved'));
+    } catch (e) { this.toast(e.message || 'Не удалось сменить язык'); }
   };
 
   // панель уведомлений: прогноз дня + утреннее напоминание

@@ -44,8 +44,10 @@ document.addEventListener('click', e => {
     case 'open-session': app.openSession(parseInt(v.tid, 10)); break;
     case 'del-session': app.delSession(parseInt(v.tid, 10)); break;
     case 'send': app.doSend(v.val || undefined); break;
+    case 'retry-chat': app.loadThread(app.chat.key); break;
     case 'fill': app.fillInput(v.val); break;
     case 'memories': app.openMemories(); break;
+    case 'toggle-memory': app.toggleMemory(); break;
     case 'full-chart': app.openFullChart(); break;
     case 'fc-explain': app.explainChart(); break;
     case 'del-mem': app.delMem(parseInt(v.id, 10)); break;
@@ -71,6 +73,8 @@ document.addEventListener('click', e => {
     case 'ask': app.askAgent(v.chat, v.q); break;
     case 'all-readings': app.openAllReadings(); break;
     case 'bell': app.openBell(); break;
+    case 'language': app.openLanguage(); break;
+    case 'set-lang': app.setLanguage(v.lang); break;
     case 'ask-chart': app.askChart(); break;
     case 'share-chart': app.shareChart(); break;
     case 'share-compat': app.shareCompat(v.pdate, v.pname, v.rel); break;

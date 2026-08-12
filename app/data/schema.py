@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS users (
 
     onboarded        INTEGER DEFAULT 0,
     morning_push     INTEGER DEFAULT 1,
+    memory_enabled   INTEGER DEFAULT 1,   -- использовать сохранённые факты в ответах и сохранять новые
+    age_confirmed    INTEGER DEFAULT 0,   -- добровольное самоподтверждение «мне есть 16 лет»
     ref_by           INTEGER,
     goal             TEXT,                   -- главный запрос: love|career|practice
     source           TEXT,                   -- канал привлечения (utm/ref/organic)

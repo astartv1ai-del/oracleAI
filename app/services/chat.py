@@ -123,7 +123,7 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
                           surface=surface)
     # Память растёт только со свежих вопросов: уточнение за минуту до этого уже
     # получило свой контекст, экстракт с него плодил бы шум и жёг lite-вызов (G23).
-    if verdict.charge != limits.FOLLOWUP:
+    if verdict.charge != limits.FOLLOWUP and bool(user["memory_enabled"]):
         _spawn(agent_core.extract_memory_llm(db, user, question, answer))
 
     fresh = await users.get(db, user["tg_id"])

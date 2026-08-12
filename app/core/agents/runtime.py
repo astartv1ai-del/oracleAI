@@ -76,6 +76,8 @@ async def _context(db, user, spec, question: str = ""):
         free = await billing_repo.get_plan(db, "free")
         depth = free.get("memory_depth") or 5
 
+    if not bool(user["memory_enabled"]):
+        return brief, matrix_brief, [], ""
     memories = await memory.recall(db, user["tg_id"], question, limit=depth)
     summary = await memory.get_summary(db, user["tg_id"]) if depth > 5 else ""
     return brief, matrix_brief, memories, summary
@@ -89,11 +91,15 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
     if spec.uses_persona:
         style = await persona_style(db, user)
     brief, matrix_brief, memories, summary = await _context(db, user, spec, question)
+    language_rule = ("Reply in clear, warm English. Keep card and calculation names "
+                     "recognisable; never pretend a translation is an exact calculation."
+                     if user["lang"] == "en" else "")
+    combined_extra_rules = "\n".join(rule for rule in (extra_rules, language_rule) if rule)
     return build_system_prompt(
         spec, user=user, agent_name=spec.display_name(user), chart_brief=brief,
         matrix_brief=matrix_brief, memories=memories,
         allowance_line=allowance_line, style=style, rules=rules,
-        profile_summary=summary, extra_rules=extra_rules)
+        profile_summary=summary, extra_rules=combined_extra_rules)
 
 
 async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
@@ -130,7 +136,8 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
             log.warning("агент %s не ответил (%s) — офлайн", spec.code, e)
 
     chart = users_repo.chart_of(user)
-    memories = await dialog_repo.get_memories(db, user["tg_id"], limit=5)
+    memories = (await dialog_repo.get_memories(db, user["tg_id"], limit=5)
+                if bool(user["memory_enabled"]) else [])
     return offline_answer(user, question, chart, memories, spec)
 
 
@@ -188,6 +195,17 @@ def offline_answer(user, question: str, chart: dict, memories: list[str],
 
     key = cards[1]
     advice = _ADVICE_BY_ELEMENT.get(element, "слушай себя — ответ уже внутри")
+    if user["lang"] == "en":
+        english_memory = ("I will keep in mind something you shared with me — "
+                          "only because your memory setting is on. " if memories else "")
+        return (
+            f"I hear your question, {name}. Let’s look at it gently.\n\n"
+            f"Your Sun sign ({sign}) is one point of reflection here. {english_memory}\n\n"
+            f"The three-card spread is:\n{cards_block}\n\n"
+            f"At the centre is {key['emoji']} {key['name']}: {key['meaning']}. "
+            "Treat this as a reflective prompt, not a fixed prediction. "
+            "Choose one small, kind action that feels possible today."
+        )
     return (
         f"{rnd.choice(_OPENINGS).format(name=name)}\n\n"
         f"Солнце в {sign} даёт тебе больше силы, чем ты себе разрешаешь. {destiny}\n"

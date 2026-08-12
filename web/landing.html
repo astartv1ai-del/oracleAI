@@ -1,64 +1,83 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Оракул — личный AI-астролог и Таро в Telegram</title>
-<meta name="description" content="Оракул — твой личный AI-астролог: натальная карта, прогноз дня, Таро и Матрица Судьбы прямо в Telegram. Первая карта дня бесплатно, подписка от $9.99.">
-<link rel="canonical" href="https://oracle-bot.example/landing">
-
-<!-- OpenGraph -->
-<meta property="og:type" content="product">
-<meta property="og:title" content="Оракул — личный AI-астролог">
-<meta property="og:description" content="Натальная карта, прогноз дня, Таро и Матрица Судьбы в Telegram. Первая карта дня бесплатно.">
-<meta property="og:url" content="https://oracle-bot.example/landing">
-<meta property="og:image" content="https://oracle-bot.example/static/og.png">
-<meta property="og:locale" content="ru_RU">
-
-<!-- JSON-LD: поисковики понимают структуру -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Product",
-  "name": "Оракул",
-  "description": "Личный AI-астролог и Таро-наставница в Telegram: натальная карта, прогноз дня, расклады и практики.",
-  "brand": {"@type": "Brand", "name": "Оракул"},
-  "offers": {
-    "@type": "AggregateOffer",
-    "lowPrice": "0",
-    "highPrice": "99",
-    "priceCurrency": "USD",
-    "offerCount": "6"
-  }
-}
-</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0920">
+  <title>OracleAI — личный ритуал самопознания в Telegram</title>
+  <meta name="description" content="OracleAI — бережный AI-проводник в Telegram: карта дня, натальные инсайты, Таро, дневник и личные ритуалы без давления.">
+  <link rel="canonical" href="__PUBLIC_BASE_URL__/landing">
+  <link rel="alternate" hreflang="ru" href="__PUBLIC_BASE_URL__/landing">
+  <link rel="alternate" hreflang="en" href="__PUBLIC_BASE_URL__/landing/en">
+  <link rel="alternate" hreflang="x-default" href="__PUBLIC_BASE_URL__/landing">
+  <link rel="stylesheet" href="/public/landing.css">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="OracleAI — личный ритуал самопознания">
+  <meta property="og:description" content="Карта дня, диалог с проводником и маленький шаг к себе — прямо в Telegram.">
+  <meta property="og:url" content="__PUBLIC_BASE_URL__/landing">
+  <meta property="og:image" content="__PUBLIC_BASE_URL__/static/img/oracle-mark.png">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:locale:alternate" content="en_US">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OracleAI","applicationCategory":"LifestyleApplication","operatingSystem":"Telegram","inLanguage":"ru","description":"Личный AI-проводник для саморефлексии: ритуалы дня, астрологические и карточные инсайты, дневник и бережные практики.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+  </script>
 </head>
 <body>
-  <header>
-    <h1>Оракул — звёзды знают твой следующий шаг</h1>
-    <p>Личный AI-астролог и Таро-наставница прямо в Telegram. Натальная карта,
-    утренний прогноз, расклады «что между нами» и практики для уверенности.</p>
-    <a href="https://t.me/oracle_ai_bot">💬 Открыть в Telegram</a>
-  </header>
-  <section>
-    <h2>Что внутри</h2>
-    <ul>
-      <li><b>Карта дня</b> — бесплатно, каждый день</li>
-      <li><b>Прогноз по натальной карте</b> — построен по твоему времени рождения</li>
-      <li><b>Таро</b> — 8 раскладов на отношения, деньги, выбор</li>
-      <li><b>Матрица Судьбы и синастрия</b> — разбор пары и своего пути</li>
-      <li><b>Память</b> — Оракул помнит твою историю и говорит как человек</li>
-    </ul>
-  </section>
-  <section>
-    <h2>Цены</h2>
-    <p>Искра — бесплатно · Путеводная — $9.99/мес · VIP-Оракул — $24.99/мес ·
-       Консьерж — $99/мес.</p>
-  </section>
-  <footer>
-    <a href="https://oracle-bot.example/landing">Сайт</a> ·
-    <a href="https://t.me/oracle_ai_bot">Бот</a>
-    <p>Прогнозы — для самопознания и вдохновения. © 2026.</p>
-  </footer>
+  <main class="shell">
+    <nav class="topbar" aria-label="Основная навигация">
+      <a class="brand" href="/landing" aria-label="OracleAI">
+        <img src="/static/img/oracle-mark.png" width="34" height="34" alt="">
+        <span>ORACLE<small>AI</small></span>
+      </a>
+      <a class="lang" href="/landing/en" lang="en">English</a>
+    </nav>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">ТВОЁ ПРОСТРАНСТВО В TELEGRAM</p>
+        <h1 id="hero-title">Вопросы к миру.<br><em>Бережные</em> ответы — к себе.</h1>
+        <p class="lede">OracleAI помогает замечать свой ритм через карту дня, диалог с проводником, дневник и маленькие личные ритуалы. Без давления, категоричных предсказаний и лишнего шума.</p>
+        <div class="actions">
+          <a class="button button-primary" href="https://t.me/oracle_ai_bot">Открыть OracleAI в Telegram</a>
+          <a class="button button-secondary" href="#inside">Посмотреть, что внутри</a>
+        </div>
+        <p class="note">Для самопознания и вдохновения. Не заменяет медицинскую, психологическую, юридическую или финансовую помощь.</p>
+      </div>
+      <div class="hero-art" aria-hidden="true"><img src="/static/img/oracle-mark.png" width="240" height="240" alt=""></div>
+    </section>
+
+    <section class="section" id="inside" aria-labelledby="inside-title">
+      <p class="section-label">РИТУАЛ, КОТОРЫЙ ОСТАЁТСЯ ТВОИМ</p>
+      <h2 id="inside-title">Не бесконечная лента советов, а один ясный следующий шаг.</h2>
+      <p class="section-copy">Главный цикл OracleAI построен так, чтобы вернуться можно было за минуту: заметить состояние, получить опору и сохранить то, к чему хочется вернуться.</p>
+      <div class="cards">
+        <article class="card"><div class="card-mark">◐</div><h3>Сегодня</h3><p>Карта дня, лунный ритм и одна короткая практика, которую можно сделать в своём темпе.</p></article>
+        <article class="card"><div class="card-mark">✦</div><h3>Проводники</h3><p>Лилит, Урания и Мадам Ленорман помогают посмотреть на вопрос с разных сторон — без фатальных вердиктов.</p></article>
+        <article class="card"><div class="card-mark">⌁</div><h3>Твоё пространство</h3><p>Дневник, личные инсайты и настраиваемая память — только с твоего согласия.</p></article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="how-title">
+      <p class="section-label">ПЕРВЫЕ ТРИ МИНУТЫ</p>
+      <h2 id="how-title">Начать можно с одного вопроса.</h2>
+      <div class="ritual">
+        <article class="ritual-step"><div class="step-number">01 · ЗАМЕТИТЬ</div><h3>Выбери своё состояние</h3><p>Утренний ритуал предлагает коротко свериться с собой — без обязательства вести «идеальный» стрик.</p></article>
+        <article class="ritual-step"><div class="step-number">02 · СПРОСИТЬ</div><h3>Открой диалог</h3><p>Выбери проводника или быстрый сценарий: отношения, выбор, настроение, карта дня.</p></article>
+        <article class="ritual-step"><div class="step-number">03 · ОСТАВИТЬ РЯДОМ</div><h3>Сохрани важное</h3><p>Вернись к раскладу или заметке тогда, когда это действительно нужно. Память можно выключить в любой момент.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="safety">
+        <div><p class="section-label">ПРИВАТНОСТЬ И БЕРЕЖНОСТЬ</p><h2>Твоё «нет» — тоже настройка.</h2><p>OracleAI просит подтверждение 16+ перед персональными сценариями, даёт отдельное управление памятью и не выдаёт эзотерический контент за профессиональный совет или диагноз.</p></div>
+        <ul class="safety-list"><li><b>16+</b> — спокойное подтверждение возраста без сбора даты рождения для этой цели.</li><li><b>Память под контролем</b> — отключи её, и новые факты не сохраняются и не используются в диалогах.</li><li><b>Безопасный тон</b> — никакого давления, запугивания, обещаний результата или подталкивания к риску.</li></ul>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>© 2026 OracleAI. Ритуалы — для самопознания и вдохновения.</div>
+      <div class="footer-links"><a href="https://t.me/oracle_ai_bot">Telegram</a><a href="/landing/en" lang="en">English</a><a href="/robots.txt">Robots</a><a href="/sitemap.xml">Sitemap</a></div>
+    </footer>
+  </main>
 </body>
 </html>

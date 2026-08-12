@@ -36,8 +36,11 @@ async def diary_add(item: DiaryIn, user=Depends(current_user), db=Depends(get_db
     """Запись в дневник. Первые 150 символов уходят в память агента."""
     text = item.text.strip()[:1000]
     await dialog.add_diary(db, user["tg_id"], text, mood=item.mood)
-    await memory.remember(db, user["tg_id"], f"Из дневника: {text[:150]}",
-                          kind="event")
+    # Дневник остаётся личной записью всегда; в память проводников он попадает
+    # только по явному разрешению пользовательницы в настройках приватности.
+    if user["memory_enabled"]:
+        await memory.remember(db, user["tg_id"], f"Из дневника: {text[:150]}",
+                              kind="event")
     await analytics.track(db, "diary_write", user["tg_id"], surface="miniapp")
     return {"ok": True, "streak": await dialog.diary_streak(db, user["tg_id"])}
 

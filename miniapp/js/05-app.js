@@ -20,7 +20,11 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
       }
       const pill = document.querySelector('.user-pill');
       if (pill && this.me.name) {
-        pill.innerHTML = `<span class="avatar">${esc(this.me.name[0].toUpperCase())}</span>${esc(this.me.name)}`;
+        const avatar = pill.querySelector('.avatar');
+        const name = pill.querySelector('.user-name');
+        if (avatar) avatar.textContent = this.me.name[0].toUpperCase();
+        if (name) name.textContent = this.me.name;
+        pill.setAttribute('aria-label', 'Открыть профиль: ' + this.me.name);
       }
     } catch (e) { /* вход по dev_user в БД уже есть */ }
     this.loadAgents();
@@ -28,7 +32,8 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
     this.go('home');
     this.initSwipe();
     this.initViewport();
-    this.maybeIntro();
+    if (this.me && !this.me.age_confirmed) this.showAgeGate();
+    else this.maybeIntro();
   };
   // G001 клавиатура: композер поднимается, когда Telegram раскрывает клавиатуру
 
@@ -86,6 +91,37 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
       }
     }, { passive: true });
   };
+  // P0: самоподтверждение 16+ без сбора даты рождения. Это не верификация личности,
+  // а ясная граница продукта и путь к безопасным настройкам приватности.
+  app.showAgeGate = function() {
+    if (document.getElementById('age-gate')) return;
+    const ov = document.createElement('div');
+    ov.id = 'age-gate';
+    ov.innerHTML = `<div class="age-gate-card">
+      <img src="/static/img/oracle-mark.png" class="age-gate-mark" alt="OracleAI">
+      <div class="age-gate-kicker">Твоё безопасное пространство</div>
+      <h2>Сначала — бережная граница</h2>
+      <p>OracleAI создан для пользователей от 16 лет. Здесь есть развлекательные астрологические практики и поддерживающие диалоги, но не медицинская, юридическая или психологическая помощь.</p>
+      <button class="btn btn-primary" data-age-accept>Мне есть 16 лет · продолжить</button>
+      <button class="age-gate-leave" data-age-leave>Мне нет 16 · закрыть</button>
+      <div class="age-gate-note">Продолжая, ты подтверждаешь возраст и принимаешь бережный формат сервиса. Настройки памяти всегда доступны в разделе «Моё».</div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('[data-age-accept]').addEventListener('click', async () => {
+      try {
+        await api('/api/profile', { method: 'POST', body: JSON.stringify({ age_confirmed: true }) });
+        this.me = await api('/api/me');
+        ov.remove();
+        haptic('success');
+        this.maybeIntro();
+      } catch (e) { alert('Не удалось сохранить подтверждение. Проверь соединение и попробуй снова.'); }
+    });
+    ov.querySelector('[data-age-leave]').addEventListener('click', () => {
+      try { tg() && tg().close && tg().close(); } catch (e) {}
+      ov.querySelector('.age-gate-card').innerHTML = '<div class="age-gate-kicker">Спасибо за честность</div><h2>Вернись, когда тебе исполнится 16</h2><p>Береги себя. Если тебе тревожно или нужна срочная поддержка, пожалуйста, обратись к близкому взрослому или в местную службу помощи.</p>';
+    });
+  };
+
   // G002 Онбординг: вау-интро 3 скрина для первого входа (1 раз на клиента)
 
   app.maybeIntro = function() {
@@ -152,6 +188,10 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
   // Флаг отдельный от глобального интро (или больше, или меньше — не мешаем).
 
   app.maybeChatGuide = function() {
+    // Первый диалог уже объясняется тёплым intro-блоком в самом чате.
+    // Полноэкранный туториал оставлен только для ручной QA-проверки по ?guide=1,
+    // чтобы не прерывать момент, когда пользовательница готова написать.
+    if (!new URLSearchParams(location.search).has('guide')) return;
     try { if (localStorage.getItem('oracle_chat_guide')) return; } catch (e) { return; }
     if (document.getElementById('intro') || document.getElementById('chat-guide')) return;
     const steps = [
@@ -196,36 +236,42 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
 
   app.renderFrame = function() {
     const root = document.getElementById('app-root');
+    const name = this.me && this.me.name ? this.me.name : 'Мой профиль';
+    const initial = this.me && this.me.name ? esc(this.me.name[0].toUpperCase()) : 'О';
     root.innerHTML = `
       <header class="app-header">
-        <div class="brand-title">ОРАКУЛ<small>·AI</small></div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <button class="bell" data-act="bell" aria-label="Уведомления">🔔<span class="bell-dot"></span></button>
-          <div class="user-pill" data-act="go" data-goto="profile">
-            <span class="avatar">${this.me && this.me.name ? esc(this.me.name[0].toUpperCase()) : '✦'}</span>
-            ${this.me && this.me.name ? esc(this.me.name) : 'Гость'}
-          </div>
+        <button class="user-pill" data-act="go" data-goto="profile" aria-label="Открыть профиль: ${esc(name)}">
+          <span class="avatar" aria-hidden="true">${initial}</span>
+          <span class="user-name">${esc(name)}</span>
+        </button>
+        <div class="brand-lockup" aria-label="OracleAI — личное пространство ритуалов">
+          <span class="brand-mark"><img src="/static/img/oracle-mark.png" alt="" aria-hidden="true"></span>
+          <span class="brand-title">ORACLE<small>AI</small></span>
         </div>
+        <button class="bell" data-act="bell" aria-label="Открыть уведомления" title="Уведомления">
+          ${sigilIcon('bell')}<span class="bell-dot" aria-hidden="true"></span>
+        </button>
       </header>
       <div id="app-main"></div>
-      <nav class="app-nav"><div class="main-nav" id="main-nav"></div></nav>`;
+      <nav class="app-nav" aria-label="Основная навигация"><div class="main-nav" id="main-nav"></div></nav>`;
     this.renderNav();
   };
 
 
   app.navItems = function() {
     return [
-      { k: 'home', ico: '✨', t: 'Сегодня' },
-      { k: 'hub', ico: '🪐', t: 'Агенты' },
-      { k: 'profile', ico: '🌙', t: 'Профиль' },
+      { k: 'home', ico: 'home', t: t('today'), hint: t('ritual') },
+      { k: 'hub', ico: 'hub', t: t('chats'), hint: t('guides') },
+      { k: 'profile', ico: 'profile', t: t('mine'), hint: t('profile') }
     ];
   };
 
   app.renderNav = function() {
     const active = this.chat.key ? 'hub' : this.view;
     document.getElementById('main-nav').innerHTML = this.navItems().map(n => `
-      <button class="nav-btn ${active === n.k ? 'active' : ''}" data-act="go" data-goto="${n.k}">
-        <span class="nav-ico">${n.ico}</span><span>${n.t}</span>
+      <button class="nav-btn ${active === n.k ? 'active' : ''}" data-act="go" data-goto="${n.k}" aria-current="${active === n.k ? 'page' : 'false'}" aria-label="${esc(n.t)}: ${esc(n.hint)}">
+        <span class="nav-ico">${sigilIcon(n.ico)}</span>
+        <span class="nav-copy"><b>${esc(n.t)}</b><small>${esc(n.hint)}</small></span>
       </button>`).join('');
   };
 
@@ -265,13 +311,40 @@ app.chat = { key: null, spec: null, messages: [], pending: null, busy: false, ti
   app.loadToday = async function() {
     try { this.today = await api('/api/today'); } catch (e) { this.today = null; }
     try { this.moonWeek = await api('/api/moon/week'); } catch (e) { this.moonWeek = null; }
+    try {
+      const [diary, prompt, practices] = await Promise.all([
+        api('/api/diary'),
+        api('/api/diary/prompt').catch(() => null),
+        api('/api/practices').catch(() => null)
+      ]);
+      this.dailyPulse = { diary, prompt, practices };
+    } catch (e) { this.dailyPulse = null; }
     if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
   };
 
 
+  const AGENT_BRAND = {
+    oracle: { name: 'Лилит', title: 'Личный Оракул', emoji: '🔮', accent: '#e6c178', tagline: 'Мягко помогает услышать себя и увидеть следующий шаг.' },
+    astro:  { name: 'Урания', title: 'Астролог', emoji: '🌠', accent: '#b9a6ff', tagline: 'Переводит язык звёзд в ясные опоры на каждый день.' },
+    tarot:  { name: 'Мадам Ленорман', title: 'Таролог', emoji: '🃏', accent: '#e7a8c2', tagline: 'Читает символы карт бережно и без категоричных ответов.' }
+  };
+
+  app.normalizeAgent = function(raw, key) {
+    const code = (raw && raw.code) || key || 'oracle';
+    const brand = AGENT_BRAND[code] || {};
+    const agent = Object.assign({}, brand, raw || {}, { code });
+    // API может вернуть служебное имя вида «oracle» — оно не является именем персонажа.
+    if (!agent.name || String(agent.name).toLowerCase() === code) agent.name = brand.name || 'Твой Оракул';
+    if (!agent.title) agent.title = brand.title || 'Проводник';
+    if (!agent.emoji) agent.emoji = brand.emoji || '✦';
+    if (!agent.accent) agent.accent = brand.accent || '#e6c178';
+    if (!agent.tagline && brand.tagline) agent.tagline = brand.tagline;
+    return agent;
+  };
+
   app.agentSpec = function(key) {
     const a = this.agents.find(x => x.code === key);
-    return a || { code: key, name: key, emoji: '✦', accent: '#e6c178' };
+    return this.normalizeAgent(a, key);
   };
 
   /* ═══ ЭКРАН «СЕГОДНЯ» — статичная база ═══ */

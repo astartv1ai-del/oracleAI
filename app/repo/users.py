@@ -19,7 +19,7 @@ WRITABLE = {
     "birth_date", "birth_time", "birth_time_known", "birth_city",
     "birth_lat", "birth_lon", "chart_json",
     "sub_level", "sub_until", "crystals",
-    "onboarded", "morning_push", "ref_by", "goal", "source", "status",
+    "onboarded", "morning_push", "memory_enabled", "age_confirmed", "ref_by", "goal", "source", "status",
     "ltv_stars", "expiry_notified", "last_seen", "deleted_at",
 }
 

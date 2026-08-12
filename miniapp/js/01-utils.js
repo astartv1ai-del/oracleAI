@@ -70,12 +70,45 @@ const rich = s => esc(s).replace(/&lt;(\/?)(b|i)&gt;/g, '<$1$2>');
 // rich + markdown-жирный **...** → <b> (для ИИ-разборов).
 const richMd = s => rich(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 
-const fmtDate = () => new Date().toLocaleDateString('ru-RU',
+const oracleLang = () => (window.app && app.me && app.me.lang) ||
+  localStorage.getItem('oracle_lang') || 'ru';
+const I18N = {
+  ru: {
+    today: 'Сегодня', chats: 'Диалоги', mine: 'Моё', ritual: 'Ритуал', guides: 'Проводники', profile: 'Профиль',
+    language: 'Язык интерфейса', russian: 'Русский', english: 'English',
+    languageCopy: 'Меняет язык основных экранов и новых сообщений. Сохранённые записи остаются на языке, на котором были созданы.',
+    saved: 'Сохранено', changeLanguage: 'Сменить язык',
+  },
+  en: {
+    today: 'Today', chats: 'Guides', mine: 'Mine', ritual: 'Ritual', guides: 'Guides', profile: 'Profile',
+    language: 'App language', russian: 'Русский', english: 'English',
+    languageCopy: 'Changes the language of core screens and new messages. Saved entries stay in their original language.',
+    saved: 'Saved', changeLanguage: 'Change language',
+  },
+};
+const t = (key, fallback = '') => (I18N[oracleLang()] || I18N.ru)[key] || fallback || key;
+
+// P3: детерминированный вариант без сторонних трекеров. В событие уходят только
+// имя эксперимента и вариант; вопрос, дневник и другие личные данные не передаются.
+function experimentVariant(experiment, variants = ['control', 'variant']) {
+  const subject = String((window.app && app.me && app.me.tg_id) || 'anonymous');
+  let hash = 2166136261;
+  for (const char of `${experiment}:${subject}`) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return variants[(hash >>> 0) % variants.length];
+}
+function trackExperiment(experiment, variant) {
+  const key = `oracle_exp:${experiment}:${variant}`;
+  if (sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key, '1');
+  api('/api/experiment-exposure', { method: 'POST', body: JSON.stringify({ experiment, variant }) }).catch(() => {});
+}
+
+const fmtDate = () => new Date().toLocaleDateString(oracleLang() === 'en' ? 'en-US' : 'ru-RU',
   { weekday: 'long', day: 'numeric', month: 'long' });
 
 const fmtDay = iso => {
   const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(oracleLang() === 'en' ? 'en-US' : 'ru-RU', { day: 'numeric', month: 'short' });
 };
 
 // арабский номер аркана → римская цифра (для «настоящей» карты)

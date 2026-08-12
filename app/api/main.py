@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from ..config import settings
@@ -148,22 +148,54 @@ if MINIAPP_DIR.is_dir():
 if ADMIN_DIR.is_dir():
     app.mount("/admin/static", StaticFiles(directory=str(ADMIN_DIR)),
               name="admin-static")
+if WEB_DIR.is_dir():
+    # Только публичные стили и изображения лендинга; HTML отдаётся отдельными
+    # маршрутами выше, поэтому страницы не становятся случайно browseable.
+    app.mount("/public", StaticFiles(directory=str(WEB_DIR)), name="public-static")
+
+
+def _public_base(request: Request) -> str:
+    # На бою всегда задаётся WEBAPP_URL. Fallback помогает локальному preview,
+    # но не фиксирует тестовый домен в canonical/robots/sitemap.
+    return settings.webapp_url or str(request.base_url).rstrip("/")
+
+
+def _public_template(name: str, request: Request) -> HTMLResponse:
+    path = WEB_DIR / name
+    if not path.is_file():
+        return HTMLResponse("Страница не найдена", status_code=404)
+    body = path.read_text(encoding="utf-8").replace("__PUBLIC_BASE_URL__", _public_base(request))
+    return HTMLResponse(body)
 
 
 @app.get("/robots.txt", include_in_schema=False)
-async def robots_txt():
-    return _file(WEB_DIR, "robots.txt")
+async def robots_txt(request: Request):
+    body = ("User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\nDisallow: /static\n\n"
+            f"Sitemap: {_public_base(request)}/sitemap.xml\n")
+    return Response(body, media_type="text/plain")
 
 
 @app.get("/sitemap.xml", include_in_schema=False)
-async def sitemap_xml():
-    return _file(WEB_DIR, "sitemap.xml")
+async def sitemap_xml(request: Request):
+    base = _public_base(request)
+    body = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n"
+            f"  <url><loc>{base}/landing</loc></url>\n"
+            f"  <url><loc>{base}/landing/en</loc></url>\n"
+            "</urlset>\n")
+    return Response(body, media_type="application/xml")
 
 
 @app.get("/landing", include_in_schema=False)
-async def landing():
-    """Публичный лендинг для поиска и шаринга ссылок (не Mini App)."""
-    return _file(WEB_DIR, "landing.html")
+async def landing(request: Request):
+    """Публичный русскоязычный лендинг для поиска и шаринга ссылок."""
+    return _public_template("landing.html", request)
+
+
+@app.get("/landing/en", include_in_schema=False)
+async def landing_en(request: Request):
+    """Англоязычная версия публичного лендинга."""
+    return _public_template("landing-en.html", request)
 
 
 @app.get("/{filename}", include_in_schema=False)

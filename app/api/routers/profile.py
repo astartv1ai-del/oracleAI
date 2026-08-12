@@ -88,10 +88,14 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
         # старые поля — интерфейс мог кешироваться у клиенток
         "questions_left": allowance.left,
         "questions_total": allowance.limit,
-        "memories": await dialog.get_memories(db, user["tg_id"], limit=8),
+        "memories": (await dialog.get_memories(db, user["tg_id"], limit=8)
+                     if bool(user["memory_enabled"]) else []),
         "diary_streak": await dialog.diary_streak(db, user["tg_id"]),
         "global_streak": await _global_streak(db, user["tg_id"]),
         "morning_push": bool(user["morning_push"]),
+        "memory_enabled": bool(user["memory_enabled"]),
+        "age_confirmed": bool(user["age_confirmed"]),
+        "lang": user["lang"] or "ru",
         "entitlements": await billing.list_entitlements(db, user["tg_id"]),
         "reports": await readings.list_reports(db, user["tg_id"]),
         "agents": await agents.agent_list(db, user),
@@ -100,10 +104,29 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
     }
 
 
+class ExperimentExposureIn(BaseModel):
+    """Только техническая метка варианта: без текста вопроса и личных данных."""
+    experiment: str = Field(min_length=3, max_length=48, pattern=r"^[a-z0-9_:-]+$")
+    variant: str = Field(min_length=1, max_length=24, pattern=r"^[a-z0-9_-]+$")
+
+
+@router.post("/experiment-exposure", dependencies=[Depends(rate_limit("write"))])
+async def experiment_exposure(item: ExperimentExposureIn, user=Depends(current_user),
+                              db=Depends(get_db)):
+    """Фиксирует показ feature-варианта для последующего сравнения конверсий."""
+    await analytics.track(db, "experiment_exposure", user["tg_id"],
+                          props={"experiment": item.experiment, "variant": item.variant},
+                          surface="miniapp")
+    return {"ok": True}
+
+
 class ProfileIn(BaseModel):
     oracle_name: str | None = Field(default=None, max_length=30)
     persona: str | None = None
     morning_push: bool | None = None
+    memory_enabled: bool | None = None
+    age_confirmed: bool | None = None
+    lang: str | None = Field(default=None, max_length=8)
     tz: str | None = Field(default=None, max_length=64)
     goal: str | None = Field(default=None, max_length=40)
 
@@ -122,8 +145,17 @@ async def update_profile(item: ProfileIn, user=Depends(current_user),
         fields["persona"] = item.persona
     if item.morning_push is not None:
         fields["morning_push"] = int(item.morning_push)
+    if item.memory_enabled is not None:
+        fields["memory_enabled"] = int(item.memory_enabled)
+    if item.age_confirmed is not None:
+        fields["age_confirmed"] = int(item.age_confirmed)
     if item.goal:
         fields["goal"] = item.goal.strip()[:40]
+    if item.lang is not None:
+        lang = item.lang.strip().lower()
+        if lang not in {"ru", "en"}:
+            raise HTTPException(400, "поддерживаются языки ru и en")
+        fields["lang"] = lang
     if item.tz:
         from zoneinfo import ZoneInfo
         try:
@@ -160,6 +192,8 @@ async def referral(user=Depends(current_user), db=Depends(get_db)):
 
 @router.get("/memories")
 async def memories(user=Depends(current_user), db=Depends(get_db)):
+    if not bool(user["memory_enabled"]):
+        return []
     return await dialog.memories_full(db, user["tg_id"], limit=60)
 
 
@@ -171,6 +205,8 @@ class MemoryIn(BaseModel):
 @router.post("/memories", dependencies=[Depends(rate_limit("write"))])
 async def add_memory(item: MemoryIn, user=Depends(current_user), db=Depends(get_db)):
     """Ручное добавление факта из Mini App — та же дедупликация, что у агента."""
+    if not bool(user["memory_enabled"]):
+        raise HTTPException(409, "память отключена в настройках приватности")
     await dialog.save_memory(db, user["tg_id"], item.fact.strip(),
                              kind=item.kind or "fact")
     return {"ok": True}

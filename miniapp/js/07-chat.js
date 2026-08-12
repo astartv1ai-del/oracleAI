@@ -28,7 +28,7 @@
   app.loadThread = async function(key) {
     try {
       const r = await api('/api/chat/' + key);
-      this.chat.spec = r.agent;
+      this.chat.spec = this.normalizeAgent(r.agent, key);
       this.chat.tid = r.thread_id || null;
       this.chat.messages = (r.messages || []).map(m => ({ role: m.role, text: m.text }));
       // если истории нет — приветствие агента, чат не выглядит пустым
@@ -36,7 +36,7 @@
         this.chat.messages = [{ role: 'assistant', text: r.agent.greeting }];
       }
     } catch (e) {
-      this.chat.messages = [{ role: 'assistant', text: '😔 Связь прервалась. Попробуй ещё раз.' }];
+      this.chat.messages = [{ role: 'assistant', widget: this.chatRecoveryHtml() }];
     }
     await this.refreshSessions();
     if (this.chat.key === key) this.renderChat(document.getElementById('app-main'));
@@ -48,6 +48,15 @@
     t.className = 'toast'; t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2400);
+  };
+
+  // Ошибка — отдельное бережное состояние, а не «реплика» агента с техническим текстом.
+  app.chatRecoveryHtml = function() {
+    return `<div class="chat-recovery">
+      <strong>Ответ пока не открылся</strong>
+      <p>Твоя мысль никуда не делась. Попробуем спокойно ещё раз?</p>
+      <button class="chat-retry" data-act="retry-chat">Попробовать снова</button>
+    </div>`;
   };
 
   // отправка в активную сессию (если есть) — иначе первый вопрос создаёт тред
@@ -149,14 +158,14 @@
   app.openSession = async function(id) {
     try {
       const r = await api(`/api/chat/${this.chat.key}/sessions/${id}`);
-      this.chat.spec = r.agent;
+      this.chat.spec = this.normalizeAgent(r.agent, this.chat.key);
       this.chat.tid = r.thread_id;
       this.chat.messages = (r.messages || []).map(m => ({ role: m.role, text: m.text }));
       if (!this.chat.messages.length && r.agent && r.agent.greeting) {
         this.chat.messages = [{ role: 'assistant', text: r.agent.greeting }];
       }
     } catch (e) {
-      this.chat.messages = [{ role: 'assistant', text: '😔 ' + e.message }];
+      this.chat.messages = [{ role: 'assistant', widget: this.chatRecoveryHtml() }];
     }
     await this.refreshSessions();
     this.renderChat(document.getElementById('app-main'));
@@ -177,12 +186,14 @@
 
 
   app.renderChat = function(main) {
-    const a = this.chat.spec;
+    const a = this.chat.spec || this.agentSpec(this.chat.key || 'oracle');
     const messages = this.chat.messages;
     const busy = this.chat.busy;
     const pending = this.chat.pending;
     const agents = this.agents.length ? this.agents : AGENT_FALLBACK;
     const suggest = (TEMPLATES[a.code] || a.suggestions || []).slice(0, 3);
+    const currentFeatures = FEATURES[a.code] || [];
+    const otherAgents = agents.filter(b => b.code !== a.code);
     const last = messages[messages.length - 1];
     const cheer = messages.length > 1 && last.role === 'assistant' && !busy && !(last.text || '').startsWith('😔');
 
@@ -194,26 +205,27 @@
 
     // первый экран чата: портрет агента + кто он (когда истории ещё нет)
     const introHtml = messages.length <= 1 ? `
-      <div class="agent-intro" style="--ac:${esc(a.accent || 'var(--gold)')}">
-        <div class="ai-face">${agentSprite(a, false)}</div>
-        <div class="ai-name">${esc(a.name)}</div>
-        <div class="ai-role">${esc(a.title || '')}</div>
-        ${a.tagline ? `<div class="ai-tag">${esc(a.tagline)}</div>` : ''}
-      </div>` : '';
+              <div class="agent-intro" style="--ac:${esc(a.accent || 'var(--gold)')}">
+          <div class="ai-face">${agentSprite(a, false)}</div>
+          <div class="ai-name">${esc(a.name || 'Лилит')}</div>
+          <div class="ai-role">${esc(a.title || 'Личный Оракул')}</div>
+          ${a.tagline ? `<div class="ai-tag">${esc(a.tagline)}</div>` : '<div class="ai-tag">Здесь можно начать с того, что сейчас важнее всего.</div>'}
+          <div class="ai-prompt">Не нужно формулировать идеально — просто напиши, что чувствуешь.</div>
+        </div>` : '';
 
     const pendHtml = pending ? this.pendingHtml(pending) : '';
 
     main.innerHTML = `
       <div class="chat-shell">
         <div class="chat-head">
-          <button class="back" data-act="sessions" title="Мои чаты">☰</button>
-          <button class="back" data-act="back">‹</button>
+          <button class="back" data-act="back" aria-label="Вернуться к проводникам" title="К проводникам">‹</button>
           <div class="agent-avatar" style="--ac:${esc(a.accent || 'var(--gold)')}">${agentSprite(a, cheer)}</div>
           <div style="flex:1;min-width:0">
-            <div class="cname">${esc(a.name)}</div>
-            <div class="tsub">${esc(a.title || a.role || '')}</div>
+            <div class="cname">${esc(a.name || 'Лилит')}</div>
+            <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
           </div>
-          <span style="color:var(--text-faint);font-size:12px" data-act="clear">↺</span>
+          <button class="chat-reset" data-act="sessions" aria-label="Мои диалоги" title="Мои диалоги">☰</button>
+          <button class="chat-reset" data-act="clear" aria-label="Начать новый диалог" title="Новый диалог">↺</button>
         </div>
         <div class="sess-panel" id="sess-panel" style="display:none">
           <div class="sess-head">
@@ -241,43 +253,60 @@
         </div>
         <div class="composer">
           <div class="composer-top">
-            <button class="tool-btn" id="tool-btn" data-act="tool-toggle" title="Все инструменты" aria-label="Все инструменты">🧰</button>
-            <input class="ipt" id="chat-input" placeholder="Спроси ${esc(a.name)}…" autocomplete="off" value="${esc(this.chat.draft || '')}"/>
-            <button class="send-btn" id="send-btn" data-act="send">➤</button>
+            <input class="ipt" id="chat-input" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" aria-label="Сообщение для ${esc(a.name || 'Лилит')}" value="${esc(this.chat.draft || '')}"/>
+            <button class="tool-btn" id="tool-btn" data-act="tool-toggle" title="Быстрые ритуалы" aria-label="Открыть быстрые ритуалы" aria-expanded="false" aria-controls="tool-expand">${sigilIcon('spark')}</button>
+            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение">➤</button>
           </div>
           ${suggest.length ? `
-          <div class="suggest-chips">
+          <div class="suggest-chips" aria-label="Подсказки для вопроса">
             ${suggest.map(s => `<span class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</span>`).join('')}
           </div>` : ''}
         </div>
-        <div class="tool-expand" id="tool-expand">
+        <div class="tool-expand" id="tool-expand" aria-hidden="true">
           <div class="te-mask" data-act="tool-toggle"></div>
-          <div class="te-sheet">
-            <div class="te-handle"></div>
+          <section class="te-sheet" role="dialog" aria-modal="true" aria-label="Быстрые ритуалы">
+            <div class="te-handle" aria-hidden="true"></div>
             <div class="te-head">
-              <span class="te-title">🧰 Все инструменты</span>
-              <button class="te-close" data-act="tool-toggle" aria-label="Закрыть">✕</button>
+              <div><span class="te-eyebrow">ИНСТРУМЕНТЫ В ЧАТЕ</span><span class="te-title">Быстрый ритуал</span></div>
+              <button class="te-close" data-act="tool-toggle" aria-label="Закрыть быстрые ритуалы">✕</button>
             </div>
+            <p class="te-intro">Начни с одного шага — результат появится прямо в этом диалоге.</p>
             <div class="te-body">
-              ${agents.map(b => {
-                const feats = FEATURES[b.code] || [];
-                if (!feats.length) return '';
-                return `
-                <div class="te-group">
-                  <div class="te-agent" style="--ac:${esc(b.accent || 'var(--gold)')}">
-                    <span class="te-av"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span>
-                    <span>${esc(b.name)}</span>
+              ${currentFeatures.length ? `
+                <div class="te-group te-current">
+                  <div class="te-agent" style="--ac:${esc(a.accent || 'var(--gold)')}">
+                    <span class="te-av"><img src="/static/img/agents/${esc(a.code)}.jpg" alt="" loading="lazy"></span>
+                    <span>С ${esc(a.name || 'проводником')}</span><small>сейчас в диалоге</small>
                   </div>
                   <div class="te-grid">
-                    ${feats.map(f => `
-                      <button class="te-chip" data-act="chat-fn" data-chat="${b.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
-                        <span class="te-ico">${f.e}</span><span class="te-chip-t">${esc(f.t)}</span>
+                    ${currentFeatures.map(f => `
+                      <button class="te-chip" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
+                        <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span>
                       </button>`).join('')}
                   </div>
-                </div>`;
-              }).join('')}
+                </div>` : ''}
+              ${otherAgents.length ? `
+                <details class="te-more">
+                  <summary><span>Другие проводники</span><small>ещё ${otherAgents.length}</small></summary>
+                  ${otherAgents.map(b => {
+                    const feats = FEATURES[b.code] || [];
+                    if (!feats.length) return '';
+                    return `<div class="te-group">
+                      <div class="te-agent" style="--ac:${esc(b.accent || 'var(--gold)')}">
+                        <span class="te-av"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span>
+                        <span>${esc(b.name)}</span>
+                      </div>
+                      <div class="te-grid">
+                        ${feats.map(f => `
+                          <button class="te-chip" data-act="chat-fn" data-chat="${b.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
+                            <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span>
+                          </button>`).join('')}
+                      </div>
+                    </div>`;
+                  }).join('')}
+                </details>` : ''}
             </div>
-          </div>
+          </section>
         </div>
       </div>`;
     this.scrollToBottom();
@@ -343,18 +372,30 @@
         </div>`;
 
       case 'compat':
-        return `<div class="msg assistant">
-          <div class="chat-widget">
-            <div class="w-title">💞 Совместимость</div>
-            <div class="w-sub">Расскажи, кто твой партнёр — и я разложу вашу совместимость по картам</div>
-            <div class="rel-chips">
-              ${[['love','💞','Вторая половинка'],['friend','💛','Подруга / Друг'],['work','💼','Коллега / Дело'],['family','🏡','Родные']].map(([k, e, t]) =>
-                `<span class="rel-chip${p.relation === k ? ' sel' : ''}" data-act="compat-rel" data-rel="${k}">${e} ${t}</span>`).join('')}
+        return `<div class="msg assistant compat-message">
+          <section class="chat-widget compat-flow" aria-label="Проверка совместимости">
+            <span class="result-kicker">ЛИЧНЫЙ РАЗБОР</span>
+            <div class="w-title">Совместимость без догадок</div>
+            <div class="w-sub">Выбери тип связи и добавь дату рождения. Результат останется в этом диалоге, чтобы к нему можно было вернуться.</div>
+            <div class="compat-steps" aria-label="Два шага">
+              <span class="is-current">1. Связь</span><span>2. Дата</span><span>3. Разбор</span>
             </div>
-            <input class="ipt" id="cp-name" placeholder="Имя (необязательно)" style="margin-top:10px;margin-bottom:8px"/>
-            <input class="ipt" id="cp-date" placeholder="Дата рождения партнёра · ГГГГ-ММ-ДД" style="margin-bottom:8px"/>
-            <button class="btn btn-primary" data-act="compat">Проверить совместимость 💞</button>
-          </div></div>`;
+            <div class="rel-chips" role="group" aria-label="Тип связи">
+              ${[['love','compat','Пара'],['friend','spark','Дружба'],['work','career','Дело'],['family','home','Семья']].map(([k, icon, t]) =>
+                `<button type="button" class="rel-chip${p.relation === k ? ' sel' : ''}" data-act="compat-rel" data-rel="${k}" aria-pressed="${p.relation === k ? 'true' : 'false'}"><span>${sigilIcon(icon)}</span>${t}</button>`).join('')}
+            </div>
+            <label class="compat-field"><span>Имя человека <em>необязательно</em></span><input class="ipt" id="cp-name" value="${esc(p.name || '')}" placeholder="Например, Аня" autocomplete="name"/></label>
+            <label class="compat-field"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="cp-date" type="date" value="${esc(p.date || '')}" required aria-describedby="compat-date-help"/></label>
+            <small id="compat-date-help" class="compat-help">Используем только для этого расчёта.</small>
+            <button class="btn btn-primary compat-submit" data-act="compat">Открыть разбор</button>
+          </section></div>`;
+
+      case 'compat-processing':
+        return `<div class="msg assistant compat-message">
+          <section class="chat-widget compat-processing" role="status" aria-live="polite">
+            <span class="loading-star">${sigilIcon('compat')}</span>
+            <div><span class="result-kicker">СОВМЕСТИМОСТЬ</span><strong>Собираю ритм вашей связи</strong><p>Проверяю основные сферы. Результат появится здесь, в конце диалога.</p></div>
+          </section></div>`;
 
       case 'moon':
         return this.moonWidget(p);
@@ -405,9 +446,18 @@
 
   app.setToolbox = function(open) {
     const el = document.getElementById('tool-expand');
+    const trigger = document.getElementById('tool-btn');
     if (!el) return;
     el.classList.toggle('open', open);
-    if (open) haptic('soft');
+    el.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      haptic('soft');
+      const first = el.querySelector('.te-chip, .te-close');
+      if (first) setTimeout(() => first.focus(), 180);
+    } else if (trigger) {
+      trigger.focus();
+    }
   };
 
   app.toggleToolbox = function() {
@@ -450,7 +500,7 @@
       vb([10, 40, 14]);
       this.chat.messages.push({ role: 'assistant', text: r.answer });
     } catch (e) {
-      this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+      this.chat.messages.push({ role: 'assistant', widget: this.chatRecoveryHtml() });
     }
     this.chat.busy = false;
     this.renderChat(document.getElementById('app-main'));

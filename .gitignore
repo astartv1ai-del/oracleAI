@@ -26,3 +26,7 @@ __pycache__/
 .ripgreprc
 .vscode
 .idea
+
+# Локальные журналы и временные проверки
+*.log
+.qa_*.py
