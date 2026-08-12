@@ -38,6 +38,11 @@
   --r-l: 28px;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Единый темп интерактивов: короткий отклик, основной переход, мягкое раскрытие. */
+  --motion-quick: 160ms;
+  --motion-base: 220ms;
+  --motion-slow: 420ms;
+  --motion-ritual: cubic-bezier(.22, .9, .24, 1);
   --sh-card: 0 18px 50px -18px rgba(0, 0, 0, 0.85);
   --sh-gold: 0 0 0 1px rgba(230,193,120,.06), 0 18px 50px -22px rgba(230,193,120,.18);
 }

@@ -77,7 +77,7 @@ function nativitySvg(c, size = 260) {
   }).join('');
 
   // Солнце в центре
-  const sunCenter = `<g>
+  const sunCenter = `<g class="n-in n-core" style="animation-delay:240ms">
     <circle cx="${cx}" cy="${cy}" r="${28 * scale}" fill="rgba(230,193,120,.08)" stroke="#e6c178" stroke-width="1.5" opacity=".9"/>
     <text x="${cx}" y="${cy-6}" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="22" fill="#ffd98f">${sun.symbol || '☉'}</text>
     <text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="#a49cc8" font-family="Arial, sans-serif">${sun.sign || ''}</text>

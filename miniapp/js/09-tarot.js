@@ -68,18 +68,37 @@
   };
 
 
+  app.setTarotQuestion = function(value) {
+    const p = this.chat.pending;
+    if (!p || p.kind !== 'tarot-pick' || p.drawing) return;
+    const field = document.getElementById('tarot-q');
+    if (field) {
+      field.value = value;
+      field.focus();
+    }
+    p.q = value;
+    document.querySelectorAll('[data-act="tarot-question"]').forEach(el => {
+      el.classList.toggle('is-active', el.dataset.value === value);
+    });
+    haptic('light');
+    vb(12);
+  };
+
   app.doDraw = async function() {
-    const q = (document.getElementById('tarot-q') || {}).value;
+    const p = this.chat.pending;
+    if (!p || p.kind !== 'tarot-pick' || p.drawing) return;
+    const q = (document.getElementById('tarot-q') || {}).value || p.q;
     const qv = (q || '').trim();
     if (!qv) {
-      // B5: inline-валидация, без нативного alert
-      this.chat.pending.err = 'Сформулируй вопрос картам — чем точнее, тем яснее ответ ✨';
+      // Inline-валидация: вопрос остаётся в фокусе сценария и не теряется.
+      p.err = 'Сформулируй вопрос картам — чем точнее, тем яснее ответ ✨';
       this.renderChat(document.getElementById('app-main'));
       return;
     }
-    const spread = this.chat.pending.spread || 'three';
+    const spread = p.spread || 'three';
+    const spreads = p.spreads;
     this.chat.busy = true;
-    this.chat.pending = { kind: 'tarot-pick', spreads: this.chat.pending.spreads, spread, q: qv, err: '' };
+    this.chat.pending = { kind: 'tarot-pick', spreads, spread, q: qv, err: '', drawing: true };
     this.renderChat(document.getElementById('app-main'));
     try {
       const r = await api('/api/tarot/draw?spread=' + spread, {
@@ -89,12 +108,15 @@
       this.chat.messages.push({ role: 'user', text: 'Мой вопрос к картам: ' + qv });
       this.chat.pending = {
         kind: 'tarot-cards', question: qv, cards: r.cards, spread,
-        positions: r.positions, revealed: r.cards.map(() => false),
-        allRevealed: false, reading_id: r.reading_id,
+        positions: r.positions, revealed: r.cards.map(() => false), nextReveal: 0,
+        turning: false, allRevealed: false, reading_id: r.reading_id,
       };
+      haptic('soft');
     } catch (e) {
-      this.chat.pending = null;
-      this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+      this.chat.pending = {
+        kind: 'tarot-pick', spreads, spread, q: qv,
+        err: 'Колода пока не ответила. Попробуй ещё раз — вопрос уже сохранён.', drawing: false,
+      };
     }
     this.chat.busy = false;
     this.renderChat(document.getElementById('app-main'));
@@ -104,27 +126,66 @@
   // Работаем точечно: класс .open на конкретной карте + кнопка интерпретации.
 
   app.flipCard = function(i) {
+    const p = this.chat.pending;
+    if (!p || p.kind !== 'tarot-cards' || p.revealed[i] || p.turning) return;
+    const next = Number.isInteger(p.nextReveal) ? p.nextReveal : p.revealed.filter(Boolean).length;
+    if (i !== next) {
+      haptic('soft');
+      this.toast('Открывай карты по порядку — так нить расклада собирается бережно.');
+      return;
+    }
+    const card = document.querySelector('.tcard[data-i="' + i + '"]');
+    if (!card) return;
+    const key = this.chat.key, tid = this.chat.tid;
+    p.turning = true;
+    card.classList.add('is-turning');
     haptic('light');
     vb(25);
+    setTimeout(() => {
+      if (this.chat.key !== key || this.chat.tid !== tid || this.chat.pending !== p) return;
+      card.classList.remove('is-turning');
+      card.classList.add('open');
+      p.revealed[i] = true;
+      p.nextReveal = i + 1;
+      p.turning = false;
+      p.allRevealed = p.revealed.every(Boolean);
+      this.updateTarotProgress();
+      if (p.allRevealed) {
+        haptic('success');
+        this.addInterpretBtn();
+      }
+    }, 130);
+  };
+
+  app.updateTarotProgress = function() {
     const p = this.chat.pending;
-    if (!p || p.kind !== 'tarot-cards' || p.revealed[i]) return;
-    const card = document.querySelector('.tcard[data-i="' + i + '"]');
-    if (card) card.classList.add('open');
-    p.revealed[i] = true;
-    p.allRevealed = p.revealed.every(Boolean);
-    if (p.allRevealed) this.addInterpretBtn();
+    const el = document.querySelector('.tarot-card-progress');
+    if (!p || p.kind !== 'tarot-cards' || !el) return;
+    const opened = p.revealed.filter(Boolean).length;
+    el.innerHTML = `<span>${opened} из ${p.cards.length}</span><i style="--tarot-progress:${(opened / p.cards.length) * 100}%"></i>`;
   };
 
   app.addInterpretBtn = function() {
+    const p = this.chat.pending;
     const w = document.querySelector('.chat-widget');
     const hint = document.querySelector('.t-hint');
     if (hint) hint.remove();
-    if (!w || w.querySelector('[data-act="interpret"]')) return;
+    if (!p || p.kind !== 'tarot-cards' || !w || w.querySelector('[data-act="interpret"]')) return;
+    const thread = document.createElement('section');
+    thread.className = 'tarot-thread tarot-thread--revealed';
+    thread.setAttribute('aria-label', 'Нить расклада');
+    thread.innerHTML = `<div class="tarot-thread-kicker">НИТЬ РАСКЛАДА</div>
+      <p>Карты раскрылись. Сначала почувствуй, как роли откликаются вместе, а затем соберём личный смысл без поспешных выводов.</p>
+      <div class="tarot-thread-map">${p.positions.map((pos, i) => {
+        const c = p.cards[i] || {};
+        return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}</span>`;
+      }).join('')}</div>`;
+    w.appendChild(thread);
     const b = document.createElement('button');
-    b.className = 'btn btn-primary';
+    b.className = 'btn btn-primary tarot-interpret-btn';
     b.style.marginTop = '14px';
     b.dataset.act = 'interpret';
-    b.textContent = 'Что это значит для меня?';
+    b.textContent = 'Собрать личный смысл';
     w.appendChild(b);
   };
 

@@ -13,7 +13,8 @@ document.addEventListener('click', function (event) {
 
 
 document.addEventListener('keydown', function (event) {
-  if (event.key === 'Enter' && event.target && event.target.id === 'chat-input') {
+  if (event.key === 'Enter' && event.target && event.target.id === 'chat-input' && !event.shiftKey) {
+    event.preventDefault();
     app.doSend();
   }
 });

@@ -1,20 +1,55 @@
 /* chart: натальная карта — форма, построение, SVG, шаринг, планеты/стихии */
   app.featureChart = async function() {
     if (this.chat.pending && this.chat.pending.kind === 'chart') return;
+    this.prepareChartOnboarding();
     const key = this.chat.key, view = this.view;
-    const pend = this.chat.pending = { kind: 'chart', loading: true, html: '' };
+    const pend = this.chat.pending = {
+      kind: 'chart',
+      loading: true,
+      html: this.chartLoadingHtml('restore')
+    };
     this.renderChat(document.getElementById('app-main'));
     try {
       const c = await api('/api/chart');
       if (!widAlive(key, view, pend)) return;
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartHtml(c) };
+      haptic('soft');
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      // карты ещё нет — даём собрать её прямо здесь (время и город)
+      // Карты ещё нет — собираем её прямо в чате, не отправляя в тупик профиля.
       this.chart = null;
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartForm() };
     }
     this.renderChat(document.getElementById('app-main'));
+  };
+
+
+  // Onboarding показывается только на первом входе в сценарий карты и не мешает
+  // человеку, который уже возвращается к сохранённому разбору.
+  app.prepareChartOnboarding = function() {
+    try {
+      this._chartIntroPending = localStorage.getItem('oracle_chart_intro_seen') !== '1';
+    } catch (e) {
+      this._chartIntroPending = false;
+    }
+  };
+
+  app.chartOnboardingHtml = function() {
+    if (!this._chartIntroPending) return '';
+    this._chartIntroPending = false;
+    try { localStorage.setItem('oracle_chart_intro_seen', '1'); } catch (e) { /* private mode: guide is simply not persisted */ }
+    return `<aside class="chart-onboarding" aria-label="Как читать карту">
+      <span class="chart-onboarding__mark" aria-hidden="true">✦</span>
+      <span class="chart-onboarding__copy"><b>Твоя карта — в три спокойных шага</b><small>Собери данные, тапни планету на колесе и затем спроси о том, что важно именно сейчас.</small></span>
+    </aside>`;
+  };
+
+  app.chartLoadingHtml = function(mode) {
+    const restoring = mode === 'restore';
+    return `<section class="chart-loading" role="status" aria-live="polite" aria-label="${restoring ? 'Открываем сохранённую натальную карту' : 'Рассчитываем натальную карту'}">
+      <span class="chart-loading__halo" aria-hidden="true"><i></i><i></i><i></i><b>✦</b></span>
+      <span class="chart-loading__copy"><b>${restoring ? 'Открываем твою карту' : 'Собираем твою карту'}</b><small>${restoring ? 'Возвращаемся к твоим небесным ориентирам…' : 'Проверяем дату, место и собираем колесо…'}</small></span>
+    </section>`;
   };
 
 
@@ -52,20 +87,28 @@
     const accentChips = accents.length ? `<div class="asp-legend" style="margin:6px 0 8px">
         ${accents.map(a => `<span class="asp-chip" style="color:var(--violet)">${esc(a)}</span>`).join('')}
       </div>` : '';
+    const takeaway = anglesAvailable
+      ? `Солнце в ${esc(sun.sign || '—')} встречается с Асцендентом в ${esc(asc.sign || '—')}. Начни с этого дуэта: он помогает бережно связать внутреннее ощущение себя с тем, как ты проявляешься в мире.`
+      : `Солнце в ${esc(sun.sign || '—')} — твоя надёжная точка опоры. Даже без времени рождения можно начать спокойный разговор о твоих планетах и вернуться к точным углам позже.`;
     return `
-      <div class="w-title">🌌 Натальная карта</div>
-      <div class="nw" data-act="full-chart" title="Открыть полную карту">${this.chart ? nativitySvg(this.chart, 210) : ''}
-        <div class="nw-plaque" id="nw-plaque" hidden></div>
-      </div>
-      <div style="text-align:center;color:var(--text-faint);font-size:10.5px;margin-bottom:6px">Тапни планету — она расскажет о себе · тап по колесу — полный разбор ↻</div>
-      ${elLegend}
-      ${accentChips}
-      <div style="font-family:var(--font-serif);color:var(--gold-bright);font-size:13px;margin-bottom:8px">Солнце в ${esc(sun.sign || '—')}${anglesAvailable ? ' · Асцендент ' + esc(asc.sign || '—') : ''}</div>
-      ${precisionNotice}
-      <div class="chart-takeaway">
-        <span class="chart-takeaway__label">ГЛАВНОЕ В КАРТЕ</span>
-        <p>${anglesAvailable ? `Солнце в ${esc(sun.sign || '—')} и ASC в ${esc(asc.sign || '—')} задают твою базовую оптику.` : `Солнце в ${esc(sun.sign || '—')} — надёжная точка опоры для разбора без времени рождения.`}</p>
-      </div>
+      <section class="chart-result" aria-live="polite">
+        <div class="w-title">🌌 Натальная карта</div>
+        ${this.chartOnboardingHtml()}
+        <div class="nw" data-act="full-chart" title="Открыть полную карту">
+          ${this.chart ? nativitySvg(this.chart, 210) : ''}
+          <div class="nw-plaque" id="nw-plaque" aria-live="polite"></div>
+        </div>
+        <div class="chart-wheel-hint">Тапни планету — она расскажет о себе · тап по колесу — полный разбор</div>
+        ${elLegend}
+        ${accentChips}
+        <div class="chart-signature">Солнце в ${esc(sun.sign || '—')}${anglesAvailable ? ' · Асцендент ' + esc(asc.sign || '—') : ''}</div>
+        ${precisionNotice}
+        <div class="chart-takeaway">
+          <span class="chart-takeaway__label">ТВОЯ ОТПРАВНАЯ ТОЧКА</span>
+          <p>${takeaway}</p>
+          <small>Это ориентир для личного исследования, а не готовый ярлык.</small>
+        </div>
+      </section>
       <details class="chart-details">
         <summary>Планеты, аспекты и детали карты</summary>
         <div class="chart-details__body">
@@ -82,16 +125,25 @@
   };
 
 
-  app.chartForm = function() {
+  app.chartForm = function(opts) {
     const me = this.me || {};
+    const values = opts || {};
+    const date = values.date != null ? values.date : (me.birth_date || '');
+    const city = values.city != null ? values.city : (me.birth_city || '');
+    const time = values.time != null ? values.time : (me.birth_time_known ? (me.birth_time || '') : '');
+    const loading = !!values.loading;
+    const disabled = loading ? ' disabled' : '';
     return `
       <div class="w-title">🌌 Построить натальную карту</div>
+      ${this.chartOnboardingHtml()}
       <div class="chart-form-intro"><b>Начнём с даты и города.</b><span>Время рождения — по желанию: без него покажем планеты и аспекты, но честно не будем добавлять ASC, MC и дома.</span></div>
-      <div class="chart-form">
-        <label class="chart-form__field" for="ch-date"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="ch-date" type="date" value="${esc(me.birth_date || '')}" required></label>
-        <label class="chart-form__field" for="ch-city"><span>Город рождения <em>обязательно</em></span><input class="ipt" id="ch-city" value="${esc(me.birth_city || '')}" placeholder="Например, Москва" autocomplete="address-level2"></label>
-        <label class="chart-form__field" for="ch-time"><span>Время рождения <em>если знаешь</em></span><input class="ipt" id="ch-time" type="time" value="${esc(me.birth_time_known ? (me.birth_time || '') : '')}" placeholder="14:30"></label>
-        <button class="btn btn-primary chart-form__submit" data-act="build">Рассчитать мою карту ✨</button>
+      <div class="chart-form"${loading ? ' aria-busy="true"' : ''}>
+        ${values.error ? `<div class="chart-form-error" role="alert"><b>Нужна маленькая поправка</b><span>${esc(values.error)}</span></div>` : ''}
+        <label class="chart-form__field" for="ch-date"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="ch-date" type="date" value="${esc(date)}" required${disabled}></label>
+        <label class="chart-form__field" for="ch-city"><span>Город рождения <em>обязательно</em></span><input class="ipt" id="ch-city" value="${esc(city)}" placeholder="Например, Москва" autocomplete="address-level2"${disabled}></label>
+        <label class="chart-form__field" for="ch-time"><span>Время рождения <em>если знаешь</em></span><input class="ipt" id="ch-time" type="time" value="${esc(time)}" placeholder="14:30"${disabled}></label>
+        <button class="btn btn-primary chart-form__submit${loading ? ' is-loading' : ''}" data-act="build"${disabled}${loading ? ' aria-busy="true"' : ''}>${loading ? '<span class="chart-form__spinner" aria-hidden="true"></span><span>Собираю твою карту…</span>' : '<span>Рассчитать мою карту</span><span aria-hidden="true">✦</span>'}</button>
+        ${loading ? this.chartLoadingHtml('build') : ''}
       </div>`;
   };
 
@@ -100,20 +152,34 @@
     const date = (document.getElementById('ch-date') || {}).value || '';
     const time = (document.getElementById('ch-time') || {}).value || '';
     const city = (document.getElementById('ch-city') || {}).value || '';
+    const cleanCity = city.trim();
+    const validationError = !date ? 'Добавь дату рождения — она нужна для расчёта.' : (!cleanCity ? 'Добавь город рождения, чтобы корректно рассчитать карту.' : '');
+    if (validationError) {
+      haptic('error');
+      this.chat.pending = { kind: 'chart', loading: false, html: this.chartForm({ date, time, city, error: validationError }) };
+      this.renderChat(document.getElementById('app-main'));
+      return;
+    }
     this.chat.busy = true;
     const key = this.chat.key, view = this.view;
-    const pend = this.chat.pending = { kind: 'chart', loading: true, html: '' };
+    const pend = this.chat.pending = { kind: 'chart', loading: true, html: this.chartForm({ date, time, city, loading: true }) };
     this.renderChat(document.getElementById('app-main'));
     try {
       const c = await api('/api/chart', {
         method: 'POST',
-        body: JSON.stringify({ birth_date: date || null, birth_time: time.trim() || null, birth_city: city.trim() || null }),
+        body: JSON.stringify({ birth_date: date, birth_time: time.trim() || null, birth_city: cleanCity }),
       });
       if (!widAlive(key, view, pend)) { this.chat.busy = false; return; }
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartHtml(c) };
+      haptic('soft');
     } catch (e) {
       if (!widAlive(key, view, pend)) { this.chat.busy = false; return; }
-      this.chat.pending = { kind: 'chart', loading: false, html: `<div class="chart-form-error"><b>Проверим данные ещё раз</b><span>${esc(e.message || 'Не удалось построить карту прямо сейчас.')}</span><button class="btn btn-ghost" data-act="build">Попробовать снова</button></div>` };
+      this.chat.pending = {
+        kind: 'chart',
+        loading: false,
+        html: this.chartForm({ date, time, city, error: e.message || 'Не удалось построить карту прямо сейчас. Проверь соединение и попробуй ещё раз.' })
+      };
+      haptic('error');
     }
     this.chat.busy = false;
     this.renderChat(document.getElementById('app-main'));
@@ -136,7 +202,11 @@
   app.fillInput = function(text) {
     const input = document.getElementById('chat-input');
     if (!input) return;
-    input.value = text || '';
+    const value = text || '';
+    this.chat.draft = value;
+    input.value = value;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 132) + 'px';
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
   };
@@ -216,8 +286,11 @@
     const pl = document.getElementById('nw-plaque');
     if (pl) {
       const glyph = planetGlyph(p.name) || (SIGNS[p.sign] || '');
+      pl.classList.remove('is-visible');
       pl.innerHTML = `<span class="pl-glyph">${glyph}</span><span><b>${esc(p.name)}</b> · ${esc(p.sign || '—')}${p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ☍' : ''}</span>`;
-      pl.hidden = false;
+      window.requestAnimationFrame(() => {
+        if (pl.isConnected) pl.classList.add('is-visible');
+      });
     }
   };
   // стихия-фильтр: тап подсвечивает планеты этой стихии в колесе, повторный тап — сброс

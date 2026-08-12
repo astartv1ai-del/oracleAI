@@ -17,6 +17,20 @@ function haptic(kind) {
    Заменяет повсюду копии `if (navigator.vibrate) { try { navigator.vibrate(...) } catch (e) {} }`. */
 const vb = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 
+/* Семантический отклик для общих UI-переходов. Локальные сценарии по-прежнему
+   могут выбирать свой более выразительный сигнал на успех или ошибку. */
+function tactile(event = 'select') {
+  const pattern = {
+    select: { kind: 'light', pulse: null },
+    open: { kind: 'soft', pulse: 12 },
+    reveal: { kind: 'soft', pulse: 16 },
+    complete: { kind: 'success', pulse: [10, 40, 18] },
+    error: { kind: 'error', pulse: null },
+  }[event] || { kind: 'light', pulse: null };
+  haptic(pattern.kind);
+  if (pattern.pulse) vb(pattern.pulse);
+}
+
 /* гонка-предохранитель для виджетов: активен ли всё ещё тот же виджет в том же
    чате/экране. Если юзер успел открыть другой виджет/агента, закрыть чат или уйти
    с экрана — late-ответ от api() надо бросить, а не затирать чужой рендер. */

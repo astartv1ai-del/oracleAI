@@ -285,19 +285,39 @@ const widgetShell = (p, { title, body, tail = '' }) => {
   app.practiceAction = async function(code, a) {
     haptic('light');
     const p = this.chat.pending;
-    if (!p || p.kind !== 'practices') return;
+    const isPracticeWidget = p && p.kind === 'practices';
+    const trigger = document.querySelector('[data-act="p-action"][data-code="' + String(code).replace(/"/g, '\\"') + '"][data-a="' + String(a).replace(/"/g, '\\"') + '"]');
+    const originalLabel = trigger ? trigger.innerHTML : '';
+    if (trigger) {
+      trigger.disabled = true;
+      trigger.classList.add('is-pending');
+      if (a === 'done') trigger.innerHTML = '<span>Отмечаю твой шаг…</span>';
+    }
     try {
       await api('/api/practices/' + code + '/' + a, { method: 'POST' });
       const r = await api('/api/practices');
-      p.items = (r && r.items) || p.items || [];
+      const items = (r && r.items) || (isPracticeWidget ? p.items : []) || [];
+      if (isPracticeWidget) p.items = items;
+      if (this.dailyPulse) this.dailyPulse.practices = { ...(this.dailyPulse.practices || {}), items };
       if (a === 'done') {
         haptic('success');
         vb([10, 40, 20]);
+        this.toast('Маленький шаг отмечен. Ты уже в процессе.');
+      } else if (a === 'start') {
+        haptic('soft');
+        this.toast('Практика выбрана. Начни тогда, когда будет удобно.');
       }
     } catch (e) {
+      if (trigger) {
+        trigger.disabled = false;
+        trigger.classList.remove('is-pending');
+        trigger.innerHTML = originalLabel;
+      }
       this.toast(e.message || 'Не получилось — попробуй ещё раз');
+      return;
     }
-    this.renderChat(document.getElementById('app-main'));
+    if (isPracticeWidget) this.renderChat(document.getElementById('app-main'));
+    if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
   };
 
   app.diaryAdd = async function() {
@@ -311,10 +331,16 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       vb([10, 40, 20]);
       const r = await api('/api/diary');
       if (p) { p.entries = (r && r.entries) || []; p.streak = (r && r.streak) || 0; p.wroteToday = true; p.prompt = ''; }
+      if (this.dailyPulse) {
+        this.dailyPulse.diary = r || this.dailyPulse.diary;
+        this.dailyPulse.prompt = { ...(this.dailyPulse.prompt || {}), written_today: true };
+      }
+      this.toast('Запись сохранена. Спасибо, что услышала себя.');
     } catch (e) {
       this.toast(e.message || 'Не сохранилось — попробуй ещё раз');
     }
     if (p) this.renderChat(document.getElementById('app-main'));
+    if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
   };
 
   app.diarySummary = async function() {

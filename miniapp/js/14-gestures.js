@@ -21,13 +21,18 @@
     const isInteractive = target => !!(target && target.closest && target.closest(INTERACTIVE));
 
     document.addEventListener('pointerdown', event => {
-      if (event.pointerType === 'mouse' || event.button !== 0 || isInteractive(event.target)) return;
+      if (event.pointerType === 'mouse' || event.button !== 0) return;
+      const agentTabs = event.target.closest('.agent-tabs');
+      const toolSheet = event.target.closest('.te-sheet');
+      if (isInteractive(event.target) && !agentTabs && !toolSheet) return;
       start = {
         id: event.pointerId,
         x: event.clientX,
         y: event.clientY,
         time: Date.now(),
-        chat: !!event.target.closest('.chat-shell')
+        chat: !!event.target.closest('.chat-shell'),
+        agentTabs: !!agentTabs,
+        toolSheet: !!toolSheet
       };
     }, { passive: true });
 
@@ -40,18 +45,45 @@
       const dy = event.clientY - gesture.y;
       const elapsed = Date.now() - gesture.time;
       const horizontal = Math.abs(dx) >= 66 && Math.abs(dx) > Math.abs(dy) * 1.35 && elapsed < 900;
-      if (!horizontal) return;
+      const vertical = Math.abs(dy) >= 58 && Math.abs(dy) > Math.abs(dx) * 1.3 && elapsed < 900;
+
+      // Вкладки проводников остаются нажимаемыми, но дополнительно поддерживают
+      // листание между соседними диалогами без захвата прокрутки ленты.
+      if (gesture.agentTabs) {
+        if (horizontal && app.chat && app.chat.key && typeof app.cycleAgent === 'function') {
+          app.cycleAgent(dx < 0 ? 1 : -1);
+          haptic('light');
+        }
+        return;
+      }
+
+      // Bottom sheet закрывается естественным свайпом вниз за ручку или содержимое.
+      if (gesture.toolSheet) {
+        if (vertical && dy > 0 && typeof app.setToolbox === 'function') {
+          app.setToolbox(false);
+          haptic('light');
+        }
+        return;
+      }
 
       if (gesture.chat) {
-        // Чат сохраняет знакомый жест «свайп вправо — к проводникам».
-        if (dx > 0 && app.chat && app.chat.key) {
+        if (vertical && dy < 0 && typeof app.setToolbox === 'function') {
+          app.setToolbox(true);
+          haptic('soft');
+          return;
+        }
+        if (!horizontal) return;
+        if (dx < 0 && typeof app.setToolbox === 'function') {
+          app.setToolbox(true);
+          haptic('soft');
+        } else if (dx > 0 && app.chat && app.chat.key) {
           app.closeChat();
           haptic('light');
         }
         return;
       }
 
-      if (app.chat && app.chat.key) return;
+      if (!horizontal || (app.chat && app.chat.key)) return;
       const current = VIEW_ORDER.indexOf(app.view);
       if (current < 0) return;
       const next = current + (dx < 0 ? 1 : -1);

@@ -1,7 +1,7 @@
 /* compat: совместимость пары — форма, сферы, спидометр, разбор */
   app.featureCompat = function() {
     if (this.chat.pending && this.chat.pending.kind === 'compat') return;
-    this.chat.pending = { kind: 'compat', relation: 'love', name: '', date: '' };
+    this.chat.pending = { kind: 'compat', relation: 'love', name: '', date: '', startedAt: Date.now() };
     this.renderChat(document.getElementById('app-main'));
   };
   // Выбор связи не должен обнулять форму: сохраняем локальный ввод до rerender.
@@ -36,7 +36,9 @@
       return;
     }
     this.chat.busy = true;
-    this.chat.pending = { kind: 'compat-processing', relation: rel, name, date };
+    haptic('soft');
+    vb(18);
+    this.chat.pending = { kind: 'compat-processing', relation: rel, name, date, startedAt: Date.now() };
     this.renderChat(document.getElementById('app-main'));
     try {
       const r = await api('/api/compat/full', { method: 'POST', body: JSON.stringify({ partner_date: date, partner_name: name, relation: rel, save: true }) });
@@ -85,6 +87,13 @@
     const verdict = (scores && scores.verdict) || '';
     const spheres = (scores && Array.isArray(scores.spheres)) ? scores.spheres : [];
     ctx = ctx || {};
+    const relationMeta = {
+      love: { label: 'вашей пары', symbol: '♡', title: 'Ритм вашей близости' },
+      friend: { label: 'вашей дружбы', symbol: '✦', title: 'Ритм вашей дружбы' },
+      work: { label: 'вашего дела', symbol: '⌁', title: 'Ритм вашего союза' },
+      family: { label: 'вашей семьи', symbol: '◌', title: 'Ритм вашей связи' },
+    }[ctx.relation] || { label: 'вашей связи', symbol: '✦', title: 'Ритм вашей связи' };
+    const partnerLabel = ctx.partner_name ? esc(ctx.partner_name) : 'этим человеком';
     const colors = ['#e6c178', '#a78bfa', '#ff9e9e', '#7fd4a8', '#8ab6ff'];
     const n = Math.max(1, spheres.length);
     const cx = 110, cy = 110, R = 84, sw = 15;
@@ -112,15 +121,18 @@
     const [nx, ny] = pol(Math.max(0, Math.min(100, total)) / 100 * 360, R - 24);
     const verdictTxt = verdict ? `<div class="spd-verdict">${esc(verdict)}</div>` : '';
     const more = answer ? `
-      <button class="spd-more" data-act="spd-toggle">Разбор ✨</button>
+      <button class="spd-more" type="button" data-act="spd-toggle" aria-expanded="false">Прочитать бережный разбор</button>
       <div class="spd-answer" hidden>${richMd(answer || '')}</div>` : '';
     // «в сторис»: серверный PNG открытки (/api/share/compat.png) — тот же путь,
     // что у расклада; данные пары живут в data-атрибутах кнопки
     const share = ctx.partner_date ? `
       <button class="btn btn-ghost" data-act="share-compat" data-pdate="${esc(ctx.partner_date)}" data-pname="${esc(ctx.partner_name || '')}" data-rel="${esc(ctx.relation || 'love')}" title="Открытка для сторис" style="margin-top:8px">📸 Поделиться</button>` : '';
     return `<section class="chat-widget compat-result" data-result-anchor role="status" aria-label="Результат совместимости">
-      <div class="result-kicker">СОВМЕСТИМОСТЬ</div>
-      <div class="w-title" style="margin:0">Ритм вашей связи</div>
+      <div class="compat-result__intro">
+        <span class="compat-result__sigil" aria-hidden="true">${relationMeta.symbol}</span>
+        <div><div class="result-kicker">СОВМЕСТИМОСТЬ</div><div class="w-title" style="margin:0">${relationMeta.title}</div></div>
+      </div>
+      <p class="compat-result__lead">Я собрала спокойный ориентир для ${relationMeta.label} с ${partnerLabel}. Нажми на сферу — увидишь, что в ней важно заметить.</p>
       <div class="spd-wrap">
         <svg viewBox="0 0 220 220" class="spd-ring" aria-hidden="true">
           <defs>
@@ -139,14 +151,15 @@
         </svg>
         ${verdictTxt}
       </div>
-      <div class="spd-cards">
+      <div class="spd-cards" aria-label="Сферы совместимости">
         ${spheres.map((s, i) => `
-          <div class="spd-card" data-act="sphere" data-sphere="${i}" style="--sc:${colors[i % colors.length]}">
+          <button class="spd-card" type="button" data-act="sphere" data-sphere="${i}" style="--sc:${colors[i % colors.length]}" aria-pressed="false">
             <span class="spd-dot"></span>
             <span class="spd-card-t">${esc(s.title || '')}</span>
             <span class="spd-card-v">${Math.round(s.value || 0)}</span>
-          </div>`).join('')}
-        ${spheres.map((s, i) => s.note ? `<div class="spd-note">${esc(s.note)}</div>` : '').join('')}
+            <span class="spd-card-arrow" aria-hidden="true">›</span>
+          </button>
+          ${s.note ? `<p class="spd-note" data-sphere-note="${i}" hidden>${esc(s.note)}</p>` : ''}`).join('')}
       </div>
       ${more}
       ${share}
@@ -158,8 +171,16 @@
     haptic('light');
     vb(30);
     const cards = document.querySelector('.spd-cards');
-    if (cards) cards.querySelectorAll('.spd-card').forEach(c =>
-      c.classList.toggle('spd-active', parseInt(c.dataset.sphere, 10) === i));
+    if (cards) {
+      cards.querySelectorAll('.spd-card').forEach(c => {
+        const active = parseInt(c.dataset.sphere, 10) === i;
+        c.classList.toggle('spd-active', active);
+        c.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      cards.querySelectorAll('[data-sphere-note]').forEach(note => {
+        note.hidden = parseInt(note.dataset.sphereNote, 10) !== i;
+      });
+    }
     const ring = document.querySelector('.spd-ring');
     if (ring) ring.querySelectorAll('.spd-seg').forEach(s =>
       s.classList.toggle('spd-active', parseInt(s.dataset.sphere, 10) === i));
@@ -167,7 +188,14 @@
 
   app.toggleSpdAnswer = function() {
     const a = document.querySelector('.spd-answer');
-    if (a) a.hidden = !a.hidden;
+    const trigger = document.querySelector('.spd-more');
+    if (!a) return;
+    a.hidden = !a.hidden;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', a.hidden ? 'false' : 'true');
+      trigger.textContent = a.hidden ? 'Прочитать бережный разбор' : 'Скрыть подробный разбор';
+    }
+    haptic('light');
   };
 
   // «в сторис» для совместимости: серверный PNG открытки → системный share или

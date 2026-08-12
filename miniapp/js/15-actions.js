@@ -24,13 +24,12 @@
     },
     back: () => call('closeChat'),
     clear: () => call('clearThread'),
-    feature: (el, data) => { haptic('light'); call(data.fn); },
+    feature: (el, data) => { tactile('select'); call(data.fn); },
     'tool-fn': (el, data) => {
-      haptic('light');
-      vb(15);
+      tactile('open');
       call(data.fn);
     },
-    'tool-toggle': () => call('toggleToolbox'),
+    'tool-toggle': () => { tactile('open'); call('toggleToolbox'); },
     'today-ask': () => call('todayAsk'),
     'day-flip': () => call('todayFlip'),
     'matrix-node': (el, data) => call('selectMatrixNode', data.key),
@@ -61,6 +60,7 @@
     'pick-open': () => call('openSpreadPicker'),
     'pick-choose': (el, data) => call('chooseSpread', data.code),
     draw: () => call('doDraw'),
+    'tarot-question': (el, data) => call('setTarotQuestion', data.value),
     flip: (el, data) => call('flipCard', parseInt(data.i, 10)),
     'flip-card': (el) => call('flipDayCard', el),
     interpret: () => call('doInterpret'),

@@ -11,6 +11,12 @@
       ? this.agents
       : AGENT_FALLBACK.map(a => this.normalizeAgent(a, a.code));
     const diaryDone = !!prompt.written_today;
+    const ritualCompleted = (diaryDone ? 1 : 0) + (activePractice && activePractice.last_done ? 1 : 0);
+    const ritualTone = ritualCompleted === 2
+      ? 'Ты уже выбрала себя сегодня. Можно просто побыть в этом ощущении.'
+      : ritualCompleted === 1
+        ? 'Одна опора уже есть. Второй шаг — только если захочется.'
+        : 'Выбери одну маленькую точку опоры. Этого достаточно.';
     const seasonalVariant = experimentVariant('home_ritual_entry', ['control', 'seasonal']);
     trackExperiment('home_ritual_entry', seasonalVariant);
     const seasonIndex = Math.floor(((new Date().getMonth() + 1) % 12) / 3);
@@ -32,12 +38,14 @@
             <div class="hero-title">${this.me && this.me.name ? `Рада видеть тебя, <em>${esc(this.me.name.split(' ')[0])}</em>.` : 'Рада, что ты здесь.'}</div>
             ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : '<div class="hero-moon-txt">Сегодня можно не искать идеальный ответ.<br><em>Выбери один бережный шаг для себя.</em></div>'}
           </div>
-          <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="Открыть личный ритуал с Оракулом">Открыть мой знак дня</button>
+          <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="Открыть личный ритуал с Оракулом"><span>Получить мой знак дня</span><span aria-hidden="true">→</span></button>
         </div>
 
         ${seasonalVariant === 'seasonal' ? `<section class="seasonal-moment" aria-label="Сезонный ритуал"><div class="seasonal-moment__sigil" aria-hidden="true">✦</div><div><div class="section-kicker">Сезонный знак</div><h2>${seasonal.title}</h2><p>${seasonal.copy}</p></div></section>` : ''}
-        <section class="daily-ritual" aria-label="Твой ритм на сегодня">
-          <div class="daily-ritual-head"><div><div class="section-kicker">Твой ритм</div><h2>Вернуться к себе</h2></div><div class="daily-ritual-score">${(diaryDone ? 1 : 0) + (activePractice && activePractice.last_done ? 1 : 0)}<span>/2</span></div></div>
+        <section class="daily-ritual daily-ritual--${ritualCompleted === 2 ? 'complete' : ritualCompleted ? 'in-progress' : 'begin'}" aria-label="Твой ритм на сегодня">
+          <div class="daily-ritual-head"><div><div class="section-kicker">Твой ритм</div><h2>Вернуться к себе</h2></div><div class="daily-ritual-score" aria-label="${ritualCompleted} из 2 бережных шагов">${ritualCompleted}<span>/2</span></div></div>
+          <div class="daily-ritual-progress" aria-hidden="true"><i style="--ritual-progress:${ritualCompleted / 2}"></i></div>
+          <p class="daily-ritual-status">${ritualTone}</p>
           <div class="daily-ritual-grid">
             <button class="daily-step ${diaryDone ? 'is-done' : ''}" data-act="chat-fn" data-chat="oracle" data-fn="featureDiary" aria-label="${diaryDone ? 'Дневник заполнен, открыть записи' : 'Открыть дневник состояния'}">
               <span class="daily-step-mark">${diaryDone ? '✓' : '◌'}</span><span class="daily-step-copy"><b>${diaryDone ? 'Ты уже услышала себя' : 'Отметить своё состояние'}</b><small>${diaryDone ? 'Дневник уже ждёт тебя в личной библиотеке.' : esc(prompt.prompt || 'Одно честное предложение о том, как ты сейчас.')}</small></span><span class="daily-step-arrow">›</span>
@@ -46,7 +54,7 @@
               <span class="daily-step-mark">${activePractice.last_done ? '✓' : esc(activePractice.emoji || '✦')}</span><span class="daily-step-copy"><b>${esc(activePractice.title)}</b><small>${esc(activePractice.started ? (activePractice.today_step || 'Отметить маленький шаг') : (activePractice.goal || activePractice.about || 'Мягкая практика на сегодня'))}</small></span><span class="daily-step-arrow">›</span>
             </button>` : ''}
           </div>
-          <p class="daily-ritual-note">Без штрафов за пропуски. Это не чек-лист «идеальной жизни», а две точки опоры для тебя.</p>
+          <p class="daily-ritual-note">Без штрафов за пропуски. Это не чек-лист «идеальной жизни», а две мягкие точки опоры для тебя.</p>
         </section>
 
         ${this.moonWeek && this.moonWeek[0] ? (() => {
@@ -147,7 +155,7 @@
               ${a.title ? `<span class="dock-role">${esc(a.title)}</span>` : ''}
             </button>`).join('')}
         </div>
-        <div class="home-agent-note">Каждый агент смотрит на твою историю под своим углом. Начни с того, кто откликается сегодня.</div>
+        <div class="home-agent-note">Каждый проводник смотрит на твою историю по-своему. Начни с того, чей голос откликается сегодня.</div>
       </div>`;
   };
 

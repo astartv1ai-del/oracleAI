@@ -28,7 +28,7 @@
   --r-sm: 14px;
   --shadow-ritual: 0 22px 54px -28px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   --shadow-lift: 0 18px 34px -22px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 235, 184, 0.08);
-  --ease-ritual: cubic-bezier(.22, .9, .24, 1);
+  --ease-ritual: var(--motion-ritual, cubic-bezier(.22, .9, .24, 1));
   --font-display: var(--font-serif, Georgia, serif);
 }
 
@@ -913,4 +913,747 @@ button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon
 }
 @media (prefers-reduced-motion: reduce) {
   .agent-intro--compact *, .agent-intro--compact *::before, .agent-intro--compact *::after { animation: none !important; transition: none !important; }
+}
+
+/* v70 — космическая атмосфера возвращена: локальный фон остаётся декоративным,
+   а контент сохраняет читаемость на самостоятельных glass-поверхностях. */
+html, body { background: #070713; }
+.starfield {
+  z-index: 0;
+  opacity: .86;
+  filter: saturate(1.03) contrast(1.03);
+  background:
+    linear-gradient(180deg, rgba(7,7,18,.18) 0%, rgba(7,7,18,.28) 42%, rgba(7,7,18,.76) 100%),
+    url("/static/img/bg-cosmos.jpg") 50% 18% / cover no-repeat,
+    radial-gradient(120% 70% at 50% -10%, #1c1a3a 0%, transparent 55%),
+    radial-gradient(90% 60% at 85% 110%, #2a1440 0%, transparent 60%),
+    linear-gradient(180deg, #0a0916 0%, #07070f 100%);
+}
+.starfield::before { z-index: 0; opacity: .66; }
+.starfield::after {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 72% 11%, rgba(185,166,255,.12), transparent 25%),
+    radial-gradient(circle at 10% 76%, rgba(123,224,197,.06), transparent 31%),
+    linear-gradient(180deg, rgba(7,7,18,.02) 0%, rgba(7,7,18,.18) 48%, rgba(7,7,18,.56) 100%);
+}
+.starfield .nebula { z-index: 0; opacity: .5; filter: blur(34px); }
+.starfield .constellations { position: relative; z-index: 1; opacity: .48; }
+.starfield .galaxy { z-index: 1; }
+.starfield .lilith-sil {
+  z-index: 1;
+  opacity: .22;
+  filter: saturate(.95) drop-shadow(0 0 25px rgba(185,166,255,.24));
+}
+#app-root { z-index: 1; isolation: isolate; }
+.app-header {
+  background: linear-gradient(180deg, rgba(8,7,25,.78), rgba(8,7,25,.48));
+  border-bottom-color: rgba(230,219,255,.16);
+}
+.app-nav {
+  background: linear-gradient(0deg, rgba(8,7,25,.88), rgba(8,7,25,.61));
+  border-top-color: rgba(230,219,255,.16);
+}
+.chat-shell { background: linear-gradient(180deg, rgba(14,12,37,.36), rgba(8,7,25,.08) 38%, transparent); }
+@media (min-width: 601px) {
+  .starfield {
+    background:
+      linear-gradient(180deg, rgba(7,7,18,.22) 0%, rgba(7,7,18,.28) 42%, rgba(7,7,18,.76) 100%),
+      url("/static/img/bg-cosmos-2.jpg") 58% 30% / cover no-repeat,
+      radial-gradient(120% 70% at 50% -10%, #1c1a3a 0%, transparent 55%),
+      linear-gradient(180deg, #0a0916 0%, #07070f 100%);
+  }
+}
+
+/* v70 — сценарий натальной карты: спокойный вход, ожидание расчёта и живое колесо. */
+.chart-onboarding {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 2px 0 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(185,166,255,.26);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(185,166,255,.13), rgba(245,212,139,.075));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 12px 24px -24px rgba(0,0,0,.95);
+  animation: chartRise .5s var(--ease-ritual) both;
+}
+.chart-onboarding__mark {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(245,212,139,.34);
+  border-radius: 50%;
+  background: rgba(245,212,139,.1);
+  box-shadow: 0 0 18px rgba(245,212,139,.14);
+  color: var(--champagne-300);
+  font-size: 14px;
+}
+.chart-onboarding__copy { display: grid; gap: 3px; min-width: 0; }
+.chart-onboarding__copy b { color: var(--text-main); font-size: 12px; line-height: 1.3; }
+.chart-onboarding__copy small { color: var(--text-soft); font-size: 11px; line-height: 1.43; }
+.chart-form-intro { animation: chartRise .5s .06s var(--ease-ritual) both; }
+.chart-form { animation: chartRise .5s .12s var(--ease-ritual) both; }
+.chart-form[aria-busy="true"] { opacity: .86; }
+.chart-form__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 180ms var(--ease-ritual), box-shadow 180ms var(--ease-ritual), opacity 180ms ease;
+}
+.chart-form__submit:active:not(:disabled) { transform: translateY(1px) scale(.985); }
+.chart-form__submit.is-loading { cursor: wait; }
+.chart-form__spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(27,20,45,.34);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: chartSpin .72s linear infinite;
+}
+.chart-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  margin: 7px 0 2px;
+  padding: 12px 13px;
+  overflow: hidden;
+  border: 1px solid rgba(245,212,139,.18);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 9% 50%, rgba(245,212,139,.13), transparent 42%),
+    linear-gradient(135deg, rgba(185,166,255,.12), rgba(255,255,255,.035));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 16px 30px -28px rgba(0,0,0,.96);
+  animation: chartRise .45s var(--ease-ritual) both;
+}
+.chart-loading__halo {
+  position: relative;
+  display: grid;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,212,139,.26), rgba(185,166,255,.08) 56%, transparent 70%);
+  color: var(--champagne-300);
+  animation: chartHalo 1.9s ease-in-out infinite;
+}
+.chart-loading__halo i {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(245,212,139,.42);
+  border-radius: 50%;
+  animation: chartOrbit 2.2s linear infinite;
+}
+.chart-loading__halo i:nth-child(2) { inset: 10px -2px; border-color: rgba(185,166,255,.36); animation-duration: 3.1s; animation-direction: reverse; }
+.chart-loading__halo i:nth-child(3) { inset: -3px 11px; border-color: rgba(123,224,197,.28); animation-duration: 2.6s; }
+.chart-loading__halo b { position: relative; z-index: 1; font-size: 17px; text-shadow: 0 0 13px rgba(255,233,180,.8); }
+.chart-loading__copy { display: grid; gap: 3px; min-width: 0; }
+.chart-loading__copy b { color: var(--text-main); font-size: 12.5px; line-height: 1.25; }
+.chart-loading__copy small { color: var(--text-soft); font-size: 11px; line-height: 1.42; }
+.chart-result { animation: chartReveal .56s var(--ease-ritual) both; }
+.chart-wheel-hint { margin: 1px auto 7px; color: var(--text-muted); font-size: 10.5px; line-height: 1.35; text-align: center; }
+.chart-signature { margin-bottom: 8px; color: var(--champagne-300); font-family: var(--font-display); font-size: 13.5px; text-align: center; }
+.chart-takeaway { background: linear-gradient(135deg, rgba(245,212,139,.1), rgba(185,166,255,.09)); }
+.chart-takeaway small { display: block; margin-top: 7px; color: var(--text-muted); font-size: 10.5px; line-height: 1.38; }
+.nw-plaque {
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 10px) scale(.96);
+  transition: opacity 220ms var(--ease-ritual), transform 260ms var(--ease-ritual), visibility 0s linear 260ms;
+  animation: none;
+}
+.nw-plaque.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0) scale(1);
+  transition-delay: 0s;
+}
+.n-planet.n-in {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: chartPlanetArrive;
+  animation-duration: .68s;
+  animation-timing-function: cubic-bezier(.18,.92,.24,1.18);
+}
+.n-core.n-in { transform-box: fill-box; transform-origin: center; animation: chartCoreArrive .62s .24s var(--ease-ritual) both; }
+.el-chip { transition: color 180ms var(--ease-ritual), border-color 180ms var(--ease-ritual), background 180ms var(--ease-ritual), box-shadow 180ms var(--ease-ritual), transform 180ms var(--ease-ritual); }
+.el-chip.on { animation: elementChipIgnite .36s var(--ease-ritual) both; }
+@keyframes chartRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes chartReveal { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes chartSpin { to { transform: rotate(360deg); } }
+@keyframes chartHalo { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245,212,139,.08); } 50% { transform: scale(1.06); box-shadow: 0 0 0 9px rgba(245,212,139,0); } }
+@keyframes chartOrbit { to { transform: rotate(360deg); } }
+@keyframes chartPlanetArrive { from { opacity: 0; transform: scale(.18); } 72% { opacity: 1; transform: scale(1.1); } to { opacity: 1; transform: scale(1); } }
+@keyframes chartCoreArrive { from { opacity: 0; transform: scale(.48); } 70% { opacity: 1; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
+@keyframes elementChipIgnite { 0% { transform: scale(.9); box-shadow: 0 0 0 rgba(245,212,139,0); } 62% { transform: scale(1.07); box-shadow: 0 0 18px rgba(245,212,139,.42); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .chart-onboarding, .chart-form-intro, .chart-form, .chart-loading, .chart-result, .n-core.n-in, .el-chip.on { animation: none !important; }
+  .nw-plaque, .chart-form__submit, .el-chip { transition: none; }
+}
+
+/* v70 — Таро как личный ритуал: вопрос, последовательное открытие и единая нить. */
+.tarot-picker-widget,
+.tarot-cards-widget {
+  overflow: hidden;
+  border: 1px solid rgba(230,219,255,.14);
+  background:
+    radial-gradient(circle at 93% 3%, rgba(185,166,255,.11), transparent 27%),
+    linear-gradient(145deg, rgba(255,255,255,.065), rgba(25,20,50,.61));
+}
+.tarot-kicker {
+  margin: 0 0 5px;
+  color: var(--champagne-300);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  line-height: 1.2;
+}
+.tarot-picker-sub { margin-top: 5px; line-height: 1.45; }
+.tarot-question-label {
+  margin: 14px 0 7px;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+}
+.tarot-question-prompts { display: flex; flex-wrap: wrap; gap: 6px; }
+.tarot-question-prompt {
+  max-width: 100%;
+  padding: 7px 9px;
+  border: 1px solid rgba(230,219,255,.15);
+  border-radius: 999px;
+  background: rgba(9,7,22,.2);
+  color: var(--text-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.28;
+  text-align: left;
+  transition: color 160ms var(--ease-ritual), border-color 160ms var(--ease-ritual), background 160ms var(--ease-ritual), transform 160ms var(--ease-ritual);
+}
+.tarot-question-prompt.is-active {
+  border-color: rgba(245,212,139,.54);
+  background: rgba(245,212,139,.11);
+  color: var(--champagne-200);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 7px 14px -13px rgba(0,0,0,.95);
+}
+.tarot-question-prompt:active:not(:disabled) { transform: scale(.975); }
+.tarot-question-prompt:focus-visible,
+.tcard:focus-visible {
+  outline: 2px solid var(--champagne-300);
+  outline-offset: 3px;
+}
+.tarot-question-prompt:disabled,
+.pick-sel-btn:disabled { cursor: wait; opacity: .6; }
+.tarot-draw-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 16px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+.tarot-draw-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--champagne-300);
+  box-shadow: 0 0 10px rgba(245,212,139,.5);
+}
+.tarot-draw-orbit {
+  width: 13px;
+  height: 13px;
+  border: 1px solid rgba(245,212,139,.35);
+  border-top-color: var(--champagne-300);
+  border-radius: 50%;
+  animation: tarotOrbit 760ms linear infinite;
+}
+.tarot-draw-btn { min-height: 42px; }
+.tarot-cards-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tarot-cards-head .w-title { margin: 0; }
+.tarot-card-progress {
+  display: grid;
+  flex: 0 0 49px;
+  gap: 4px;
+  padding-top: 2px;
+  color: var(--champagne-300);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.tarot-card-progress i {
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(230,219,255,.15);
+}
+.tarot-card-progress i::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lilac-300), var(--champagne-300));
+  content: '';
+  transform: scaleX(var(--tarot-progress, 0));
+  transform-origin: left center;
+  transition: transform 340ms var(--ease-ritual);
+}
+.tarot-cards-widget .tarot-grid { margin-top: 11px; }
+.tarot-cards-widget .tcard {
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.tpos.is-next .tcard { filter: drop-shadow(0 0 11px rgba(245,212,139,.25)); }
+.tpos.is-next .tpos-pos { color: var(--champagne-200); }
+.tcard.is-turning { pointer-events: none; }
+.tcard.is-turning .tcard-inner { transform: rotateY(11deg) scale(.975); }
+.tcard.open .tcard-inner { transform: rotateY(180deg); }
+.tcard.open .tcard-front { box-shadow: 0 12px 28px -14px rgba(0,0,0,.85), 0 0 0 1px rgba(245,212,139,.18); }
+.tarot-thread--revealed { animation: tarotThreadIn .42s var(--ease-ritual) both; }
+.tarot-interpret-btn { box-shadow: 0 12px 24px -18px rgba(245,212,139,.72); }
+@keyframes tarotOrbit { to { transform: rotate(360deg); } }
+@keyframes tarotThreadIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: no-preference) {
+  .tpos.is-next .tcard { animation: tarotNextCard 1.8s ease-in-out infinite; }
+}
+@keyframes tarotNextCard {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tarot-draw-orbit,
+  .tarot-thread--revealed,
+  .tpos.is-next .tcard { animation: none !important; }
+  .tarot-question-prompt,
+  .tarot-card-progress i::before,
+  .tcard-inner { transition: none !important; }
+}
+
+/* v71 — Совместимость и личный ритм: спокойное внимание, а не оценка. */
+.compat-flow,
+.compat-result,
+.compat-processing {
+  overflow: hidden;
+  border: 1px solid rgba(230,219,255,.16);
+  background:
+    radial-gradient(circle at 92% 6%, rgba(185,166,255,.13), transparent 30%),
+    linear-gradient(145deg, rgba(255,255,255,.07), rgba(24,19,50,.66));
+}
+.compat-flow { animation: compatFlowIn .44s var(--ease-ritual) both; }
+.compat-flow__head,
+.compat-result__intro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.compat-flow__sigil,
+.compat-result__sigil {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(245,212,139,.32);
+  border-radius: 50%;
+  color: var(--champagne-200);
+  background: radial-gradient(circle, rgba(245,212,139,.16), rgba(185,166,255,.05));
+  box-shadow: 0 0 22px -9px rgba(245,212,139,.62);
+}
+.compat-flow__sigil svg { width: 17px; height: 17px; }
+.compat-flow .w-sub { margin: 9px 0 0; line-height: 1.48; }
+.compat-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 14px 0 12px;
+  color: var(--text-muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-align: center;
+}
+.compat-steps span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 3px;
+  border-bottom: 1px solid rgba(230,219,255,.12);
+}
+.compat-steps i {
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.07);
+  color: inherit;
+  font-size: 8px;
+  font-style: normal;
+}
+.compat-steps .is-current { border-color: rgba(245,212,139,.58); color: var(--champagne-200); }
+.compat-steps .is-current i { background: var(--champagne-300); color: #201832; }
+.compat-flow__prompt { margin: 0 0 7px; color: var(--text-main); font-size: 12px; font-weight: 700; }
+.compat-flow__fields { display: grid; gap: 9px; margin-top: 13px; }
+.compat-field { margin: 0; }
+.compat-field > span { display: flex; justify-content: space-between; gap: 8px; }
+.compat-field em { color: var(--text-muted); font-size: 10px; font-style: normal; font-weight: 500; }
+.compat-help { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; color: var(--text-muted); line-height: 1.35; }
+.compat-help span { color: var(--champagne-300); }
+.compat-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  margin-top: 14px;
+  min-height: 43px;
+  box-shadow: 0 13px 28px -19px rgba(245,212,139,.9);
+}
+.rel-chip { font: inherit; }
+.rel-chip.sel { animation: relationChipIn .3s var(--ease-ritual) both; }
+.compat-processing { display: flex; align-items: center; gap: 13px; min-height: 84px; }
+.compat-processing strong { display: block; margin: 2px 0 3px; color: var(--text-main); font-family: var(--font-serif); font-size: 17px; line-height: 1.15; }
+.compat-processing p { margin: 0; color: var(--text-muted); font-size: 11.5px; line-height: 1.42; }
+.compat-processing__note { display: inline-block; margin-top: 7px; color: var(--champagne-300); font-size: 10px; }
+.compat-processing__orb {
+  position: relative;
+  display: grid;
+  flex: 0 0 49px;
+  width: 49px;
+  height: 49px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--champagne-200);
+  background: radial-gradient(circle, rgba(245,212,139,.18), rgba(185,166,255,.08) 50%, transparent 70%);
+}
+.compat-processing__orb > span:first-child,
+.compat-processing__orb > span:nth-child(2) {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(245,212,139,.28);
+  border-radius: inherit;
+  animation: compatOrbit 2.4s linear infinite;
+}
+.compat-processing__orb > span:nth-child(2) { inset: -2px; border-color: rgba(185,166,255,.2); animation-direction: reverse; animation-duration: 3.5s; }
+.compat-processing__orb > span:last-child { display: grid; place-items: center; }
+.compat-processing__orb svg { width: 21px; height: 21px; }
+.compat-result { animation: compatResultIn .52s var(--ease-ritual) both; }
+.compat-result__lead { margin: 10px 0 2px; color: var(--text-soft); font-size: 11.5px; line-height: 1.48; }
+.spd-wrap { position: relative; }
+.spd-ring { animation: compatDialIn .7s .08s var(--ease-ritual) both; }
+.spd-card { width: 100%; font: inherit; text-align: left; }
+.spd-card-arrow { color: var(--sc, var(--champagne-300)); font-size: 20px; font-weight: 300; line-height: 1; transition: transform 180ms var(--ease-ritual); }
+.spd-card.spd-active .spd-card-arrow { transform: translateX(2px); }
+.spd-note[hidden] { display: none; }
+.spd-note:not([hidden]) {
+  margin: -1px 3px 5px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--champagne-300);
+  border-radius: 0 8px 8px 0;
+  background: rgba(245,212,139,.06);
+  color: var(--text-soft);
+  animation: compatNoteIn .28s var(--ease-ritual) both;
+}
+.spd-more[aria-expanded="true"] { color: var(--champagne-200); border-color: rgba(245,212,139,.62); }
+
+/* Домашний ритуал: два шага, которые не наказывают за паузу. */
+.ritual-cta { display: inline-flex; align-items: center; justify-content: space-between; gap: 14px; }
+.ritual-cta > span:last-child { font-size: 19px; font-weight: 300; transition: transform 180ms var(--ease-ritual); }
+.ritual-cta:active > span:last-child { transform: translateX(3px); }
+.daily-ritual { position: relative; overflow: hidden; }
+.daily-ritual::after {
+  position: absolute;
+  right: -38px;
+  bottom: -47px;
+  width: 135px;
+  height: 135px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,212,139,.1), transparent 69%);
+  content: '';
+  pointer-events: none;
+}
+.daily-ritual-head,
+.daily-ritual-grid,
+.daily-ritual-note,
+.daily-ritual-progress,
+.daily-ritual-status { position: relative; z-index: 1; }
+.daily-ritual-score { box-shadow: 0 0 0 5px rgba(245,212,139,.05), 0 8px 22px -14px rgba(245,212,139,.9); }
+.daily-ritual-progress {
+  height: 4px;
+  margin: 11px 0 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(230,219,255,.12);
+}
+.daily-ritual-progress i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lilac-300), var(--champagne-300));
+  transform: scaleX(var(--ritual-progress, 0));
+  transform-origin: left center;
+  transition: transform 420ms var(--ease-ritual);
+}
+.daily-ritual-status { min-height: 16px; margin: 0 0 11px; color: var(--text-soft); font-size: 11.5px; line-height: 1.4; }
+.daily-ritual--complete .daily-ritual-status { color: var(--champagne-200); }
+.daily-ritual--complete .daily-ritual-score { animation: ritualCompleteGlow 1.8s ease-in-out infinite; }
+.daily-step { transition: transform 180ms var(--ease-ritual), background 180ms var(--ease-ritual), border-color 180ms var(--ease-ritual), box-shadow 180ms var(--ease-ritual); }
+.daily-step:active { transform: scale(.985); }
+.daily-step.is-done { box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 8px 20px -18px rgba(127,212,168,.95); }
+.daily-step.is-pending,
+.pr-actions .is-pending { cursor: wait; opacity: .72; }
+
+@keyframes compatFlowIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes compatResultIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes compatDialIn { from { opacity: 0; transform: scale(.78) rotate(-14deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes compatNoteIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes compatOrbit { to { transform: rotate(360deg); } }
+@keyframes relationChipIn { 0% { transform: scale(.93); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes ritualCompleteGlow { 0%,100% { box-shadow: 0 0 0 5px rgba(245,212,139,.05), 0 8px 22px -14px rgba(245,212,139,.9); } 50% { box-shadow: 0 0 0 8px rgba(245,212,139,0), 0 8px 28px -12px rgba(245,212,139,.95); } }
+@media (prefers-reduced-motion: reduce) {
+  .compat-flow, .compat-result, .spd-ring, .compat-processing__orb > span, .rel-chip.sel, .daily-ritual--complete .daily-ritual-score { animation: none !important; }
+  .daily-ritual-progress i, .daily-step, .ritual-cta > span:last-child, .spd-card-arrow { transition: none !important; }
+}
+
+/* ── Chat orchestration · conductor-first, one-handed and calm ───────────── */
+body.toolbox-open { overflow: hidden; overscroll-behavior: none; }
+.chat-shell { position: relative; isolation: isolate; }
+.chat-shell::before {
+  position: absolute; z-index: -1; inset: 0; content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 86% 6%, rgba(185,166,255,.12), transparent 27%),
+    linear-gradient(180deg, rgba(14,12,37,.52), rgba(14,12,37,.12) 42%, transparent 68%);
+}
+.agent-tabs {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+.agent-tabs::-webkit-scrollbar { display: none; }
+.agent-tabs .atab {
+  cursor: pointer;
+  scroll-snap-align: start;
+  font: 700 11.5px/1 var(--font-sans);
+  transition: transform 180ms var(--ease-ritual), background 180ms var(--ease-ritual), border-color 180ms var(--ease-ritual), color 180ms var(--ease-ritual);
+}
+.agent-tabs .atab:active { transform: scale(.97); }
+.agent-tabs .atab:focus-visible,
+.composer-tools-copy:focus-visible,
+.te-agent-switch:focus-visible { outline: 2px solid var(--champagne-300); outline-offset: 2px; }
+.agent-tabs .atab.active { box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 18px -17px var(--ac, var(--champagne-300)); }
+
+.composer { position: relative; }
+.composer-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 4px 7px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.composer-presence { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.composer-presence i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--mint-400, #7fd4a8);
+  box-shadow: 0 0 0 4px rgba(127,212,168,.09), 0 0 12px rgba(127,212,168,.8);
+  animation: chatPresence 2.2s ease-in-out infinite;
+}
+.composer-tools-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  color: var(--champagne-300);
+  background: transparent;
+  font: 800 10.5px/1 var(--font-sans);
+  cursor: pointer;
+}
+.composer-tools-copy span { font-size: 15px; line-height: .7; transition: transform 180ms var(--ease-ritual); }
+.composer-tools-copy:active span { transform: translateY(-2px); }
+.composer-top { align-items: flex-end; min-height: 58px; }
+#chat-input {
+  display: block;
+  min-height: 42px;
+  max-height: 132px;
+  margin: 0;
+  padding: 11px 2px 10px;
+  resize: none;
+  overflow-y: auto;
+  background: transparent;
+  line-height: 1.42;
+  scrollbar-width: none;
+}
+#chat-input::-webkit-scrollbar { display: none; }
+.tool-btn, .send-btn { margin-bottom: 1px; transition: transform 160ms var(--ease-ritual), box-shadow 180ms var(--ease-ritual), opacity 180ms var(--ease-ritual); }
+.tool-btn:active, .send-btn:active { transform: scale(.94); }
+.send-btn:disabled { cursor: wait; opacity: .58; box-shadow: none; }
+.suggest-chips { overflow-x: auto; padding-bottom: 1px; scrollbar-width: none; }
+.suggest-chips::-webkit-scrollbar { display: none; }
+.suggest-chips .chip { flex: 0 0 auto; cursor: pointer; font: 700 11.5px/1.1 var(--font-sans); white-space: nowrap; transition: transform 160ms var(--ease-ritual), border-color 160ms var(--ease-ritual), background 160ms var(--ease-ritual); }
+.suggest-chips .chip:active { transform: scale(.97); border-color: rgba(245,212,139,.58); background: rgba(245,212,139,.11); }
+
+.tool-expand { transition: opacity 180ms var(--ease-ritual), visibility 180ms var(--ease-ritual); }
+.te-mask { backdrop-filter: blur(5px); }
+.te-sheet {
+  padding-top: 10px;
+  border: 1px solid rgba(225,214,255,.16);
+  border-bottom: 0;
+  background:
+    radial-gradient(circle at 84% 0%, rgba(185,166,255,.18), transparent 27%),
+    linear-gradient(155deg, rgba(35,29,70,.99), rgba(15,13,38,.99));
+  box-shadow: 0 -22px 58px -34px #000;
+}
+.tool-expand.open .te-sheet { animation: chatDrawerIn 330ms var(--ease-ritual) both; }
+.te-handle { width: 38px; height: 4px; margin: 0 auto 11px; border-radius: 99px; background: rgba(245,212,139,.42); }
+.te-head { gap: 12px; }
+.te-eyebrow { max-width: 235px; color: var(--champagne-300); }
+.te-title { font-family: var(--font-display); letter-spacing: -.01em; }
+.te-close { border-radius: 13px; transition: transform 160ms var(--ease-ritual), background 160ms var(--ease-ritual); cursor: pointer; }
+.te-close:active { transform: scale(.93) rotate(6deg); background: rgba(245,169,199,.14); }
+.te-intro { max-width: 340px; }
+.te-agent-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 5px;
+  border: 1px solid rgba(225,214,255,.1);
+  border-radius: 16px;
+  background: rgba(6,5,20,.22);
+}
+.te-agent-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 39px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--text-soft);
+  background: transparent;
+  font: 700 10.5px/1 var(--font-sans);
+  cursor: pointer;
+  transition: transform 160ms var(--ease-ritual), background 160ms var(--ease-ritual), border-color 160ms var(--ease-ritual), color 160ms var(--ease-ritual);
+}
+.te-agent-switch span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.te-agent-switch .te-av { width: 24px; height: 24px; box-shadow: 0 0 0 1px rgba(255,255,255,.1); }
+.te-agent-switch.active { border-color: color-mix(in srgb, var(--ac, var(--champagne-300)) 56%, transparent); color: var(--text-main); background: color-mix(in srgb, var(--ac, var(--champagne-300)) 15%, transparent); }
+.te-agent-switch:active { transform: scale(.97); }
+.te-current { box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 12px 24px -25px rgba(245,212,139,.9); }
+.te-chip { position: relative; justify-content: flex-start; text-align: left; cursor: pointer; transition: transform 170ms var(--ease-ritual), border-color 170ms var(--ease-ritual), background 170ms var(--ease-ritual), box-shadow 170ms var(--ease-ritual); }
+.te-chip:hover { border-color: rgba(245,212,139,.38); background: rgba(245,212,139,.07); }
+.te-chip:active { transform: scale(.985); box-shadow: 0 8px 20px -19px rgba(245,212,139,.85); }
+.te-arrow { margin-left: auto; color: var(--champagne-300); font-size: 22px; font-weight: 300; line-height: 1; transition: transform 170ms var(--ease-ritual); }
+.te-chip:hover .te-arrow, .te-chip:focus-visible .te-arrow { transform: translateX(3px); }
+.te-more summary { min-height: 43px; padding: 0 4px; color: var(--text-soft); font-size: 11.5px; }
+.te-more[open] summary { color: var(--champagne-200); }
+
+@keyframes chatPresence { 0%, 100% { box-shadow: 0 0 0 4px rgba(127,212,168,.09), 0 0 10px rgba(127,212,168,.55); } 50% { box-shadow: 0 0 0 7px rgba(127,212,168,0), 0 0 15px rgba(127,212,168,.85); } }
+@keyframes chatDrawerIn { from { opacity: .2; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 380px) {
+  .composer-context { font-size: 10px; }
+  .te-agent-switch { padding: 4px 3px; font-size: 10px; }
+  .te-agent-switch .te-av { width: 22px; height: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-presence i, .tool-expand.open .te-sheet { animation: none !important; }
+  .agent-tabs .atab, .tool-btn, .send-btn, .suggest-chips .chip, .te-agent-switch, .te-chip, .te-arrow, .composer-tools-copy span { transition: none !important; }
+}
+
+/* Первый вход в чат: короткий ориентир, который не спорит с содержанием. */
+#chat-guide {
+  z-index: 105;
+  padding: max(20px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+  background: rgba(5,4,16,.72);
+  backdrop-filter: blur(10px) saturate(1.15);
+}
+.cg-card {
+  position: relative;
+  overflow: hidden;
+  max-width: 348px;
+  padding: 28px 23px 21px;
+  border-color: rgba(245,212,139,.28);
+  border-radius: 25px;
+  background:
+    radial-gradient(circle at 82% 0%, rgba(185,166,255,.2), transparent 33%),
+    linear-gradient(150deg, rgba(37,31,72,.99), rgba(17,14,42,.99));
+  box-shadow: 0 25px 70px -34px #000, inset 0 1px 0 rgba(255,255,255,.11);
+}
+.cg-card::before {
+  position: absolute;
+  top: -70px;
+  left: 50%;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,212,139,.13), transparent 67%);
+  content: '';
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.cg-emoji { position: relative; color: var(--champagne-300); font-size: 42px; line-height: 1; filter: drop-shadow(0 0 15px rgba(245,212,139,.5)); }
+.cg-title { position: relative; margin-top: 14px; color: var(--text-main); font-family: var(--font-display); font-size: 22px; letter-spacing: -.01em; }
+.cg-sub { position: relative; min-height: 65px; color: var(--text-soft); font-size: 13px; line-height: 1.58; }
+.cg-dots { position: relative; margin: 18px 0; }
+.cg-dots span.active { background: var(--champagne-300); box-shadow: 0 0 9px rgba(245,212,139,.75); }
+.cg-btns { position: relative; }
+.cg-btns .btn { min-height: 43px; }
+@media (prefers-reduced-motion: reduce) {
+  #chat-guide, .cg-card, .cg-emoji { animation: none !important; }
+}
+
+/* ── Cross-scenario motion & accessibility contract ───────────────────────
+   Один язык отклика для карты, Таро, совместимости, ритуалов и чата. */
+:root { color-scheme: dark; }
+html { scroll-behavior: smooth; }
+:where(.te-chip, .te-agent-switch, .ptab, .daily-step, .rel-chip, .el-chip, .spread-choice, .tarot-card, .spd-card, .composer-tools-copy):focus-visible {
+  outline: 2px solid var(--champagne-300);
+  outline-offset: 3px;
+}
+:where(button, [data-act], .tool, .chip, .ask-chip, .te-chip, .te-agent-switch, .ptab, .daily-step, .rel-chip, .el-chip, .tarot-card, .spd-card) {
+  touch-action: manipulation;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+  .starfield, .nebula, .constellations { transform: none !important; }
 }

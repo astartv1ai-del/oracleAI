@@ -190,21 +190,18 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     }
   };
 
-  // Гайд первого захода в чат: лёгкий оверлей по окну чата, 4 шага, 1 раз.
-  // Флаг отдельный от глобального интро (или больше, или меньше — не мешаем).
+  // Гайд первого входа в чат: три коротких шага, только один раз на устройстве.
+  // Он не скрывает контент навсегда и всегда может быть закрыт одним тапом.
 
   app.maybeChatGuide = function() {
-    // Первый диалог уже объясняется тёплым intro-блоком в самом чате.
-    // Полноэкранный туториал оставлен только для ручной QA-проверки по ?guide=1,
-    // чтобы не прерывать момент, когда пользовательница готова написать.
-    if (!new URLSearchParams(location.search).has('guide')) return;
-    try { if (localStorage.getItem('oracle_chat_guide')) return; } catch (e) { return; }
+    const guideKey = 'oracle_chat_guide_v2';
+    try { if (localStorage.getItem(guideKey)) return; } catch (e) { return; }
     if (document.getElementById('intro') || document.getElementById('chat-guide')) return;
+    const firstName = this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : '';
     const steps = [
-      { e: '💬', t: 'Задай вопрос', d: 'Напиши агенту о своей ситуации — он ответит по твоей карте, Луне и звёздам, как живому собеседнику.' },
-      { e: '🧰', t: 'Быстрые инструменты', d: 'Над полем ввода — чипы: таро, натальная карта, совместимость. Тапни — инструмент придёт прямо в чат.' },
-      { e: '🔄', t: 'Переключай агентов', d: 'Табы с аватарами меняют агента, свайп по ним листает: Оракул, Астролог, Таролог.' },
-      { e: '🪶', t: 'Он помнит тебя', d: 'Агент запоминает важное из разговоров — всё сохранённое можно увидеть в Профиле.' },
+      { e: '✦', t: firstName ? firstName + ', это твоё пространство' : 'Это твоё пространство', d: 'Пиши так, как чувствуешь. Здесь не бывает «неправильных» вопросов — только бережный разговор и ясные ориентиры.' },
+      { e: '⌁', t: 'Инструменты — в одном жесте', d: 'Свайпни по пустому месту в чате влево или вверх либо нажми «Инструменты». Карта, Таро и совместимость откроются прямо в диалоге.' },
+      { e: '◐', t: 'Выбирай своего проводника', d: 'Тапни по имени сверху или листай вкладки вбок. Каждый проводник ведёт свой спокойный разговор и свои ритуалы.' },
     ];
     const ov = document.createElement('div');
     ov.id = 'chat-guide';
@@ -230,7 +227,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
       });
     };
     const done = () => {
-      try { localStorage.setItem('oracle_chat_guide', '1'); } catch (e) {}
+      try { localStorage.setItem(guideKey, '1'); } catch (e) {}
       ov.remove();
       haptic('success');
     };

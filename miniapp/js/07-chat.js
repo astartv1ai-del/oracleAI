@@ -1,6 +1,8 @@
 /* chat: чат-агент, сессии, лунная неделя, тулбокс, отправка */
   app.openChat = function(key, after) {
     haptic('soft');
+    // Панель инструментов не должна оставаться поверх нового диалога.
+    if (typeof this.setToolbox === 'function') this.setToolbox(false);
     if (this.chat.key !== key) {
       this.chat.key = key;
       this.chat.spec = this.agentSpec(key);
@@ -253,11 +255,11 @@
               <button class="sess-del" data-act="del-session" data-tid="${s.id}" title="Удалить">✕</button>
             </div>`).join('')}
         </div>
-        <div class="agent-tabs">
+        <div class="agent-tabs" role="tablist" aria-label="Выбор проводника">
           ${agents.slice(0, 3).map(b => `
-            <span class="atab ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}">
-              <span class="atab-face"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span>${esc(b.name.split(' ')[0])}
-            </span>`).join('')}
+            <button type="button" class="atab ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}">
+              <span class="atab-face"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span><span>${esc(b.name.split(' ')[0])}</span>
+            </button>`).join('')}
         </div>
         <div class="chat-messages" id="chat-messages">
           ${introHtml}
@@ -266,42 +268,49 @@
           ${busy ? `<div class="msg assistant"><div class="typing"><span></span><span></span><span></span></div></div>` : ''}
         </div>
         <div class="composer">
+          <div class="composer-context">
+            <span class="composer-presence"><i aria-hidden="true"></i>${esc(a.name || 'Проводник')} рядом</span>
+            <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть инструменты и проводников">Инструменты <span aria-hidden="true">↑</span></button>
+          </div>
           <div class="composer-top">
-            <input class="ipt" id="chat-input" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" aria-label="Сообщение для ${esc(a.name || 'Лилит')}" value="${esc(this.chat.draft || '')}"/>
-            <button class="tool-btn" id="tool-btn" data-act="tool-toggle" title="Быстрые ритуалы" aria-label="Открыть быстрые ритуалы" aria-expanded="false" aria-controls="tool-expand">${sigilIcon('spark')}</button>
-            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение">➤</button>
+            <button class="tool-btn" id="tool-btn" data-act="tool-toggle" title="Открыть инструменты" aria-label="Открыть инструменты" aria-expanded="false" aria-controls="tool-expand">${sigilIcon('spark')}</button>
+            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
+            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
           </div>
           ${suggest.length ? `
           <div class="suggest-chips" aria-label="Подсказки для вопроса">
-            ${suggest.map(s => `<span class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</span>`).join('')}
+            ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
           </div>` : ''}
         </div>
         <div class="tool-expand" id="tool-expand" aria-hidden="true">
           <div class="te-mask" data-act="tool-toggle"></div>
-          <section class="te-sheet" role="dialog" aria-modal="true" aria-label="Быстрые ритуалы">
+          <section class="te-sheet" role="dialog" aria-modal="true" aria-label="Инструменты и проводники">
             <div class="te-handle" aria-hidden="true"></div>
             <div class="te-head">
-              <div><span class="te-eyebrow">ИНСТРУМЕНТЫ В ЧАТЕ</span><span class="te-title">Быстрый ритуал</span></div>
-              <button class="te-close" data-act="tool-toggle" aria-label="Закрыть быстрые ритуалы">✕</button>
+              <div><span class="te-eyebrow">ТВОЙ ОРАКУЛ В ОДНОМ ДВИЖЕНИИ</span><span class="te-title">Выбери опору на сейчас</span></div>
+              <button class="te-close" data-act="tool-toggle" aria-label="Закрыть инструменты">✕</button>
             </div>
-            <p class="te-intro">Начни с одного шага — результат появится прямо в этом диалоге.</p>
+            <p class="te-intro">Сначала выбери проводника или сразу запусти ритуал — результат останется в нужном диалоге.</p>
+            <div class="te-agent-switcher" role="tablist" aria-label="Быстрый выбор проводника">
+              ${agents.slice(0, 3).map(b => `<button type="button" class="te-agent-switch ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}"><span class="te-av"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span><span>${esc(b.name.split(' ')[0])}</span></button>`).join('')}
+            </div>
             <div class="te-body">
               ${currentFeatures.length ? `
                 <div class="te-group te-current">
                   <div class="te-agent" style="--ac:${esc(a.accent || 'var(--gold)')}">
                     <span class="te-av"><img src="/static/img/agents/${esc(a.code)}.jpg" alt="" loading="lazy"></span>
-                    <span>С ${esc(a.name || 'проводником')}</span><small>сейчас в диалоге</small>
+                    <span>С ${esc(a.name || 'проводником')}</span><small>в этом диалоге</small>
                   </div>
                   <div class="te-grid">
                     ${currentFeatures.map(f => `
                       <button class="te-chip" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
-                        <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span>
+                        <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span><span class="te-arrow" aria-hidden="true">›</span>
                       </button>`).join('')}
                   </div>
                 </div>` : ''}
               ${otherAgents.length ? `
                 <details class="te-more">
-                  <summary><span>Другие проводники</span><small>ещё ${otherAgents.length}</small></summary>
+                  <summary><span>Инструменты других проводников</span><small>ещё ${otherAgents.length}</small></summary>
                   ${otherAgents.map(b => {
                     const feats = FEATURES[b.code] || [];
                     if (!feats.length) return '';
@@ -313,7 +322,7 @@
                       <div class="te-grid">
                         ${feats.map(f => `
                           <button class="te-chip" data-act="chat-fn" data-chat="${b.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
-                            <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span>
+                            <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}</small></span><span class="te-arrow" aria-hidden="true">›</span>
                           </button>`).join('')}
                       </div>
                     </div>`;
@@ -333,10 +342,17 @@
       case 'tarot-pick':
         return (() => {
           const cur = p.spreads.find(s => s.code === p.spread) || { title: 'Расклад', emoji: '🎴', hint: 'Тапни, чтобы выбрать схему' };
+          const prompts = [
+            'Что сейчас важнее всего увидеть в этой ситуации?',
+            'Как мне бережно действовать в отношениях?',
+            'На что направить энергию в ближайшую неделю?',
+          ];
           return `<div class="msg assistant">
-            <div class="chat-widget">
-              <div class="w-title" style="margin:0">🎴 Схема расклада</div>
-              <button class="pick-sel-btn" data-act="pick-open">
+            <div class="chat-widget tarot-picker-widget ${p.drawing ? 'is-drawing' : ''}">
+              <div class="tarot-kicker">ЛИЧНЫЙ РИТУАЛ</div>
+              <div class="w-title" style="margin:0">🎴 Выбери схему и задай вопрос</div>
+              <div class="w-sub tarot-picker-sub">Карты не дают готовых приказов — они помогают заметить то, что уже просится в твоё внимание.</div>
+              <button class="pick-sel-btn" data-act="pick-open" ${p.drawing ? 'disabled' : ''}>
                 <span class="pick-sel-ico">${esc(cur.emoji || '🎴')}</span>
                 <span class="pick-sel-txt">
                   <span class="pick-sel-t">${esc(cur.title)}</span>
@@ -345,78 +361,92 @@
                 <span class="pick-sel-go">›</span>
               </button>
               <div class="swipe-hint">Тапни — откроется весь список раскладов</div>
+              <div class="tarot-question-label">О чём хочешь спросить?</div>
+              <div class="tarot-question-prompts">${prompts.map(value => `<button class="tarot-question-prompt${p.q === value ? ' is-active' : ''}" data-act="tarot-question" data-value="${q(value)}" ${p.drawing ? 'disabled' : ''}>${esc(value)}</button>`).join('')}</div>
               ${p.err ? `<div class="s-err">${esc(p.err)}</div>` : ''}
-              <textarea class="ipt" id="tarot-q" rows="1" placeholder="Твой вопрос к картам…"
-                style="margin-top:8px;resize:none">${q(p.q || '')}</textarea>
-              <button class="btn btn-primary" style="margin-top:8px" data-act="draw">Потянула карты 🎴</button>
+              <textarea class="ipt" id="tarot-q" rows="2" placeholder="Твой вопрос к картам…" ${p.drawing ? 'disabled' : ''}
+                style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
+              <div class="tarot-draw-status" aria-live="polite">${p.drawing ? '<span class="tarot-draw-orbit" aria-hidden="true"></span><span>Колода собирает твой расклад…</span>' : '<span class="tarot-draw-dot" aria-hidden="true"></span><span>После вопроса вытянем карты по одной.</span>'}</div>
+              <button class="btn btn-primary tarot-draw-btn" style="margin-top:10px" data-act="draw" ${p.drawing ? 'disabled aria-busy="true"' : ''}>${p.drawing ? 'Собираем расклад…' : 'Потянуть карты'}</button>
             </div></div>`;
         })();
 
-      case 'tarot-cards':
+      case 'tarot-cards': {
+        const opened = p.revealed.filter(Boolean).length;
+        const total = p.cards.length;
         return `<div class="msg assistant">
-          <div class="chat-widget">
-            <div class="w-title">🎴 Карты вытянуты</div>
-            ${p.question ? `<div class="w-sub">Твой вопрос: <b>«${esc(p.question)}»</b></div>` : ''}
+          <div class="chat-widget tarot-cards-widget">
+            <div class="tarot-kicker">ТВОЙ РАСКЛАД</div>
+            <div class="tarot-cards-head">
+              <div>
+                <div class="w-title">Открой карты по одной</div>
+                ${p.question ? `<div class="w-sub">Твой вопрос: <b>«${esc(p.question)}»</b></div>` : ''}
+              </div>
+              <div class="tarot-card-progress" aria-label="Открыто карт: ${opened} из ${total}"><span>${opened} из ${total}</span><i style="--tarot-progress:${(opened / total) * 100}%"></i></div>
+            </div>
             <div class="tarot-grid sh-${esc(p.spread || 'three')}">
               ${p.positions.map((pos, i) => {
                 const c = p.cards[i] || {};
+                const canReveal = i === (Number.isInteger(p.nextReveal) ? p.nextReveal : opened);
                 return `
-                <div class="tpos" data-i="${i}">
-                  <div class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" title="Перевернуть">
-                    <div class="tcard-inner">
-                      <div class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></div>
-                      <div class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
-                        ${c.reversed ? '<span class="t-rev">↺ перевёрнута</span>' : ''}</div>
-                    </div>
-                  </div>
+                <div class="tpos${canReveal && !p.revealed[i] ? ' is-next' : ''}" data-i="${i}">
+                  <button type="button" class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" aria-label="${p.revealed[i] ? esc(c.name) : 'Открыть карту: ' + esc(pos)}" ${p.revealed[i] ? 'aria-pressed="true"' : 'aria-pressed="false"'}>
+                    <span class="tcard-inner">
+                      <span class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></span>
+                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+                        ${c.reversed ? '<span class="t-rev">↺ перевёрнута</span>' : ''}</span>
+                    </span>
+                  </button>
                   <div class="tpos-pos">${esc(pos)}</div>
                   <div class="tpos-mean">${esc(c.name)}${c.reversed ? ' ↺' : ''}</div>
                   <div class="tpos-desc">${esc(c.meaning)}</div>
                 </div>`;
               }).join('')}
             </div>
-            ${p.allRevealed ? `<section class="tarot-thread" aria-label="Нить расклада">
+            ${p.allRevealed ? `<section class="tarot-thread tarot-thread--revealed" aria-label="Нить расклада">
                 <div class="tarot-thread-kicker">НИТЬ РАСКЛАДА</div>
-                <p>Смотри на карты как на одну историю: каждая отвечает за свою позицию и меняет смысл соседних.</p>
+                <p>Карты раскрылись. Сначала почувствуй, как роли откликаются вместе, а затем соберём личный смысл без поспешных выводов.</p>
                 <div class="tarot-thread-map">${p.positions.map((pos, i) => {
                   const c = p.cards[i] || {};
                   return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}</span>`;
                 }).join('')}</div>
               </section>
-              <button class="btn btn-primary" style="margin-top:14px" data-act="interpret">Собрать личный смысл</button>`
-              : `<div class="t-hint">Тапни карты по очереди — сначала увидишь их роли, затем соберём общий смысл ↻</div>`}
+              <button class="btn btn-primary tarot-interpret-btn" style="margin-top:14px" data-act="interpret">Собрать личный смысл</button>`
+              : `<div class="t-hint">Открывай карты по порядку: каждая роль подскажет, как читать следующую.</div>`}
           </div></div>`;
+      }
 
       case 'chart':
         return `<div class="msg assistant">
-          ${p.loading ? '<div class="typing"><span></span><span></span><span></span></div>' : ''}
-          <div class="chat-widget">${p.html}</div>
+          <div class="chat-widget">${p.html || (p.loading ? '<div class="typing"><span></span><span></span><span></span></div>' : '')}</div>
         </div>`;
 
       case 'compat':
         return `<div class="msg assistant compat-message">
           <section class="chat-widget compat-flow" aria-label="Проверка совместимости">
-            <span class="result-kicker">ЛИЧНЫЙ РАЗБОР</span>
-            <div class="w-title">Совместимость без догадок</div>
-            <div class="w-sub">Выбери тип связи и добавь дату рождения. Результат останется в этом диалоге, чтобы к нему можно было вернуться.</div>
-            <div class="compat-steps" aria-label="Два шага">
-              <span class="is-current">1. Связь</span><span>2. Дата</span><span>3. Разбор</span>
+            <div class="compat-flow__head"><span class="compat-flow__sigil" aria-hidden="true">${sigilIcon('compat')}</span><div><span class="result-kicker">ЛИЧНЫЙ РАЗБОР</span><div class="w-title">Посмотрим на ритм связи</div></div></div>
+            <div class="w-sub">Выбери контекст и дату рождения. Это ориентир для разговора, а не оценка вас или ваших отношений.</div>
+            <div class="compat-steps" aria-label="Три спокойных шага">
+              <span class="is-current"><i>1</i> Связь</span><span><i>2</i> Дата</span><span><i>3</i> Ориентир</span>
             </div>
+            <p class="compat-flow__prompt">Как вы связаны сейчас?</p>
             <div class="rel-chips" role="group" aria-label="Тип связи">
               ${[['love','compat','Пара'],['friend','spark','Дружба'],['work','career','Дело'],['family','home','Семья']].map(([k, icon, t]) =>
                 `<button type="button" class="rel-chip${p.relation === k ? ' sel' : ''}" data-act="compat-rel" data-rel="${k}" aria-pressed="${p.relation === k ? 'true' : 'false'}"><span>${sigilIcon(icon)}</span>${t}</button>`).join('')}
             </div>
-            <label class="compat-field"><span>Имя человека <em>необязательно</em></span><input class="ipt" id="cp-name" value="${esc(p.name || '')}" placeholder="Например, Аня" autocomplete="name"/></label>
-            <label class="compat-field"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="cp-date" type="date" value="${esc(p.date || '')}" required aria-describedby="compat-date-help"/></label>
-            <small id="compat-date-help" class="compat-help">Используем только для этого расчёта.</small>
-            <button class="btn btn-primary compat-submit" data-act="compat">Открыть разбор</button>
+            <div class="compat-flow__fields">
+              <label class="compat-field"><span>Имя человека <em>необязательно</em></span><input class="ipt" id="cp-name" value="${esc(p.name || '')}" placeholder="Например, Аня" autocomplete="name"/></label>
+              <label class="compat-field"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="cp-date" type="date" value="${esc(p.date || '')}" required aria-describedby="compat-date-help"/></label>
+            </div>
+            <small id="compat-date-help" class="compat-help"><span aria-hidden="true">✦</span> Дата нужна для расчёта; имя только добавит тепла в обращение.</small>
+            <button class="btn btn-primary compat-submit" data-act="compat"><span>Открыть мой ориентир</span><span aria-hidden="true">→</span></button>
           </section></div>`;
 
       case 'compat-processing':
         return `<div class="msg assistant compat-message">
           <section class="chat-widget compat-processing" role="status" aria-live="polite">
-            <span class="loading-star">${sigilIcon('compat')}</span>
-            <div><span class="result-kicker">СОВМЕСТИМОСТЬ</span><strong>Собираю ритм вашей связи</strong><p>Проверяю основные сферы. Результат появится здесь, в конце диалога.</p></div>
+            <div class="compat-processing__orb" aria-hidden="true"><span></span><span></span><span>${sigilIcon('compat')}</span></div>
+            <div><span class="result-kicker">СОВМЕСТИМОСТЬ</span><strong>Собираю ритм вашей связи</strong><p>Сопоставляю основные сферы. Через несколько секунд здесь появится спокойный ориентир.</p><span class="compat-processing__note">Можно просто остаться в этом диалоге</span></div>
           </section></div>`;
 
       case 'moon':
@@ -469,13 +499,27 @@
   app.setToolbox = function(open) {
     const el = document.getElementById('tool-expand');
     const trigger = document.getElementById('tool-btn');
+    const next = !!open;
     if (!el) return;
-    el.classList.toggle('open', open);
-    el.setAttribute('aria-hidden', open ? 'false' : 'true');
-    if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-    if (open) {
+
+    el.classList.toggle('open', next);
+    el.setAttribute('aria-hidden', next ? 'false' : 'true');
+    document.body.classList.toggle('toolbox-open', next);
+    if (trigger) trigger.setAttribute('aria-expanded', next ? 'true' : 'false');
+
+    if (!this._toolboxKeydownReady) {
+      this._toolboxKeydownReady = true;
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && document.getElementById('tool-expand')?.classList.contains('open')) {
+          event.preventDefault();
+          this.setToolbox(false);
+        }
+      });
+    }
+
+    if (next) {
       haptic('soft');
-      const first = el.querySelector('.te-chip, .te-close');
+      const first = el.querySelector('.te-agent-switch, .te-chip, .te-close');
       if (first) setTimeout(() => first.focus(), 180);
     } else if (trigger) {
       trigger.focus();
