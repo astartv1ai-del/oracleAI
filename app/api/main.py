@@ -21,12 +21,17 @@ from fastapi.staticfiles import StaticFiles
 
 from ..config import settings
 from ..core import sentry as sentry
+from ..core.observability import (
+    configure_logging,
+    log_event,
+    new_request_id,
+    reset_request_id,
+    set_request_id,
+)
 from .deps import close_db, get_db
 from .routers import ROUTERS
 
-logging.basicConfig(
-    level=getattr(logging, settings.log_level, logging.INFO),
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+configure_logging(level=settings.log_level, log_file=settings.log_file)
 log = logging.getLogger("oracle.api")
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -70,8 +75,11 @@ async def lifespan(app: FastAPI):
     db = await get_db()
     from ..data.session import healthcheck
     state = await healthcheck(db)
-    log.info("API готов. БД: %s таблиц, журнал %s, пользователей %s",
-             state["schema_tables"], state["journal_mode"], state["users"])
+    log_event(
+        log, logging.INFO, "api_ready", "API готов",
+        operation="startup", release_id=settings.release_id,
+        schema_tables=state["schema_tables"], journal_mode=state["journal_mode"],
+    )
     if settings.dev_mode:
         log.warning("DEV_MODE=1 — вход по ?dev_user=<id> без подписи Telegram. "
                     "На боевом сервере поставь DEV_MODE=0")
@@ -87,43 +95,60 @@ app = FastAPI(title="Оракул API", version="1.0.0", lifespan=lifespan,
 
 @app.middleware("http")
 async def access_log(request: Request, call_next):
-    """Лог запросов и защита от утечки внутренних ошибок клиенту."""
+    """JSONL-лог запросов и защита от утечки внутренних ошибок клиенту."""
     started = time.monotonic()
+    rid = new_request_id()
+    token = set_request_id(rid)
     try:
-        response = await call_next(request)
-    except Exception as e:
-        # Пользователю — тёплый 500, диагностика — в Sentry: молча терять падение
-        # нельзя, а показывать стек клиентке — тоже.
-        sentry.capture_exception(e)
-        log.exception("необработанная ошибка на %s %s", request.method,
-                      request.url.path)
-        return JSONResponse(
-            {"detail": "Связь со звёздами прервалась… попробуй ещё раз 🌙"},
-            status_code=500)
-    took = (time.monotonic() - started) * 1000
-    if took > 2000 or response.status_code >= 500:
-        log.warning("%s %s → %s за %.0f мс", request.method, request.url.path,
-                    response.status_code, took)
-    response.headers["X-Response-Time"] = f"{took:.0f}ms"
-    # Mini App грузится во вебвью Telegram; запрет фрейминга посторонними
-    # источниками не мешает ему и закрывает clickjacking на админку
-    response.headers["X-Frame-Options"] = "SAMEORIGIN"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    # Тем же origin живут и Mini App, и панель — скрипты только отсюда и с
-    # https://telegram.org (SDK вебвью). Swagger (dev) грузится со сторонних
-    # CDN и с inline-стилями, поэтому в DEV_MODE строгий CSP не вешаем (G24).
-    if not settings.dev_mode:
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self' https://telegram.org; "
-            # Static templates use data-dependent inline style attributes; keep
-            # scripts strict while allowing those layout tokens to render.
-            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-            "font-src 'self'; connect-src 'self'; media-src 'self'; "
-            "object-src 'none'; base-uri 'self'; form-action 'self'; "
-            "frame-ancestors 'self'")
-    _cache_control(request.url.path, response)
-    return response
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            # Пользователю — тёплый 500, диагностика — в Sentry: молча терять
+            # падение нельзя, а показывать стек клиентке — тоже.
+            sentry.capture_exception(e)
+            log.exception(
+                "необработанная ошибка API",
+                extra={
+                    "event": "http_5xx",
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": 500,
+                },
+            )
+            response = JSONResponse(
+                {"detail": "Связь со звёздами прервалась… попробуй ещё раз 🌙"},
+                status_code=500)
+        took = (time.monotonic() - started) * 1000
+        if took > 2000 or response.status_code >= 500:
+            level = logging.ERROR if response.status_code >= 500 else logging.WARNING
+            log_event(
+                log, level, "http_request", "медленный или ошибочный запрос",
+                method=request.method, path=request.url.path,
+                status_code=response.status_code, latency_ms=round(took),
+            )
+        response.headers["X-Response-Time"] = f"{took:.0f}ms"
+        response.headers["X-Request-ID"] = rid
+        # Mini App грузится во вебвью Telegram; запрет фрейминга посторонними
+        # источниками не мешает ему и закрывает clickjacking на админку
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        # Тем же origin живут и Mini App, и панель — скрипты только отсюда и с
+        # https://telegram.org (SDK вебвью). Swagger (dev) грузится со сторонних
+        # CDN и с inline-стилями, поэтому в DEV_MODE строгий CSP не вешаем (G24).
+        if not settings.dev_mode:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self' https://telegram.org; "
+                # Static templates use data-dependent inline style attributes; keep
+                # scripts strict while allowing those layout tokens to render.
+                "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                "font-src 'self'; connect-src 'self'; media-src 'self'; "
+                "object-src 'none'; base-uri 'self'; form-action 'self'; "
+                "frame-ancestors 'self'")
+        _cache_control(request.url.path, response)
+        return response
+    finally:
+        reset_request_id(token)
 
 
 for router in ROUTERS:
@@ -209,6 +234,10 @@ async def sitemap_xml(request: Request):
             "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n"
             f"  <url><loc>{base}/landing</loc></url>\n"
             f"  <url><loc>{base}/landing/en</loc></url>\n"
+            f"  <url><loc>{base}/privacy</loc></url>\n"
+            f"  <url><loc>{base}/terms</loc></url>\n"
+            f"  <url><loc>{base}/privacy/en</loc></url>\n"
+            f"  <url><loc>{base}/terms/en</loc></url>\n"
             "</urlset>\n")
     return Response(body, media_type="application/xml")
 
@@ -223,6 +252,26 @@ async def landing(request: Request):
 async def landing_en(request: Request):
     """Англоязычная версия публичного лендинга."""
     return _public_template("landing-en.html", request)
+
+
+@app.get("/privacy", include_in_schema=False)
+async def privacy(request: Request):
+    return _public_template("privacy.html", request)
+
+
+@app.get("/privacy/en", include_in_schema=False)
+async def privacy_en(request: Request):
+    return _public_template("privacy-en.html", request)
+
+
+@app.get("/terms", include_in_schema=False)
+async def terms(request: Request):
+    return _public_template("terms.html", request)
+
+
+@app.get("/terms/en", include_in_schema=False)
+async def terms_en(request: Request):
+    return _public_template("terms-en.html", request)
 
 
 @app.get("/{filename}", include_in_schema=False)

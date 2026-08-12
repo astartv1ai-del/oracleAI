@@ -50,7 +50,8 @@ class FakeGateway:
             await self._serve(reader, writer)
         except Exception as e:  # noqa: BLE001
             print(f"[gateway] hander error: {type(e).__name__}: {e}", flush=True)
-            import traceback; traceback.print_exc()
+            import traceback
+            traceback.print_exc()
 
     async def _serve(self, reader, writer):
         raw = await reader.readuntil(b"\r\n\r\n")

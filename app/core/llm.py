@@ -35,6 +35,7 @@ from contextlib import asynccontextmanager
 from typing import Awaitable, Callable
 
 from ..config import settings
+from .observability import log_event
 
 log = logging.getLogger("oracle.llm")
 
@@ -279,7 +280,7 @@ async def complete(system: str, user_text: str, tier: str = "lite",
         raise RuntimeError("Все LLM-провайдеры недоступны")
     errors = []
     async with _llm_slot():
-        for provider in settings.provider_chain:
+        for provider_index, provider in enumerate(settings.provider_chain):
             meter = _Meter()
             model = _models(provider, tier)
             try:
@@ -295,10 +296,18 @@ async def complete(system: str, user_text: str, tier: str = "lite",
                                    completion_tokens=meter.completion,
                                    latency_ms=meter.ms, ok=False, tg_id=tg_id)
                 continue
+            latency_ms = meter.ms
             await record_usage(db, provider=provider, model=model, purpose=purpose,
                                prompt_tokens=meter.prompt,
                                completion_tokens=meter.completion,
-                               latency_ms=meter.ms, ok=True, tg_id=tg_id)
+                               latency_ms=latency_ms, ok=True, tg_id=tg_id)
+            log_event(
+                log,
+                logging.WARNING if provider_index else logging.INFO,
+                "llm_fallback" if provider_index else "llm_request",
+                "LLM provider completed",
+                provider=provider, purpose=purpose, latency_ms=latency_ms,
+            )
             return text
     raise RuntimeError("Все LLM-провайдеры недоступны: " + "; ".join(errors))
 
@@ -352,7 +361,7 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
     iters = max_iters or MAX_ITERS
     errors = []
     async with _llm_slot():
-        for provider in settings.provider_chain:
+        for provider_index, provider in enumerate(settings.provider_chain):
             meter = _Meter()
             model = _models(provider, tier)
             try:
@@ -372,10 +381,18 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
                                    completion_tokens=meter.completion,
                                    latency_ms=meter.ms, ok=False, tg_id=tg_id)
                 continue
+            latency_ms = meter.ms
             await record_usage(db, provider=provider, model=model, purpose=purpose,
                                prompt_tokens=meter.prompt,
                                completion_tokens=meter.completion,
-                               latency_ms=meter.ms, ok=True, tg_id=tg_id)
+                               latency_ms=latency_ms, ok=True, tg_id=tg_id)
+            log_event(
+                log,
+                logging.WARNING if provider_index else logging.INFO,
+                "llm_fallback" if provider_index else "llm_request",
+                "LLM provider completed",
+                provider=provider, purpose=purpose, latency_ms=latency_ms,
+            )
             return text
     raise RuntimeError("Все LLM-провайдеры недоступны: " + "; ".join(errors))
 

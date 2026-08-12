@@ -70,7 +70,7 @@ async def test_pregen_skips_off_audience(db):
 
 async def test_pregen_noop_outside_window(db, monkeypatch):
     """В другие часы преген ничего не генерирует."""
-    tg_id = await _moscow_at_8(db)
+    await _moscow_at_8(db)
     now = datetime(2026, 8, 3, 5, 0, tzinfo=timezone.utc)
 
     called = []

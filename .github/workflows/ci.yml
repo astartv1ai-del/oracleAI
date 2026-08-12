@@ -4,9 +4,13 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -18,13 +22,35 @@ jobs:
       - name: Системные библиотеки WeasyPrint
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev sqlite3
 
       - name: Зависимости (закреплённые версии)
-        run: pip install -r requirements-dev.txt
+        run: python -m pip install -r requirements-dev.txt
 
-      - name: Тесты
+      - name: Ruff
+        run: python -m ruff check app scripts tests
+
+      - name: Python syntax/import smoke
+        run: python -m compileall -q app scripts tests
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          find miniapp/js admin -type f -name '*.js' -print0 \
+            | xargs -0 -r -n1 node --check
+
+      - name: Cache-busting policy
+        run: python scripts/check_cache_busting.py
+
+      - name: Migration-focused tests
+        run: python -m pytest tests/test_migrations.py tests/test_data.py -q -p no:cacheprovider --timeout=120
+
+      - name: Full tests
         run: python -m pytest tests/ -q -p no:cacheprovider --timeout=120
 
-      - name: Самопроверка
+      - name: Dependency audit
+        run: python -m pip_audit -r requirements.txt
+
+      - name: Selfcheck
         run: python scripts/selfcheck.py

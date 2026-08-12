@@ -44,8 +44,8 @@ chmod 600 .env
 | Telegram | `BOT_TOKEN`, `ADMIN_ID` | Реальные значения; не логировать и не передавать на клиент. |
 | LLM | `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `CUSTOM_*` | Достаточно ключа выбранного провайдера; offline fallback остаётся аварийным режимом. |
 | Платежи | `PADDLE_API_KEY`, `PADDLE_API_URL`, `PADDLE_CHECKOUT_URL`, `PADDLE_PRICE_IDS`, `PADDLE_WEBHOOK_SECRET` | Нужны вместе при включении web checkout; `PADDLE_PRICE_IDS` связывает внутренние планы с `pri_...` на сервере. |
-| Наблюдаемость | `SENTRY_DSN`, `LOG_LEVEL` | Sentry — опционально, но рекомендован для production. |
-| Резервное копирование | `BACKUP_S3_URL`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`, `BACKUP_S3_BUCKET` | Рекомендуется off-site encrypted storage и регулярное восстановление. |
+| Наблюдаемость | `SENTRY_DSN`, `LOG_LEVEL`, `RELEASE_ID`, `LOG_FILE` | JSONL logs идут в stdout; `LOG_FILE` опционален и должен быть writable. Sentry — опционально, но рекомендован для production. |
+| Резервное копирование | `BACKUP_ENCRYPTION_KEY_HOST_PATH`, `BACKUP_REQUIRE_ENCRYPTION`, `BACKUP_KEEP`, `BACKUP_S3_URL`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`, `BACKUP_S3_BUCKET` | Production fail-closed требует отдельный host key, encrypted snapshot, checksum, off-site copy и restore drill. |
 
 Конфигурация читается dataclass-настройками в `app/config.py`; неизвестные или небезопасные значения не следует «исправлять» прямо в контейнере.[2]
 
@@ -112,16 +112,28 @@ curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 | Проверка | Периодически восстановить в изолированном контуре и выполнить `selfcheck`. |
 | RPO/RTO | Зафиксировать владельцем продукта до публичного запуска. |
 
-Процедура восстановления: остановите writer-сервисы, сохраните текущую повреждённую БД как forensic-копию, восстановите проверенный backup, поднимите API и бот, выполните healthcheck и вручную проверьте данные тестовой учётной записи. Зафиксируйте инцидент и время последней подтверждённой записи.
+Процедура восстановления: остановите writer-сервисы, сохраните текущую повреждённую БД как forensic-копию, затем используйте проверяемый helper:
+
+```bash
+BACKUP_ENCRYPTION_KEY_FILE=/etc/oracle/backup.key \
+  ./scripts/restore_db.sh /srv/oracle/backups/oracle-<дата>.db.enc \
+  /srv/oracle/data/oracle.db
+```
+
+`restore_db.sh` проверяет checksum, расшифровывает во временный файл, выполняет
+`PRAGMA integrity_check`, сохраняет rollback-копию текущей базы и только затем
+заменяет destination. После восстановления поднимите API и бот, выполните
+healthcheck/selfcheck и вручную проверьте тестовую учётную запись. Зафиксируйте
+инцидент и время последней подтверждённой записи.
 
 ## Наблюдаемость и инциденты
 
 | Сигнал | Источник | Первое действие |
 |---|---|---|
 | `/api/health` не `ok` | Health endpoint / Docker healthcheck | Проверить `api` logs, доступ к томам и свободное место. |
-| Ошибки 5xx / latency | API logs, `X-Response-Time`, Sentry | Сопоставить с commit, провайдером LLM и БД. |
-| LLM недоступна | Usage/logs, Sentry | Убедиться, что работает offline fallback; не удалять данные. |
-| Не проходят платежи | Webhook logs, provider dashboard | Проверить подпись и sandbox/production-окружение; не повторять начисление вручную без idempotency. |
+| Ошибки 5xx / latency | JSONL API logs, `X-Request-ID`, `X-Response-Time`, Sentry | Запустить `python -m scripts.ops_alerts --log-file <jsonl>` и сопоставить с release/provider/БД. |
+| LLM fallback rate | JSONL `llm_request`/`llm_fallback` + `llm_usage` | Проверить provider health, queue, prompt/model release и offline safety; не удалять данные. |
+| Не проходят платежи | JSONL `webhook_failure`, webhook logs, provider dashboard | Проверить подпись и sandbox/production-окружение; не повторять начисление вручную без idempotency. |
 | Подозрение на утечку | Audit/logs, обращение support | Ограничить доступ, сохранить логи, следовать SECURITY. |
 
 ## Откат

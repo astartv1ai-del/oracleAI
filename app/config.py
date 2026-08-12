@@ -76,9 +76,12 @@ class Settings:
     # `vip:pri_...,basic:pri_...` — never derive a provider price from client input.
     paddle_price_ids: str = os.getenv("PADDLE_PRICE_IDS", "")
 
-    # ── окружение ──
+    # ── окружение и наблюдаемость ──
+    app_env: str = os.getenv("APP_ENV", "dev").lower()
     dev_mode: bool = os.getenv("DEV_MODE", "0") == "1"
     log_level: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_file: str = os.getenv("LOG_FILE", "")
+    release_id: str = os.getenv("RELEASE_ID", "local")
     db_path: str = os.getenv("DB_PATH") or str(DATA_DIR / "oracle.db")
     public_url: str = os.getenv("PUBLIC_URL", "").rstrip("/")
 

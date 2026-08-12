@@ -87,8 +87,8 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 
 * `.env`, production-токены, ключи LLM, webhook secrets и Sentry DSN не коммитятся, не отправляются в чат и не попадают в screenshot.
 * Production-доступ выдаётся персонально, по минимально необходимым правам и отзывается при смене роли.
-* Бэкапы SQLite считаются чувствительными: шифруются вне хоста, имеют retention и регулярно восстанавливаются в изолированном контуре.
-* Логи не должны содержать целые тексты чатов, дневников, токены или подписи webhook.
+* Бэкапы SQLite считаются чувствительными: production backup service fail-closed требует отдельный host key, шифрует snapshot через PBKDF2/соль, создаёт checksum, соблюдает retention и регулярно восстанавливается в изолированном контуре через `scripts/restore_db.sh`.
+* Structured JSONL логи содержат только whitelisted operational fields, request/release IDs и redaction; они не должны содержать целые тексты чатов, дневников, токены, initData, Telegram IDs или webhook payload.
 
 ## Реакция на инцидент
 
@@ -111,7 +111,9 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 - [ ] New API routes имеют auth, ownership, validation и rate limit.
 - [ ] Критические действия не доверяют данным браузера.
 - [ ] Webhook signature, `transaction.completed`, server-side order binding и idempotency проверены в sandbox.
-- [ ] Бэкап создан и восстановление проверено.
+- [ ] Зашифрованный бэкап создан, checksum проверен и restore drill выполнен через `scripts/restore_db.sh`.
+- [ ] JSONL logs redacted; `ops_alerts.py` проверяет 5xx, webhook failures, LLM fallback rate и backup freshness.
+- [ ] Публичные Privacy Policy, Terms, 16+ wording и deletion/support flow доступны и прошли юридическую проверку.
 - [ ] Нет новых unsafe inline, утечек личного текста или недоступных CTA.
 
 ## References

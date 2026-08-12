@@ -231,7 +231,8 @@ async def diary_summary(month: str | None = Query(default=None),
     themes = _themes_of(entries)
     repeated = [t["theme"] for t in themes if t["count"] >= 2]
     first, last = entries[0], entries[-1]
-    snippet = lambda e: (e.get("text") or "")[:120]
+    def snippet(entry):
+        return (entry.get("text") or "")[:120]
 
     themes_line = (", ".join(f"{t['theme']} — {t['count']}" for t in themes)
                    or "нет явных")

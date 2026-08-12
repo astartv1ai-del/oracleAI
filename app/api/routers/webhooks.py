@@ -29,11 +29,19 @@ from ...data.session import transaction, utcnow
 from ...repo import billing as billing_repo
 from ...services import analytics
 from ...services import billing as billing_svc
+from ...core.observability import log_event
 from ..deps import get_db
 
 log = logging.getLogger("oracle.api.webhooks")
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
+
+
+def _failure(message: str, *, status_code: int | None = None) -> None:
+    log_event(
+        log, logging.WARNING, "webhook_failure", message,
+        operation="paddle", status_code=status_code,
+    )
 
 #: Насколько старую подпись принимаем. Защита от переигрывания перехваченного
 #: запроса: подпись сама по себе бессрочна.
@@ -91,6 +99,7 @@ async def _already_seen(db, event_id: str, provider: str, kind: str,
                 (event_id, provider, kind, payload[:8000], utcnow()))
         return not cur.rowcount
     except Exception as e:  # noqa: BLE001
+        _failure("webhook idempotency journal unavailable", status_code=503)
         log.error("журнал вебхуков недоступен: %s", e)
         return False          # лучше обработать дважды, чем потерять оплату
 
@@ -115,20 +124,22 @@ async def paddle(request: Request, db=Depends(get_db),
     if len(raw) > 512 * 1024:
         raise HTTPException(413, "тело вебхука слишком большое")
     if not settings.paddle_webhook_secret:
-        log.warning("вебхук Paddle пришёл, но PADDLE_WEBHOOK_SECRET не задан")
+        _failure("webhook secret is not configured", status_code=503)
         raise HTTPException(503, "web-оплата не настроена")
     if not verify_paddle(raw, paddle_signature or "", settings.paddle_webhook_secret):
-        log.warning("вебхук Paddle с неверной подписью")
+        _failure("webhook signature rejected", status_code=401)
         raise HTTPException(401, "подпись не подтверждена")
 
     try:
         body = json.loads(raw.decode("utf-8"))
     except ValueError as e:
+        _failure("webhook body is not JSON", status_code=400)
         raise HTTPException(400, "тело не JSON") from e
 
     event_id = str(body.get("event_id") or body.get("notification_id") or "")
     kind = str(body.get("event_type") or "")
     if not event_id:
+        _failure("webhook event id is missing", status_code=400)
         raise HTTPException(400, "нет event_id")
     # Do not claim the event before the entitlement transaction. If billing
     # fails, Paddle must be able to retry rather than seeing a false duplicate.
@@ -148,13 +159,13 @@ async def paddle(request: Request, db=Depends(get_db),
     custom = _custom_data(body)
     payload = str(custom.get("order_payload") or "")
     if not payload or len(payload) > 120:
-        log.error("вебхук %s без корректного order_payload", event_id)
+        _failure("webhook order payload is invalid")
         return {"ok": True, "unmatched": True}
     order = await billing_repo.order_by_payload(db, payload)
     if not order or order["status"] != "pending":
         duplicate = await _already_seen(
             db, event_id, "paddle", kind, raw.decode("utf-8", "ignore"))
-        log.error("вебхук %s не сопоставлен с pending-заказом", event_id)
+        _failure("webhook pending order binding failed")
         return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "unmatched": True}
     if order["surface"] != "web" or order["kind"] != "plan":
         log.error("вебхук %s с недопустимым типом заказа", event_id)

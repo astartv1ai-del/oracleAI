@@ -22,7 +22,6 @@ from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import users as users_repo
 from . import agents, astro, interpretation, llm, memory, skills, tarot
-from . import matrix as mx
 from .agents.base import language_and_gender_guidance
 from .stable import stable_seed
 
@@ -364,28 +363,7 @@ async def interpret_compat(db, user, partner_date: str,
 
     data = skills._compat(user["birth_date"], partner_date, relation=relation,
                           aspects=aspects)
-    brief = (f"я — {data['you']['sign']} ({data['you']['element']}), "
-             f"{who} — {data['partner']['sign']} ({data['partner']['element']}), "
-             f"балл {data['score']}/100")
     block = await _synastry_data(db, user, partner_date)
-    synast = f"\n\nДанные синастрии (считает код):\n{block}" if block else ""
-
-    spheres_block = ""
-    spheres = data.get("spheres")
-    if spheres:
-        lines = "\n".join(
-            f"- {s.get('title') or s.get('slug') or 'сфера'}: {s.get('value')}/100"
-            f"{' — ' + str(s.get('note')) if s.get('note') else ''}"
-            for s in spheres)
-        relation = data.get("relation")
-        relation_txt = (" Тип связи: "
-                        + {"love": "любовный союз", "friend": "дружба",
-                           "work": "работа/дело", "family": "семья"}
-                        .get(relation, str(relation)) + "." if relation else "")
-        spheres_block = (f"\n\nБаллы по сферам (считает код):\n{lines}.{relation_txt}\n"
-                         f"Разбери отношения ПО КАЖДОЙ сфере отдельно: что в этой "
-                         f"сфере связывает, где трение и что укрепит именно её. "
-                         f"Общий балл упомяни, но не превращай разбор в один вердикт.")
 
     relation_label = {
         "love": "любовный союз", "friend": "дружба", "work": "работа/дело",

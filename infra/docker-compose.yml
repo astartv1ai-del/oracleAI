@@ -57,36 +57,48 @@ services:
       api:
         condition: service_healthy
 
-  # Ежедневный бэкап базы. Данные рождения — чувствительные, и потерять их
-  # нельзя: `.backup` снимает консистентную копию прямо на живой БД.
-  # Локальный бэкап живёт в oracle_backups; если задан BACKUP_S3_URL, копия
-  # уходит ещё и в S3-совместимое хранилище (off-site, переживает потерю VPS).
+  # Ежедневный backup чувствительной SQLite-базы. Production требует ключ:
+  # raw .db snapshots не создаются, копия получает checksum и уходит off-site.
   backup:
     image: alpine:3
     volumes:
-      - oracle_data:/data
+      - oracle_data:/data:ro
       - oracle_backups:/backups
+      - ${BACKUP_ENCRYPTION_KEY_HOST_PATH:-/etc/oracle/backup.key}:/run/secrets/oracle-backup-key:ro
     environment:
-      - BACKUP_S3_URL=${BACKUP_S3_URL:-}
-      - BACKUP_S3_ACCESS_KEY=${BACKUP_S3_ACCESS_KEY:-}
-      - BACKUP_S3_SECRET_KEY=${BACKUP_S3_SECRET_KEY:-}
-      - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET:-}
-      - BACKUP_S3_REGION=${BACKUP_S3_REGION:-us-east-1}
+      BACKUP_S3_URL: ${BACKUP_S3_URL:-}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      BACKUP_ENCRYPTION_KEY_FILE: /run/secrets/oracle-backup-key
+      BACKUP_REQUIRE_ENCRYPTION: ${BACKUP_REQUIRE_ENCRYPTION:-1}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
     entrypoint: >
-      sh -c "apk add --no-cache sqlite s3cmd >/dev/null &&
-             export AWS_ACCESS_KEY_ID=\$BACKUP_S3_ACCESS_KEY
-                    AWS_SECRET_ACCESS_KEY=\$BACKUP_S3_SECRET_KEY;
+      sh -c "apk add --no-cache openssl sqlite s3cmd >/dev/null &&
+             [ -r \"\$BACKUP_ENCRYPTION_KEY_FILE\" ] ||
+               { echo 'backup key is required'; exit 1; };
              while true; do
-               ts=$$(date +%Y%m%d-%H%M);
-               file=/backups/oracle-$$ts.db;
-               sqlite3 /data/oracle.db \".backup '\$file'\" &&
-               echo \"backup ok: `basename \$file`\";
+               ts=\$$(date -u +%Y%m%d-%H%M%S);
+               tmp=/backups/.oracle-\$\$ts.db.tmp;
+               file=/backups/oracle-\$\$ts.db.enc;
+               sqlite3 /data/oracle.db \".backup '\$\$tmp'\" &&
+               [ \"\$(sqlite3 \"\$\$tmp\" 'PRAGMA integrity_check;')\" = ok ] &&
+               openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+                 -pass file:\"\$BACKUP_ENCRYPTION_KEY_FILE\" \
+                 -in \"\$\$tmp\" -out \"\$\$file\" &&
+               rm -f \"\$\$tmp\" &&
+               sha256sum \"\$\$file\" > \"\$\$file.sha256\" &&
+               echo \"encrypted backup ok: `basename \"\$\$file\"`\";
                if [ -n \"\$BACKUP_S3_URL\" ] && [ -n \"\$BACKUP_S3_BUCKET\" ]; then
-                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION
-                       put \$file s3://\$BACKUP_S3_BUCKET/ &&
-                 echo \"uploaded: `basename \$file`\";
+                 export AWS_ACCESS_KEY_ID=\$BACKUP_S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$BACKUP_S3_SECRET_KEY;
+                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION \
+                       put \"\$\$file\" s3://\$BACKUP_S3_BUCKET/ &&
+                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION \
+                       put \"\$\$file.sha256\" s3://\$BACKUP_S3_BUCKET/;
                fi;
-               find /backups -name 'oracle-*.db' -mtime +14 -delete;
+               find /backups -maxdepth 1 -type f -name 'oracle-*.db.enc' -mtime +14 -delete;
+               find /backups -maxdepth 1 -type f -name 'oracle-*.db.enc.sha256' -mtime +14 -delete;
                sleep 86400;
              done"
     restart: unless-stopped

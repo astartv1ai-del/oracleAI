@@ -27,12 +27,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app.config import settings
-from app.core import agent as agent_core
-from app.core import astro, llm, memory
-from app.core.agents.runtime import answer
-from app.data.session import connect, utcnow
-from app.repo import users
+from app.config import settings  # noqa: E402
+from app.core import agent as agent_core  # noqa: E402
+from app.core import astro, llm, memory  # noqa: E402
+from app.core.agents.runtime import answer  # noqa: E402
+from app.data.session import connect, utcnow  # noqa: E402
+from app.repo import users  # noqa: E402
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 

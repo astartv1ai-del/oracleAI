@@ -8,6 +8,9 @@
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlsplit, urlunsplit
+
+from .observability import redact_text
 
 log = logging.getLogger("oracle.sentry")
 
@@ -26,11 +29,30 @@ def init() -> None:
     except ImportError:
         log.warning("SENTRY_DSN задан, но sentry-sdk не установлен")
         return
+    def before_send(event, hint):
+        # Sentry PII flag is not enough for exception messages composed by
+        # third-party clients; scrub strings and remove query parameters.
+        if isinstance(event.get("message"), dict):
+            message = event["message"].get("message")
+            if message:
+                event["message"]["message"] = redact_text(message)
+        for exception in (event.get("exception", {}).get("values", []) or []):
+            if exception.get("value"):
+                exception["value"] = redact_text(exception["value"])
+        request = event.get("request") or {}
+        if request.get("url"):
+            parsed = urlsplit(request["url"])
+            request["url"] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+        event["request"] = request
+        return event
+
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
         traces_sample_rate=0.05,        # дашборд перфоманса без лишнего расхода
         send_default_pii=False,         # в события не тащим личные данные клиенток
-        environment="production",
+        environment=settings.app_env,
+        release=settings.release_id,
+        before_send=before_send,
     )
     _initialized = True
     log.info("Sentry подключён")

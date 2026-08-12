@@ -18,14 +18,13 @@ from aiogram.types import BotCommand
 
 from ..config import settings
 from ..core import flood, sentry
+from ..core.observability import configure_logging
 from ..data.session import connect
 from ..repo import content as content_repo
 from ..services import broadcast, scheduler
 from . import chat, features, growth, onboarding, profile, shop
 
-logging.basicConfig(
-    level=getattr(logging, settings.log_level, logging.INFO),
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+configure_logging(level=settings.log_level, log_file=settings.log_file)
 log = logging.getLogger("oracle")
 
 BROADCAST_TICK = 60          # рассылки проверяем чаще планировщика: «отправить

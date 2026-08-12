@@ -235,7 +235,6 @@ async def paid(message: Message, db):
         return
 
     granted = result["granted"]
-    user = await users.get(db, message.from_user.id)
     if granted.get("kind") == "plan":
         text = (f"👑 <b>{granted['title']}</b> — доступ открыт на "
                 f"{granted['days']} дней.\n"
