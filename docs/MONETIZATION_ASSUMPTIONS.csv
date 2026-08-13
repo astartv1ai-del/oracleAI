@@ -1,0 +1,37 @@
+version,scenario,metric,value,unit,source,as_of,status,notes
+2026-08-13.v1,cash_constrained,target_paid_arppu,3000,RUB_per_30d,approved_plan,2026-08-13,hypothesis,Target floor; not observed revenue
+2026-08-13.v1,validated_growth,target_paid_arppu,4000,RUB_per_30d,approved_plan,2026-08-13,hypothesis,Core target hypothesis
+2026-08-13.v1,large_team,target_paid_arppu,5000,RUB_per_30d,approved_plan,2026-08-13,hypothesis,Upper target hypothesis
+2026-08-13.v1,cash_constrained,core_pack_price,1490,RUB_gross,approved_plan,2026-08-13,hypothesis,First deep step pack
+2026-08-13.v1,validated_growth,core_pack_price,3990,RUB_gross,approved_plan,2026-08-13,hypothesis,Personal month core pack
+2026-08-13.v1,large_team,core_pack_price,6990,RUB_gross,approved_plan,2026-08-13,hypothesis,Large period anchor
+2026-08-13.v1,cash_constrained,effective_platform_realization,,percent,settlement_export,TBD,required_input,Net after Stars/Paddle/platform deductions
+2026-08-13.v1,validated_growth,effective_platform_realization,,percent,settlement_export,TBD,required_input,Net after Stars/Paddle/platform deductions
+2026-08-13.v1,large_team,effective_platform_realization,,percent,settlement_export,TBD,required_input,Net after Stars/Paddle/platform deductions
+2026-08-13.v1,cash_constrained,tax_and_withholding_rate,,percent,tax_review,TBD,required_input,Jurisdiction and entity specific
+2026-08-13.v1,validated_growth,tax_and_withholding_rate,,percent,tax_review,TBD,required_input,Jurisdiction and entity specific
+2026-08-13.v1,large_team,tax_and_withholding_rate,,percent,tax_review,TBD,required_input,Jurisdiction and entity specific
+2026-08-13.v1,cash_constrained,refund_rate,,percent,settlement_export,TBD,required_input,Observed refunds/chargebacks by SKU
+2026-08-13.v1,validated_growth,refund_rate,,percent,settlement_export,TBD,required_input,Observed refunds/chargebacks by SKU
+2026-08-13.v1,large_team,refund_rate,,percent,settlement_export,TBD,required_input,Observed refunds/chargebacks by SKU
+2026-08-13.v1,cash_constrained,variable_llm_cogs_per_payer,,RUB_per_30d,llm_usage_cost_map,TBD,required_input,Provider/model/purpose weighted average
+2026-08-13.v1,validated_growth,variable_llm_cogs_per_payer,,RUB_per_30d,llm_usage_cost_map,TBD,required_input,Provider/model/purpose weighted average
+2026-08-13.v1,large_team,variable_llm_cogs_per_payer,,RUB_per_30d,llm_usage_cost_map,TBD,required_input,Provider/model/purpose weighted average
+2026-08-13.v1,cash_constrained,variable_voice_tool_cogs_per_payer,,RUB_per_30d,provider_settlement,TBD,required_input,Voice/tool cost allocated by purpose
+2026-08-13.v1,validated_growth,variable_voice_tool_cogs_per_payer,,RUB_per_30d,provider_settlement,TBD,required_input,Voice/tool cost allocated by purpose
+2026-08-13.v1,large_team,variable_voice_tool_cogs_per_payer,,RUB_per_30d,provider_settlement,TBD,required_input,Voice/tool cost allocated by purpose
+2026-08-13.v1,cash_constrained,support_referral_cogs_per_payer,,RUB_per_30d,ops_and_referral_ledger,TBD,required_input,Support/referral/creator variable cost
+2026-08-13.v1,validated_growth,support_referral_cogs_per_payer,,RUB_per_30d,ops_and_referral_ledger,TBD,required_input,Support/referral/creator variable cost
+2026-08-13.v1,large_team,support_referral_cogs_per_payer,,RUB_per_30d,ops_and_referral_ledger,TBD,required_input,Support/referral/creator variable cost
+2026-08-13.v1,cash_constrained,fixed_opex_monthly,,RUB_per_month,finance_and_payroll,TBD,required_input,Full-loaded people plus cloud/legal/admin
+2026-08-13.v1,validated_growth,fixed_opex_monthly,,RUB_per_month,finance_and_payroll,TBD,required_input,Full-loaded people plus cloud/legal/admin
+2026-08-13.v1,large_team,fixed_opex_monthly,,RUB_per_month,finance_and_payroll,TBD,required_input,Full-loaded people plus cloud/legal/admin
+2026-08-13.v1,cash_constrained,paid_marketing_monthly,,RUB_per_month,marketing_budget,TBD,required_input,Zero until organic contribution gate passes
+2026-08-13.v1,validated_growth,paid_marketing_monthly,,RUB_per_month,marketing_budget,TBD,required_input,Capped test budget
+2026-08-13.v1,large_team,paid_marketing_monthly,,RUB_per_month,marketing_budget,TBD,required_input,Scale budget only after CAC payback gate
+2026-08-13.v1,cash_constrained,full_loaded_hire_monthly,,RUB_per_person_month,finance_and_payroll,TBD,required_input,Used for 1.5x hiring gate
+2026-08-13.v1,validated_growth,full_loaded_hire_monthly,,RUB_per_person_month,finance_and_payroll,TBD,required_input,Used for 1.5x hiring gate
+2026-08-13.v1,large_team,full_loaded_hire_monthly,,RUB_per_person_month,finance_and_payroll,TBD,required_input,Role-specific by country/employment model
+2026-08-13.v1,cash_constrained,monthly_paying_users,,users,product_analytics,TBD,observed_input,Unique successful payers in rolling 30d
+2026-08-13.v1,validated_growth,monthly_paying_users,,users,product_analytics,TBD,observed_input,Unique successful payers in rolling 30d
+2026-08-13.v1,large_team,monthly_paying_users,,users,product_analytics,TBD,observed_input,Unique successful payers in rolling 30d

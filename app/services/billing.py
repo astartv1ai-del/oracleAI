@@ -18,6 +18,7 @@ import logging
 from ..config import settings
 from ..data.session import transaction
 from ..repo import analytics, billing as repo, content, growth, users
+from . import analytics as analytics_service
 
 log = logging.getLogger("oracle.billing")
 
@@ -88,6 +89,13 @@ async def checkout_product(db, tg_id: int, sku: str, *,
     await analytics.track(db, analytics.E_INVOICE, tg_id,
                           props={"sku": sku, "stars": product["price_stars"]},
                           surface=surface)
+    if product["kind"] == "crystals":
+        await analytics_service.track_monetization(
+            db, analytics_service.E_CREDIT_PACK_CHECKOUT_STARTED, tg_id,
+            surface=surface if surface in {"bot", "miniapp"} else "system",
+            sku=sku, channel=surface,
+            credit_band_name=analytics_service.credit_band(product["grant_qty"]),
+        )
     return {**order, "description": product["description"] or product["title"],
             "product": dict(product)}
 
@@ -181,6 +189,19 @@ async def pay_with_crystals(db, tg_id: int, sku: str, *,
                                    amount_stars=0)
         await analytics.track(db, analytics.E_PAID, tg_id,
                               props={"sku": sku, "crystals": price}, surface=surface)
+    await analytics_service.track_monetization(
+        db, analytics_service.E_CREDIT_SPENT, tg_id,
+        surface=surface if surface in {"bot", "miniapp"} else "system",
+        sku=sku, channel=surface, credit_band_name=analytics_service.credit_band(price),
+        result_category=product["grant_kind"],
+    )
+    fresh_user = await users.get(db, tg_id)
+    if fresh_user and int(fresh_user["crystals"] or 0) <= 20:
+        await analytics_service.track_monetization(
+            db, analytics_service.E_CREDIT_BALANCE_LOW, tg_id,
+            surface=surface if surface in {"bot", "miniapp"} else "system",
+            channel=surface, reason="threshold_20",
+        )
     return {"order": order, "granted": granted, "product": dict(product)}
 
 
@@ -217,6 +238,13 @@ async def apply_payment(db, payload: str, *, charge_id: str | None = None,
                                      "stars": order["amount_stars"]},
                               surface=order["surface"] or "bot")
         await _referral_revenue_bonus(db, order["tg_id"], order["amount_stars"] or 0)
+    if order["kind"] == "crystals":
+        await analytics_service.track_monetization(
+            db, analytics_service.E_CREDIT_PACK_PAID, order["tg_id"],
+            surface=order["surface"] if order["surface"] in {"bot", "miniapp"} else "system",
+            sku=order["sku"], channel=order["surface"],
+            credit_band_name=analytics_service.credit_band(_order_meta(order).get("grant_qty")),
+        )
     return {"order": dict(order), "granted": granted}
 
 

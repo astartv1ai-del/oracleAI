@@ -29,6 +29,8 @@
 - Design component inventory and viewport/accessibility matrix are now checked by a deterministic token/import/reduced-motion contract gate in CI.
 - Tool preflight metadata now uses a one-column mobile sheet so required data, duration and result remain readable at 360–430 px; assets bumped to v83 after visual smoke.
 - Added read-only SQLite/WAL health report, deterministic schema manifest, scale-trigger matrix and migration rehearsal runbook; no storage rewrite is enabled before measured thresholds.
+- Added a read-only monetization baseline, versioned unit-economics contract and assumptions CSV for cash-constrained, validated-growth and large-team scenarios; no live prices, subscriptions or balances changed.
+- Added server-owned monetization milestones for crystal-pack checkout/paid, crystal spend and low balance, plus dashboard gross/estimated KPI for paid ARPPU, repeat purchase, refunds, SKU mix and provider-purpose cost; net revenue/contribution remain null until reviewed settlement inputs exist.
 
 ### Security
 

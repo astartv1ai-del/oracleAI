@@ -37,6 +37,18 @@ E_FIRST_QUESTION = "first_question"
 E_RETURN_D1 = "return_d1"
 E_RETURN_D7 = "return_d7"
 
+# Monetization milestones. These names and props are server-owned; clients cannot
+# create arbitrary revenue events or attach payment/content data.
+E_PAYWALL_VIEW = "paywall_view"
+E_PAYWALL_CHOICE = "paywall_choice"
+E_CREDIT_PACK_CHECKOUT_STARTED = "credit_pack_checkout_started"
+E_CREDIT_PACK_PAID = "credit_pack_paid"
+E_CREDIT_SPENT = "credit_spent"
+E_CREDIT_BALANCE_LOW = "credit_balance_low"
+E_REPORT_DELIVERED = "report_delivered"
+E_REFUND_REQUESTED = "refund_requested"
+E_REFUND_COMPLETED = "refund_completed"
+
 
 async def track(db, name: str, tg_id: int | None = None, *,
                 props: dict | None = None, surface: str = "bot") -> None:
@@ -349,6 +361,78 @@ async def llm_costs(db, days: int = 30) -> dict:
         "per_paying_usd": round(total_cost / subs, 3) if subs else 0.0,
         "by_purpose": by_purpose,
         "by_model": by_model,
+    }
+
+
+async def monetization_kpis(db, days: int = 30) -> dict:
+    """Revenue/cost KPI block with an explicit no-fabrication net boundary.
+
+    Stars are reported in their native unit. Net revenue and contribution margin
+    stay unavailable until settlement/tax/refund assumptions are reviewed; a
+    gross number must never be presented as profit.
+    """
+    since = _ago(days)
+    gross_stars = await _scalar(
+        db, "SELECT SUM(amount_stars) FROM payments "
+        "WHERE status='succeeded' AND created_at>=?", since)
+    payers = await _scalar(
+        db, "SELECT COUNT(DISTINCT tg_id) FROM payments "
+        "WHERE status='succeeded' AND created_at>=?", since)
+    paid_orders = await _scalar(
+        db, "SELECT COUNT(*) FROM orders WHERE status='paid' AND paid_at>=?", since)
+    refunded_orders = await _scalar(
+        db, "SELECT COUNT(*) FROM orders WHERE status='refunded' AND created_at>=?", since)
+    repeat_payers = await _scalar(
+        db, "SELECT COUNT(*) FROM (SELECT tg_id FROM payments "
+        "WHERE status='succeeded' AND created_at>=? GROUP BY tg_id HAVING COUNT(*)>=2)",
+        since,
+    )
+
+    async def event_count(name: str) -> int:
+        return await _scalar(db, "SELECT COUNT(*) FROM events WHERE name=? AND created_at>=?", name, since)
+
+    by_sku_cur = await db.execute(
+        "SELECT COALESCE(sku, kind) sku, COUNT(*) orders, "
+        "COUNT(DISTINCT tg_id) payers, COALESCE(SUM(amount_stars),0) gross_stars "
+        "FROM orders WHERE status='paid' AND paid_at>=? "
+        "GROUP BY COALESCE(sku, kind) ORDER BY gross_stars DESC, orders DESC", (since,))
+    by_sku = [dict(row) for row in await by_sku_cur.fetchall()]
+
+    cost_cur = await db.execute(
+        "SELECT purpose, provider, model, COUNT(*) calls, "
+        "COALESCE(SUM(cost_usd),0) cost_usd, "
+        "COALESCE(AVG(latency_ms),0) avg_latency_ms "
+        "FROM llm_usage WHERE created_at>=? GROUP BY purpose, provider, model "
+        "ORDER BY cost_usd DESC", (since,))
+    provider_cost = [dict(row) for row in await cost_cur.fetchall()]
+    llm_cost = await _scalar(
+        db, "SELECT SUM(cost_usd) FROM llm_usage WHERE created_at>=?", since)
+
+    return {
+        "days": days,
+        "status": "estimated_requires_settlement_inputs",
+        "gross_booking_stars": int(gross_stars),
+        "paid_orders": int(paid_orders),
+        "paid_payers": int(payers),
+        "paid_arppu_stars": round(gross_stars / payers, 2) if payers else 0.0,
+        "repeat_payers": int(repeat_payers),
+        "repeat_payer_rate": round(repeat_payers * 100 / payers, 1) if payers else 0.0,
+        "refund_orders": int(refunded_orders),
+        "refund_rate": round(refunded_orders * 100 / paid_orders, 1) if paid_orders else 0.0,
+        "credit_pack_checkout_started": await event_count(E_CREDIT_PACK_CHECKOUT_STARTED),
+        "credit_pack_paid": await event_count(E_CREDIT_PACK_PAID),
+        "credit_spent": await event_count(E_CREDIT_SPENT),
+        "reports_delivered": await event_count(E_REPORT_DELIVERED),
+        "llm_variable_cost_usd": round(float(llm_cost), 6),
+        "net_revenue_estimate": None,
+        "contribution_margin_estimate": None,
+        "required_inputs": [
+            "effective_platform_realization", "tax_and_withholding_rate",
+            "refund_rate_by_channel", "voice_tool_cost", "support_referral_cost",
+            "fixed_opex", "paid_marketing",
+        ],
+        "by_sku": by_sku,
+        "provider_cost_by_purpose": provider_cost,
     }
 
 

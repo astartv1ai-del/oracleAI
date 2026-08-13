@@ -47,6 +47,19 @@ D1/D7 — это milestone пользователя, а не количеств�
 | `web_payment` / `payment_success` | plan/sku and provider event category only | Payment completion and recovery. |
 | `safety_crisis` | category from safety enum | Safety volume and review; never expose excerpt in analytics. |
 | `llm_usage` | provider/model/purpose/tokens/cost/latency/ok | Quality, latency and unit economics; stored separately from product events. |
+| `paywall_view` | `surface`, optional `result_category`, `price_variant` | Value-first paywall reach; server-owned only. |
+| `paywall_choice` | `surface`, `sku`, `price_variant`, `credit_band` | Chosen offer variant; never raw price text or free-form choice. |
+| `credit_pack_checkout_started` | `sku`, `channel`, `credit_band` | Crystal pack checkout intent before invoice; server catalog only. |
+| `credit_pack_paid` | `sku`, `channel`, `credit_band` | Confirmed crystal pack payment after idempotent grant. |
+| `credit_spent` | `sku`, `channel`, `credit_band`, `result_category` | Successful server-side spend followed by entitlement/grant. |
+| `credit_balance_low` | `channel`, `reason` | Categorical low-balance threshold; raw balance is excluded. |
+| `report_delivered` | `sku`, `result_category` | Successful premium result delivery, not merely entitlement purchase. |
+| `refund_requested` | `sku`, `reason` | Server-owned support/refund category; no payment payload or free text. |
+| `refund_completed` | `sku`, `reason` | Completed internal state transition after provider/refund workflow. |
+
+## Monetization event rules
+
+Monetization events are emitted only from authenticated server-owned transitions. `sku`, `price_variant`, `result_category` and `reason` are validated categorical values; `channel` is an allowlisted surface/channel category. The client cannot submit an event name, grant amount, payment amount, receipt, order payload or arbitrary props. `credit_pack_paid` is not emitted on duplicate webhook delivery, and `credit_spent` is emitted only after the atomic debit/grant transaction succeeds.
 
 ## Dashboard definitions
 

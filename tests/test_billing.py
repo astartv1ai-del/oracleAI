@@ -9,6 +9,7 @@ import asyncio
 
 import pytest
 
+from app.repo import analytics
 from app.repo import billing as repo
 from app.repo import growth, users
 from app.services import billing as svc
@@ -180,6 +181,11 @@ async def test_buying_with_crystals_charges_once(db, user):
     fresh = await users.get(db, user["tg_id"])
     product = await repo.get_product(db, "spread_celtic")
     assert fresh["crystals"] == 200 - product["price_crystals"]
+    cur = await db.execute(
+        "SELECT COUNT(*) n FROM events WHERE tg_id=? AND name=?",
+        (user["tg_id"], analytics.E_CREDIT_SPENT),
+    )
+    assert (await cur.fetchone())["n"] == 1
 
 
 async def test_crystals_purchase_without_balance_grants_nothing(db, user):
@@ -199,6 +205,15 @@ async def test_crystal_pack_increases_balance(db, user):
     assert result["granted"]["amount"] == 250
     after = (await users.get(db, user["tg_id"]))["crystals"]
     assert after == before + 250
+    cur = await db.execute(
+        "SELECT name, COUNT(*) n FROM events WHERE tg_id=? "
+        "AND name IN (?, ?) GROUP BY name",
+        (user["tg_id"], analytics.E_CREDIT_PACK_CHECKOUT_STARTED,
+         analytics.E_CREDIT_PACK_PAID),
+    )
+    events = {row["name"]: row["n"] for row in await cur.fetchall()}
+    assert events[analytics.E_CREDIT_PACK_CHECKOUT_STARTED] == 1
+    assert events[analytics.E_CREDIT_PACK_PAID] == 1
 
 
 # ─────────────────────────── права доступа ────────────────────────────────────
