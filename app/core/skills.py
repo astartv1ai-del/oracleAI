@@ -22,8 +22,9 @@ from datetime import date, datetime, timedelta
 
 from ..repo import content as content_repo
 from ..repo import dialog as dialog_repo
+from ..repo import palm as palm_repo
 from ..repo import readings as readings_repo
-from . import astro, memory, tarot
+from . import astro, memory, palm, placements, tarot
 from .matrix import compute_matrix, matrix_brief
 
 log = logging.getLogger("oracle.skills")
@@ -429,6 +430,91 @@ async def pair_aspects(db, user: dict, partner_birth: str) -> list[dict] | None:
 _pair_aspects = pair_aspects
 
 
+# ---------------------------------------------------------------- placements and palmistry
+
+_PLACEMENT_CODES = tuple(placements.PLACEMENT_META) + ("life_path", "chinese_zodiac")
+
+
+def _placement_inputs(user) -> dict:
+    return {
+        "birth_date": user["birth_date"],
+        "birth_time": user["birth_time"],
+        "city": user["birth_city"],
+        "lat": user["birth_lat"],
+        "lon": user["birth_lon"],
+        "tz": user["tz"],
+        "time_known": bool(user["birth_time_known"]),
+    }
+
+
+async def _run_get_placement(db, user, args) -> str:
+    code = str(args.get("placement", "") or "").strip()
+    if not user["birth_date"]:
+        return "нет даты рождения — сначала собери натальную карту"
+    if code not in _PLACEMENT_CODES:
+        return "неизвестный placement: выбери один из moon_sign, venus_sign, rising_sign, asteroid_sign, chinese_zodiac, chiron_sign, juno_sign, jupiter_sign, life_path, mars_sign, mercury_sign, neptune_sign, north_node_sign, pluto_sign, saturn_sign, south_node_sign, uranus_sign"
+    if code == "life_path":
+        result = placements.life_path(user["birth_date"])
+    elif code == "chinese_zodiac":
+        result = placements.chinese_zodiac(user["birth_date"])
+    else:
+        result = placements.calculate_placement(code, **_placement_inputs(user))
+    return f"[Детерминированный evidence placement — не выдумывай факты]\n{placements.as_tool_json(result)}"
+
+
+async def _run_get_all_placements(db, user, args) -> str:
+    if not user["birth_date"]:
+        return "нет даты рождения — сначала собери натальную карту"
+    result = placements.all_calculators(**_placement_inputs(user))
+    return ("[Детерминированный evidence всех placement-калькуляторов — "
+            "трактуй только эти значения]\n" + placements.as_tool_json(result))
+
+
+async def _run_get_life_path(db, user, args) -> str:
+    if not user["birth_date"]:
+        return "нет даты рождения"
+    return placements.as_tool_json(placements.life_path(user["birth_date"]))
+
+
+async def _run_get_chinese_zodiac(db, user, args) -> str:
+    if not user["birth_date"]:
+        return "нет даты рождения"
+    return placements.as_tool_json(placements.chinese_zodiac(user["birth_date"]))
+
+
+async def _run_get_palm_reading(db, user, args) -> str:
+    reading_id = args.get("reading_id")
+    reading = None
+    if reading_id not in (None, ""):
+        try:
+            reading = await palm.get(db, user, int(reading_id))
+        except (TypeError, ValueError):
+            reading = None
+    else:
+        reading = await palm.latest(db, user)
+    if not reading:
+        return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
+    return ("[Детерминированный evidence vision-наблюдений ладони. "
+            "Не добавляй отсутствующие линии и не делай медицинских выводов]\n" +
+            json.dumps(reading, ensure_ascii=False, separators=(",", ":")))
+
+
+async def _run_list_palm_readings(db, user, args) -> str:
+    rows = await palm_repo.list_readings(db, user["tg_id"], limit=10)
+    if not rows:
+        return "чтений ладони пока нет"
+    return "Последние чтения ладони:\n" + "\n".join(
+        f"- #{row['id']}: {row['status']}, рука {row['hand_side'] or 'неизвестна'}, "
+        f"{row['created_at']}" for row in rows)
+
+
+async def _run_request_better_palm_photo(db, user, args) -> str:
+    return ("Чтобы прочитать ладонь внимательнее, пересними одну ладонь целиком: "
+            "ровный свет без бликов, камера строго сверху, пальцы расслаблены и "
+            "слегка раздвинуты, без фильтров и украшений. Линии у основания пальцев "
+            "можно прислать вторым крупным кадром. Исходное фото по умолчанию не хранится.")
+
+
 # ---------------------------------------------------------------- skills
 
 async def _run_draw_tarot(db, user, args) -> str:
@@ -657,6 +743,79 @@ SKILLS: dict[str, dict] = {
             "description": ("Натальная карта клиентки (планеты/знаки/дома/аспекты). Зови "
                             "для вопросов о характере, предназначении, «почему я такая»."),
             "input_schema": {"type": "object", "properties": {}},
+        },
+    },
+    "get_placement": {
+        "run": _run_get_placement,
+        "schema": {
+            "name": "get_placement",
+            "description": ("Детерминированный placement-калькулятор по сохранённым "
+                            "данным рождения. Вызывай перед любым утверждением о "
+                            "Луне, Венере, Марсе, Меркурии, Юпитере, Сатурне, "
+                            "Уране, Нептуне, Плутоне, Хироне, Джуно, астероидах, "
+                            "узлах или Асценденте."),
+            "input_schema": {"type": "object", "properties": {
+                "placement": {"type": "string", "enum": [
+                    "moon_sign", "venus_sign", "rising_sign", "asteroid_sign",
+                    "chiron_sign", "juno_sign", "jupiter_sign", "mars_sign",
+                    "mercury_sign", "neptune_sign", "north_node_sign", "pluto_sign",
+                    "saturn_sign", "south_node_sign", "uranus_sign",
+                    "life_path", "chinese_zodiac",
+                ]}}, "required": ["placement"]},
+        },
+    },
+    "get_all_placements": {
+        "run": _run_get_all_placements,
+        "schema": {
+            "name": "get_all_placements",
+            "description": ("Получить компактный evidence-пакет всех placement-калькуляторов "
+                            "и натальных точек. Используй для полного разбора, но не "
+                            "выдумывай поля, скрытые из-за precision."),
+            "input_schema": {"type": "object", "properties": {}},
+        },
+    },
+    "get_life_path": {
+        "run": _run_get_life_path,
+        "schema": {
+            "name": "get_life_path",
+            "description": "Рассчитать число жизненного пути с трассировкой редукции даты.",
+            "input_schema": {"type": "object", "properties": {}},
+        },
+    },
+    "get_chinese_zodiac": {
+        "run": _run_get_chinese_zodiac,
+        "schema": {
+            "name": "get_chinese_zodiac",
+            "description": "Рассчитать китайское животное и элемент с учётом китайского Нового года.",
+            "input_schema": {"type": "object", "properties": {}},
+        },
+    },
+    "get_palm_reading": {
+        "run": _run_get_palm_reading,
+        "schema": {
+            "name": "get_palm_reading",
+            "description": ("Получить последнее или выбранное структурированное vision-чтение "
+                            "ладони. Вызывай только после загрузки фото; трактуй только "
+                            "видимые observations и confidence."),
+            "input_schema": {"type": "object", "properties": {
+                "reading_id": {"type": "integer", "description": "ID чтения, если нужен не последний результат"}}},
+        },
+    },
+    "list_palm_readings": {
+        "run": _run_list_palm_readings,
+        "schema": {
+            "name": "list_palm_readings",
+            "description": "Показать список прошлых чтений ладони без исходных фотографий.",
+            "input_schema": {"type": "object", "properties": {}},
+        },
+    },
+    "request_better_palm_photo": {
+        "run": _run_request_better_palm_photo,
+        "schema": {
+            "name": "request_better_palm_photo",
+            "description": "Дать безопасные инструкции для пересъёмки ладони при низком качестве.",
+            "input_schema": {"type": "object", "properties": {
+                "reasons": {"type": "array", "items": {"type": "string"}}}},
         },
     },
     "get_transits": {

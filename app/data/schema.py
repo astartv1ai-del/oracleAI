@@ -146,6 +146,20 @@ CREATE TABLE IF NOT EXISTS tarot_readings (
     outcome_at TEXT,
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS palm_readings (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id         INTEGER NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'complete', -- complete|needs_photo|failed|deleted
+    hand_side     TEXT,                              -- left|right|unknown
+    image_sha256  TEXT,
+    image_size    INTEGER,
+    analysis_json TEXT,
+    error_code    TEXT,
+    surface       TEXT DEFAULT 'miniapp',
+    created_at    TEXT,
+    updated_at    TEXT,
+    deleted_at    TEXT
+);
 CREATE TABLE IF NOT EXISTS partners (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     tg_id      INTEGER NOT NULL,
@@ -469,6 +483,7 @@ CREATE INDEX IF NOT EXISTS idx_mem_user      ON memories(tg_id);
 CREATE INDEX IF NOT EXISTS idx_diary_user    ON diary(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_read_user     ON tarot_readings(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_read_created  ON tarot_readings(created_at);
+CREATE INDEX IF NOT EXISTS idx_palm_user     ON palm_readings(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_name   ON events(name, day);
 CREATE INDEX IF NOT EXISTS idx_events_user   ON events(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_day    ON events(day);

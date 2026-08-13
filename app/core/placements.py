@@ -1,0 +1,233 @@
+"""Deterministic placement calculators for OracleAI.
+
+The LLM never calculates these values. This module returns Swiss Ephemeris facts,
+precision metadata, and compact interpretation scopes for the specialized agents.
+"""
+from __future__ import annotations
+
+import json
+from datetime import date, datetime
+from functools import lru_cache
+
+from .astro import SIGN_EN2RU, SIGNS
+
+SIGN_SYMBOL = {name: symbol for name, symbol, _ in SIGNS}
+SIGN_ELEMENT = {name: element for name, _, element in SIGNS}
+
+PLACEMENT_META = {
+    "moon_sign": {"label": "Лунный знак", "point": "Moon", "scope": "emotions, needs, safety"},
+    "venus_sign": {"label": "Знак Венеры", "point": "Venus", "scope": "values, affection, attraction"},
+    "rising_sign": {"label": "Восходящий знак", "point": "Ascendant", "scope": "first impression, approach, presentation"},
+    "chiron_sign": {"label": "Знак Хирона", "point": "Chiron", "scope": "vulnerability, learning, repair"},
+    "juno_sign": {"label": "Знак Джуно", "point": "Juno", "scope": "trust, commitment, agreements"},
+    "jupiter_sign": {"label": "Знак Юпитера", "point": "Jupiter", "scope": "growth, learning, opportunity"},
+    "mars_sign": {"label": "Знак Марса", "point": "Mars", "scope": "drive, action, boundaries"},
+    "mercury_sign": {"label": "Знак Меркурия", "point": "Mercury", "scope": "communication, learning, decisions"},
+    "neptune_sign": {"label": "Знак Нептуна", "point": "Neptune", "scope": "imagination, ideals, boundaries"},
+    "north_node_sign": {"label": "Северный узел", "point": "True_North_Lunar_Node", "scope": "growth direction, unfamiliar development"},
+    "pluto_sign": {"label": "Знак Плутона", "point": "Pluto", "scope": "transformation, power, renewal"},
+    "saturn_sign": {"label": "Знак Сатурна", "point": "Saturn", "scope": "discipline, limits, mature skill"},
+    "south_node_sign": {"label": "Южный узел", "point": "True_South_Lunar_Node", "scope": "familiar strategies, inherited patterns"},
+    "uranus_sign": {"label": "Знак Урана", "point": "Uranus", "scope": "freedom, innovation, change"},
+    "asteroid_sign": {"label": "Знаки астероидов", "points": ("Ceres", "Vesta", "Pallas"), "scope": "care, devotion, problem-solving"},
+}
+
+WESTERN_PLACEMENTS = tuple(PLACEMENT_META)
+ALL_CALCULATORS = WESTERN_PLACEMENTS + ("life_path", "chinese_zodiac", "natal_chart")
+
+_ACTIVE_POINTS = [
+    "Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus",
+    "Neptune", "Pluto", "True_North_Lunar_Node", "True_South_Lunar_Node",
+    "Chiron", "Ceres", "Pallas", "Juno", "Vesta",
+    "Ascendant", "Medium_Coeli", "Descendant", "Imum_Coeli",
+]
+
+_POINT_ALIASES = {
+    "True_North_Lunar_Node": "true_north_lunar_node",
+    "True_South_Lunar_Node": "true_south_lunar_node",
+    "Ascendant": "ascendant",
+}
+
+_CHINESE_ANIMALS = ("Крыса", "Бык", "Тигр", "Кролик", "Дракон", "Змея",
+                    "Лошадь", "Коза", "Обезьяна", "Петух", "Собака", "Свинья")
+_CHINESE_ELEMENTS = ("Дерево", "Огонь", "Земля", "Металл", "Вода")
+
+
+def _parse_date(value: str) -> date:
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except (TypeError, ValueError) as exc:
+        raise ValueError("дата рождения должна быть в формате YYYY-MM-DD") from exc
+
+
+def _parse_time(value: str | None) -> tuple[int, int] | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.strptime(value, "%H:%M")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("время рождения должно быть в формате ЧЧ:ММ") from exc
+    return parsed.hour, parsed.minute
+
+
+def _point_name(value: str) -> str:
+    return _POINT_ALIASES.get(value, value.lower())
+
+
+def _point_payload(point_name: str, model, *, exact: bool) -> dict:
+    point = getattr(model, _point_name(point_name), None)
+    if point is None:
+        raise ValueError(f"точка {point_name} недоступна в эфемеридах")
+    sign = SIGN_EN2RU.get(getattr(point, "sign", ""), getattr(point, "sign", ""))
+    if not sign:
+        raise ValueError(f"знак для точки {point_name} не рассчитан")
+    house = getattr(point, "house", None)
+    house_text = str(house) if exact and house else None
+    return {
+        "point": point_name,
+        "label": point_name.replace("_", " "),
+        "sign": sign,
+        "symbol": SIGN_SYMBOL.get(sign, ""),
+        "element": SIGN_ELEMENT.get(sign, ""),
+        "degree": round(float(getattr(point, "position", 0.0)), 1),
+        "abs_degree": round(float(getattr(point, "abs_pos", 0.0)), 1),
+        "house": house_text,
+        "retrograde": bool(getattr(point, "retrograde", False)),
+    }
+
+
+@lru_cache(maxsize=512)
+def _model(birth_date: str, birth_time: str, city: str, lat: float, lon: float, tz: str):
+    from kerykeion import AstrologicalSubjectFactory
+
+    d = _parse_date(birth_date)
+    hour, minute = _parse_time(birth_time) or (12, 0)
+    return AstrologicalSubjectFactory.from_birth_data(
+        name="oracle-placement", year=d.year, month=d.month, day=d.day,
+        hour=hour, minute=minute, city=city or "Moscow", lat=float(lat), lng=float(lon),
+        tz_str=tz or "Europe/Moscow", online=False, active_points=_ACTIVE_POINTS,
+    )
+
+
+def _western_points(birth_date: str, birth_time: str | None, city: str | None,
+                    lat: float | None, lon: float | None, tz: str | None,
+                    time_known: bool | None = None) -> tuple[object, bool]:
+    parsed = _parse_time(birth_time)
+    exact = bool(parsed and time_known is not False and lat is not None and lon is not None and tz)
+    model = _model(birth_date, birth_time or "12:00", city or "Moscow",
+                   float(lat if lat is not None else 55.75),
+                   float(lon if lon is not None else 37.62),
+                   tz or "Europe/Moscow")
+    return model, exact
+
+
+def life_path(birth_date: str) -> dict:
+    d = _parse_date(birth_date)
+    digits = [int(ch) for ch in d.strftime("%Y%m%d")]
+    trace = [sum(digits)]
+    value = trace[0]
+    while value > 9 and value not in (11, 22, 33):
+        value = sum(int(ch) for ch in str(value))
+        trace.append(value)
+    return {
+        "code": "life_path",
+        "label": "Число жизненного пути",
+        "value": value,
+        "trace": trace,
+        "master_number": value in (11, 22, 33),
+        "source": "digit_reduction",
+        "interpretation_scope": "symbolic themes of purpose and recurring choices",
+    }
+
+
+def chinese_zodiac(birth_date: str) -> dict:
+    d = _parse_date(birth_date)
+    try:
+        from lunardate import LunarDate
+        lunar = LunarDate.fromSolarDate(d.year, d.month, d.day)
+        lunar_year = lunar.year
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError("китайский календарь временно недоступен") from exc
+    offset = lunar_year - 1984  # 1984 — Деревянная Крыса, начало 60-летнего цикла.
+    animal = _CHINESE_ANIMALS[offset % 12]
+    element = _CHINESE_ELEMENTS[(offset % 10) // 2]
+    return {
+        "code": "chinese_zodiac",
+        "label": "Китайский зодиакальный знак",
+        "animal": animal,
+        "element": element,
+        "lunar_year": lunar_year,
+        "western_year": d.year,
+        "boundary_adjusted": lunar_year != d.year,
+        "source": "lunisolar_calendar",
+        "interpretation_scope": "temperament and habitual way of moving through life",
+    }
+
+
+def calculate_placement(code: str, birth_date: str, birth_time: str | None = None,
+                        city: str | None = None, lat: float | None = None,
+                        lon: float | None = None, tz: str | None = None,
+                        time_known: bool | None = None) -> dict:
+    if code == "life_path":
+        return life_path(birth_date)
+    if code == "chinese_zodiac":
+        return chinese_zodiac(birth_date)
+    if code == "natal_chart":
+        model, exact = _western_points(birth_date, birth_time, city, lat, lon, tz, time_known)
+        return {"code": code, "label": "Натальная карта", "precision": "exact" if exact else "date_only",
+                "source": "swiss_ephemeris", "points": all_western(model, exact=exact)}
+    if code not in PLACEMENT_META:
+        raise ValueError("неизвестный placement-калькулятор")
+    meta = PLACEMENT_META[code]
+    model, exact = _western_points(birth_date, birth_time, city, lat, lon, tz, time_known)
+    precision = "exact" if exact else "date_only"
+    note = "" if exact else "Время/координаты не подтверждены; дома и углы скрыты."
+    if code == "rising_sign" and not exact:
+        return {"code": code, "label": meta["label"], "error": "Для Асцендента нужны точные дата, время, город и таймзона.",
+                "precision": "insufficient", "source": "swiss_ephemeris"}
+    if "points" in meta:
+        points = [_point_payload(point, model, exact=exact) for point in meta["points"]]
+        return {"code": code, "label": meta["label"], "points": points,
+                "precision": precision, "source": "swiss_ephemeris", "note": note,
+                "interpretation_scope": meta["scope"]}
+    point = _point_payload(meta["point"], model, exact=exact)
+    return {"code": code, "label": meta["label"], **point, "precision": precision,
+            "source": "swiss_ephemeris", "note": note,
+            "interpretation_scope": meta["scope"]}
+
+
+def all_western(model, *, exact: bool) -> list[dict]:
+    points = []
+    for code, meta in PLACEMENT_META.items():
+        if "points" in meta:
+            for point_name in meta["points"]:
+                point = _point_payload(point_name, model, exact=exact)
+                points.append({"code": code, "label": meta["label"], **point,
+                               "interpretation_scope": meta["scope"]})
+        else:
+            if code == "rising_sign" and not exact:
+                points.append({"code": code, "label": meta["label"],
+                               "precision": "insufficient",
+                               "error": "Для Асцендента нужны точные дата, время, город и таймзона.",
+                               "source": "swiss_ephemeris",
+                               "interpretation_scope": meta["scope"]})
+                continue
+            point = _point_payload(meta["point"], model, exact=exact)
+            points.append({"code": code, "label": meta["label"], **point,
+                           "precision": "exact" if exact else "date_only",
+                           "interpretation_scope": meta["scope"]})
+    return points
+
+
+def all_calculators(birth_date: str, birth_time: str | None = None,
+                    city: str | None = None, lat: float | None = None,
+                    lon: float | None = None, tz: str | None = None,
+                    time_known: bool | None = None) -> list[dict]:
+    model, exact = _western_points(birth_date, birth_time, city, lat, lon, tz, time_known)
+    out = all_western(model, exact=exact)
+    out += [life_path(birth_date), chinese_zodiac(birth_date)]
+    return out
+
+
+def as_tool_json(data: dict | list[dict]) -> str:
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))

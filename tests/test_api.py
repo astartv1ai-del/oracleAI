@@ -296,8 +296,8 @@ async def test_agents_list_has_threads(client, user):
     res = await client.get("/api/agents", params=as_user(user))
     assert res.status_code == 200
     agents = res.json()
-    assert len(agents) == 3
-    assert {a["code"] for a in agents} == {"oracle", "astro", "tarot"}
+    assert len(agents) == 4
+    assert {a["code"] for a in agents} == {"oracle", "astro", "tarot", "chiromant"}
     assert all("greeting" in a and "code" in a for a in agents)
 
 

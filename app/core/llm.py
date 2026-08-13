@@ -605,3 +605,89 @@ async def speak(text: str, *, voice: str | None = None) -> bytes | None:
     finally:
         if client is not None:
             await _close_client(client)
+
+
+# ---------------------------------------------------------------- vision
+
+async def complete_vision(system: str, user_text: str, image_data_url: str,
+                          tier: str = "main", max_tokens: int = 1400, *,
+                          purpose: str = "vision", tg_id: int | None = None,
+                          db=None) -> str:
+    """Vision completion with provider fallback.
+
+    The image is passed only to the selected provider and never logged. The
+    caller is responsible for validating the data URL and parsing the result.
+    """
+    if not settings.provider_chain:
+        raise RuntimeError("Все LLM-провайдеры недоступны")
+    errors = []
+    async with _llm_slot():
+        for provider_index, provider in enumerate(settings.provider_chain):
+            meter = _Meter()
+            try:
+                text = await _with_retries(
+                    lambda p=provider: _vision_with(p, system, user_text,
+                                                     image_data_url, tier,
+                                                     max_tokens, meter),
+                    provider, "vision")
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"{provider}: {exc}")
+                await record_usage(db, provider=provider, model=_models(provider, tier),
+                                   purpose=purpose, prompt_tokens=meter.prompt,
+                                   completion_tokens=meter.completion,
+                                   latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                continue
+            await record_usage(db, provider=provider, model=_models(provider, tier),
+                               purpose=purpose, prompt_tokens=meter.prompt,
+                               completion_tokens=meter.completion,
+                               latency_ms=meter.ms, ok=True, tg_id=tg_id)
+            log_event(log, logging.WARNING if provider_index else logging.INFO,
+                      "llm_fallback" if provider_index else "llm_vision_request",
+                      "Vision provider completed", provider=provider,
+                      purpose=purpose, latency_ms=meter.ms)
+            return text
+    raise RuntimeError("Все vision-провайдеры недоступны: " + "; ".join(errors))
+
+
+async def _vision_with(provider: str, system: str, user_text: str,
+                       image_data_url: str, tier: str, max_tokens: int,
+                       meter: _Meter) -> str:
+    if provider == "anthropic":
+        client = _anthropic_client()
+        try:
+            header, encoded = image_data_url.split(",", 1)
+            media_type = header.split(";", 1)[0].split(":", 1)[1]
+            resp = await client.messages.create(
+                model=_models(provider, tier), max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": [
+                    {"type": "text", "text": user_text},
+                    {"type": "image", "source": {"type": "base64",
+                     "media_type": media_type, "data": encoded}},
+                ]}],
+            )
+            meter.add(getattr(resp, "usage", None))
+            return "".join(block.text for block in resp.content
+                           if getattr(block, "type", "") == "text").strip()
+        finally:
+            await _close_client(client)
+
+    client = _openai_client(provider)
+    try:
+        resp = await client.chat.completions.create(
+            model=_models(provider, tier),
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": [
+                    {"type": "text", "text": user_text},
+                    {"type": "image_url", "image_url": {
+                        "url": image_data_url, "detail": "high"}},
+                ]},
+            ],
+            max_tokens=max_tokens,
+        )
+        meter.add(getattr(resp, "usage", None))
+        content = resp.choices[0].message.content if resp.choices else ""
+        return (content or "").strip()
+    finally:
+        await _close_client(client)
