@@ -183,3 +183,32 @@ async def test_stream_options_fallback(monkeypatch):
         assert "stream_options" not in gw.requests[1]
     finally:
         await gw.stop()
+
+
+async def test_pretool_respects_chiromant_allowlist(monkeypatch):
+    calls = []
+
+    async def fake_gather(execute, wanted):
+        calls.extend(wanted)
+        return [f"{name}:{args}" for name, args in wanted]
+
+    async def fake_stream(client, model, messages, max_tokens, **kwargs):
+        return "Мира отвечает по видимому evidence ладони.", []
+
+    monkeypatch.setattr(llm, "_gather_tools", fake_gather)
+    monkeypatch.setattr(llm, "_stream_chat", fake_stream)
+    tools = [{"name": name} for name in (
+        "check_palm_quality", "get_palm_reading", "get_palm_focus",
+        "get_palm_map", "request_better_palm_photo",
+    )]
+
+    text = await llm._run_pretool(
+        None, "model", "Ты — Мира", [
+            {"role": "user", "content": "Проверь качество фото ладони и линию сердца."}
+        ], tools, lambda *_: "", 500, None,
+    )
+
+    assert "Мира" in text
+    assert [name for name, _ in calls] == ["check_palm_quality", "get_palm_focus"]
+    assert all(not name.startswith(("get_chart", "get_transits", "draw_tarot", "get_matrix"))
+               for name, _ in calls)

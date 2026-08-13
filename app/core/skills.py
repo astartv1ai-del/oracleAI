@@ -489,6 +489,17 @@ PALM_TOPIC_LABELS = {
     "mounts": "холмы", "fingers": "пальцы",
 }
 
+def _palm_quality_score(reading: dict) -> float:
+    try:
+        return max(0.0, min(1.0, float((reading.get("image_quality") or {}).get("score") or 0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _palm_is_usable(reading: dict) -> bool:
+    return reading.get("status") == "complete" and _palm_quality_score(reading) >= 0.6
+
+
 PALM_REFLECTION_QUESTIONS = {
     "heart_line": "Где я сейчас честно говорю о своих чувствах, а где предпочитаю молчать?",
     "head_line": "Какой способ думать или принимать решение сейчас поддерживает меня лучше всего?",
@@ -524,6 +535,8 @@ async def _run_palm_map(db, user, args) -> str:
     reading = await _load_palm_reading(db, user, args)
     if not reading:
         return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
+    if not _palm_is_usable(reading):
+        return "карта пока неточна: проверь качество снимка и попроси переснять ладонь перед разбором"
     zones = []
     for item in reading.get("observations") or []:
         topic = str(item.get("topic") or "unknown")
@@ -570,6 +583,8 @@ async def _run_palm_reflection(db, user, args) -> str:
     reading = await _load_palm_reading(db, user, args)
     if not reading:
         return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
+    if not _palm_is_usable(reading):
+        return "для саморефлексии пока недостаточно точного evidence — сначала проверь качество снимка"
     questions = []
     for item in reading.get("observations") or []:
         topic = str(item.get("topic") or "")
@@ -596,6 +611,8 @@ async def _run_compare_palm_readings(db, user, args) -> str:
     previous = await palm.get(db, user, previous_id)
     if not current or not previous:
         return "одно из выбранных чтений не найдено или недостаточно качественно"
+    if not _palm_is_usable(current) or not _palm_is_usable(previous):
+        return "для сравнения нужны два завершённых чтения с качеством кадра не ниже 60%"
     def visible_topics(reading):
         return {str(item.get("topic")) for item in (reading.get("observations") or [])
                 if item.get("visibility") in {"clear", "partial"}}
@@ -629,9 +646,11 @@ async def _run_get_palm_focus(db, user, args) -> str:
     normalized = aliases.get(topic)
     if not normalized:
         return "укажи тему: heart_line, head_line, life_line, fate_line, sun_line, relationship_line, mounts или fingers"
-    reading = await palm.latest(db, user)
+    reading = await _load_palm_reading(db, user, args)
     if not reading:
         return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
+    if not _palm_is_usable(reading):
+        return "фото пока недостаточно качественное для фокусного разбора — сначала вызови check_palm_quality"
     observations = [item for item in (reading.get("observations") or [])
                     if normalized in str(item.get("topic", "")).lower()]
     evidence = {
@@ -961,7 +980,9 @@ SKILLS: dict[str, dict] = {
                 "topic": {"type": "string", "enum": [
                     "heart_line", "head_line", "life_line", "fate_line", "sun_line",
                     "relationship_line", "mounts", "fingers",
-                ]}}, "required": ["topic"]},
+                ]},
+                "reading_id": {"type": "integer", "description": "ID выбранного чтения, если нужен не последний результат"}},
+                "required": ["topic"]},
         },
     },
     "get_palm_map": {

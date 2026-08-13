@@ -95,3 +95,22 @@ def test_chiromant_is_registered_with_palm_tools():
     assert set(agent.skills) == expected
     assert not ({"draw_tarot", "get_chart", "get_matrix", "get_transits"} & set(agent.skills))
     assert {"get_placement", "get_all_placements", "get_life_path", "get_chinese_zodiac"}.issubset(SKILLS)
+
+
+def test_palm_normalizer_coerces_model_enums_and_sanitizes_quality_fields():
+    result = palm._normalize({
+        "status": "complete", "hand_detected": True, "hand_side": "future",
+        "image_quality": {"score": "0.9", "issues": ["диагноз болезни"]},
+        "observations": [{
+            "topic": "medical_claim", "visibility": "certain",
+            "summary": "обычная линия", "confidence": "not-a-number",
+        }],
+        "safety_flags": ["смерть неизбежна"],
+    }, {"score": "0.9", "issues": ["диагноз болезни"]})
+    observation = result["observations"][0]
+    assert observation["topic"] == "unknown"
+    assert observation["visibility"] == "unclear"
+    assert observation["confidence"] == 0.0
+    assert result["hand_side"] == "unknown"
+    assert "диагноз" not in result["image_quality"]["issues"][0]
+    assert "смерть" not in result["safety_flags"][0]

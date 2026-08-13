@@ -15,7 +15,7 @@ from app.api.main import app
 from app.core import palm as palm_core
 from app.core import skills
 from app.core.agents.specs import get
-from app.repo import users
+from app.repo import palm as palm_repo, users
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "palm" / "palm_hand.jpg"
@@ -97,7 +97,7 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     assert result["image_meta"]["height"] == 1728
     assert {row["topic"] for row in result["observations"]} == {"heart_line", "head_line"}
     assert seen["normalized_size"] == (2592, 1728)
-    assert "только видимые" in str(seen["system"])
+    assert "видимыми признаками" in str(seen["system"])
     assert seen["kwargs"]["purpose"] == "palm:vision"
     assert seen["kwargs"]["tg_id"] == user["tg_id"]
 
@@ -131,13 +131,30 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     focus = await skills.execute(db, user, "get_palm_focus", {"topic": "heart_line"})
     assert '"topic":"heart_line"' in focus
     assert "continuous" in focus
+    quality = await skills.execute(db, user, "check_palm_quality", {"reading_id": reading_id})
+    assert '"score":0.93' in quality and "raw_image_stored" in quality
+    palm_map = await skills.execute(db, user, "get_palm_map", {"reading_id": reading_id})
+    assert '"label":"линия сердца"' in palm_map and '"visibility":"partial"' in palm_map
+    reflection = await skills.execute(db, user, "get_palm_reflection", {"reading_id": reading_id})
+    assert '"questions"' in reflection and "heart_line" in reflection
+    second_id = await palm_repo.save_reading(
+        db, user["tg_id"], result,
+        image_sha256=hashlib.sha256(image + b"-second").hexdigest(),
+        image_size=len(image), surface="integration",
+    )
+    comparison = await skills.execute(db, user, "compare_palm_readings", {
+        "current_reading_id": reading_id, "previous_reading_id": second_id,
+    })
+    assert '"shared_visible_topics"' in comparison and "heart_line" in comparison
     listing = await skills.execute(db, user, "list_palm_readings", {})
-    assert f"#{reading_id}" in listing
+    assert f"#{reading_id}" in listing and f"#{second_id}" in listing
 
     deleted = await client.delete(f"/api/palm/{reading_id}", params={"dev_user": user["tg_id"]})
     assert deleted.status_code == 200
     assert deleted.json() == {"ok": True}
     assert (await client.get(f"/api/palm/{reading_id}", params={"dev_user": user["tg_id"]})).status_code == 404
+    deleted_second = await client.delete(f"/api/palm/{second_id}", params={"dev_user": user["tg_id"]})
+    assert deleted_second.status_code == 200
     assert "чтений ладони пока нет" in await skills.execute(db, user, "get_palm_reading", {})
 
 

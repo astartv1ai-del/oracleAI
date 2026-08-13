@@ -174,6 +174,14 @@ def offline_answer(user, question: str, chart: dict, memories: list[str],
     выдаёт другую судьбу — иначе офлайн-режим выглядел бы как обман.
     """
     spec = spec or get(DEFAULT_AGENT)
+    if spec.code == "chiromant":
+        return (
+            "Я Мира, Проводник ладони. Для ответа мне нужно сохранённое evidence-чтение "
+            "по фотографии ладони.\n\n"
+            "Загрузи одну ладонь целиком при ровном свете — я проверю качество кадра, "
+            "покажу только различимые зоны и предложу один вопрос для саморефлексии. "
+            "Это не медицинская диагностика и не предсказание."
+        )
     rnd = random.Random(stable_seed(question, user["tg_id"]))
     name = user["name"] or "милая"
     sun = (chart.get("sun") or {})

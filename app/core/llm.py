@@ -518,30 +518,56 @@ async def _run_openai_like(provider, system, messages, tools, execute,
         if "tool" not in str(e).lower() and "function" not in str(e).lower():
             raise
         log.info("%s без tool-use, включаю pre-tool режим", provider)
-        return await _run_pretool(client, model, system, messages,
+        return await _run_pretool(client, model, system, messages, tools,
                                   execute, max_tokens, meter)
     finally:
         await _close_client(client)
 
 
-async def _run_pretool(client, model, system, messages, execute,
+async def _run_pretool(client, model, system, messages, tools, execute,
                        max_tokens, meter: _Meter) -> str:
-    """Скиллы выполняются заранее (карта + транзиты + таро при намёке на расклад),
-    результат кладётся в контекст, модель отвечает одним запросом."""
+    """Выполняет только разрешённые скиллы до single-shot ответа модели.
+
+    Fallback для провайдера без function calling не должен подмешивать чужую
+    предметную область специализированному агенту.
+    """
     last = messages[-1]["content"] if messages else ""
     lower = str(last).lower()
-    wanted: list[tuple[str, dict]] = [("get_chart", {}), ("get_transits", {})]
-    if any(w in lower for w in ("таро", "карт", "расклад", "будет", "стоит ли",
-                                "гада")):
-        wanted.append(("draw_tarot", {"n": 3}))
+    allowed = {tool.get("name") for tool in tools or []}
+    wanted: list[tuple[str, dict]] = []
+
+    def add(name: str, args: dict | None = None) -> None:
+        if name in allowed and all(existing != name for existing, _ in wanted):
+            wanted.append((name, args or {}))
+
+    add("get_chart")
+    add("get_transits")
+    if any(w in lower for w in ("таро", "карт", "расклад", "будет", "стоит ли", "гада")):
+        add("draw_tarot", {"n": 3})
     if any(w in lower for w in ("матриц", "предназнач", "карм")):
-        wanted.append(("get_matrix", {}))
-    if any(w in lower for w in ("работ", "карьер", "увол", "переговор",
-                                "повышен", "деньг")):
-        wanted.append(("get_career_windows", {}))
-    if any(w in lower for w in ("стрижк", "свадьб", "переезд", "поездк",
-                                "выбер")):
-        wanted.append(("get_moon_week", {"days": 7}))
+        add("get_matrix")
+    if any(w in lower for w in ("работ", "карьер", "увол", "переговор", "повышен", "деньг")):
+        add("get_career_windows")
+    if any(w in lower for w in ("стрижк", "свадьб", "переезд", "поездк", "выбер")):
+        add("get_moon_week", {"days": 7})
+
+    if allowed & {"check_palm_quality", "get_palm_map", "get_palm_reading"} and any(
+        w in lower for w in ("ладон", "лини", "холм", "пальц", "снимк", "фото")
+    ):
+        add("check_palm_quality")
+        if any(w in lower for w in ("карт", "зон", "обзор")):
+            add("get_palm_map")
+        if any(w in lower for w in ("сравн", "два чтения", "два снимка")):
+            add("compare_palm_readings")
+        elif any(w in lower for w in ("сердц", "голов", "жизн", "судьб", "солнц", "отнош", "холм", "пальц")):
+            topic = ("heart_line" if "сердц" in lower else "head_line" if "голов" in lower
+                     else "life_line" if "жизн" in lower else "fate_line" if "судьб" in lower
+                     else "sun_line" if "солнц" in lower else "relationship_line" if "отнош" in lower
+                     else "mounts" if "холм" in lower else "fingers")
+            add("get_palm_focus", {"topic": topic})
+        else:
+            add("get_palm_reading")
+
     context_parts = await _gather_tools(execute, wanted)
     system2 = (system + "\n\n[Данные твоих инструментов для этого ответа]\n"
                + "\n\n".join(context_parts))
