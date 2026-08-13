@@ -215,7 +215,8 @@
     const introGuides = {
       oracle: { kicker: 'ТВОЁ ПРОСТРАНСТВО ДЛЯ ЯСНОСТИ', title: 'Начни с того, что сейчас важнее всего', text: 'Можно написать одну мысль, чувство или вопрос — вместе найдём бережный ориентир.' },
       astro: { kicker: 'АСТРОЛОГИЧЕСКИЙ ОРИЕНТИР', title: 'Посмотри на свой ритм через карту', text: 'Собери натальную карту или задай вопрос о ближайшем периоде — только на основе доступных данных.' },
-      tarot: { kicker: 'РАСКЛАД БЕЗ КАТЕГОРИЧНЫХ ОТВЕТОВ', title: 'Сформулируй вопрос к картам', text: 'Выберем схему и спокойно посмотрим на ситуацию с разных сторон.' }
+      tarot: { kicker: 'РАСКЛАД БЕЗ КАТЕГОРИЧНЫХ ОТВЕТОВ', title: 'Сформулируй вопрос к картам', text: 'Выберем схему и спокойно посмотрим на ситуацию с разных сторон.' },
+      chiromant: { kicker: 'БЕРЕЖНОЕ ЧТЕНИЕ ЛАДОНИ', title: 'Сначала — что действительно видно', text: 'Пришли фото ладони: Мира отделит наблюдение от символической гипотезы и покажет границы точности.' }
     };
     const introGuide = introGuides[a.code] || introGuides.oracle;
     const introHtml = messages.length <= 1 ? `
@@ -269,9 +270,9 @@
           </div>
         </section>
         <div class="agent-tabs" role="tablist" aria-label="Выбор проводника">
-          ${agents.slice(0, 3).map(b => `
+          ${agents.slice(0, 4).map(b => `
             <button type="button" class="atab ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}">
-              <span class="atab-face"><img src="/static/img/agents/${esc(b.code)}.jpg" alt="" loading="lazy"></span><span>${esc(b.name.split(' ')[0])}</span>
+              <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(b.name.split(' ')[0])}</span>
             </button>`).join('')}
         </div>
         <div class="chat-messages" id="chat-messages">
@@ -476,7 +477,7 @@
   // свайп по табам агентов: вбок листаем Оракул → Астролог → Таролог → …
 
   app.cycleAgent = function(dir) {
-    const list = this.agents.length ? this.agents.map(b => b.code) : ['oracle', 'astro', 'tarot'];
+    const list = this.agents.length ? this.agents.map(b => b.code) : ['oracle', 'astro', 'tarot', 'chiromant'];
     const i = list.indexOf(this.chat.key);
     if (i < 0) return;
     this.openChat(list[(i + dir + list.length) % list.length]);

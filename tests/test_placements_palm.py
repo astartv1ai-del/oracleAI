@@ -87,5 +87,5 @@ def test_chiromant_is_registered_with_palm_tools():
     assert "chiromant" in codes()
     agent = get("chiromant")
     assert agent is not None
-    assert {"get_palm_reading", "request_better_palm_photo"}.issubset(agent.skills)
+    assert {"get_palm_reading", "get_palm_focus", "request_better_palm_photo"}.issubset(agent.skills)
     assert {"get_placement", "get_all_placements", "get_life_path", "get_chinese_zodiac"}.issubset(SKILLS)

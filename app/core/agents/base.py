@@ -46,6 +46,7 @@ class AgentSpec:
             "title": self.title,
             "tagline": self.tagline,
             "accent": self.accent,
+            "avatar": f"/static/img/agents/{self.code}.jpg",
             "greeting": self.greeting,
             "suggestions": list(self.suggestions),
         }

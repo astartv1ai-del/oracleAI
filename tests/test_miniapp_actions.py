@@ -74,9 +74,23 @@ def test_chat_exposes_one_visible_tool_entry_point() -> None:
 def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
     styles = (ROOT / "miniapp" / "styles.css").read_text(encoding="utf-8")
-    assert '/static/styles.css?v=85' in index
-    assert '?v=85' in styles
-    assert '?v=84' not in styles
+    assert '/static/styles.css?v=86' in index
+    assert '?v=86' in styles
+    assert '?v=85' not in styles
+
+
+def test_chiromant_is_present_on_all_agent_surfaces() -> None:
+    data = (JS_DIR / "03-data.js").read_text(encoding="utf-8")
+    app = (JS_DIR / "05-app.js").read_text(encoding="utf-8")
+    art = (JS_DIR / "02-art.js").read_text(encoding="utf-8")
+    home = (JS_DIR / "06-home.js").read_text(encoding="utf-8")
+    chat = (JS_DIR / "07-chat.js").read_text(encoding="utf-8")
+    specs = (ROOT / "app" / "core" / "agents" / "specs.py").read_text(encoding="utf-8")
+    for source in (data, app, art, home, chat, specs):
+        assert "chiromant" in source
+    assert "chiromant.jpg" in app
+    assert "get_palm_focus" in specs
+    assert "agents.slice(0, 4)" in chat
 
 
 def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
@@ -84,7 +98,7 @@ def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
     placements = (JS_DIR / "16-placements.js").read_text(encoding="utf-8")
     palm = (JS_DIR / "13-palm.js").read_text(encoding="utf-8")
     css = (ROOT / "miniapp" / "css" / "15-ritual-redesign.css").read_text(encoding="utf-8")
-    assert '/static/js/16-placements.js?v=85' in index
+    assert '/static/js/16-placements.js?v=86' in index
     assert 'app.featurePlacements' in placements
     assert 'aria-live="polite"' in placements
     assert 'data-placement-code' in placements

@@ -329,7 +329,8 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
   const AGENT_BRAND = {
     oracle: { name: 'Лилит', title: 'Личный Оракул', emoji: '🔮', accent: '#e6c178', tagline: 'Мягко помогает услышать себя и увидеть следующий шаг.' },
     astro:  { name: 'Урания', title: 'Астролог', emoji: '🌠', accent: '#b9a6ff', tagline: 'Переводит язык звёзд в ясные опоры на каждый день.' },
-    tarot:  { name: 'Мадам Ленорман', title: 'Таролог', emoji: '🃏', accent: '#e7a8c2', tagline: 'Читает символы карт бережно и без категоричных ответов.' }
+    tarot:  { name: 'Мадам Ленорман', title: 'Таролог', emoji: '🃏', accent: '#e7a8c2', tagline: 'Читает символы карт бережно и без категоричных ответов.' },
+    chiromant: { name: 'Мира', title: 'Хиромант', emoji: '✋', accent: '#d89c7f', tagline: 'Читает видимые линии ладони по фото — бережно и с уровнем уверенности.', avatar: '/static/img/agents/chiromant.jpg' }
   };
 
   app.normalizeAgent = function(raw, key) {
@@ -342,6 +343,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     if (!agent.emoji) agent.emoji = brand.emoji || '✦';
     if (!agent.accent) agent.accent = brand.accent || '#e6c178';
     if (!agent.tagline && brand.tagline) agent.tagline = brand.tagline;
+    if (!agent.avatar) agent.avatar = brand.avatar || `/static/img/agents/${esc(code)}.jpg`;
     return agent;
   };
 

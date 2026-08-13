@@ -499,6 +499,39 @@ async def _run_get_palm_reading(db, user, args) -> str:
             json.dumps(reading, ensure_ascii=False, separators=(",", ":")))
 
 
+async def _run_get_palm_focus(db, user, args) -> str:
+    topic = str(args.get("topic", "") or "").strip().lower()
+    aliases = {
+        "heart": "heart_line", "heart_line": "heart_line",
+        "head": "head_line", "head_line": "head_line",
+        "life": "life_line", "life_line": "life_line",
+        "fate": "fate_line", "fate_line": "fate_line",
+        "sun": "sun_line", "sun_line": "sun_line",
+        "relationship": "relationship_line", "relationship_line": "relationship_line",
+        "mounts": "mounts", "fingers": "fingers",
+    }
+    normalized = aliases.get(topic)
+    if not normalized:
+        return "укажи тему: heart_line, head_line, life_line, fate_line, sun_line, relationship_line, mounts или fingers"
+    reading = await palm.latest(db, user)
+    if not reading:
+        return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
+    observations = [item for item in (reading.get("observations") or [])
+                    if normalized in str(item.get("topic", "")).lower()]
+    evidence = {
+        "topic": normalized,
+        "status": reading.get("status"),
+        "image_quality": reading.get("image_quality"),
+        "observations": observations,
+        "detail": reading.get(normalized) if normalized in {"mounts", "fingers"} else (reading.get("lines") or {}).get(normalized.removesuffix("_line"), {}),
+        "limitations": reading.get("limitations") or [],
+        "safety": "Только символическая рефлексия по видимому; без медицинских и фаталистичных выводов.",
+    }
+    if not observations and not evidence["detail"]:
+        evidence["limitations"].append("Выбранная тема не различима на последнем кадре.")
+    return "[Фокусное evidence-чтение ладони — не добавляй отсутствующие признаки]\n" + json.dumps(evidence, ensure_ascii=False, separators=(",", ":"))
+
+
 async def _run_list_palm_readings(db, user, args) -> str:
     rows = await palm_repo.list_readings(db, user["tg_id"], limit=10)
     if not rows:
@@ -799,6 +832,20 @@ SKILLS: dict[str, dict] = {
                             "видимые observations и confidence."),
             "input_schema": {"type": "object", "properties": {
                 "reading_id": {"type": "integer", "description": "ID чтения, если нужен не последний результат"}}},
+        },
+    },
+    "get_palm_focus": {
+        "run": _run_get_palm_focus,
+        "schema": {
+            "name": "get_palm_focus",
+            "description": ("Получить evidence только по одной теме последнего чтения ладони. "
+                            "Используй для линии сердца, головы, жизни, судьбы, Солнца, "
+                            "отношений, холмов или пальцев; если тема не видна, скажи это."),
+            "input_schema": {"type": "object", "properties": {
+                "topic": {"type": "string", "enum": [
+                    "heart_line", "head_line", "life_line", "fate_line", "sun_line",
+                    "relationship_line", "mounts", "fingers",
+                ]}}, "required": ["topic"]},
         },
     },
     "list_palm_readings": {

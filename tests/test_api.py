@@ -298,7 +298,9 @@ async def test_agents_list_has_threads(client, user):
     agents = res.json()
     assert len(agents) == 4
     assert {a["code"] for a in agents} == {"oracle", "astro", "tarot", "chiromant"}
-    assert all("greeting" in a and "code" in a for a in agents)
+    assert all("greeting" in a and "code" in a and "avatar" in a for a in agents)
+    chiromant = next(a for a in agents if a["code"] == "chiromant")
+    assert chiromant["avatar"] == "/static/img/agents/chiromant.jpg"
 
 
 async def test_chat_history_and_ask(client, user):
