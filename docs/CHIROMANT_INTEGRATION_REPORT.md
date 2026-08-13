@@ -4,7 +4,7 @@
 **Дата проверки:** 13 августа 2026 года  
 **QA-окружение:** локальный FastAPI/Uvicorn на `127.0.0.1:8080`, `APP_ENV=dev`, `DEV_MODE=1`, QA-пользователь `tg_id=1001`  
 **GitHub:** `astartv1ai-del/oracleAI`, ветка `master`
-**Удалённый HEAD после проверки:** `b8055c0cfe1ba8d45a9f234efa31f959763ba2c6`
+**Удалённый HEAD после проверки:** `b1bded555a1bdea0920769df4caa90ff2b9c2571`
 
 ## 1. Итоговый статус
 
@@ -111,9 +111,10 @@ Live `/models` catalog сообщил 10 доступных моделей, ср
 | `c43d366` | Интеграция chiromant во все agent surfaces |
 | `40e4a1b` | Самостоятельный четвёртый агент с отдельными skills |
 | `72b0b1f` | Quality hardening и chiromant LLM fallback |
-| `b8055c0` | GPT-5 vision token budget fix, regression test и этот отчёт |
+| `b8055c0` | GPT-5 vision token budget fix и regression test |
+| `b1bded5` | Финальная редакция интеграционного отчёта |
 
-Команда push завершилась успешно: `d03da4f..b8055c0 master -> master`. После повторного `fetch` значения `HEAD` и `origin/master` совпали: `b8055c0cfe1ba8d45a9f234efa31f959763ba2c6`; divergence равен `0 0`.
+Команда push завершилась успешно: `d03da4f..b1bded5 master -> master`. После повторного `fetch` значения `HEAD` и `origin/master` совпали: `b1bded555a1bdea0920769df4caa90ff2b9c2571`; divergence равен `0 0`.
 
 ## 9. Финальный вывод
 
