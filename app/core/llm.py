@@ -650,7 +650,7 @@ async def speak(text: str, *, voice: str | None = None) -> bytes | None:
 async def complete_vision(system: str, user_text: str, image_data_url: str,
                           tier: str = "main", max_tokens: int = 1400, *,
                           purpose: str = "vision", tg_id: int | None = None,
-                          db=None) -> str:
+                          db=None, response_format: dict | None = None) -> str:
     """Vision completion with provider fallback.
 
     The image is passed only to the selected provider and never logged. The
@@ -666,7 +666,8 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
                 text = await _with_retries(
                     lambda p=provider: _vision_with(p, system, user_text,
                                                      image_data_url, tier,
-                                                     max_tokens, meter),
+                                                     max_tokens, meter,
+                                                     response_format=response_format),
                     provider, "vision")
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{provider}: {exc}")
@@ -689,7 +690,7 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
 
 async def _vision_with(provider: str, system: str, user_text: str,
                        image_data_url: str, tier: str, max_tokens: int,
-                       meter: _Meter) -> str:
+                       meter: _Meter, response_format: dict | None = None) -> str:
     if provider == "anthropic":
         client = _anthropic_client()
         try:
@@ -713,9 +714,9 @@ async def _vision_with(provider: str, system: str, user_text: str,
     client = _openai_client(provider)
     try:
         model = _models(provider, tier)
-        resp = await client.chat.completions.create(
-            model=model,
-            messages=[
+        request = {
+            "model": model,
+            "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": [
                     {"type": "text", "text": user_text},
@@ -724,7 +725,10 @@ async def _vision_with(provider: str, system: str, user_text: str,
                 ]},
             ],
             **_openai_token_limit(model, max_tokens),
-        )
+        }
+        if response_format:
+            request["response_format"] = response_format
+        resp = await client.chat.completions.create(**request)
         meter.add(getattr(resp, "usage", None))
         content = resp.choices[0].message.content if resp.choices else ""
         return (content or "").strip()

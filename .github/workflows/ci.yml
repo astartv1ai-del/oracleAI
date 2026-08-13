@@ -48,11 +48,12 @@ jobs:
 
       - name: LLM golden-set evaluator smoke
         run: |
+          mkdir -p artifacts
           python scripts/generate_eval_set.py
           python scripts/evaluate_llm.py \
             --cases data/llm_eval/golden_cases.jsonl \
             --responses data/llm_eval/sample_responses.jsonl \
-            --out /tmp/oracle-llm-eval-report.json \
+            --out artifacts/llm-eval-report.json \
             --min-score 0.75
 
       - name: Migration-focused tests
@@ -66,3 +67,14 @@ jobs:
 
       - name: Selfcheck
         run: python scripts/selfcheck.py
+
+      - name: Production-readiness static gate
+        run: python scripts/release_gate.py
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ github.sha }}
+          path: artifacts/llm-eval-report.json
+          if-no-files-found: ignore

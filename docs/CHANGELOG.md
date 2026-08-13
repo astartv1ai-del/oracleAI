@@ -20,11 +20,14 @@
 - Encrypted SQLite backup/restore helpers with checksum, integrity checks, retention and off-site compose upload.
 - Privacy-safe activation dictionary and server-owned milestones for age-gate completion, first ritual, first question and D1/D7 voluntary return; admin dashboard now exposes cohort activation funnel.
 - Public RU/EN Privacy Policy and Terms routes with explicit 16+ wording and deletion/support placeholders for legal review.
+- Added `LAUNCH_GOVERNANCE.md` with controlled-beta default, P0/P1 launch gates, ownership, SLO placeholders, evidence requirements and no-go rules.
+- Added `PRODUCTION_READINESS_AND_LAUNCH_PLAN.md` covering product, LLM, device QA, privacy, infrastructure, payments, analytics and rollout readiness.
 
 ### Changed
 
 - GitHub Actions now requires ruff, Python/JavaScript syntax checks, migration-focused tests, cache-busting policy, full pytest, dependency audit, golden-set evaluator smoke and selfcheck.
-- Synthetic 120-case LLM golden set and deterministic scoring cover grounding, safety, language, next step, calibration and latency before provider/prompt release.
+- Synthetic 140-case LLM golden set and deterministic scoring cover grounding, safety, language, next step, calibration and latency, including Palm quality, evidence, prompt-injection and safety cases before provider/prompt release.
+- Palm vision now sends a strict JSON Schema response contract to compatible providers; CI runs a deterministic production-readiness gate and uploads privacy-safe evaluation evidence.
 - Chat sessions receive a generic category title after the first meaningful question without copying personal text; tool palette now explains required data, duration and result before launch.
 - Design component inventory and viewport/accessibility matrix are now checked by a deterministic token/import/reduced-motion contract gate in CI.
 - Tool preflight metadata now uses a one-column mobile sheet so required data, duration and result remain readable at 360–430 px; assets bumped to v83 after visual smoke.

@@ -13,7 +13,11 @@
 | [DEPLOYMENT.md](DEPLOYMENT.md) | DevOps, владелец продукта | Чтобы подготовить окружение, выпустить релиз и откатить его. |
 | [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
-| [LLM_EVALUATION.md](LLM_EVALUATION.md) | AI, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
+| [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
+| [LAUNCH_GOVERNANCE.md](LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
+| [PRODUCTION_READINESS_AND_LAUNCH_PLAN.md](PRODUCTION_READINESS_AND_LAUNCH_PLAN.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |
+| [PRODUCTION_READINESS_EVIDENCE.md](PRODUCTION_READINESS_EVIDENCE.md) | Release owner, QA, operations | Чтобы сверить последний automated evidence pass и оставшиеся blockers. |
+| [CHIROMANT_INTEGRATION_REPORT.md](CHIROMANT_INTEGRATION_REPORT.md) | QA, AI, product, operations | Чтобы сверить результаты интеграционного тестирования Миры и известные ограничения. |
 | [DESIGN_COMPONENT_INVENTORY.md](DESIGN_COMPONENT_INVENTORY.md) | Design, frontend, QA | Чтобы сохранять состояния компонентов, accessibility и visual regression matrix. |
 | [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять SQLite/WAL triggers и репетировать migration без production риска. |
 | [MONETIZATION_BASELINE.md](MONETIZATION_BASELINE.md) | Product, billing, finance | Чтобы сверить текущие планы, SKU, платёжные пути и открытые gaps без PII. |

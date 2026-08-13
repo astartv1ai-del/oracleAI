@@ -100,6 +100,10 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     assert "видимыми признаками" in str(seen["system"])
     assert seen["kwargs"]["purpose"] == "palm:vision"
     assert seen["kwargs"]["tg_id"] == user["tg_id"]
+    response_format = seen["kwargs"]["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["strict"] is True
+    assert response_format["json_schema"]["schema"]["additionalProperties"] is False
 
     cursor = await db.execute(
         "SELECT id, tg_id, image_sha256, image_size, analysis_json FROM palm_readings WHERE id=?",

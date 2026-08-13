@@ -114,3 +114,16 @@ def test_palm_normalizer_coerces_model_enums_and_sanitizes_quality_fields():
     assert result["hand_side"] == "unknown"
     assert "диагноз" not in result["image_quality"]["issues"][0]
     assert "смерть" not in result["safety_flags"][0]
+
+
+def test_palm_response_format_is_strict_and_closed():
+    schema = palm.PALM_RESPONSE_FORMAT["json_schema"]
+    root = schema["schema"]
+    assert schema["strict"] is True
+    assert root["additionalProperties"] is False
+    assert set(root["required"]) == set(root["properties"])
+    assert root["properties"]["status"]["enum"] == ["complete", "needs_photo"]
+    for section in ("lines", "mounts", "fingers"):
+        nested = root["properties"][section]
+        assert nested["additionalProperties"] is False
+        assert set(nested["required"]) == set(nested["properties"])

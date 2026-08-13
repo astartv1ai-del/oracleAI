@@ -237,11 +237,17 @@ async def test_gpt5_vision_uses_completion_token_budget(monkeypatch):
 
     monkeypatch.setattr(llm, "_openai_client", lambda provider: Client())
     monkeypatch.setattr(settings, "openai_main", "gpt-5-mini")
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {"name": "palm", "strict": True,
+                         "schema": {"type": "object", "additionalProperties": False}},
+    }
     text = await llm._vision_with(
         "openai", "system", "user", "data:image/jpeg;base64,AA==",
-        "main", 1600, llm._Meter(),
+        "main", 1600, llm._Meter(), response_format=response_format,
     )
 
     assert text == '{"status":"complete"}'
     assert seen["max_completion_tokens"] == 1600
     assert "max_tokens" not in seen
+    assert seen["response_format"] is response_format

@@ -52,6 +52,107 @@ _PALM_VISIBILITY = {"clear", "partial", "unclear", "not_visible"}
 _PALM_HAND_SIDES = {"left", "right", "unknown"}
 
 
+def _palm_detail_schema() -> dict:
+    nullable_string = {"type": ["string", "null"]}
+    nullable_number = {"type": ["number", "null"]}
+    return {
+        "type": "object",
+        "properties": {
+            "visibility": {"type": "string", "enum": sorted(_PALM_VISIBILITY)},
+            "summary": nullable_string,
+            "confidence": nullable_number,
+            "continuity": nullable_string,
+            "path": nullable_string,
+            "shape": nullable_string,
+            "prominence": nullable_string,
+            "length": nullable_string,
+        },
+        "required": ["visibility", "summary", "confidence", "continuity",
+                      "path", "shape", "prominence", "length"],
+        "additionalProperties": False,
+    }
+
+
+_PALM_DETAIL = _palm_detail_schema()
+_PALM_DETAIL_MAP = {
+    key: _PALM_DETAIL for key in (
+        "life", "head", "heart", "fate", "sun", "relationship",
+        "venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars",
+        "thumb", "index", "middle", "ring", "little",
+    )
+}
+
+PALM_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "oracleai_palm_reading",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["complete", "needs_photo"]},
+                "image_quality": {
+                    "type": "object",
+                    "properties": {
+                        "score": {"type": "number", "minimum": 0, "maximum": 1},
+                        "issues": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["score", "issues"],
+                    "additionalProperties": False,
+                },
+                "hand_detected": {"type": "boolean"},
+                "hand_side": {"type": "string", "enum": sorted(_PALM_HAND_SIDES)},
+                "observations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "topic": {"type": "string", "enum": sorted(_PALM_TOPICS)},
+                            "visibility": {"type": "string", "enum": sorted(_PALM_VISIBILITY)},
+                            "summary": {"type": "string"},
+                            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                        },
+                        "required": ["topic", "visibility", "summary", "confidence"],
+                        "additionalProperties": False,
+                    },
+                },
+                "lines": {
+                    "type": "object",
+                    "required": ["life", "head", "heart", "fate", "sun", "relationship"],
+                    "properties": {
+                        **{key: _PALM_DETAIL_MAP[key] for key in
+                           ("life", "head", "heart", "fate", "sun")},
+                        "relationship": {"type": "array", "items": _PALM_DETAIL},
+                    },
+                    "additionalProperties": False,
+                },
+                "mounts": {
+                    "type": "object",
+                    "properties": {key: _PALM_DETAIL_MAP[key] for key in
+                                   ("venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars")},
+                    "required": ["venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars"],
+                    "additionalProperties": False,
+                },
+                "fingers": {
+                    "type": "object",
+                    "properties": {key: _PALM_DETAIL_MAP[key] for key in
+                                   ("thumb", "index", "middle", "ring", "little")},
+                    "required": ["thumb", "index", "middle", "ring", "little"],
+                    "additionalProperties": False,
+                },
+                "interpretive_prompts": {"type": "array", "items": {"type": "string"}},
+                "limitations": {"type": "array", "items": {"type": "string"}},
+                "safety_flags": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["status", "image_quality", "hand_detected", "hand_side",
+                         "observations", "lines", "mounts", "fingers",
+                         "interpretive_prompts", "limitations", "safety_flags"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
 _FORBIDDEN = re.compile(
     r"(диагноз|заболев|болезн|беремен|смерт|умр(ет|у|ла)?|продолжительность жизни|рак|диабет|психоз|суицид|diagnos|disease|pregnan|death|cancer|diabetes)",
     re.IGNORECASE,
@@ -175,6 +276,7 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
         purpose="palm:vision",
         tg_id=user["tg_id"],
         db=db,
+        response_format=PALM_RESPONSE_FORMAT,
     )
     raw = _json_text(text)
     result = _normalize(raw, raw.get("image_quality") or {})

@@ -2,7 +2,7 @@
 
 ## Scope
 
-OracleAI оценивает не «красивость» текста, а безопасность и пригодность следующего шага. Golden set содержит 120 синтетических кейсов без реальных пользовательских данных и покрывает general, natal full, natal date-only, Tarot choice/relationship, compatibility, daily и safety-контексты на RU/EN.
+OracleAI оценивает не «красивость» текста, а безопасность и пригодность следующего шага. Golden set содержит 140 синтетических кейсов без реальных пользовательских данных и покрывает general, natal full, natal date-only, Tarot choice/relationship, compatibility, daily, Palm quality/reading/prompt-injection/safety и общие safety-контексты на RU/EN.
 
 Файлы:
 
