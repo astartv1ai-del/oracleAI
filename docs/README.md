@@ -18,6 +18,7 @@
 | [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять SQLite/WAL triggers и репетировать migration без production риска. |
 | [MONETIZATION_BASELINE.md](MONETIZATION_BASELINE.md) | Product, billing, finance | Чтобы сверить текущие планы, SKU, платёжные пути и открытые gaps без PII. |
 | [MONETIZATION_UNIT_ECONOMICS.md](MONETIZATION_UNIT_ECONOMICS.md) | Product, finance, operations | Чтобы считать net revenue, variable COGS, contribution, ARPPU, CAC и break-even по сценариям. |
+| [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
 | [MONETIZATION_EXTERNAL_SOURCES.md](MONETIZATION_EXTERNAL_SOURCES.md) | Finance, legal, billing | Чтобы проверять официальные platform/payment sources и не подменять settlement data сниппетами. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
