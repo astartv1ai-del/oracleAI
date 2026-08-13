@@ -4,7 +4,7 @@
 **Дата проверки:** 13 августа 2026 года  
 **QA-окружение:** локальный FastAPI/Uvicorn на `127.0.0.1:8080`, `APP_ENV=dev`, `DEV_MODE=1`, QA-пользователь `tg_id=1001`  
 **GitHub:** `astartv1ai-del/oracleAI`, ветка `master`
-**Удалённый HEAD после проверки:** `b1bded555a1bdea0920769df4caa90ff2b9c2571`
+**Удалённый HEAD после проверки:** подтверждён равным локальному HEAD; точный SHA указан в GitHub delivery и финальном сообщении.
 
 ## 1. Итоговый статус
 
@@ -113,8 +113,9 @@ Live `/models` catalog сообщил 10 доступных моделей, ср
 | `72b0b1f` | Quality hardening и chiromant LLM fallback |
 | `b8055c0` | GPT-5 vision token budget fix и regression test |
 | `b1bded5` | Финальная редакция интеграционного отчёта |
+| `81ff24f` | Синхронизация отчёта с remote state |
 
-Команда push завершилась успешно: `d03da4f..b1bded5 master -> master`. После повторного `fetch` значения `HEAD` и `origin/master` совпали: `b1bded555a1bdea0920769df4caa90ff2b9c2571`; divergence равен `0 0`.
+После последнего push и повторного `fetch` значения local `HEAD` и `origin/master` совпали; divergence равен `0 0`. Точный итоговый SHA зафиксирован в delivery message.
 
 ## 9. Финальный вывод
 
