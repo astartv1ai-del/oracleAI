@@ -1,72 +1,57 @@
-# Отчёт интеграционного тестирования Миры и расширенных калькуляторов
+# Финальный отчёт интеграционного тестирования Миры и расширенных калькуляторов
 
 **Проект:** OracleAI Telegram Mini App  
 **Дата проверки:** 13 августа 2026 года  
 **QA-окружение:** локальный FastAPI/Uvicorn на `127.0.0.1:8080`, `APP_ENV=dev`, `DEV_MODE=1`, QA-пользователь `tg_id=1001`  
-**Финальный статус до push:** все локальные тесты зелёные; подготовлен дополнительный GPT-5 vision compatibility fix
+**GitHub:** `astartv1ai-del/oracleAI`, ветка `master`
+**Удалённый HEAD после проверки:** `b8055c0cfe1ba8d45a9f234efa31f959763ba2c6`
 
-## 1. Цель и границы проверки
+## 1. Итоговый статус
 
-Проверка охватывала самостоятельного четвёртого агента **Миру — Проводника ладони**, его отдельную skill-модель, vision pipeline, API CRUD-контур, Mini App surfaces и новый каталог placement-калькуляторов. Особое внимание уделялось тому, чтобы Мира не получала Tarot/Astro/Matrix-инструменты по fallback-маршруту, не сохраняла исходные изображения и не превращала наблюдения по ладони в медицинские или гарантированные предсказания.
+Функциональная интеграция самостоятельного четвёртого агента **Миры — Проводника ладони** завершена и отправлена в `origin/master`. В проекте присутствуют отдельные palm skills, vision pipeline, API CRUD, Mini App surfaces, независимый avatar и отдельная visual identity. Расширенный placement layer включает 17 запрошенных направлений и дополнительные entries для жизненного пути, китайского зодиака и полной натальной карты.
 
-В ходе проверки дополнительно обнаружена и исправлена совместимость с актуальным OpenAI-compatible LLM proxy: для GPT-5-моделей параметр бюджета видимого ответа должен передаваться как `max_completion_tokens`, а не как legacy `max_tokens`. Исправление сделано в общем OpenAI path для streaming chat и vision calls и покрыто отдельным regression test. См. [реализацию LLM token routing][1] и [provider compatibility tests][2].
+В ходе live QA обнаружена и исправлена совместимость GPT-5 с OpenAI-compatible proxy: GPT-5-моделям нужен `max_completion_tokens`, тогда как прежний application path передавал `max_tokens`, что приводило к HTTP 200 с пустым `message.content`. Исправление внесено в общий OpenAI streaming path и vision path и покрыто regression test.
 
-## 2. Сводка результатов
+| Область | Результат | Статус |
+|---|---|---|
+| Браузерный home и hub | 4 агента, отдельная карточка Миры, avatar и palm CTA | PASS |
+| Agent API | 4 объекта; Мира с собственными code/title/greeting/suggestions | PASS |
+| Placement catalog | 19 calculator entries + palm metadata | PASS |
+| Placement calculation | `moon_sign` дал Swiss Ephemeris result с `precision=exact` | PASS |
+| Palm input validation | MIME, повреждённый файл и минимальный размер | PASS |
+| Palm E2E | Реальный JPEG через mocked vision, SQLite, list/get/delete и ownership | PASS |
+| Tool isolation | 8 palm tools без Tarot/Astro/Matrix | PASS |
+| Full pytest | 377/377 passed | PASS |
+| Live multimodal proxy | После token fix повторный вызов упёрся в upstream timeout | LIMITATION |
+| GitHub push | Local HEAD и `origin/master` совпадают | PASS |
 
-| Контур | Сценарий | Результат | Статус |
-|---|---|---:|---|
-| Static UI | Home Mini App с `dev_user=1001` | HTTP 200; 4 карточки агентов | PASS |
-| Avatar asset | `/static/img/agents/chiromant.jpg` | HTTP 200, `image/jpeg` | PASS |
-| Agent API | `/api/agents?dev_user=1001` | 4 агента; Мира с отдельным code/title/avatar/greeting | PASS |
-| Placement catalog | `GET /api/placements` | 19 calculators + palm metadata | PASS |
-| Placement calculation | `moon_sign`, дата/время/город | HTTP 200; Swiss Ephemeris result, precision `exact` | PASS |
-| Placement validation | Неверный code `moon` | HTTP 400 с ожидаемой ошибкой | PASS |
-| Palm history | `GET /api/palm` для нового QA user | HTTP 200, `items: []`, `raw_image_stored: false` | PASS |
-| Palm input validation | MIME `application/json` | HTTP 415 | PASS |
-| Palm image validation | Повреждённые JPEG bytes | HTTP 400 | PASS |
-| Palm ownership | Другой `tg_id` не видит и не удаляет reading | Покрыто E2E тестом | PASS |
-| Palm CRUD | upload/list/get/delete | Покрыто mocked-vision E2E на реальном JPEG | PASS |
-| Tool isolation | 8 palm tools, без Tarot/Astro/Matrix | Покрыто registry и pre-tool regression tests | PASS |
-| Full pytest | Все собранные тесты проекта | 377/377 passed | PASS |
-| Live provider upload | Реальный JPEG через configured proxy | Выявлена provider-dependent проблема, описанная ниже | LIMITATION |
+## 2. Браузерная проверка Mini App
 
-## 3. Браузерная проверка Mini App
+`GET /static/index.html?dev_user=1001` загрузил персонализированный home screen с приветствием `Browser QA`. В DOM присутствовали карточки Лилит, Урании, Мадам Ленорман и **Миры — Проводника ладони**. Для Миры подтверждены отдельный путь `/static/img/agents/chiromant.jpg`, accent `#e2a45e` и самостоятельная palm-oriented presentation, отличающаяся от Astro и Tarot visual language.
 
-### 3.1 Home surface
+До создания QA-пользователя запросы `/api/agents?dev_user=1001` и `/api/agents?dev_user=1` корректно возвращали HTTP 404 с сообщением о необходимости открыть бота и нажать `/start`. После seed `1001` тот же browser-visible endpoint возвратил HTTP 200 и полный JSON списка агентов.
 
-`GET /static/index.html?dev_user=1001` загрузил персонализированный home screen с приветствием `Browser QA`. В извлечённом DOM присутствовали четыре agent cards: Лилит, Урания, Мадам Ленорман и **Мира — Проводник ладони**. Для Миры использовались отдельные avatar path `/static/img/agents/chiromant.jpg`, accent `#e2a45e` и teal/terracotta-oriented visual identity, отличающаяся от космического Astro и Tarot оформления.
-
-До создания QA-пользователя API корректно возвращал HTTP 404 с сообщением о необходимости открыть бота и нажать `/start`. Это подтверждает, что dev query parameter не создаёт пользователя автоматически и не обходит user existence guard. После seed пользователя `1001` браузерный `/api/agents` вернул полноценный JSON-контракт.
-
-### 3.2 Вкладка «Диалоги»
-
-Переход по нижней вкладке «Диалоги» был подтверждён browser snapshot. На hub surface присутствовала отдельная карточка Миры со следующими элементами:
+Переход на вкладку «Диалоги» был подтверждён browser snapshot. На hub surface у Миры отображались следующие элементы:
 
 | Элемент | Подтверждённое содержимое |
 |---|---|
 | Имя и роль | `Мира` / `Проводник ладони` |
-| Intro | Снимок одной ладони, сначала проверка качества, затем карта видимых зон |
+| Intro | Проверка качества снимка и карта только видимых зон |
 | Avatar | `/static/img/agents/chiromant.jpg` |
-| Palm CTA 1 | `Сканер ладони` |
-| Palm CTA 2 | `Карта ладони` |
-| Palm CTA 3 | `Качество снимка` |
-| Palm CTA 4 | `Сравнить чтения` |
+| Feature 1 | `Сканер ладони` |
+| Feature 2 | `Карта ладони` |
+| Feature 3 | `Качество снимка` |
+| Feature 4 | `Сравнить чтения` |
 
-Таким образом, визуальная и информационная регистрация самостоятельного четвёртого агента присутствует на home и hub surfaces, а не только в backend registry.
+Прямой интерактивный переход по кнопке `Начать` до chat shell в этом браузерном сеансе не удалось завершить надёжно: после нескольких browser actions automation context сбрасывался на `about:blank`, а ранее выданные element indices становились stale. Повторная навигация полностью восстанавливала Mini App. Сохранённый DOM содержит ожидаемые action attributes `data-act="chat"`, `data-chat="chiromant"`, `data-fn="featurePalm"`; поэтому данный пункт отмечен как automation limitation, а не как подтверждённый frontend HTTP failure.
 
-Прямой интерактивный переход из карточки `Начать` в chat shell в этом QA-сеансе не удалось завершить надёжно: после нескольких browser actions automation context сбрасывался на `about:blank`, а старые element indices становились stale. После повторной навигации Mini App восстанавливался без ошибок. Это ограничение browser automation session, а не HTTP/static failure; сам hub DOM и action attributes (`data-act="chat"`, `data-chat="chiromant"`, `data-fn="featurePalm"`) были подтверждены в сохранённом HTML.
+## 3. Agent API и placement endpoints
 
-## 4. Проверка API и калькуляторов
+`GET /api/agents?dev_user=1001` вернул четыре агента. Объект Миры содержит `code=chiromant`, `name=Мира`, `title=Проводник ладони`, `emoji=✋`, `accent=#e2a45e`, avatar `/static/img/agents/chiromant.jpg`, palm-specific greeting и предложения для проверки качества, карты зон и сравнения чтений. В свежем QA-профиле `thread_id=null` и `msg_count=0`, что соответствует отсутствию предыдущего диалога.
 
-### 4.1 Список агентов
+`GET /api/placements` вернул HTTP 200. В каталоге присутствуют 16 western placement identifiers из registry плюс `life_path`, `chinese_zodiac` и `natal_chart`, всего **19 calculator entries**, а также отдельный объект `palm_reading`. Canonical code лунного знака — `moon_sign`; пользовательское `moon` корректно отклоняется.
 
-`GET /api/agents?dev_user=1001` вернул HTTP 200 и четыре объекта. Для Миры зафиксированы следующие значения: `code=chiromant`, `name=Мира`, `title=Проводник ладони`, `emoji=✋`, `accent=#e2a45e`, avatar `/static/img/agents/chiromant.jpg`. Greeting и suggestions также относятся только к palm workflow: проверка качества, карта видимых зон и сравнение двух чтений.
-
-### 4.2 Каталог 17 ориентиров и дополнительных entries
-
-`GET /api/placements` вернул HTTP 200. В каталоге присутствуют 16 западных placement entries из registry плюс `life_path`, `chinese_zodiac` и `natal_chart`, то есть **19 calculator entries**, а также отдельный palm metadata object. Canonical API identifier лунного знака — `moon_sign`; пользовательское слово `moon` намеренно не принимается.
-
-Позитивный расчёт был выполнен запросом:
+Позитивный запрос расчёта:
 
 ```json
 {
@@ -77,45 +62,64 @@
 }
 ```
 
-Ответом стал HTTP 200 с `sign=Рыбы`, `degree=13.4`, `precision=exact`, `source=swiss_ephemeris` и interpretation scope `emotions, needs, safety`. Неверный code `moon` вернул HTTP 400 `неизвестный placement-калькулятор`, что подтверждает наличие validation boundary, а не неявного fallback к другому калькулятору. API contract находится в [placement router][3], а deterministic registry — в [placements core module][4].
+Ответом стал HTTP 200 с `sign=Рыбы`, `degree=13.4`, `precision=exact`, `source=swiss_ephemeris` и scope `emotions, needs, safety`. Неверный code `moon` вернул HTTP 400 `неизвестный placement-калькулятор`, подтверждая явную validation boundary. Контракт находится в [placement router][3], registry — в [placements core module][4].
 
-## 5. Проверка palm pipeline на реальном изображении
+## 4. Palm vision pipeline и API
 
-### 5.1 Mocked-vision E2E
+Интеграционный тест использовал реальный JPEG `tests/fixtures/palm/palm_hand.jpg` размером 2592×1728. Upload прошёл MIME validation, Pillow decode, EXIF normalization, JPEG data URL boundary, mocked vision, SQLite persistence и tool execution. В базе сохраняются SHA-256, размер, hand side, статус и analysis JSON; исходные bytes не записываются.
 
-Интеграционный тест использовал настоящий JPEG-файл `tests/fixtures/palm/palm_hand.jpg` размером 2592×1728. HTTP upload прошёл через MIME validation, Pillow decode, EXIF normalization, JPEG data URL boundary, vision mock, SQLite persistence и tool execution. В тесте подтверждено, что исходные bytes не записываются в `analysis_json`, а сохраняются только SHA-256, размер, hand side, статус и нормализованный анализ.
+После создания reading были проверены list/get/delete endpoints и все восемь palm tools: `check_palm_quality`, `get_palm_map`, `get_palm_reading`, `get_palm_focus`, `get_palm_reflection`, `compare_palm_readings`, `list_palm_readings` и `request_better_palm_photo`. Ownership test подтверждает, что другой `tg_id` получает 404 при попытке получить или удалить чужое чтение. Полный сценарий находится в [palm integration tests][5].
 
-Для созданного reading были последовательно проверены list/get/delete endpoints и все восемь самостоятельных palm tools: `check_palm_quality`, `get_palm_map`, `get_palm_reading`, `get_palm_focus`, `get_palm_reflection`, `compare_palm_readings`, `list_palm_readings` и `request_better_palm_photo`. Проверка также включает приватность: другой пользователь получает 404 на get/delete чужого reading. Полный сценарий находится в [palm integration tests][5].
+`GET /api/palm?dev_user=1001` на свежем QA-профиле вернул HTTP 200 с `{"items":[],"raw_image_stored":false}`. `Content-Type: application/json` на upload дал HTTP 415. Повреждённые bytes под `image/jpeg` дали HTTP 400. Маленький реальный JPEG ниже минимальной стороны также отклоняется до vision call. Ошибочные upload attempts не создают частичного reading.
 
-### 5.2 Input validation и quality boundaries
+Нормализатор ограничивает confidence диапазоном 0–1, неизвестные topic/visibility/hand-side приводит к safe enum fallback, ограничивает длину текста и заменяет медицинские и детерминированно-прогностические claims. Это предотвращает передачу пользователю диагнозов, утверждений о смертности, беременности, психическом состоянии и гарантированном будущем. Boundary описан в [palm vision pipeline][6].
 
-`Content-Type: application/json` вернул HTTP 415 с инструкцией отправить JPEG, PNG или WebP. Повреждённые bytes под `image/jpeg` вернули HTTP 400. Маленький реальный JPEG ниже минимальной стороны также покрыт тестом и отклоняется до обращения к vision provider. Для нового QA пользователя после неуспешных upload attempts история оставалась пустой, поэтому provider error не создаёт частичное или неподтверждённое reading.
+## 5. Tool isolation и LLM identity
 
-Нормализатор ограничивает confidence диапазоном 0–1, приводит неизвестные topic/visibility/hand-side к безопасным enum fallback values, обрезает чрезмерный текст и заменяет запрещённые medical/predictive claims. Описание и код boundary находятся в [palm vision pipeline][6].
+Registry Миры содержит ровно восемь palm skills и не содержит `draw_tarot`, `get_chart`, `get_matrix` или `get_transits`. `_run_pretool` теперь действует по переданному allow-list: для chiromant он может выполнять только доступные palm actions и не подмешивает Tarot/Astro/Matrix context. Offline answer также возвращает palm-specific instruction, а не случайный Tarot fallback.
 
-## 6. Live LLM QA и исправление GPT-5 compatibility
+`PALM_SYSTEM` прямо фиксирует identity Миры как самостоятельного Проводника ладони. В prompt содержатся границы evidence-only reading, запрет на инструкции с изображения, enum visibility/status, разделение observations и interpretive prompts, а также требование просить более качественный снимок, если ладонь или линия не видны.
 
-Первый live upload через основной server 8080 достиг provider boundary, однако configured OpenAI-compatible вызов вернул HTTP 200 с пустым `message.content`; API корректно преобразовал это в HTTP 400 `vision-модель вернула невалидный JSON`, не сохранив reading. Диагностический probe подтвердил, что проблема была не в JPEG: прямой запрос к live catalog model `gpt-5-mini` с `max_completion_tokens` вернул валидный JSON, тогда как application path передавал GPT-5-compatible request с `max_tokens`.
+## 6. Live LLM QA и исправление GPT-5 token contract
 
-Live `/models` catalog сообщил 10 доступных моделей, среди которых `gpt-5-nano`, `gpt-5-mini`, `gpt-5`, `gpt-5.5`, Claude 4.5/4.6/4.7 и Gemini 3 multimodal models; для них заявлены vision и JSON-schema capabilities. В соответствии с catalog contract в `app/core/llm.py` добавлен helper, который для `gpt-5*` использует `max_completion_tokens`, а для legacy/custom models сохраняет `max_tokens` и существующий minimum budget. Этот change применяется и к обычному streaming OpenAI path, и к vision path.
+Первый live upload через основной server достиг vision provider, однако provider возвратил HTTP 200 с пустым `message.content`. API корректно отклонил результат как невалидный JSON и вернул HTTP 400 `vision-модель вернула невалидный JSON`; reading не сохранился. Это выявило silent provider-compatibility defect: ответ считался успешным до schema parsing, а application path передавал GPT-5-compatible request с `max_tokens`.
 
-После patch добавлен regression test с fake OpenAI client: GPT-5 получает ровно `max_completion_tokens=1600`, а `max_tokens` отсутствует. Targeted suite и полный suite проходят. Повторный live upload с gpt-5-mini после patch во втором isolated QA process упёрся в upstream timeout/retry chain и завершился HTTP 502 примерно через 223 секунды; это отдельная нестабильность текущего внешнего proxy, а не silent empty-content path. Поэтому финальный статус live provider следует считать **improved and guarded, but not fully green in this sandbox session**. Mocked E2E, schema/safety boundaries и provider token contract зелёные; эксплуатационная рекомендация — включить рабочий provider fallback и наблюдать latency/error rate на deployment environment.
+Live `/models` catalog сообщил 10 доступных моделей, среди которых `gpt-5-nano`, `gpt-5-mini`, `gpt-5`, `gpt-5.5`, Claude 4.5/4.6/4.7 и Gemini 3 multimodal models. Catalog объявляет vision и JSON-schema capabilities. Диагностический direct probe с `gpt-5-mini` и `max_completion_tokens` вернул валидный JSON, подтвердив правильный request shape.
 
-## 7. Тестовая матрица и воспроизводимость
+В `app/core/llm.py` добавлен provider-aware helper. Для `gpt-5*` он отправляет `max_completion_tokens`, а для legacy/custom моделей сохраняет `max_tokens` и существующий minimum budget. Изменение применяется к streaming chat и vision call. В `tests/test_openai_compat.py` добавлен regression test, который проверяет `max_completion_tokens=1600` и отсутствие `max_tokens` в GPT-5 vision request.
+
+После исправления повторный upload на isolated QA server с gpt-5-mini не вернул успешный reading: текущий внешний proxy завершил retries upstream timeout и API ответил HTTP 502 примерно через 223 секунды. Это отдельная operational limitation текущей sandbox provider session. Поэтому live multimodal status честно отмечен как **guarded but not fully green**; mocked E2E, JSON/safety boundaries, ownership, persistence и provider token contract остаются зелёными.
+
+## 7. Тестовая матрица
 
 | Набор | Команда | Результат |
 |---|---|---:|
-| Targeted OpenAI/Palm | `pytest -q tests/test_openai_compat.py tests/test_palm_integration.py` | 8 passed |
+| OpenAI/Palm targeted | `pytest -q tests/test_openai_compat.py tests/test_palm_integration.py` | 8 passed |
 | Extended targeted | `pytest -q tests/test_openai_compat.py tests/test_palm_integration.py tests/test_placements_palm.py tests/test_miniapp_actions.py` | 21 passed |
 | Full project suite | `pytest -q` | 377 passed |
 | Collection count | `pytest --collect-only -q` | 377 collected |
 | Diff hygiene | `git diff --check` | clean |
 
-## 8. Итоговая оценка
+Локальное дерево после commit чистое. Удалены одноразовые browser seed/probe files; в репозитории сохранены production change, regression test и настоящий интеграционный отчёт.
 
-Функциональная интеграция Миры выполнена как самостоятельного четвёртого агента: registry, skill allow-list, prompt identity, API, persistence, Mini App cards, palm workflow и branded avatar не зависят от Tarot agent. Extended calculators доступны через отдельный deterministic placement layer, а API корректно разделяет canonical codes, validation и result metadata.
+## 8. GitHub delivery
 
-На уровне кода и тестов состояние готово к commit/push: полный suite зелёный, GPT-5 token contract исправлен и покрыт. Единственное ограничение отчёта — текущая внешняя multimodal proxy session: после исправления неправильного token parameter один повторный live upload завершился upstream timeout. Это зафиксировано как operational limitation, а не скрыто как успешный palm reading.
+В `origin/master` отправлены следующие четыре commit:
+
+| Commit | Назначение |
+|---|---|
+| `c43d366` | Интеграция chiromant во все agent surfaces |
+| `40e4a1b` | Самостоятельный четвёртый агент с отдельными skills |
+| `72b0b1f` | Quality hardening и chiromant LLM fallback |
+| `b8055c0` | GPT-5 vision token budget fix, regression test и этот отчёт |
+
+Команда push завершилась успешно: `d03da4f..b8055c0 master -> master`. После повторного `fetch` значения `HEAD` и `origin/master` совпали: `b8055c0cfe1ba8d45a9f234efa31f959763ba2c6`; divergence равен `0 0`.
+
+## 9. Финальный вывод
+
+Мира реализована как полноценный самостоятельный четвёртый агент, а не как ветка Таро: у неё собственная специализация, отдельные восемь инструментов, vision-driven evidence pipeline, сохранённые чтения, сравнение, quality gates, независимый UI и botanical/field-guide avatar. Расширенный calculator catalog доступен через отдельный deterministic layer и покрыт тестами.
+
+Код и regression suite готовы к использованию. Единственное эксплуатационное предупреждение относится к текущему внешнему multimodal proxy: после исправления request shape один live повтор всё ещё завершился upstream timeout. На deployment следует включить и мониторить рабочий provider fallback, latency и `llm_usage` для palm vision calls.
 
 ## References
 
