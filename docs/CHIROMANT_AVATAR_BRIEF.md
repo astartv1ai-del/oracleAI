@@ -1,5 +1,7 @@
-# Chiromant avatar brief
+# Mira / Palm Field Guide avatar brief
 
-The existing OracleAI agent portraits are square 397×400 JPEGs with a close three-quarter portrait, a deep indigo/cosmic background, restrained gold accents, mature female character design, and one symbolic prop.
+Mira is a fully independent fourth OracleAI agent. Her avatar must not resemble the Tarot reader or the astrology guide.
 
-The new Mира avatar should preserve that family style while being clearly specific to chiromancy: a calm palm-reading woman, warm terracotta/rose-gold accents, subtle palm-line motif or softly illuminated open hand, no readable text, no occult horror, no medical imagery, and enough clean dark margin for small circular/rounded UI crops.
+The visual language is a grounded palm-observation atelier: matte deep teal and sage background, terracotta linen, warm ochre and copper ink, botanical shadows, topographic/field-notebook linework, and a clearly visible open palm with natural lines. The portrait is contemporary, human, calm, and trustworthy rather than mystical, cosmic, predictive, or occult.
+
+The asset is a square 397×400 JPEG for rounded cards, chat headers, agent tabs, home dock, Telegram/mini-app surfaces, and future palm-specific screens. It contains no text, logo, tarot card, crystal ball, planet, constellation, medical instrument, or horror imagery.

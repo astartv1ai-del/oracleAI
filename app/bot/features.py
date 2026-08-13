@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from io import BytesIO
 from datetime import datetime
 
 from aiogram import F, Router
@@ -13,7 +14,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from ..core import agent as agent_core
-from ..core import astro, cards, memory
+from ..core import astro, cards, memory, palm as palm_core
 from ..core.matrix import compute_matrix
 from ..repo import admin as admin_repo
 from ..repo import dialog, readings, users
@@ -36,8 +37,74 @@ class Compat(StatesGroup):
     date = State()
 
 
+class PalmUpload(StatesGroup):
+    photo = State()
+
+
 async def _menu(db, tg_id: int):
     return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)))
+
+
+# ───────────────────────────── ПАЛМ-АГЕНТ МИРА ───────────────────────────────
+
+PALM_TOPIC_LABELS = {
+    "heart_line": "Линия сердца", "head_line": "Линия головы",
+    "life_line": "Линия жизни", "fate_line": "Линия судьбы",
+    "sun_line": "Линия Солнца", "relationship_line": "Линии отношений",
+    "mounts": "Холмы", "fingers": "Пальцы",
+}
+
+
+@router.callback_query(F.data == "palm")
+async def palm_entry(cb: CallbackQuery, state: FSMContext, db):
+    await state.set_state(PalmUpload.photo)
+    await state.update_data(agent="chiromant")
+    await cb.message.answer(
+        "✋ <b>Мира · Проводник ладони</b>\n\n"
+        "Пришли <b>одно фото ладони</b>: она должна быть целиком в кадре, при ровном свете, "
+        "без бликов, фильтров и украшений. Мира сначала проверит качество, затем покажет "
+        "только различимые зоны и границы чтения.\n\n"
+        "<i>Это символическая саморефлексия, не медицинская диагностика и не предсказание.</i>",
+        reply_markup=back_menu())
+    await cb.answer()
+
+
+@router.message(PalmUpload.photo, F.photo)
+async def palm_photo(message: Message, state: FSMContext, db):
+    user = await users.get(db, message.from_user.id)
+    buf = BytesIO()
+    try:
+        await message.bot.download(message.photo[-1].file_id, destination=buf)
+        result = await palm_core.analyze_and_save(db, user, buf.getvalue(), surface="bot")
+    except ValueError as exc:
+        await message.answer(
+            f"✋ Не получилось подготовить снимок: {str(exc)}\n\n"
+            "Попробуй фото одной ладони целиком при ровном свете.", reply_markup=back_menu())
+        return
+    except Exception as exc:  # noqa: BLE001
+        log.warning("palm photo analysis failed: %s", exc)
+        await message.answer("✋ Мира пока не смогла завершить чтение. Попробуй ещё раз с более чётким снимком.",
+                             reply_markup=back_menu())
+        return
+    observations = result.get("observations") or []
+    quality = int(round(float((result.get("image_quality") or {}).get("score") or 0) * 100))
+    if result.get("status") == "needs_photo":
+        limits = "\n".join(f"• {item}" for item in (result.get("limitations") or [])[:3])
+        text = (f"✋ <b>Мире нужен более ясный кадр</b>\nКачество: {quality}%\n\n"
+                f"{limits or 'Пересними ладонь целиком при ровном свете.'}")
+    else:
+        rows = []
+        for item in observations[:4]:
+            label = PALM_TOPIC_LABELS.get(str(item.get("topic") or ""), "Наблюдение")
+            confidence = int(round(float(item.get("confidence") or 0) * 100))
+            rows.append(f"• <b>{label}</b> · {confidence}%\n{item.get('summary') or 'без описания'}")
+        prompts = result.get("interpretive_prompts") or []
+        reflection = f"\n\n<b>Вопрос к себе</b>\n{prompts[0]}" if prompts else ""
+        text = (f"✋ <b>Карта видимых зон от Миры</b>\nКачество кадра: {quality}%\n\n" +
+                ("\n\n".join(rows) or "На фото мало различимых зон — лучше переснять кадр.") + reflection +
+                "\n\n<i>Это описание видимого в кадре, не диагноз и не прогноз.</i>")
+    await state.clear()
+    await message.answer(text, reply_markup=back_menu())
 
 
 # ─────────────────────────────── ТАРО ─────────────────────────────────────────

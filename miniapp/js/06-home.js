@@ -153,7 +153,8 @@
         <div class="section-title">${homeT('talkTo')}</div>
         <div class="dock-grid">
           ${homeAgents.map(a => `
-            <button class="dock-item" type="button" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">
+                          <button class="dock-item dock-item--${esc(a.code)}" type="button" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">
+
               <span class="dock-orb" style="--ac:${esc(a.accent || 'var(--gold)')}"><img class="dock-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span>
               <span class="dock-name">${esc(a.name.split(' ')[0])}</span>
               ${a.title ? `<span class="dock-role">${esc(a.title)}</span>` : ''}
@@ -171,7 +172,7 @@
       { code: 'oracle', name: 'Лилит', title: 'Личный Оракул', emoji: '🔮', accent: '#e8c56b' },
       { code: 'astro', name: 'Урания', title: 'Астролог', emoji: '🌌', accent: '#7fb4e8' },
       { code: 'tarot', name: 'Мадам Ленорман', title: 'Таролог', emoji: '🎴', accent: '#c58bd8' },
-      { code: 'chiromant', name: 'Мира', title: 'Хиромант', emoji: '✋', accent: '#d89c7f', avatar: '/static/img/agents/chiromant.jpg' },
+      { code: 'chiromant', name: 'Мира', title: 'Проводник ладони', emoji: '✋', accent: '#e2a45e', avatar: '/static/img/agents/chiromant.jpg' },
     ];
     main.innerHTML = `
       <div class="screen">
@@ -181,7 +182,7 @@
         </div>
         <div class="agent-list">
           ${list.map(a => `
-            <div class="agent-card ${this.chat.key === a.code ? 'glow' : ''}" style="--ac:${esc(a.accent || 'var(--gold)')}" data-act="chat" data-chat="${a.code}">
+            <div class="agent-card agent-card--${esc(a.code)} ${this.chat.key === a.code ? 'glow' : ''}" style="--ac:${esc(a.accent || 'var(--gold)')}" data-act="chat" data-chat="${a.code}">
               <div class="ac-top">
                 <div class="agent-avatar">${agentSprite(a)}</div>
                 <div style="flex:1;min-width:0">

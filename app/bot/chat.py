@@ -117,8 +117,8 @@ async def ask_menu(cb: CallbackQuery, state: FSMContext, db):
     await cb.message.answer(
         f"Я слушаю тебя... ✨ ({left}{extra})\n"
         f"Напиши свой вопрос — о любви, деньгах, пути.\n\n"
-        f"<i>Можно спросить и других: 🎴 Таролога, 🌌 Астролога, "
-        f"🔢 Нумеролога, 📖 Хранителя дневника.</i>",
+        f"<i>Можно выбрать проводника: 🎴 Таролога, 🌌 Астролога, "
+        f"✋ Миру — Проводника ладони, 🔢 Нумеролога или 📖 Хранителя дневника.</i>",
         reply_markup=agents_kb(await agents.agent_list(db, user)))
     await cb.answer()
 

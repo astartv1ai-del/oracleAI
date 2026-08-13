@@ -14,9 +14,54 @@
       <div class="palm-guide__steps"><i>1</i><i>2</i><i>3</i><small>целиком</small><small>без бликов</small><small>пальцы свободны</small></div>
     </div>`;
 
+  const PALM_WORKFLOWS = {
+    map: {
+      icon: '◌', title: 'Карта видимых зон',
+      copy: 'Мира соберёт последнее чтение в понятную карту: что видно, что видно частично и где кадр не даёт делать выводы.',
+      prompt: 'Построй карту видимых зон моей ладони по последнему чтению.'
+    },
+    quality: {
+      icon: '◈', title: 'Качество снимка',
+      copy: 'Сначала проверим, достаточно ли последнего кадра для аккуратного разбора и что улучшить, если деталей мало.',
+      prompt: 'Проверь качество моего последнего снимка ладони и назови один следующий шаг.'
+    },
+    compare: {
+      icon: '↔', title: 'Сравнить чтения',
+      copy: 'Мира сопоставит только различимость зон на двух сохранённых снимках. Это не оценка изменений судьбы, личности или здоровья.',
+      prompt: 'Сравни два моих последних чтения ладони: только различимость зон и качество кадров, без выводов о судьбе.'
+    }
+  };
+
   app.featurePalm = function () {
     if (this.chat.pending && this.chat.pending.kind === 'palm') return;
     this.chat.pending = { kind: 'palm', loading: false, html: app.palmPickerHtml() };
+    this.renderChat(document.getElementById('app-main'));
+  };
+
+  app.palmWorkflowHtml = function (kind) {
+    const flow = PALM_WORKFLOWS[kind];
+    if (!flow) return '';
+    return `<section class="palm-result palm-workflow" aria-live="polite">
+      <span class="palm-workflow__glyph" aria-hidden="true">${flow.icon}</span>
+      <div class="w-title">${esc(flow.title)}</div>
+      <p class="w-sub">${esc(flow.copy)}</p>
+      <div class="palm-workflow__rule">Мира работает только с сохранёнными наблюдениями по фото. Если чтения нет или кадр слабый, она предложит переснять ладонь.</div>
+      <div class="palm-actions"><button class="btn btn-primary" data-act="ask" data-chat="chiromant" data-q="${esc(flow.prompt)}">Продолжить с Мирой</button></div>
+    </section>`;
+  };
+
+  app.featurePalmMap = function () {
+    this.chat.pending = { kind: 'palm-map', loading: false, html: app.palmWorkflowHtml('map') };
+    this.renderChat(document.getElementById('app-main'));
+  };
+
+  app.featurePalmQuality = function () {
+    this.chat.pending = { kind: 'palm-quality', loading: false, html: app.palmWorkflowHtml('quality') };
+    this.renderChat(document.getElementById('app-main'));
+  };
+
+  app.featurePalmCompare = function () {
+    this.chat.pending = { kind: 'palm-compare', loading: false, html: app.palmWorkflowHtml('compare') };
     this.renderChat(document.getElementById('app-main'));
   };
 
@@ -77,7 +122,9 @@
       ${prompts.length ? `<div class="palm-prompts"><b>Вопросы к себе</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
       <p class="palm-disclaimer">Линия жизни не показывает продолжительность жизни. Это символическая рефлексия, а не диагноз и не гарантия событий.</p>
       <div class="palm-actions">
-        ${needs ? '<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Переснять фото</button>' : '<button class="btn btn-primary" data-act="fill" data-val="Прочитай мою ладонь по последнему фото.">Спросить Хироманта</button>'}
+        ${needs
+          ? '<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Переснять фото</button>'
+          : '<button class="btn btn-primary" data-act="tool-fn" data-fn="featurePalmMap">Карта зон</button><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalmQuality">Качество кадра</button>'}
       </div>
     </section>`;
   };

@@ -122,7 +122,9 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
 
     chiromant = get("chiromant")
     tool_names = {tool["name"] for tool in skills.tools_for(chiromant.skills)}
-    assert {"get_palm_reading", "get_palm_focus", "list_palm_readings", "request_better_palm_photo"}.issubset(tool_names)
+    assert {"check_palm_quality", "get_palm_map", "get_palm_reading", "get_palm_focus",
+            "get_palm_reflection", "compare_palm_readings", "list_palm_readings",
+            "request_better_palm_photo"}.issubset(tool_names)
     evidence = await skills.execute(db, user, "get_palm_reading", {"reading_id": reading_id})
     assert "heart_line" in evidence
     assert "vision-наблюдений" in evidence

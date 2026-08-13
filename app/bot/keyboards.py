@@ -35,6 +35,7 @@ def main_menu(*, is_admin: bool = False) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🎴 Расклад Таро", callback_data="tarot"),
             InlineKeyboardButton(text="🌌 Моя карта", callback_data="chart"),
         ],
+        [InlineKeyboardButton(text="✋ Мира · Проводник ладони", callback_data="palm")],
         [
             InlineKeyboardButton(text="🔢 Матрица Судьбы", callback_data="matrix"),
             InlineKeyboardButton(text="📖 Дневник", callback_data="diary"),

@@ -220,7 +220,7 @@
     };
     const introGuide = introGuides[a.code] || introGuides.oracle;
     const introHtml = messages.length <= 1 ? `
-        <section class="agent-intro agent-intro--compact" style="--ac:${esc(a.accent || 'var(--gold)')}" aria-label="Знакомство с проводником">
+        <section class="agent-intro agent-intro--compact agent-intro--${esc(a.code)}" style="--ac:${esc(a.accent || 'var(--gold)')}" aria-label="Знакомство с проводником">
           <span class="ai-kicker">${introGuide.kicker}</span>
           <div class="ai-persona">
             <div class="ai-face">${agentSprite(a, false)}</div>
@@ -238,7 +238,7 @@
     const pendHtml = pending ? this.pendingHtml(pending) : '';
 
     main.innerHTML = `
-      <div class="chat-shell">
+      <div class="chat-shell chat-shell--${esc(a.code)}">
         <div class="chat-head">
           <button class="back" data-act="back" aria-label="Вернуться к проводникам" title="К проводникам">‹</button>
           <div class="agent-avatar" style="--ac:${esc(a.accent || 'var(--gold)')}">${agentSprite(a, cheer)}</div>

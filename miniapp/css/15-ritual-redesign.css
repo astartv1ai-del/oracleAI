@@ -2122,3 +2122,69 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   .composer-tools-copy, .composer-tools-copy__chevron { transition: none; }
 }
+
+
+/* ── Mira / Palm Field Guide: independent visual language ─────────────── */
+.agent-card--chiromant,
+.dock-item--chiromant,
+.chat-shell--chiromant .agent-intro--chiromant {
+  --ac: #e2a45e;
+}
+.agent-card--chiromant {
+  border-color: rgba(226,164,94,.34);
+  background:
+    linear-gradient(145deg, rgba(44,78,70,.78), rgba(12,25,31,.92)),
+    radial-gradient(circle at 88% 12%, rgba(226,164,94,.18), transparent 34%);
+}
+.agent-card--chiromant::after {
+  background: radial-gradient(circle, rgba(226,164,94,.22), transparent 68%);
+}
+.agent-card--chiromant .agent-role,
+.dock-item--chiromant .dock-role,
+.chat-shell--chiromant .tsub,
+.agent-intro--chiromant .ai-kicker {
+  color: #e2a45e;
+}
+.dock-item--chiromant {
+  border-color: rgba(226,164,94,.34);
+  background: linear-gradient(145deg, rgba(44,78,70,.74), rgba(16,27,31,.9));
+}
+.dock-item--chiromant .dock-orb {
+  box-shadow: 0 0 0 4px rgba(226,164,94,.12), 0 0 22px rgba(226,164,94,.18);
+}
+.chat-shell--chiromant .agent-tabs {
+  background: rgba(22,43,42,.72);
+  border-bottom-color: rgba(226,164,94,.22);
+}
+.chat-shell--chiromant .atab.active {
+  border-color: rgba(226,164,94,.76);
+  background: rgba(226,164,94,.14);
+}
+.agent-intro--chiromant {
+  border-color: rgba(226,164,94,.34);
+  background:
+    linear-gradient(145deg, rgba(44,78,70,.78), rgba(16,27,31,.86)),
+    repeating-linear-gradient(135deg, transparent 0 15px, rgba(226,164,94,.045) 16px 17px);
+}
+.agent-intro--chiromant .ai-name { color: #f3c17a; }
+.agent-intro--chiromant .agent-face { border-color: #e2a45e; }
+.palm-workflow {
+  border-color: rgba(226,164,94,.36);
+  background:
+    linear-gradient(145deg, rgba(44,78,70,.72), rgba(11,23,29,.9)),
+    repeating-linear-gradient(0deg, transparent 0 22px, rgba(226,164,94,.035) 23px 24px);
+}
+.palm-workflow__glyph {
+  display: inline-grid; place-items: center; width: 42px; height: 42px;
+  margin-bottom: 8px; border: 1px solid rgba(226,164,94,.44); border-radius: 14px;
+  color: #e2a45e; background: rgba(226,164,94,.10); font-size: 22px;
+}
+.palm-workflow__rule {
+  margin: 12px 0 4px; padding: 10px 11px; border-left: 2px solid #e2a45e;
+  color: rgba(245,235,211,.72); background: rgba(226,164,94,.055);
+  font-size: 11.5px; line-height: 1.5;
+}
+.palm-workflow .palm-actions { flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) {
+  .agent-card--chiromant *, .dock-item--chiromant *, .palm-workflow * { animation: none !important; transition: none !important; }
+}

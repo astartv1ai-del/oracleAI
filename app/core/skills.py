@@ -482,21 +482,137 @@ async def _run_get_chinese_zodiac(db, user, args) -> str:
     return placements.as_tool_json(placements.chinese_zodiac(user["birth_date"]))
 
 
-async def _run_get_palm_reading(db, user, args) -> str:
+PALM_TOPIC_LABELS = {
+    "heart_line": "линия сердца", "head_line": "линия головы",
+    "life_line": "линия жизни", "fate_line": "линия судьбы",
+    "sun_line": "линия Солнца", "relationship_line": "линии отношений",
+    "mounts": "холмы", "fingers": "пальцы",
+}
+
+PALM_REFLECTION_QUESTIONS = {
+    "heart_line": "Где я сейчас честно говорю о своих чувствах, а где предпочитаю молчать?",
+    "head_line": "Какой способ думать или принимать решение сейчас поддерживает меня лучше всего?",
+    "life_line": "Какие привычные источники энергии и восстановления я хочу бережно поддержать?",
+    "fate_line": "Какой следующий шаг в деле ощущается моим, даже если он ещё небольшой?",
+    "sun_line": "Где мне хочется позволить себе проявиться без необходимости доказывать ценность?",
+    "relationship_line": "Какой разговор или граница могли бы добавить ясности в близости?",
+    "mounts": "Какая часть моего характера сейчас просит внимания: тепло, любопытство, устойчивость или смелость?",
+    "fingers": "Какой способ действовать сейчас кажется мне естественным и реалистичным?",
+}
+
+
+async def _load_palm_reading(db, user, args) -> dict | None:
     reading_id = args.get("reading_id")
-    reading = None
     if reading_id not in (None, ""):
         try:
-            reading = await palm.get(db, user, int(reading_id))
+            return await palm.get(db, user, int(reading_id))
         except (TypeError, ValueError):
-            reading = None
-    else:
-        reading = await palm.latest(db, user)
+            return None
+    return await palm.latest(db, user)
+
+
+async def _run_get_palm_reading(db, user, args) -> str:
+    reading = await _load_palm_reading(db, user, args)
     if not reading:
         return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
     return ("[Детерминированный evidence vision-наблюдений ладони. "
             "Не добавляй отсутствующие линии и не делай медицинских выводов]\n" +
             json.dumps(reading, ensure_ascii=False, separators=(",", ":")))
+
+
+async def _run_palm_map(db, user, args) -> str:
+    reading = await _load_palm_reading(db, user, args)
+    if not reading:
+        return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
+    zones = []
+    for item in reading.get("observations") or []:
+        topic = str(item.get("topic") or "unknown")
+        zones.append({
+            "topic": topic,
+            "label": PALM_TOPIC_LABELS.get(topic, topic),
+            "visibility": item.get("visibility", "unclear"),
+            "confidence": item.get("confidence", 0),
+            "summary": item.get("summary", ""),
+        })
+    payload = {
+        "reading_id": reading.get("id"),
+        "hand_side": reading.get("hand_side", "unknown"),
+        "zones": zones,
+        "limitations": reading.get("limitations") or [],
+        "rule": "Карта показывает только зоны, различимые в этом кадре; отсутствие зоны не является выводом о человеке.",
+    }
+    return "[Карта видимых зон ладони]\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_palm_quality_check(db, user, args) -> str:
+    reading = await _load_palm_reading(db, user, args)
+    if not reading:
+        return "чтений ладони пока нет — для начала попроси загрузить фотографию"
+    quality = reading.get("image_quality") or {}
+    score = float(quality.get("score") or 0)
+    status = reading.get("status")
+    next_step = (
+        "Можно перейти к одной выбранной линии или к карте ладони."
+        if status == "complete" and score >= 0.75
+        else "Попроси переснять ладонь целиком при ровном свете, без бликов и фильтров."
+    )
+    payload = {
+        "reading_id": reading.get("id"), "status": status,
+        "score": round(max(0, min(1, score)), 2),
+        "issues": quality.get("issues") or [],
+        "limitations": reading.get("limitations") or [],
+        "next_step": next_step, "raw_image_stored": False,
+    }
+    return "[Контроль качества чтения ладони]\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_palm_reflection(db, user, args) -> str:
+    reading = await _load_palm_reading(db, user, args)
+    if not reading:
+        return "чтений ладони пока нет — попроси загрузить чёткое фото одной ладони"
+    questions = []
+    for item in reading.get("observations") or []:
+        topic = str(item.get("topic") or "")
+        if item.get("visibility") in {"clear", "partial"} and topic in PALM_REFLECTION_QUESTIONS:
+            questions.append({"topic": topic, "question": PALM_REFLECTION_QUESTIONS[topic]})
+    payload = {
+        "reading_id": reading.get("id"),
+        "questions": questions[:3],
+        "rule": "Это вопросы для саморефлексии, а не предсказания и не диагноз.",
+    }
+    return "[Вопросы для саморефлексии по видимым зонам]\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_compare_palm_readings(db, user, args) -> str:
+    rows = await palm_repo.list_readings(db, user["tg_id"], limit=10)
+    if len(rows) < 2:
+        return "для сравнения нужны минимум два сохранённых чтения ладони"
+    try:
+        current_id = int(args.get("current_reading_id") or rows[0]["id"])
+        previous_id = int(args.get("previous_reading_id") or rows[1]["id"])
+    except (TypeError, ValueError):
+        return "ID чтений должны быть числами"
+    current = await palm.get(db, user, current_id)
+    previous = await palm.get(db, user, previous_id)
+    if not current or not previous:
+        return "одно из выбранных чтений не найдено или недостаточно качественно"
+    def visible_topics(reading):
+        return {str(item.get("topic")) for item in (reading.get("observations") or [])
+                if item.get("visibility") in {"clear", "partial"}}
+    current_topics, previous_topics = visible_topics(current), visible_topics(previous)
+    payload = {
+        "current_reading_id": current_id,
+        "previous_reading_id": previous_id,
+        "current_visible_topics": sorted(current_topics),
+        "previous_visible_topics": sorted(previous_topics),
+        "shared_visible_topics": sorted(current_topics & previous_topics),
+        "quality": {
+            "current": (current.get("image_quality") or {}).get("score", 0),
+            "previous": (previous.get("image_quality") or {}).get("score", 0),
+        },
+        "rule": "Сравнение описывает различимость зон в двух кадрах; оно не доказывает изменения личности, судьбы или здоровья.",
+    }
+    return "[Сравнение двух evidence-чтений ладони]\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
 async def _run_get_palm_focus(db, user, args) -> str:
@@ -846,6 +962,43 @@ SKILLS: dict[str, dict] = {
                     "heart_line", "head_line", "life_line", "fate_line", "sun_line",
                     "relationship_line", "mounts", "fingers",
                 ]}}, "required": ["topic"]},
+        },
+    },
+    "get_palm_map": {
+        "run": _run_palm_map,
+        "schema": {
+            "name": "get_palm_map",
+            "description": "Собрать карту различимых зон последнего или выбранного чтения ладони без добавления невидимых признаков.",
+            "input_schema": {"type": "object", "properties": {
+                "reading_id": {"type": "integer", "description": "ID чтения, если нужен не последний результат"}}},
+        },
+    },
+    "check_palm_quality": {
+        "run": _run_palm_quality_check,
+        "schema": {
+            "name": "check_palm_quality",
+            "description": "Проверить качество снимка, границы точности и следующий безопасный шаг для чтения ладони.",
+            "input_schema": {"type": "object", "properties": {
+                "reading_id": {"type": "integer", "description": "ID чтения, если нужен не последний результат"}}},
+        },
+    },
+    "get_palm_reflection": {
+        "run": _run_palm_reflection,
+        "schema": {
+            "name": "get_palm_reflection",
+            "description": "Получить вопросы для саморефлексии только по различимым зонам ладони; это не предсказание.",
+            "input_schema": {"type": "object", "properties": {
+                "reading_id": {"type": "integer", "description": "ID чтения, если нужен не последний результат"}}},
+        },
+    },
+    "compare_palm_readings": {
+        "run": _run_compare_palm_readings,
+        "schema": {
+            "name": "compare_palm_readings",
+            "description": "Сравнить видимость зон в двух сохранённых чтениях ладони с явным запретом на выводы об изменении судьбы, личности или здоровья.",
+            "input_schema": {"type": "object", "properties": {
+                "current_reading_id": {"type": "integer"},
+                "previous_reading_id": {"type": "integer"}}},
         },
     },
     "list_palm_readings": {

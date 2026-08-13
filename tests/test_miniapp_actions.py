@@ -74,9 +74,9 @@ def test_chat_exposes_one_visible_tool_entry_point() -> None:
 def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
     styles = (ROOT / "miniapp" / "styles.css").read_text(encoding="utf-8")
-    assert '/static/styles.css?v=86' in index
-    assert '?v=86' in styles
-    assert '?v=85' not in styles
+    assert '/static/styles.css?v=87' in index
+    assert '?v=87' in styles
+    assert '?v=86' not in styles
 
 
 def test_chiromant_is_present_on_all_agent_surfaces() -> None:
@@ -95,12 +95,15 @@ def test_chiromant_is_present_on_all_agent_surfaces() -> None:
 
 def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
     index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
+    data = (JS_DIR / "03-data.js").read_text(encoding="utf-8")
     placements = (JS_DIR / "16-placements.js").read_text(encoding="utf-8")
     palm = (JS_DIR / "13-palm.js").read_text(encoding="utf-8")
     css = (ROOT / "miniapp" / "css" / "15-ritual-redesign.css").read_text(encoding="utf-8")
-    assert '/static/js/16-placements.js?v=86' in index
+    assert '/static/js/16-placements.js?v=87' in index
     assert 'app.featurePlacements' in placements
     assert 'aria-live="polite"' in placements
     assert 'data-placement-code' in placements
     assert 'palm-preview' in palm and 'palm-confidence' in palm
+    assert all(name in palm for name in ('featurePalmMap', 'featurePalmQuality', 'featurePalmCompare', 'palm-workflow'))
+    assert 'featurePalmMap' in data and 'featurePalmCompare' in data
     assert '.placement-explorer' in css and '.palm-progress' in css
