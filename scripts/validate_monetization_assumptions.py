@@ -9,7 +9,8 @@ SCENARIOS = {"cash_constrained", "validated_growth", "large_team"}
 REQUIRED_COLUMNS = {
     "version", "scenario", "metric", "value", "unit", "source", "as_of", "status", "notes",
 }
-ALLOWED_STATUS = {"hypothesis", "required_input", "observed_input", "reviewed_input"}
+ALLOWED_STATUS = {"hypothesis", "estimated", "required_input", "observed_input", "reviewed_input"}
+HYPOTHESIS_SOURCES = {"approved_plan", "market_research_recommendation"}
 
 
 def validate(path: Path) -> list[str]:
@@ -37,8 +38,10 @@ def validate(path: Path) -> list[str]:
             errors.append(f"line {line}: source and notes are mandatory")
         if row["status"] == "reviewed_input" and (not row["value"] or row["as_of"] == "TBD"):
             errors.append(f"line {line}: reviewed_input requires value and as_of")
-        if row["status"] == "hypothesis" and row["source"] != "approved_plan":
-            errors.append(f"line {line}: hypotheses must identify approved_plan source")
+        if row["status"] == "hypothesis" and row["source"] not in HYPOTHESIS_SOURCES:
+            errors.append(f"line {line}: hypotheses must identify an approved plan or research recommendation source")
+        if row["status"] == "estimated" and row["source"] in {"approved_plan", "settlement_export", "tax_review"}:
+            errors.append(f"line {line}: estimated inputs must identify a model or external market source, not a decision/settlement placeholder")
     if len(versions) != 1:
         errors.append(f"multiple assumption versions found: {sorted(versions)}")
     for metric in ("effective_platform_realization", "tax_and_withholding_rate", "refund_rate"):

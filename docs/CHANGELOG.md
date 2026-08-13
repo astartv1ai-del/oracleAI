@@ -31,6 +31,8 @@
 - Added read-only SQLite/WAL health report, deterministic schema manifest, scale-trigger matrix and migration rehearsal runbook; no storage rewrite is enabled before measured thresholds.
 - Added a read-only monetization baseline, versioned unit-economics contract and assumptions CSV for cash-constrained, validated-growth and large-team scenarios; no live prices, subscriptions or balances changed.
 - Added server-owned monetization milestones for crystal-pack checkout/paid, crystal spend and low balance, plus dashboard gross/estimated KPI for paid ARPPU, repeat purchase, refunds, SKU mix and provider-purpose cost; net revenue/contribution remain null until reviewed settlement inputs exist.
+- Added `MONETIZATION_RESEARCH_PACK.md` with verified competitive anchors, 1 490/4 990/9 990 ₽ price architecture, AI COGS routing, Stars/net-realization boundary, payroll scenarios, break-even, FX/LLM/conversion sensitivity, LTV/CAC gates and phased rollout recommendations.
+- Updated `MONETIZATION_ASSUMPTIONS.csv` to version `2026-08-13.v2` with source/status-tagged price hypotheses, estimated model inputs and unchanged settlement/tax/refund required-input rows; assumptions validator now recognizes `estimated` and research-backed `hypothesis` inputs.
 
 ### Security
 
