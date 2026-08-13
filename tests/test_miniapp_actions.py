@@ -74,6 +74,19 @@ def test_chat_exposes_one_visible_tool_entry_point() -> None:
 def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
     styles = (ROOT / "miniapp" / "styles.css").read_text(encoding="utf-8")
-    assert '/static/styles.css?v=84' in index
-    assert '?v=84' in styles
-    assert '?v=83' not in styles
+    assert '/static/styles.css?v=85' in index
+    assert '?v=85' in styles
+    assert '?v=84' not in styles
+
+
+def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
+    index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
+    placements = (JS_DIR / "16-placements.js").read_text(encoding="utf-8")
+    palm = (JS_DIR / "13-palm.js").read_text(encoding="utf-8")
+    css = (ROOT / "miniapp" / "css" / "15-ritual-redesign.css").read_text(encoding="utf-8")
+    assert '/static/js/16-placements.js?v=85' in index
+    assert 'app.featurePlacements' in placements
+    assert 'aria-live="polite"' in placements
+    assert 'data-placement-code' in placements
+    assert 'palm-preview' in palm and 'palm-confidence' in palm
+    assert '.placement-explorer' in css and '.palm-progress' in css

@@ -1,10 +1,17 @@
 (function () {
   'use strict';
 
+  const PALM_TOPICS = {
+    heart_line: 'Линия сердца', head_line: 'Линия головы', life_line: 'Линия жизни',
+    fate_line: 'Линия судьбы', sun_line: 'Линия Солнца', relationship_line: 'Линии отношений',
+    mount_venus: 'Холм Венеры', mount_moon: 'Холм Луны', fingers: 'Пальцы', unknown: 'Наблюдение'
+  };
+  const VISIBILITY = { clear: 'видно', partial: 'частично', unclear: 'неясно', not_visible: 'не видно' };
   const palmGuide = () => `
     <div class="palm-guide" role="note">
-      <b>Как снять ладонь</b>
-      <span>Одна ладонь целиком, ровный свет, камера сверху, пальцы расслаблены и слегка раздвинуты. Без фильтров и бликов.</span>
+      <b>Снимок, который поможет</b>
+      <span>Одна ладонь целиком · ровный свет · камера сверху · пальцы расслаблены. Без фильтров, бликов и украшений.</span>
+      <div class="palm-guide__steps"><i>1</i><i>2</i><i>3</i><small>целиком</small><small>без бликов</small><small>пальцы свободны</small></div>
     </div>`;
 
   app.featurePalm = function () {
@@ -14,9 +21,11 @@
   };
 
   app.palmPickerHtml = function () {
+    const preview = this._palmPreview ? `<div class="palm-preview"><img src="${esc(this._palmPreview)}" alt="Предпросмотр выбранной ладони"><button type="button" class="palm-preview__clear" data-act="tool-fn" data-fn="featurePalm">Изменить</button></div>` : '';
     return `<section class="palm-result" aria-live="polite">
       <div class="w-title">✋ Чтение ладони</div>
       <p class="w-sub">Я опишу только то, что действительно видно на фото, и превращу символы в вопросы к себе.</p>
+      ${preview}
       ${palmGuide()}
       <label class="palm-upload" for="palm-file">
         <span class="palm-upload__icon" aria-hidden="true">＋</span>
@@ -29,8 +38,11 @@
   };
 
   app.palmLoadingHtml = function () {
+    const preview = this._palmPreview ? `<div class="palm-preview palm-preview--loading"><img src="${esc(this._palmPreview)}" alt="Загруженная ладонь"><span>◌</span></div>` : '';
     return `<section class="palm-result" role="status" aria-live="polite">
       <div class="w-title">✋ Смотрю на линии</div>
+      ${preview}
+      <div class="palm-progress"><span class="is-on">Фото</span><i></i><span class="is-on">Качество</span><i></i><span>Наблюдения</span></div>
       <div class="palm-loading"><span></span><span></span><span></span></div>
       <p class="w-sub">Проверяю качество кадра и отделяю наблюдаемое от интерпретации…</p>
     </section>`;
@@ -39,11 +51,17 @@
   function textFromResult(result) {
     const obs = Array.isArray(result.observations) ? result.observations : [];
     if (!obs.length) return '<p class="palm-muted">На этом кадре пока недостаточно деталей для уверенного чтения.</p>';
-    return obs.slice(0, 6).map(item => `
+    return obs.slice(0, 6).map(item => {
+      const topic = PALM_TOPICS[item.topic] || item.topic || 'Наблюдение';
+      const visibility = VISIBILITY[item.visibility] || 'неясно';
+      const confidence = Math.round(Number(item.confidence || 0) * 100);
+      return `
       <div class="palm-observation">
-        <div><b>${esc(item.topic || 'Наблюдение')}</b><span>${esc(item.visibility || 'неясно')} · ${Math.round(Number(item.confidence || 0) * 100)}%</span></div>
+        <div><b>${esc(topic)}</b><span>${esc(visibility)} · ${confidence}%</span></div>
+        <div class="palm-confidence"><i style="width:${confidence}%"></i></div>
         <p>${esc(item.summary || 'Описание отсутствует')}</p>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   app.palmHtml = function (result) {
@@ -53,7 +71,7 @@
     const prompts = Array.isArray(result.interpretive_prompts) ? result.interpretive_prompts : [];
     return `<section class="palm-result" aria-live="polite">
       <div class="w-title">✋ ${needs ? 'Нужен более ясный кадр' : 'Что видно на ладони'}</div>
-      <div class="palm-quality"><b>Качество кадра</b><span>${Math.round(Number(q.score || 0) * 100)}%</span></div>
+      <div class="palm-quality" style="--quality:${Math.round(Number(q.score || 0) * 100)}"><b>Качество кадра</b><span>${Math.round(Number(q.score || 0) * 100)}%</span></div>
       ${textFromResult(result)}
       ${limitations.length ? `<div class="palm-limitations"><b>Границы чтения</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}
       ${prompts.length ? `<div class="palm-prompts"><b>Вопросы к себе</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
@@ -72,6 +90,7 @@
       return;
     }
     const key = app.chat.key, view = app.view;
+    try { app._palmPreview = URL.createObjectURL(file); } catch (e) { app._palmPreview = ''; }
     const pend = app.chat.pending = { kind: 'palm', loading: true, html: app.palmLoadingHtml() };
     app.renderChat(document.getElementById('app-main'));
     try {
