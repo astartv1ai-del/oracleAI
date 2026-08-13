@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 
 from app.config import settings
 from app.core import llm
@@ -212,3 +213,35 @@ async def test_pretool_respects_chiromant_allowlist(monkeypatch):
     assert [name for name, _ in calls] == ["check_palm_quality", "get_palm_focus"]
     assert all(not name.startswith(("get_chart", "get_transits", "draw_tarot", "get_matrix"))
                for name, _ in calls)
+
+
+async def test_gpt5_vision_uses_completion_token_budget(monkeypatch):
+    """GPT-5 proxy requires max_completion_tokens for multimodal output."""
+    seen: dict[str, object] = {}
+
+    class Completions:
+        async def create(self, **kwargs):
+            seen.update(kwargs)
+            return SimpleNamespace(
+                usage=None,
+                choices=[SimpleNamespace(
+                    message=SimpleNamespace(content='{"status":"complete"}'))],
+            )
+
+    class Client:
+        def __init__(self):
+            self.chat = SimpleNamespace(completions=Completions())
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(llm, "_openai_client", lambda provider: Client())
+    monkeypatch.setattr(settings, "openai_main", "gpt-5-mini")
+    text = await llm._vision_with(
+        "openai", "system", "user", "data:image/jpeg;base64,AA==",
+        "main", 1600, llm._Meter(),
+    )
+
+    assert text == '{"status":"complete"}'
+    assert seen["max_completion_tokens"] == 1600
+    assert "max_tokens" not in seen

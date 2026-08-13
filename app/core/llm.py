@@ -188,6 +188,18 @@ def _anthropic_client():
     return anthropic.AsyncAnthropic(api_key=settings.anthropic_key, timeout=TIMEOUT)
 
 
+def _openai_token_limit(model: str, max_tokens: int) -> dict[str, int]:
+    """Выбирает token-параметр по семейству OpenAI-модели.
+
+    GPT-5 proxy принимает видимый output budget через `max_completion_tokens`;
+    при `max_tokens` vision-ответ может завершиться с пустым content, даже с
+    HTTP 200. Legacy OpenAI-compatible и custom модели оставляем на `max_tokens`.
+    """
+    if str(model).lower().startswith("gpt-5"):
+        return {"max_completion_tokens": max_tokens}
+    return {"max_tokens": max(max_tokens, MIN_OPENAI_TOKENS)}
+
+
 async def _close_client(client) -> None:
     close = getattr(client, "close", None)
     if not close:
@@ -206,8 +218,8 @@ async def _stream_chat(client, model: str, messages: list[dict], max_tokens: int
     склеиваем их по index. reasoning_content не попадает в ответ, но если модель
     выдала ТОЛЬКО размышления, честно сообщаем об этом (кончился лимит токенов).
     """
-    kwargs: dict = {"model": model, "messages": messages, "stream": True,
-                    "max_tokens": max(max_tokens, MIN_OPENAI_TOKENS)}
+    kwargs: dict = {"model": model, "messages": messages, "stream": True}
+    kwargs.update(_openai_token_limit(model, max_tokens))
     if tools:
         kwargs["tools"] = tools
     # Просим сервер вернуть расход токенов. Многие локальные раннеры и прокси
@@ -700,8 +712,9 @@ async def _vision_with(provider: str, system: str, user_text: str,
 
     client = _openai_client(provider)
     try:
+        model = _models(provider, tier)
         resp = await client.chat.completions.create(
-            model=_models(provider, tier),
+            model=model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": [
@@ -710,7 +723,7 @@ async def _vision_with(provider: str, system: str, user_text: str,
                         "url": image_data_url, "detail": "high"}},
                 ]},
             ],
-            max_tokens=max_tokens,
+            **_openai_token_limit(model, max_tokens),
         )
         meter.add(getattr(resp, "usage", None))
         content = resp.choices[0].message.content if resp.choices else ""
