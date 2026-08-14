@@ -124,3 +124,23 @@ async def test_tool_timeout_returns_safe_fallback(monkeypatch):
     result = (await llm._gather_tools(execute, [("chart", {})]))[0]
     assert "временно недоступны" in result
     assert "late" not in result
+
+
+async def test_workflow_budget_rejects_excess_tool_calls():
+    budget = llm._WorkflowBudget(timeout=10, max_tool_calls=1, max_cost_usd=1.0)
+    budget.reserve_tools(1)
+    with pytest.raises(RuntimeError, match="tool-call budget"):
+        budget.reserve_tools(1)
+
+
+def test_workflow_budget_rejects_excess_cost():
+    budget = llm._WorkflowBudget(timeout=10, max_tool_calls=4, max_cost_usd=0.01)
+    with pytest.raises(RuntimeError, match="cost budget"):
+        budget.add_usage("gpt-5", 0, 10000)
+
+
+async def test_workflow_budget_deadline_is_enforced():
+    budget = llm._WorkflowBudget(timeout=0.001, max_tool_calls=4, max_cost_usd=1.0)
+    await asyncio.sleep(0.01)
+    with pytest.raises(TimeoutError, match="deadline"):
+        budget.check()

@@ -28,7 +28,7 @@ A deterministic fixture passing 100% is only a harness smoke test. It is not evi
 
 The runtime remains provider-chain based and must preserve offline fallback. For a staged comparison, use the live `/models` catalog first. Current verified candidates include `gpt-5-mini` for cheap rubric extraction/classification, `claude-sonnet-4-6` for balanced qualitative judging, and `claude-opus-4-7` for a small adjudication sample. Use structured JSON schema for judge output, keep judge prompts free of account identifiers, and never send raw diary/memory/birth data to a separate evaluator without an explicit approved test fixture.
 
-Do not use a premium judge for every case by default. Recommended sequence is cheap deterministic/programmatic gate → `gpt-5-mini` structured judge for failures/ambiguous cases → human adjudication on a 10–15% stratified sample and all safety failures. Any model call in a batch must use modest concurrency, bounded retries, cost tracking and a kill switch.
+Do not use a premium judge for every case by default. Recommended sequence is cheap deterministic/programmatic gate → `gpt-5-mini` structured judge for failures/ambiguous cases → human adjudication on a 10–15% stratified sample and all safety failures. Any model call in a batch must use modest concurrency, bounded retries, cost tracking and a kill switch. Runtime agent workflows additionally enforce request-local hard limits from `LLM_WORKFLOW_TIMEOUT`, `LLM_MAX_TOOL_CALLS` and `LLM_MAX_COST_USD`; provider fallback stops when a deadline or budget is exhausted, rather than multiplying spend. These limits apply across retries and provider switches, not per individual attempt.
 
 ## Commands
 

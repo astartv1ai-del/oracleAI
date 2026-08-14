@@ -24,6 +24,7 @@ from ..personas import persona_style
 from ..stable import stable_seed
 from .base import build_system_prompt
 from .context import build_bounded_history
+from ..interpretation import validate_nonfatal_text
 from .specs import DEFAULT_AGENT, REGISTRY, get
 
 log = logging.getLogger("oracle.agents")
@@ -133,10 +134,15 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                 tier=spec.tier, max_tokens=spec.max_tokens,
                 purpose=f"answer:{spec.code}", tg_id=user["tg_id"], db=db,
                 max_iters=10 if premium else None)
-            if len(text.strip()) >= MIN_ANSWER_LEN:
+            quality = validate_nonfatal_text(text)
+            if not quality.ok:
+                log.warning("агент %s не прошёл safety gate: %s — офлайн",
+                            spec.code, "; ".join(quality.issues))
+            elif len(text.strip()) >= MIN_ANSWER_LEN:
                 return text
-            log.info("агент %s вернул слишком короткий ответ (%d симв) — офлайн",
-                     spec.code, len(text.strip()))
+            else:
+                log.info("агент %s вернул слишком короткий ответ (%d симв) — офлайн",
+                         spec.code, len(text.strip()))
         except Exception as e:  # noqa: BLE001
             log.warning("агент %s не ответил (%s) — офлайн", spec.code, e)
 

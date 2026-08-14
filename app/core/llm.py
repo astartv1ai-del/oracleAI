@@ -30,6 +30,7 @@ import inspect
 import json
 import logging
 import time
+from dataclasses import dataclass
 from collections import deque
 from contextlib import asynccontextmanager
 from typing import Awaitable, Callable
@@ -49,6 +50,56 @@ RETRIES = 2
 TIMEOUT = 35.0
 TOOL_TIMEOUT = 15.0
 MAX_TOOL_OUTPUT = 12000
+
+
+@dataclass
+class _WorkflowBudget:
+    """Hard limits for one logical agent workflow.
+
+    Provider retries and tool calls share the same deadline and cost ceiling.
+    The object is intentionally request-local so concurrent users cannot affect
+    each other's budgets.
+    """
+
+    timeout: float
+    max_tool_calls: int
+    max_cost_usd: float
+    started: float = 0.0
+    tool_calls: int = 0
+    estimated_cost_usd: float = 0.0
+
+    def __post_init__(self) -> None:
+        self.started = time.monotonic()
+
+    @property
+    def elapsed(self) -> float:
+        return time.monotonic() - self.started
+
+    @property
+    def remaining(self) -> float:
+        return max(0.0, self.timeout - self.elapsed)
+
+    @property
+    def expired(self) -> bool:
+        return self.remaining <= 0
+
+    def check(self) -> None:
+        if self.expired:
+            raise TimeoutError("LLM workflow deadline exceeded")
+        if self.tool_calls >= self.max_tool_calls:
+            raise RuntimeError("LLM tool-call budget exceeded")
+        if self.estimated_cost_usd >= self.max_cost_usd:
+            raise RuntimeError("LLM cost budget exceeded")
+
+    def reserve_tools(self, count: int) -> None:
+        if count < 0 or self.tool_calls + count > self.max_tool_calls:
+            raise RuntimeError("LLM tool-call budget exceeded")
+        self.tool_calls += count
+
+    def add_usage(self, model: str, prompt_tokens: int, completion_tokens: int) -> None:
+        self.estimated_cost_usd += estimate_cost(model, prompt_tokens, completion_tokens)
+        if self.estimated_cost_usd > self.max_cost_usd:
+            raise RuntimeError("LLM cost budget exceeded")
 
 
 class _RateLimit:
@@ -97,9 +148,14 @@ MIN_OPENAI_TOKENS = 2500
 #: Цифры приблизительные и нужны для порядка величины, а не для бухгалтерии —
 #: точные суммы всё равно приходят от провайдера в счёте.
 PRICING = {
-    "claude-sonnet-5": (3.0, 15.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-opus-4-7": (5.0, 25.0),
+    "claude-opus-4-6": (5.0, 25.0),
     "claude-haiku-4-5": (1.0, 5.0),
-    "claude-opus": (15.0, 75.0),
+    "gpt-5.5": (5.0, 30.0),
+    "gpt-5": (1.25, 10.0),
+    "gpt-5-mini": (0.25, 2.0),
+    "gpt-5-nano": (0.05, 0.4),
     "gpt-4o": (2.5, 10.0),
     "gpt-4o-mini": (0.15, 0.6),
     "text-embedding-3-small": (0.02, 0.0),
@@ -371,19 +427,34 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
     if not settings.provider_chain:
         raise RuntimeError("Все LLM-провайдеры недоступны")
     iters = max_iters or MAX_ITERS
+    budget = _WorkflowBudget(
+        timeout=max(1.0, settings.llm_workflow_timeout),
+        max_tool_calls=max(1, settings.llm_max_tool_calls),
+        max_cost_usd=max(0.01, settings.llm_max_cost_usd),
+    )
     errors = []
     async with _llm_slot():
         for provider_index, provider in enumerate(settings.provider_chain):
+            if budget.expired:
+                errors.append("workflow: deadline exceeded")
+                break
             meter = _Meter()
             model = _models(provider, tier)
             try:
+                budget.check()
                 if provider == "anthropic":
-                    text = await _run_anthropic(system, messages, tools, execute,
-                                                tier, max_tokens, meter, iters)
+                    text = await asyncio.wait_for(
+                        _run_anthropic(system, messages, tools, execute,
+                                       tier, max_tokens, meter, iters, budget),
+                        timeout=budget.remaining,
+                    )
                 else:
-                    text = await _run_openai_like(provider, system, messages,
-                                                  tools, execute, tier, max_tokens,
-                                                  meter, iters)
+                    text = await asyncio.wait_for(
+                        _run_openai_like(provider, system, messages,
+                                         tools, execute, tier, max_tokens,
+                                         meter, iters, budget),
+                        timeout=budget.remaining,
+                    )
             except Exception as e:  # noqa: BLE001
                 errors.append(f"{provider}: {e}")
                 log.warning("run_agent %s: %s", provider, e)
@@ -392,6 +463,8 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
                                    prompt_tokens=meter.prompt,
                                    completion_tokens=meter.completion,
                                    latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                if budget.expired or "budget exceeded" in str(e).lower():
+                    break
                 continue
             latency_ms = meter.ms
             await record_usage(db, provider=provider, model=model, purpose=purpose,
@@ -409,8 +482,8 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
     raise RuntimeError("Все LLM-провайдеры недоступны: " + "; ".join(errors))
 
 
-async def _gather_tools(execute: ToolExecutor, calls: list[tuple[str, dict]]
-                        ) -> list[str]:
+async def _gather_tools(execute: ToolExecutor, calls: list[tuple[str, dict]],
+                        budget: _WorkflowBudget | None = None) -> list[str]:
     """Исполняет скиллы параллельно с защитой контекста и latency.
 
     Модель часто просит сразу карту и транзиты; независимые calls выполняются
@@ -420,7 +493,12 @@ async def _gather_tools(execute: ToolExecutor, calls: list[tuple[str, dict]]
     """
     async def one(name: str, args: dict) -> str:
         try:
-            result = await asyncio.wait_for(execute(name, args), TOOL_TIMEOUT)
+            if budget is not None:
+                budget.check()
+                timeout = min(TOOL_TIMEOUT, budget.remaining)
+            else:
+                timeout = TOOL_TIMEOUT
+            result = await asyncio.wait_for(execute(name, args), timeout)
             text = str(result or "").strip()
             if len(text) > MAX_TOOL_OUTPUT:
                 log.info("скилл %s вернул большой результат (%d символов)", name, len(text))
@@ -437,7 +515,8 @@ async def _gather_tools(execute: ToolExecutor, calls: list[tuple[str, dict]]
 
 
 async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
-                         meter: _Meter, max_iters: int = MAX_ITERS) -> str:
+                         meter: _Meter, max_iters: int = MAX_ITERS,
+                         budget: _WorkflowBudget | None = None) -> str:
     client = _anthropic_client()
     try:
         sys_block = [{"type": "text", "text": system,
@@ -445,12 +524,21 @@ async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
         msgs = [dict(m) for m in messages]
         kept = ""
         for _ in range(max_iters):
+            if budget is not None:
+                budget.check()
+            before_prompt, before_completion = meter.prompt, meter.completion
             resp = await _with_retries(
                 lambda: client.messages.create(
                     model=_models("anthropic", tier), max_tokens=max_tokens,
                     system=sys_block, tools=tools, messages=msgs),
                 "anthropic", "agent")
             meter.add(getattr(resp, "usage", None))
+            if budget is not None:
+                budget.add_usage(
+                    _models("anthropic", tier),
+                    meter.prompt - before_prompt,
+                    meter.completion - before_completion,
+                )
             piece = "".join(b.text for b in resp.content
                             if b.type == "text").strip()
             if resp.stop_reason != "tool_use":
@@ -461,8 +549,11 @@ async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
                 kept = piece
             msgs.append({"role": "assistant", "content": resp.content})
             blocks = [b for b in resp.content if b.type == "tool_use"]
-            outputs = await _gather_tools(
-                execute, [(b.name, dict(b.input or {})) for b in blocks])
+            if budget is not None:
+                budget.reserve_tools(len(blocks))
+            tool_calls = [(b.name, dict(b.input or {})) for b in blocks]
+            outputs = (await _gather_tools(execute, tool_calls, budget)
+                       if budget is not None else await _gather_tools(execute, tool_calls))
             msgs.append({"role": "user", "content": [
                 {"type": "tool_result", "tool_use_id": b.id, "content": out}
                 for b, out in zip(blocks, outputs)]})
@@ -484,7 +575,8 @@ def _to_openai_tools(tools: list[dict]) -> list[dict]:
 
 async def _run_openai_like(provider, system, messages, tools, execute,
                            tier, max_tokens, meter: _Meter,
-                           max_iters: int = MAX_ITERS) -> str:
+                           max_iters: int = MAX_ITERS,
+                           budget: _WorkflowBudget | None = None) -> str:
     """OpenAI и OpenAI-совместимые серверы (custom/MiniMax).
 
     Если сервер не поддерживает function calling — падаем в pre-tool режим:
@@ -499,10 +591,19 @@ async def _run_openai_like(provider, system, messages, tools, execute,
 
     try:
         for _ in range(max_iters):
+            if budget is not None:
+                budget.check()
+            before_prompt, before_completion = meter.prompt, meter.completion
             text, calls = await _with_retries(
                 lambda: _stream_chat(client, model, msgs, max_tokens, oa_tools,
                                      meter=meter),
                 provider, "agent")
+            if budget is not None:
+                budget.add_usage(
+                    model,
+                    meter.prompt - before_prompt,
+                    meter.completion - before_completion,
+                )
             if not calls:
                 return text
             if text:
@@ -521,7 +622,10 @@ async def _run_openai_like(provider, system, messages, tools, execute,
                     parsed.append((c["name"], json.loads(c["args"] or "{}")))
                 except json.JSONDecodeError:
                     parsed.append((c["name"], {}))
-            outputs = await _gather_tools(execute, parsed)
+            if budget is not None:
+                budget.reserve_tools(len(parsed))
+            outputs = (await _gather_tools(execute, parsed, budget)
+                       if budget is not None else await _gather_tools(execute, parsed))
             for c, out in zip(calls, outputs):
                 msgs.append({"role": "tool", "tool_call_id": c["id"], "content": out})
         return kept or _fallback_text()
@@ -531,13 +635,14 @@ async def _run_openai_like(provider, system, messages, tools, execute,
             raise
         log.info("%s без tool-use, включаю pre-tool режим", provider)
         return await _run_pretool(client, model, system, messages, tools,
-                                  execute, max_tokens, meter)
+                                  execute, max_tokens, meter, budget=budget)
     finally:
         await _close_client(client)
 
 
 async def _run_pretool(client, model, system, messages, tools, execute,
-                       max_tokens, meter: _Meter) -> str:
+                       max_tokens, meter: _Meter,
+                       budget: _WorkflowBudget | None = None) -> str:
     """Выполняет только разрешённые скиллы до single-shot ответа модели.
 
     Fallback для провайдера без function calling не должен подмешивать чужую
@@ -580,7 +685,10 @@ async def _run_pretool(client, model, system, messages, tools, execute,
         else:
             add("get_palm_reading")
 
-    context_parts = await _gather_tools(execute, wanted)
+    if budget is not None:
+        budget.reserve_tools(len(wanted))
+    context_parts = (await _gather_tools(execute, wanted, budget)
+                     if budget is not None else await _gather_tools(execute, wanted))
     system2 = (system + "\n\n[Данные твоих инструментов для этого ответа]\n"
                + "\n\n".join(context_parts))
     msgs = [{"role": "system", "content": system2}]

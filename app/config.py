@@ -45,10 +45,12 @@ class Settings:
     custom_model_main: str = os.getenv("CUSTOM_LLM_MODEL", "")
     custom_model_lite: str = os.getenv("CUSTOM_LLM_MODEL_LITE",
                                        os.getenv("CUSTOM_LLM_MODEL", ""))
-    anthropic_main: str = os.getenv("ANTHROPIC_MODEL_MAIN", "claude-sonnet-5")
-    anthropic_lite: str = os.getenv("ANTHROPIC_MODEL_LITE", "claude-haiku-4-5-20251001")
-    openai_main: str = os.getenv("OPENAI_MODEL_MAIN", "gpt-4o")
-    openai_lite: str = os.getenv("OPENAI_MODEL_LITE", "gpt-4o-mini")
+    # Defaults follow the current provider catalog; production may override them
+    # explicitly after a live capability probe.
+    anthropic_main: str = os.getenv("ANTHROPIC_MODEL_MAIN", "claude-sonnet-4-6")
+    anthropic_lite: str = os.getenv("ANTHROPIC_MODEL_LITE", "claude-haiku-4-5")
+    openai_main: str = os.getenv("OPENAI_MODEL_MAIN", "gpt-5")
+    openai_lite: str = os.getenv("OPENAI_MODEL_LITE", "gpt-5-mini")
 
     # ── мониторинг (G31): пусто = Sentry выключен ──
     sentry_dsn: str = os.getenv("SENTRY_DSN", "")
@@ -56,6 +58,10 @@ class Settings:
     # ── защита LLM от всплеска: сколько вызовов одновременно и в минуту ──
     llm_max_concurrency: int = _int("LLM_MAX_CONCURRENCY", 8)
     llm_rate_per_min: int = _int("LLM_RATE_PER_MIN", 240)
+    # Hard limits for one logical agent workflow, not for each provider retry.
+    llm_workflow_timeout: float = float(os.getenv("LLM_WORKFLOW_TIMEOUT", "90"))
+    llm_max_tool_calls: int = _int("LLM_MAX_TOOL_CALLS", 12)
+    llm_max_cost_usd: float = float(os.getenv("LLM_MAX_COST_USD", "0.25"))
 
     # ── память по смыслу (необязательна: без неё работает поиск по словам) ──
     embed_model: str = os.getenv("EMBED_MODEL", "text-embedding-3-small")
