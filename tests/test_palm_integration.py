@@ -257,3 +257,57 @@ async def test_mira_upload_enforces_auth_and_declared_size(client, user):
     )
     assert too_large.status_code == 413
     assert "8 МБ" in too_large.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_palm_vision_repairs_wrapped_json_after_retry(client, user, monkeypatch):
+    image = FIXTURE.read_bytes()
+    calls = []
+
+    async def flaky_complete_vision(_system, user_text, _data_url, **kwargs):
+        calls.append(user_text)
+        if len(calls) == 1:
+            return "not-json"
+        return "prefix\n```json\n" + _vision_payload().rstrip("}") + ",\n}\n```"
+
+    monkeypatch.setattr(palm_core.llm, "complete_vision", flaky_complete_vision)
+    response = await client.post(
+        "/api/palm", params={"dev_user": user["tg_id"]},
+        headers={"content-type": "image/jpeg"}, content=image,
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert len(calls) == 2
+    assert "ПОВТОРНАЯ ПОПЫТКА" in calls[1]
+    assert result["status"] == "complete"
+    assert result["image_meta"]["raw_stored"] is False
+
+
+@pytest.mark.asyncio
+async def test_palm_vision_invalid_json_returns_safe_needs_photo_after_three_attempts(
+    client, db, user, monkeypatch,
+):
+    image = FIXTURE.read_bytes()
+    calls = 0
+
+    async def invalid_complete_vision(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return "provider raw content that must never be stored"
+
+    monkeypatch.setattr(palm_core.llm, "complete_vision", invalid_complete_vision)
+    response = await client.post(
+        "/api/palm", params={"dev_user": user["tg_id"]},
+        headers={"content-type": "image/jpeg"}, content=image,
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert calls == palm_core.PALM_JSON_ATTEMPTS == 3
+    assert result["status"] == "needs_photo"
+    assert "provider raw content" not in response.text
+    assert "проверку формата" in " ".join(result["limitations"])
+    assert result["image_meta"]["raw_stored"] is False
+
+    cursor = await db.execute("SELECT analysis_json FROM palm_readings WHERE id=?", (result["id"],))
+    stored = await cursor.fetchone()
+    assert "provider raw content" not in stored["analysis_json"]

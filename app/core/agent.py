@@ -442,16 +442,118 @@ def _chart_brief(chart: dict) -> str:
     return "\n".join(bits)
 
 
+_CHART_INTERPRET_ATTEMPTS = 3
+
+
+def _chart_planet(chart: dict, name: str) -> dict:
+    for planet in chart.get("planets") or []:
+        if str(planet.get("name") or "").strip() == name:
+            return planet
+    return {}
+
+
+def _chart_node(chart: dict, prefix: str) -> dict:
+    for node in chart.get("nodes") or []:
+        if prefix in str(node.get("name") or ""):
+            return node
+    return {}
+
+
+def _chart_house(chart: dict, number: int) -> dict:
+    for house in chart.get("houses") or []:
+        if str(house.get("n")) == str(number):
+            return house
+    return {}
+
+
+def _placement_line(label: str, item: dict) -> str:
+    sign = item.get("sign") or "данные недоступны"
+    house = f", {item['house']}-й дом" if item.get("house") else ""
+    retro = ", ретроградный" if item.get("retro") else ""
+    return f"{label} в {sign}{house}{retro}"
+
+
+def _chart_required_coverage(text: str, chart: dict, *, time_known: bool) -> tuple[str, ...]:
+    """Проверяет наличие обязательных тем, доступных в конкретной карте."""
+    lowered = (text or "").lower()
+    checks: list[tuple[str, tuple[str, ...], bool]] = [
+        ("Солнце", ("солнц",), bool(chart.get("sun"))),
+        ("Луна", ("лун",), bool(_chart_planet(chart, "Луна"))),
+        ("Меркурий", ("меркур",), bool(_chart_planet(chart, "Меркурий"))),
+        ("Марс", ("марс",), bool(_chart_planet(chart, "Марс"))),
+        ("Венера", ("венер",), bool(_chart_planet(chart, "Венера"))),
+        ("Кету", ("кету",), bool(_chart_node(chart, "Кету"))),
+        ("Раху", ("раху",), bool(_chart_node(chart, "Раху"))),
+    ]
+    if time_known:
+        checks.extend([
+            ("Асцендент", ("асценд", "восходящ"), bool(chart.get("ascendant"))),
+            ("7-й дом", ("7-й дом", "7 й дом", "партнёрств", "партнерств"), bool(_chart_house(chart, 7))),
+            ("карьера", ("карьер", "10-й дом", "10 й дом", "професс"), bool(chart.get("mc") or _chart_house(chart, 10))),
+            ("финансы", ("финанс", "деньг", "2-й дом", "2 й дом"), bool(_chart_house(chart, 2))),
+        ])
+    return tuple(label for label, needles, available in checks
+                 if available and not any(needle in lowered for needle in needles))
+
+
+def _full_chart_fallback(chart: dict, *, time_known: bool) -> str:
+    """Подробный deterministic fallback, который сохраняет все доступные темы."""
+    sun = chart.get("sun") or {}
+    moon = _chart_planet(chart, "Луна")
+    mercury = _chart_planet(chart, "Меркурий")
+    mars = _chart_planet(chart, "Марс")
+    venus = _chart_planet(chart, "Венера")
+    asc = chart.get("ascendant") or {}
+    mc = chart.get("mc") or {}
+    ketu = _chart_node(chart, "Кету")
+    rahu = _chart_node(chart, "Раху")
+    house7 = _chart_house(chart, 7)
+    house10 = _chart_house(chart, 10)
+    house6 = _chart_house(chart, 6)
+    house2 = _chart_house(chart, 2)
+    sections = [
+        "**1. Ядро личности и маска**\n"
+        f"{_placement_line('Солнце', sun)}. Это символическая опора самоощущения и способа проявлять волю. "
+        f"{_placement_line('Луна', moon)} — тема эмоционального ритма и внутреннего комфорта. "
+        + (f"{_placement_line('Асцендент', asc)} показывает первое впечатление и социальную маску. "
+           if time_known and asc else "Асцендент и первое впечатление нельзя надёжно разобрать без точного времени рождения. ")
+        + "Наблюдение: где внешний образ совпадает с тем, что действительно помогает тебе восстановиться?",
+        "**2. Интеллект и общение**\n"
+        f"{_placement_line('Меркурий', mercury)}. В символическом чтении это стиль мышления, формулировок и юмора. "
+        "Проверяй трактовку через реальные разговоры: где тебе нужен факт, а где — образ или интуитивная гипотеза?",
+        "**3. Действие и конфликт**\n"
+        f"{_placement_line('Марс', mars)}. Эта позиция описывает символический способ добиваться своего, выдерживать напряжение и обозначать границы. "
+        "Полезный шаг — заметить, когда напор помогает задаче, а когда короткая пауза делает действие точнее.",
+        "**4. Карьера и финансы**\n"
+        f"MC: {_placement_line('MC', mc) if mc else 'данные недоступны'}; "
+        f"{_placement_line('10-й дом', house10) if house10 else '10-й дом: данные недоступны'}; "
+        f"{_placement_line('6-й дом', house6) if house6 else '6-й дом: данные недоступны'}; "
+        f"{_placement_line('2-й дом', house2) if house2 else '2-й дом: данные недоступны'}. "
+        "Это не обещание финансовой удачи, а символические темы профессиональной среды, ежедневной работы и отношения к ресурсам. "
+        "Наблюдение: какой один измеримый навык можно укрепить в ближайшие семь дней?",
+        "**5. Любовь и язык чувств**\n"
+        f"{_placement_line('Венера', venus)}. В символическом чтении это предпочтения в близости, эстетике и способах проявлять симпатию. "
+        "Ориентир — не идеальный типаж, а взаимность, ясные договорённости и уважение границ.",
+        "**6. Партнёрство**\n"
+        + (f"{_placement_line('7-й дом', house7)}. Это символическая тема серьёзных договорённостей и зеркала в отношениях; "
+           "она не предсказывает брак и не определяет конкретного человека. "
+           if time_known and house7 else "7-й дом недоступен без точного времени рождения; не буду выдумывать характеристики партнёра. ")
+        + "Наблюдение: какую договорённость в отношениях можно сделать яснее?",
+        "**7. Кармические узлы как символическая рефлексия**\n"
+        f"{_placement_line('Кету', ketu)} можно читать как привычный багаж и знакомую стратегию, "
+        f"а {_placement_line('Раху', rahu)} — как направление любопытства и роста. "
+        "Это не доказательство буквальной прошлой жизни и не обязательная миссия. "
+        "Наблюдение: где привычный сценарий уже не помогает, а новый опыт можно попробовать малым шагом?",
+        "**8. Синтез**\n"
+        "Карта полезнее всего как язык вопросов к себе, а не как приговор. Сопоставь эмоциональную реакцию Луны, "
+        "способ действия Марса и реальные договорённости в отношениях и работе. Выбери один проверяемый шаг, "
+        "а через неделю сравни ожидание с наблюдаемым результатом. 🌙",
+    ]
+    return "\n\n".join(sections)
+
+
 async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
-    """Бесплатный «разбор простыми словами» встроенной натальной карты.
-
-    Возвращает (текст, live): live=True только когда текст сгенерировал LLM —
-    роутер кэширует запросы, чтобы офлайн-заглушка не «залипала» навсегда.
-
-    Платный `build_report(natal)` глубже; здесь — короткий портрет для тех, кто
-    не понимает дома и карты: кто ты, характер, сильные/слабые стороны, страхи,
-    предназначение (Раху) и кармический багаж (Кету).
-    """
+    """Генерирует полный разбор карты с semantic retry и coverage gate."""
     time_known = bool(user and user["birth_time_known"])
     evidence = interpretation.chart_evidence(chart, time_known=time_known)
     text = ""
@@ -459,58 +561,52 @@ async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("astro"))
-            user_msg = (
+            base_prompt = (
                 f"{await skills.guide(db, 'natal')}\n\n"
                 f"{evidence.as_prompt_block()}\n\n"
                 f"{interpretation.generation_rules('chart')}\n\n"
-                "Напиши понятный разбор для человека без астрологических знаний, на «ты». "
-                "Обязательно используй 5 коротких разделов в таком порядке: "
+                "Сделай полный детальный разбор на русском языке, на «ты», а не короткий портрет. "
+                "Сохрани ровно 8 нумерованных разделов: "
                 "1) ядро личности — Солнце, Луна, Асцендент; "
-                "2) интеллект и действие — Меркурий и Марс; "
-                "3) карьера и финансы — MC, 10-й/6-й/2-й дома только если они есть в evidence; "
-                "4) любовь — Венера и 7-й дом только при точном времени; "
-                "5) узлы — Кету как символический привычный багаж и Раху как направление роста. "
-                "В каждом разделе сначала назови конкретный placement-факт, затем объясни его "
-                "обычными словами и добавь один вопрос для самонаблюдения. Не назначай диагнозов, "
-                "не обещай финансовую удачу или идеального партнёра, не называй фатальную судьбу "
-                "и не подменяй астрологическую символику утверждениями о фактах. Узлы не являются "
-                "доказательством буквальной прошлой жизни или обязательной миссии. Если времени "
-                "рождения нет, не создавай разделы про дома, ASC, MC или узлы по домам и прямо скажи, "
-                "какие части пока недоступны."
+                "2) интеллект и общение — Меркурий; "
+                "3) действие и конфликты — Марс; "
+                "4) карьера и финансы — MC, 10-й, 6-й и 2-й дома; "
+                "5) любовь — Венера; 6) партнёрство — 7-й дом; "
+                "7) узлы — Кету как символический привычный багаж и Раху как направление роста; "
+                "8) синтез и практический следующий шаг. "
+                "В каждом разделе сначала назови placement-факт из evidence, затем объясни его простыми словами "
+                "и добавь конкретный вопрос для самонаблюдения. Не назначай диагнозов, не обещай финансовую удачу, "
+                "идеального партнёра или события, не называй фатальную судьбу. Узлы не являются доказательством "
+                "буквальной прошлой жизни или обязательной миссии. Если времени рождения нет, честно назови ASC, "
+                "MC и дома недоступными и не выдумывай их."
             )
-            text = await llm.complete(system, user_msg, tier="main",
-                                      max_tokens=1800, purpose="chart_interpret",
-                                      tg_id=user["tg_id"], db=db)
-            grounding = interpretation.validate_chart_text(text, evidence)
-            if len(text.strip()) >= 160 and grounding.ok:
-                live = True
-            elif text.strip() and not grounding.ok:
-                log.info("chart grounding rejected: %s", "; ".join(grounding.issues))
+            feedback = ""
+            for attempt in range(_CHART_INTERPRET_ATTEMPTS):
+                candidate = await llm.complete(
+                    system,
+                    base_prompt + feedback,
+                    tier="main", max_tokens=2600, purpose="chart_interpret",
+                    tg_id=user["tg_id"], db=db,
+                )
+                grounding = interpretation.validate_chart_text(candidate, evidence)
+                missing = _chart_required_coverage(candidate, chart, time_known=time_known)
+                if len(candidate.strip()) >= 900 and grounding.ok and not missing:
+                    text = candidate.strip()
+                    live = True
+                    break
+                issues = list(grounding.issues) + (["не раскрыты темы: " + ", ".join(missing)] if missing else [])
+                log.info("chart interpretation quality gate rejected attempt=%d issues=%s",
+                         attempt + 1, "; ".join(issues[:8]))
+                feedback = (
+                    "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий текст не прошёл quality gate. "
+                    "Не сокращай ответ. Обязательно раскрой каждую доступную тему: "
+                    + ", ".join(missing or ("все обязательные секции",))
+                    + ". Верни полный текст из 8 нумерованных разделов и не добавляй фактов вне evidence."
+                )
         except Exception as e:  # noqa: BLE001
-            log.warning("разбор карты ушёл в офлайн: %s", e)
+            log.warning("разбор карты ушёл в offline quality fallback: %s", type(e).__name__)
     if not live:
-        sun = chart.get("sun") or {}
-        asc = chart.get("ascendant") or {}
-        nodes = {n.get("name", ""): n for n in chart.get("nodes", [])}
-        rahu = nodes.get("Раху (Северный узел)")
-        first_planet = next((p for p in chart.get("planets", []) if p.get("name")), None)
-        opening = f"Солнце в {sun.get('sign') or '?'}"
-        if time_known and asc.get("sign"):
-            opening += f" и Асцендент в {asc['sign']}"
-        text = f"**Главный мотив**\n{opening} — одна из опор этой карты. "
-        if first_planet:
-            text += (f"{first_planet['name']} в {first_planet.get('sign') or '?'} "
-                     "добавляет к этому свой способ проявляться в повседневности.")
-        if not time_known:
-            text += " Время рождения не указано, поэтому дома и Асцендент здесь не интерпретируются."
-        text += "\n\n**Точка наблюдения**\n"
-        if rahu:
-            text += (f"Раху в {rahu.get('sign') or '?'} можно читать как символическую тему "
-                     "роста и любопытства, а не как готовый сценарий жизни. ")
-        text += ("На этой неделе замечай один повторяющийся выбор: где ты действуешь "
-                 "по привычке, а где можешь попробовать более осознанный вариант.\n\n"
-                 "Попроси подробнее разобрать конкретную планету или вопрос — тогда "
-                 "интерпретация будет точнее. 🌙")
+        text = _full_chart_fallback(chart, time_known=time_known)
     return text, live
 
 

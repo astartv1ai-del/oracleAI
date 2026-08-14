@@ -9,6 +9,7 @@ import base64
 import hashlib
 import io
 import json
+import logging
 import re
 from typing import Any
 
@@ -50,6 +51,8 @@ PALM_USER = """Проведи структурированное чтение л
 _PALM_TOPICS = {"heart_line", "head_line", "life_line", "fate_line", "sun_line", "relationship_line", "mounts", "fingers"}
 _PALM_VISIBILITY = {"clear", "partial", "unclear", "not_visible"}
 _PALM_HAND_SIDES = {"left", "right", "unknown"}
+PALM_JSON_ATTEMPTS = 3
+log = logging.getLogger("oracle.palm")
 
 
 def _palm_detail_schema() -> dict:
@@ -181,16 +184,67 @@ def _data_url(image: bytes) -> tuple[str, dict]:
 
 
 def _json_text(text: str) -> dict[str, Any]:
+    """Извлекает JSON object из vision-ответа без выполнения произвольного кода.
+
+    В идеальном случае proxy возвращает strict JSON-schema content. На практике
+    некоторые vision-провайдеры добавляют fence/префикс или оставляют trailing
+    comma. Здесь разрешены только детерминированные repairs: markdown fence,
+    извлечение первого JSON object и удаление запятых перед `}`/`]`.
+    Любой другой ответ отклоняется и уходит в semantic retry.
+    """
     cleaned = (text or "").strip()
-    if cleaned.startswith("```"):
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE)
-    try:
-        value = json.loads(cleaned)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("vision-модель вернула невалидный JSON") from exc
-    if not isinstance(value, dict):
-        raise ValueError("vision-модель вернула не объект")
-    return value
+    if not cleaned:
+        raise ValueError("vision-модель вернула пустой ответ")
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned, flags=re.IGNORECASE).strip()
+
+    candidates = [cleaned]
+    start = cleaned.find("{")
+    if start >= 0 and start != 0:
+        candidates.append(cleaned[start:])
+
+    decoder = json.JSONDecoder()
+    last_error: Exception | None = None
+    for candidate in candidates:
+        for value_text in (candidate, re.sub(r",\s*([}\]])", r"\1", candidate)):
+            try:
+                value, _end = decoder.raw_decode(value_text.lstrip())
+            except (TypeError, ValueError) as exc:
+                last_error = exc
+                continue
+            if not isinstance(value, dict):
+                last_error = ValueError("vision-модель вернула не объект")
+                continue
+            return value
+    raise ValueError("vision-модель вернула невалидный JSON") from last_error
+
+
+def _needs_photo_result(reason: str) -> dict[str, Any]:
+    """Безопасный результат при невозможности получить структурированный ответ.
+
+    Raw provider content намеренно не попадает ни в response, ни в SQLite. В
+    `reason` передаётся только внутренний тип ошибки, а пользователь получает
+    понятную инструкцию повторить снимок.
+    """
+    return {
+        "status": "needs_photo",
+        "image_quality": {"score": 0.0, "issues": [
+            "Не удалось получить структурированное чтение; попробуй отправить фото ещё раз.",
+        ]},
+        "hand_detected": False,
+        "hand_side": "unknown",
+        "observations": [],
+        "lines": {},
+        "mounts": {},
+        "fingers": {},
+        "interpretive_prompts": [],
+        "limitations": [
+            "Ответ vision-провайдера не прошёл проверку формата.",
+            "Пересними одну ладонь целиком при ровном свете, без бликов и фильтров.",
+        ],
+        "safety_flags": ["vision_json_invalid", reason[:80]],
+        "source": "vision_llm_observation",
+    }
 
 
 def _safe_text(value: Any) -> str:
@@ -267,19 +321,43 @@ def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
 
 async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "miniapp") -> dict:
     data_url, meta = _data_url(image)
-    text = await llm.complete_vision(
-        PALM_SYSTEM,
-        PALM_USER,
-        data_url,
-        tier="main",
-        max_tokens=1600,
-        purpose="palm:vision",
-        tg_id=user["tg_id"],
-        db=db,
-        response_format=PALM_RESPONSE_FORMAT,
-    )
-    raw = _json_text(text)
-    result = _normalize(raw, raw.get("image_quality") or {})
+    raw: dict[str, Any] | None = None
+    last_error: ValueError | None = None
+    for attempt in range(PALM_JSON_ATTEMPTS):
+        retry_hint = ""
+        if attempt:
+            retry_hint = (
+                "\n\nПОВТОРНАЯ ПОПЫТКА: предыдущий ответ не прошёл JSON-проверку. "
+                "Верни строго один полный JSON object по schema, без Markdown, пояснений "
+                "до/после JSON и без trailing comma. Не сокращай обязательные поля."
+            )
+        try:
+            text = await llm.complete_vision(
+                PALM_SYSTEM,
+                PALM_USER + retry_hint,
+                data_url,
+                tier="main",
+                max_tokens=1600,
+                purpose="palm:vision",
+                tg_id=user["tg_id"],
+                db=db,
+                response_format=PALM_RESPONSE_FORMAT,
+            )
+            raw = _json_text(text)
+            break
+        except ValueError as exc:
+            last_error = exc
+            # Не логируем provider content или data URL: только безопасный тип
+            # ошибки и номер попытки, чтобы не утечь raw image/PII.
+            log.warning(
+                "vision structured response rejected: attempt=%d/%d error_type=%s",
+                attempt + 1, PALM_JSON_ATTEMPTS, type(exc).__name__,
+            )
+
+    if raw is None:
+        result = _needs_photo_result(type(last_error).__name__ if last_error else "invalid_json")
+    else:
+        result = _normalize(raw, raw.get("image_quality") or {})
     reading_id = await palm_repo.save_reading(
         db, user["tg_id"], result, image_sha256=meta["sha256"],
         image_size=meta["size"], hand_side=result["hand_side"],

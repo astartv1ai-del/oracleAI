@@ -111,6 +111,15 @@ def chart_evidence(chart: dict, *, time_known: bool) -> Evidence:
                 detail += f", дом {node['house']}"
             facts.append(detail)
 
+        # Домовые факты нужны отдельными строками: модель должна видеть 2-й,
+        # 6-й, 7-й и 10-й дома как evidence, а не выводить их из названия планеты.
+        for house in chart.get("houses") or []:
+            number = house.get("n")
+            sign = _value(house.get("sign"))
+            if number is None or not sign:
+                continue
+            facts.append(f"{number}-й дом в {sign}")
+
     aspects = chart.get("aspects") or []
     for aspect in aspects:
         p1, p2, name = _value(aspect.get("p1")), _value(aspect.get("p2")), _value(aspect.get("aspect"))
