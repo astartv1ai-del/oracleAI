@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
+import time
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -10,6 +12,7 @@ from pydantic import BaseModel, Field
 from ...core import agent as agent_core
 from ...core import astro, geo, memory
 from ...core.matrix import compute_matrix
+from ...core.observability import log_event
 from ...repo import billing, readings, users
 from ...services import analytics, compatibility as compatibility_svc
 from ..common.validation import parse_birth_date
@@ -17,6 +20,25 @@ from ..contracts.compatibility import CompatIn
 from ..deps import active_user, current_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["chart"])
+astro_log = logging.getLogger("oracle.astro")
+
+
+def _astro_counts(chart: dict | None) -> dict[str, int]:
+    chart = chart or {}
+    return {
+        "planet_count": len(chart.get("planets") or []),
+        "house_count": len(chart.get("houses") or []),
+        "aspect_count": len(chart.get("aspects") or []),
+        "section_count": len((astro.chart_sections(chart, time_known=True).get("sections") or {})),
+    }
+
+
+def _log_astro(level: int, event: str, message: str, started: float,
+               chart: dict | None = None, **fields) -> None:
+    """Operational astrology log without birth data, prompt text or Telegram ID."""
+    meta = _astro_counts(chart)
+    meta["duration_ms"] = round((time.monotonic() - started) * 1000)
+    log_event(astro_log, level, event, message, **meta, **fields)
 
 
 # В публичном контракте None — валидное значение «время неизвестно».
@@ -59,10 +81,18 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
 @router.get("/chart")
 async def chart(user=Depends(current_user), db=Depends(get_db)):
     """Карта целиком: планеты, дома, аспекты и честно указанная точность."""
+    started = time.monotonic()
     data = users.chart_of(user)
     if not data:
+        _log_astro(logging.WARNING, "astro_chart_missing", "натальная карта отсутствует", started,
+                   status="missing", user_state="no_saved_chart")
         raise HTTPException(400, "карта ещё не построена — пройди знакомство в боте")
-    return _chart_payload(data, user)
+    payload = _chart_payload(data, user)
+    _log_astro(logging.INFO, "astro_chart_served", "натальная карта отдана клиенту", started,
+               data, mode=data.get("mode", "lite"), precision=data.get("precision", "sun_only"),
+               time_known=bool(user["birth_time_known"]), cache_hit=True, live=False,
+               status="ok", user_state="saved_chart")
+    return payload
 
 
 _TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
@@ -83,6 +113,7 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
     может заполнить/уточнить время и город, не заходя в бота. Если карта уже
     построена — возвращает её без пересчёта.
     """
+    started = time.monotonic()
     item = item or ChartBuildIn()
     # В body важно различать «поле отсутствует» и «пользовательница очистила поле».
     # Второй вариант — осознанный date-only выбор, а не повод молча вернуть старое
@@ -98,7 +129,13 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
 
     existing = users.chart_of(user)
     if existing and not supplied:
-        return _chart_payload(existing, user, ok=True, cached=True)
+        payload = _chart_payload(existing, user, ok=True, cached=True)
+        _log_astro(logging.INFO, "astro_chart_build_cached", "расчёт карты взят из кэша", started,
+                   existing, mode=existing.get("mode", "lite"),
+                   precision=existing.get("precision", "sun_only"),
+                   time_known=bool(user["birth_time_known"]), cache_hit=True, live=False,
+                   status="ok", user_state="saved_chart")
+        return payload
 
     city = ((item.birth_city if city_supplied else user["birth_city"]) or "").strip()
     if not city:
@@ -111,15 +148,30 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
     compute_time = raw_time or "12:00"
     stored_time = raw_time or None
 
+    _log_astro(logging.INFO, "astro_chart_compute_started", "начат расчёт натальной карты", started,
+               mode="full", precision="exact" if time_known else "date_only",
+               time_known=time_known, cache_hit=False, live=True, status="started",
+               user_state="recompute")
     lat, lon, tz = await geo.resolve_city_async(city, db)
-    chart = await astro.compute_chart_async(birth_date, compute_time, city, lat, lon, tz,
-                                             time_known=time_known)
+    try:
+        chart = await astro.compute_chart_async(birth_date, compute_time, city, lat, lon, tz,
+                                                 time_known=time_known)
+    except Exception as exc:  # noqa: BLE001
+        _log_astro(logging.ERROR, "astro_chart_compute_failed", "расчёт натальной карты завершился ошибкой", started,
+                   mode="full", precision="exact" if time_known else "date_only",
+                   time_known=time_known, cache_hit=False, live=True, status="error",
+                   error_type=type(exc).__name__, user_state="recompute")
+        raise
     await users.update(db, user["tg_id"], birth_date=birth_date, birth_city=city,
                        birth_lat=lat, birth_lon=lon, tz=tz, birth_time=stored_time,
                        birth_time_known=1 if time_known else 0,
                        chart_json=json.dumps(chart, ensure_ascii=False))
-    return _chart_payload(chart, user, birth_date=birth_date, birth_time=stored_time,
-                          birth_city=city, time_known=time_known, ok=True, cached=False)
+    payload = _chart_payload(chart, user, birth_date=birth_date, birth_time=stored_time,
+                             birth_city=city, time_known=time_known, ok=True, cached=False)
+    _log_astro(logging.INFO, "astro_chart_computed", "натальная карта рассчитана и сохранена", started,
+               chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
+               time_known=time_known, cache_hit=False, live=True, status="ok", user_state="recompute")
+    return payload
 
 
 @router.post("/chart/interpret", dependencies=[Depends(rate_limit("write"))])
@@ -129,19 +181,40 @@ async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
     Для людей без астрологических знаний: кто ты, характер, сильные/слабые
     стороны, страхи, предназначение (Раху) и кармический багаж (Кету).
     """
+    started = time.monotonic()
     if not user["birth_date"]:
+        _log_astro(logging.WARNING, "astro_interpret_missing_birth_date", "нет даты для интерпретации карты", started,
+                   status="missing", user_state="no_birth_date")
         raise HTTPException(400, "нет даты рождения")
     chart = users.chart_of(user)
     if not chart:
+        _log_astro(logging.WARNING, "astro_interpret_missing_chart", "нет карты для интерпретации", started,
+                   status="missing", user_state="no_saved_chart")
         raise HTTPException(400, "карта ещё не построена")
     text = chart.get("interpretation")
-    if not text:
-        text, live = await agent_core.interpret_chart(db, user, chart)
+    if text:
+        _log_astro(logging.INFO, "astro_interpret_cached", "разбор карты отдан из кэша", started,
+                   chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
+                   time_known=bool(user["birth_time_known"]), cache_hit=True, live=False,
+                   status="ok", user_state="saved_interpretation")
+    else:
+        try:
+            text, live = await agent_core.interpret_chart(db, user, chart)
+        except Exception as exc:  # noqa: BLE001
+            _log_astro(logging.ERROR, "astro_interpret_failed", "LLM-разбор карты завершился ошибкой", started,
+                       chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
+                       time_known=bool(user["birth_time_known"]), cache_hit=False, live=True,
+                       status="error", error_type=type(exc).__name__, user_state="live_interpretation")
+            raise
         # Кэшируем только LLM-генерацию: офлайн-заглушка не должна «залипать».
         if live:
             chart["interpretation"] = text
             await users.update(db, user["tg_id"],
                                chart_json=json.dumps(chart, ensure_ascii=False))
+        _log_astro(logging.INFO, "astro_interpret_completed", "разбор карты подготовлен", started,
+                   chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
+                   time_known=bool(user["birth_time_known"]), cache_hit=False, live=bool(live),
+                   status="ok", user_state="live_interpretation")
     return {"text": text}
 
 

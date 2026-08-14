@@ -5,6 +5,8 @@
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
 pytest.importorskip("httpx", reason="httpx нужен для тестов API")
@@ -48,6 +50,28 @@ async def test_unknown_user_gets_404(client):
     assert res.status_code == 404
 
 
+async def test_new_user_auth_lifecycle_requires_start_then_allows_me(client, db):
+    new_tg_id = 987654321
+    before = await client.get("/api/me", params={"dev_user": new_tg_id})
+    assert before.status_code == 404
+    assert "нажми /start" in before.json()["detail"]
+
+    created = await users.ensure(db, new_tg_id, "Новый пользователь", "new_user", lang="ru")
+    assert created["tg_id"] == new_tg_id
+    assert created["sub_level"] == "trial"
+    assert created["crystals"] > 0
+    assert created["onboarded"] == 0
+
+    after = await client.get("/api/me", params={"dev_user": new_tg_id})
+    assert after.status_code == 200
+    assert after.json()["name"] == "Новый пользователь"
+    assert after.json()["sub_active"] is True
+
+    same = await users.ensure(db, new_tg_id, "Другое имя", "new_user", lang="ru")
+    assert same["tg_id"] == new_tg_id
+    assert same["name"] == "Новый пользователь"
+
+
 async def test_blocked_user_is_refused(client, db, user):
     await users.set_status(db, user["tg_id"], "blocked")
     res = await client.get("/api/me", params=as_user(user))
@@ -58,6 +82,25 @@ async def test_blocked_user_is_refused(client, db, user):
 async def test_bad_init_data_is_rejected():
     assert parse_init_data("") is None
     assert parse_init_data("user=%7B%22id%22%3A1%7D&hash=deadbeef") is None
+
+
+async def test_chart_request_emits_structured_operational_log(client, db, user, caplog):
+    chart = {
+        "mode": "full", "precision": "date_only",
+        "sun": {"sign": "Лев"},
+        "planets": [{"name": "Солнце", "sign": "Лев"}],
+        "houses": [], "aspects": [], "nodes": [],
+    }
+    await users.update(db, user["tg_id"], chart_json=json.dumps(chart, ensure_ascii=False))
+    with caplog.at_level("INFO", logger="oracle.astro"):
+        response = await client.get("/api/chart", params=as_user(user))
+    assert response.status_code == 200
+    record = next(r for r in caplog.records if getattr(r, "event", "") == "astro_chart_served")
+    assert record.mode == "full"
+    assert record.precision == "date_only"
+    assert record.cache_hit is True
+    assert record.planet_count == 1
+    assert "987654321" not in record.getMessage()
 
 
 async def test_path_traversal_is_blocked(client):

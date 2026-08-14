@@ -71,6 +71,9 @@ class JsonRedactingFormatter(logging.Formatter):
         for key in (
             "event", "method", "path", "status_code", "latency_ms", "provider",
             "purpose", "surface", "operation", "threshold", "count", "rate",
+            "duration_ms", "latency_ms", "mode", "precision", "time_known",
+            "cache_hit", "live", "planet_count", "house_count", "aspect_count",
+            "section_count", "status", "error_type", "user_state",
         ):
             value = getattr(record, key, None)
             if value is not None:

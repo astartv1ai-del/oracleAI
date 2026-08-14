@@ -211,3 +211,49 @@ async def test_palm_upload_rejects_invalid_content_and_small_real_image(client, 
     )
     assert too_small.status_code == 400
     assert "минимальная сторона" in too_small.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_mira_chat_upload_accepts_png_and_webp(client, user, monkeypatch):
+    """Фото из gallery/camera formats проходят тот же backend contract, что и JPEG."""
+    async def fake_complete_vision(*args, **kwargs):
+        return _vision_payload()
+
+    monkeypatch.setattr(palm_core.llm, "complete_vision", fake_complete_vision)
+    with Image.open(FIXTURE) as source:
+        original = source.convert("RGB")
+        for image_format, mime in (("PNG", "image/png"), ("WEBP", "image/webp")):
+            buffer = io.BytesIO()
+            original.save(buffer, format=image_format)
+            response = await client.post(
+                "/api/palm", params={"dev_user": user["tg_id"]},
+                headers={"content-type": mime}, content=buffer.getvalue(),
+            )
+            assert response.status_code == 200, response.text
+            result = response.json()
+            assert result["status"] == "complete"
+            assert result["image_meta"]["raw_stored"] is False
+            assert result["image_meta"]["width"] == 2592
+            assert result["image_meta"]["height"] == 1728
+
+
+@pytest.mark.asyncio
+async def test_mira_upload_enforces_auth_and_declared_size(client, user):
+    no_identity = await client.post("/api/palm", headers={"content-type": "image/jpeg"}, content=b"x")
+    assert no_identity.status_code == 401
+
+    unknown = await client.post(
+        "/api/palm", params={"dev_user": 987654322},
+        headers={"content-type": "image/jpeg"}, content=b"x",
+    )
+    assert unknown.status_code == 404
+
+    too_large = await client.post(
+        "/api/palm", params={"dev_user": user["tg_id"]},
+        headers={
+            "content-type": "image/jpeg",
+            "content-length": str(palm_core.MAX_IMAGE_BYTES + 1),
+        }, content=b"x",
+    )
+    assert too_large.status_code == 413
+    assert "8 МБ" in too_large.json()["detail"]
