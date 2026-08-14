@@ -116,7 +116,6 @@ async def test_tool_results_are_bounded(monkeypatch):
 
 async def test_tool_timeout_returns_safe_fallback(monkeypatch):
     monkeypatch.setattr(llm, "TOOL_TIMEOUT", 0.01)
-
     async def execute(_name, _args):
         await asyncio.sleep(0.05)
         return "late"
@@ -144,3 +143,31 @@ async def test_workflow_budget_deadline_is_enforced():
     await asyncio.sleep(0.01)
     with pytest.raises(TimeoutError, match="deadline"):
         budget.check()
+
+
+async def test_complete_uses_workflow_deadline(monkeypatch):
+    await _two_provider_chain(monkeypatch)
+    monkeypatch.setattr(settings, "llm_workflow_timeout", 1.0)
+    monkeypatch.setattr(llm, "_RATE", llm._RateLimit(10_000))
+
+    async def slow_complete(*_args, **_kwargs):
+        await asyncio.sleep(1.2)
+        return "late"
+
+    monkeypatch.setattr(llm, "_complete_with", slow_complete)
+    with pytest.raises(RuntimeError, match="недоступны"):
+        await llm.complete("s", "u")
+
+
+async def test_complete_vision_uses_workflow_deadline(monkeypatch):
+    await _two_provider_chain(monkeypatch)
+    monkeypatch.setattr(settings, "llm_workflow_timeout", 1.0)
+    monkeypatch.setattr(llm, "_RATE", llm._RateLimit(10_000))
+
+    async def slow_vision(*_args, **_kwargs):
+        await asyncio.sleep(1.2)
+        return "late"
+
+    monkeypatch.setattr(llm, "_vision_with", slow_vision)
+    with pytest.raises(RuntimeError, match="vision-провайдеры"):
+        await llm.complete_vision("s", "u", "data:image/jpeg;base64,AA==")

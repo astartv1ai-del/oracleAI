@@ -92,7 +92,7 @@
       haptic('success');
     } catch (error) {
       if (!widAlive(key, view, pend)) return;
-      this.placementState = Object.assign({}, this.placementState, { loading: false, result: { error: error.message || 'Не удалось получить расчёт.' } });
+      this.placementState = Object.assign({}, this.placementState, { loading: false, result: { error: friendlyError(error, 'Не удалось получить расчёт. Попробуй ещё раз.') } });
       this.chat.pending = { kind: 'placements', loading: false, html: app.placementsHtml() };
       haptic('error');
     }

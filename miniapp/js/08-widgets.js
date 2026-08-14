@@ -330,7 +330,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
         trigger.classList.remove('is-pending');
         trigger.innerHTML = originalLabel;
       }
-      this.toast(e.message || 'Не получилось — попробуй ещё раз');
+      this.toast(friendlyError(e) || 'Не получилось — попробуй ещё раз');
       return;
     }
     if (isPracticeWidget) this.renderChat(document.getElementById('app-main'));
@@ -374,7 +374,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       }
       this.toast('Заметка сохранена. Спасибо, что была рядом с собой.');
     } catch (e) {
-      this.toast(e.message || 'Не сохранилось — попробуй ещё раз');
+      this.toast(friendlyError(e) || 'Не сохранилось — попробуй ещё раз');
     }
     if (p) this.renderChat(document.getElementById('app-main'));
     if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
@@ -388,7 +388,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       const r = await api('/api/diary/summary');
       if (p) p.summary = r;
     } catch (e) {
-      this.toast(e.message || 'Сводка пока не собралась');
+      this.toast(friendlyError(e) || 'Сводка пока не собралась');
     }
     if (p) this.renderChat(document.getElementById('app-main'));
   };
@@ -421,7 +421,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
         sphere: t.sphere || '', flipped: false };
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'today', loading: false, forecast: '😔 ' + e.message, card: null, moon: null, sphere: '', flipped: false };
+      this.chat.pending = { kind: 'today', loading: false, forecast: '😔 ' + friendlyError(e), card: null, moon: null, sphere: '', flipped: false };
     }
     this.renderChat(document.getElementById('app-main'));
   };
@@ -439,7 +439,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       this.chat.pending = { kind: 'moon', loading: false, days, exp: null, error: '' };
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'moon', loading: false, days: [], exp: null, error: e.message };
+      this.chat.pending = { kind: 'moon', loading: false, days: [], exp: null, error: friendlyError(e) };
     }
     this.renderChat(document.getElementById('app-main'));
   };
@@ -457,7 +457,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       this.chat.pending = { kind: 'matrix', loading: false, data: m, selected: null, error: '' };
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'matrix', loading: false, data: null, selected: null, error: e.message };
+      this.chat.pending = { kind: 'matrix', loading: false, data: null, selected: null, error: friendlyError(e) };
     }
     this.renderChat(document.getElementById('app-main'));
   };
@@ -475,7 +475,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       this.chat.pending = { kind: 'practices', loading: false, items: (r && r.items) || [], error: '' };
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'practices', loading: false, items: [], error: e.message };
+      this.chat.pending = { kind: 'practices', loading: false, items: [], error: friendlyError(e) };
     }
     this.renderChat(document.getElementById('app-main'));
   };
@@ -498,7 +498,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
         prompt: (pr && pr.prompt) || '', wroteToday, mood: '', summary: null, moon: null, reflection: '', error: '' };
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'diary', loading: false, entries: [], streak: 0, prompt: '', wroteToday: false, mood: '', summary: null, moon: null, reflection: '', error: e.message };
+      this.chat.pending = { kind: 'diary', loading: false, entries: [], streak: 0, prompt: '', wroteToday: false, mood: '', summary: null, moon: null, reflection: '', error: friendlyError(e) };
     }
     this.renderChat(document.getElementById('app-main'));
   };
@@ -515,7 +515,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
       this.chat.pending = { kind: 'career', loading: false, days: (days || []).slice(0, 16), sel: null, error: '' };
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'career', loading: false, days: [], sel: null, error: e.message };
+      this.chat.pending = { kind: 'career', loading: false, days: [], sel: null, error: friendlyError(e) };
     }
     this.renderChat(document.getElementById('app-main'));
   };

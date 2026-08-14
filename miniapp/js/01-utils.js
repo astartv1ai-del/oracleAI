@@ -77,6 +77,22 @@ async function api(path, opts = {}) {
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+/* User-facing errors must never expose Telegram auth, provider, HTML or JSON details. */
+function friendlyError(err, fallback) {
+  const raw = String(err && err.message || '').trim();
+  const status = err && Number(err.status);
+  const secure = status === 401 || /signature|initdata|подпись|unauthori[sz]ed/i.test(raw);
+  if (secure) return oracleLang() === 'en'
+    ? 'Open OracleAI from Telegram to continue.'
+    : 'Открой OracleAI из Telegram, чтобы продолжить.';
+  const technical = !raw || status >= 500 || /<html|\{[\s\S]*\}|provider|llm|timeout|fetch|network|внутрен|не удалось подключиться/i.test(raw);
+  if (technical) return fallback || (oracleLang() === 'en'
+    ? 'This is temporary. Please try again in a moment.'
+    : 'Это временно. Попробуй ещё раз через минуту.');
+  return raw.length <= 180 ? raw : (fallback || (oracleLang() === 'en'
+    ? 'Please try again.' : 'Попробуй ещё раз.'));
+}
+
 // Rich-escape для серверного текста (чат-история, ответы LLM, отчёты):
 // сначала всё экранируем, затем восстанавливаем ТОЛЬКО закрытые пары <b>/<i>
 // из их экранированной формы. <script>, onerror=, атрибуты остаются текстом.

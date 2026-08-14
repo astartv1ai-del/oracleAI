@@ -40,8 +40,10 @@ def test_frontend_runtime_boundaries_have_stable_order() -> None:
 
     assert position("00-runtime.js") < position("05-app.js")
     assert position("15-actions.js") < position("13-events.js")
-    assert "/static/js/00-runtime.js?v=87" in html
-    assert "/static/js/15-actions.js?v=87" in html
+    version = re.search(r'/static/js/00-runtime\.js\?v=(\d+)', html)
+    assert version, "runtime asset must be cache-busted"
+    value = version.group(1)
+    assert f"/static/js/15-actions.js?v={value}" in html
 
 
 def test_refactored_backend_boundaries_exist() -> None:

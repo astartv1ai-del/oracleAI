@@ -37,7 +37,7 @@
       await api('/api/tarot/outcome/' + id, { method: 'POST', body: JSON.stringify({ outcome: val }) });
       this.toast(val === 'came_true' ? 'Рада, что сбылось! Возвращайся за следующим раскладом ✨'
         : val === 'partly' ? 'Отметим частично — главное, что откликнулось 🌙' : 'Поняла — жизнь вносит коррективы 🌙');
-    } catch (e) { this.toast(e.message); }
+    } catch (e) { this.toast(friendlyError(e, 'Не получилось сохранить отметку. Попробуй ещё раз.')); }
   };
 
   app.softEmpty = function({ icon = '✦', eyebrow = '', title, copy, action = '', tone = '' }) {
@@ -283,7 +283,7 @@
     try {
       const r = await api('/api/reports/' + kind);
       this.showModal(`<h3>${esc(r.title)}</h3><button class="m-close" data-act="modal-close">✕</button><div style="font-size:13.5px;line-height:1.65;margin-top:8px">${rich(r.body)}</div>`);
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(friendlyError(e, 'Это временно. Попробуй ещё раз.')); }
   };
 
 
@@ -306,7 +306,7 @@
           <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="partly">${esc(profileT('outcomePartial'))}</button>
           <button class="outcome-chip" data-act="outcome" data-id="${id}" data-val="no">${esc(profileT('outcomeNo'))}</button>
         </div>`);
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(friendlyError(e, 'Это временно. Попробуй ещё раз.')); }
   };
 
   // тап по подсказке на карте агента: открывает чат и сразу отправляет вопрос
@@ -420,7 +420,7 @@
       this._memSearch = '';
       this.renderMemModal();
       haptic('light');
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(friendlyError(e, 'Это временно. Попробуй ещё раз.')); }
   };
 
   app.delMem = async function(id) {
@@ -429,7 +429,7 @@
       this._memFull = (this._memFull || []).filter(m => m.id !== id);
       this.renderMemModal();
       this.me = null; this.me = await api('/api/me');   // обновить счётчик памяти
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(friendlyError(e, 'Это временно. Попробуй ещё раз.')); }
   };
 
 
@@ -442,7 +442,7 @@
       this._memFull = await api('/api/memories');
       this.renderMemModal();
       this.me = await api('/api/me');
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(friendlyError(e, 'Это временно. Попробуй ещё раз.')); }
   };
 
   // «Все N раскладов»: полный список в модале
@@ -614,7 +614,7 @@
       this.closeModal();
       this.go('profile');
       this.toast(t('saved'));
-    } catch (e) { this.toast(e.message || 'Не удалось сохранить пол'); }
+    } catch (e) { this.toast(friendlyError(e, 'Не удалось сохранить выбор. Попробуй ещё раз.')); }
   };
 
   app.openLanguage = function() {
@@ -639,7 +639,7 @@
       this.renderFrame();
       this.go(this.view || 'profile');
       this.toast(t('saved'));
-    } catch (e) { this.toast(e.message || 'Не удалось сменить язык'); }
+    } catch (e) { this.toast(friendlyError(e, 'Не удалось сменить язык. Попробуй ещё раз.')); }
   };
 
   // панель уведомлений: прогноз дня + утреннее напоминание

@@ -74,9 +74,26 @@ def test_chat_exposes_one_visible_tool_entry_point() -> None:
 def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
     styles = (ROOT / "miniapp" / "styles.css").read_text(encoding="utf-8")
-    assert '/static/styles.css?v=87' in index
-    assert '?v=87' in styles
-    assert '?v=86' not in styles
+    version = re.search(r'/static/styles\.css\?v=(\d+)', index)
+    assert version, "index.html must declare a cache-busted stylesheet"
+    value = version.group(1)
+    assert f'?v={value}' in styles
+    assert f'?v={int(value) - 1}' not in styles
+
+
+def test_frontend_errors_use_user_facing_mapping() -> None:
+    sources = {
+        path.name: path.read_text(encoding="utf-8")
+        for path in JS_DIR.glob("*.js")
+    }
+    assert "function friendlyError" in sources["01-utils.js"]
+    raw_error_sites = []
+    for name, source in sources.items():
+        if name == "01-utils.js":
+            continue
+        if re.search(r"(?:e|err|error)\.message", source):
+            raw_error_sites.append(name)
+    assert not raw_error_sites, "raw error details exposed in: " + ", ".join(raw_error_sites)
 
 
 def test_chiromant_is_present_on_all_agent_surfaces() -> None:
@@ -99,7 +116,7 @@ def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
     placements = (JS_DIR / "16-placements.js").read_text(encoding="utf-8")
     palm = (JS_DIR / "13-palm.js").read_text(encoding="utf-8")
     css = (ROOT / "miniapp" / "css" / "15-ritual-redesign.css").read_text(encoding="utf-8")
-    assert '/static/js/16-placements.js?v=87' in index
+    assert re.search(r'/static/js/16-placements\.js\?v=\d+', index)
     assert 'app.featurePlacements' in placements
     assert 'aria-live="polite"' in placements
     assert 'data-placement-code' in placements

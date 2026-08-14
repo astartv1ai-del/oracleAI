@@ -2188,3 +2188,31 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   .agent-card--chiromant *, .dock-item--chiromant *, .palm-workflow * { animation: none !important; transition: none !important; }
 }
+
+/* ── v88 · readability and first-action hierarchy ──────────────────────── */
+/* Secondary copy stays readable in Telegram WebView and with larger system fonts. */
+.nav-copy b { font-size: 11.5px; }
+.te-eyebrow { font-size: 10px; }
+.te-chip-copy b { font-size: 11.5px; }
+.te-chip-copy small { color: var(--text-soft); font-size: 11px; line-height: 1.3; }
+.te-sheet .te-eyebrow { font-size: 10px; }
+.te-sheet .te-title { font-size: 17px; }
+.te-sheet .te-chip-copy b { font-size: 11.5px; }
+.te-sheet .te-chip-copy small { color: var(--text-soft); font-size: 11px; line-height: 1.3; -webkit-line-clamp: 2; }
+.chat-thread-toggle__copy small { color: var(--text-muted); font-size: 9px; }
+.chat-thread-toggle__copy b { font-size: 10.5px; }
+.memory-eyebrow { color: var(--text-muted); font-size: 10px; }
+.memory-hero p { font-size: 12px; }
+.memory-empty, .memory-search-empty, .diary-empty { font-size: 12.5px; }
+.palm-upload small, .palm-disclaimer, .palm-muted { color: var(--text-muted); font-size: 12px; }
+.palm-workflow__rule { font-size: 12px; }
+.placement-card__copy small { font-size: 10.5px; }
+.agent-outcome { margin-top: 5px; color: var(--text-main); font-size: 12px; font-weight: 750; line-height: 1.25; }
+
+/* Preserve the atmosphere while exposing the first useful action sooner. */
+.hero-orb { min-height: 320px; }
+@media (max-width: 380px) { .hero-orb { min-height: 330px; } }
+@media (max-width: 350px) {
+  .nav-copy b { font-size: 11px; }
+  .te-sheet .te-chip-copy small { font-size: 10.5px; }
+}

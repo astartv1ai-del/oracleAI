@@ -16,6 +16,9 @@
 
 ### Added
 
+- v88 Mini App readability layer: clearer guide outcomes, stronger secondary text sizing, compact first-action hero hierarchy and cache-busted asset delivery.
+- Purpose-level LLM workflow budgets now cover agent, complete and vision paths with shared deadline and estimated cost guards across retries and provider fallback.
+- Centralized `friendlyError` mapping keeps Telegram auth, provider, HTML and JSON details out of user-facing Mini App states.
 - Production baseline: structured JSONL logs with PII redaction, request/release IDs, Sentry environment/release tagging and operational alert checker for 5xx, webhook failures, LLM fallback rate and backup freshness.
 - Encrypted SQLite backup/restore helpers with checksum, integrity checks, retention and off-site compose upload.
 - Privacy-safe activation dictionary and server-owned milestones for age-gate completion, first ritual, first question and D1/D7 voluntary return; admin dashboard now exposes cohort activation funnel.

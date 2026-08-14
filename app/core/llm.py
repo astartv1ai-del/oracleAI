@@ -346,16 +346,29 @@ async def complete(system: str, user_text: str, tier: str = "lite",
                    tg_id: int | None = None, db=None) -> str:
     if not settings.provider_chain:
         raise RuntimeError("Все LLM-провайдеры недоступны")
+    budget = _WorkflowBudget(
+        timeout=max(1.0, settings.llm_workflow_timeout),
+        max_tool_calls=1,
+        max_cost_usd=max(0.01, settings.llm_max_cost_usd),
+    )
     errors = []
     async with _llm_slot():
         for provider_index, provider in enumerate(settings.provider_chain):
+            if budget.expired:
+                errors.append("workflow: deadline exceeded")
+                break
             meter = _Meter()
             model = _models(provider, tier)
             try:
-                text = await _with_retries(
-                    lambda p=provider: _complete_with(p, system, user_text, tier,
-                                                      max_tokens, meter),
-                    provider, "complete")
+                budget.check()
+                text = await asyncio.wait_for(
+                    _with_retries(
+                        lambda p=provider: _complete_with(p, system, user_text, tier,
+                                                          max_tokens, meter),
+                        provider, "complete"),
+                    timeout=budget.remaining,
+                )
+                budget.add_usage(model, meter.prompt, meter.completion)
             except Exception as e:  # noqa: BLE001
                 errors.append(f"{provider}: {e}")
                 await record_usage(db, provider=provider, model=model,
@@ -363,6 +376,8 @@ async def complete(system: str, user_text: str, tier: str = "lite",
                                    prompt_tokens=meter.prompt,
                                    completion_tokens=meter.completion,
                                    latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                if budget.expired or "budget exceeded" in str(e).lower():
+                    break
                 continue
             latency_ms = meter.ms
             await record_usage(db, provider=provider, model=model, purpose=purpose,
@@ -766,25 +781,41 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
     """
     if not settings.provider_chain:
         raise RuntimeError("Все LLM-провайдеры недоступны")
+    budget = _WorkflowBudget(
+        timeout=max(1.0, settings.llm_workflow_timeout),
+        max_tool_calls=1,
+        max_cost_usd=max(0.01, settings.llm_max_cost_usd),
+    )
     errors = []
     async with _llm_slot():
         for provider_index, provider in enumerate(settings.provider_chain):
+            if budget.expired:
+                errors.append("workflow: deadline exceeded")
+                break
             meter = _Meter()
+            model = _models(provider, tier)
             try:
-                text = await _with_retries(
-                    lambda p=provider: _vision_with(p, system, user_text,
-                                                     image_data_url, tier,
-                                                     max_tokens, meter,
-                                                     response_format=response_format),
-                    provider, "vision")
+                budget.check()
+                text = await asyncio.wait_for(
+                    _with_retries(
+                        lambda p=provider: _vision_with(p, system, user_text,
+                                                         image_data_url, tier,
+                                                         max_tokens, meter,
+                                                         response_format=response_format),
+                        provider, "vision"),
+                    timeout=budget.remaining,
+                )
+                budget.add_usage(model, meter.prompt, meter.completion)
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{provider}: {exc}")
-                await record_usage(db, provider=provider, model=_models(provider, tier),
+                await record_usage(db, provider=provider, model=model,
                                    purpose=purpose, prompt_tokens=meter.prompt,
                                    completion_tokens=meter.completion,
                                    latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                if budget.expired or "budget exceeded" in str(exc).lower():
+                    break
                 continue
-            await record_usage(db, provider=provider, model=_models(provider, tier),
+            await record_usage(db, provider=provider, model=model,
                                purpose=purpose, prompt_tokens=meter.prompt,
                                completion_tokens=meter.completion,
                                latency_ms=meter.ms, ok=True, tg_id=tg_id)

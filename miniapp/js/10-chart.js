@@ -177,7 +177,7 @@
       this.chat.pending = {
         kind: 'chart',
         loading: false,
-        html: this.chartForm({ date, time, city, error: e.message || 'Не удалось построить карту прямо сейчас. Проверь соединение и попробуй ещё раз.' })
+        html: this.chartForm({ date, time, city, error: friendlyError(e, 'Не удалось построить карту прямо сейчас. Проверь соединение и попробуй ещё раз.') })
       };
       haptic('error');
     }
@@ -193,7 +193,7 @@
     this.renderChat(document.getElementById('app-main'));
     this.chatPost(text)
       .then(r => { this.chat.messages.push({ role: 'assistant', text: r.answer }); })
-      .catch(e => { this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message }); })
+      .catch(e => { this.chat.messages.push({ role: 'assistant', text: '😔 ' + friendlyError(e) }); })
       .finally(() => { this.chat.busy = false; this.renderChat(document.getElementById('app-main')); });
   };
 

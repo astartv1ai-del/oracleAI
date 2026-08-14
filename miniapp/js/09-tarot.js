@@ -231,7 +231,7 @@
         this.renderChat(document.getElementById('app-main'));
       }
     } catch (e) {
-      this.chat.messages.push({ role: 'assistant', text: '😔 ' + e.message });
+      this.chat.messages.push({ role: 'assistant', text: '😔 ' + friendlyError(e) });
       this.chat.pending = null;
       this.chat.busy = false;
       this.renderChat(document.getElementById('app-main'));
@@ -260,7 +260,7 @@
           </div>`).join(''),
       };
     } catch (e) {
-      this.chat.pending = { kind: 'history', loading: false, rows: '<div style="color:var(--text-faint)">' + esc(e.message) + '</div>' };
+      this.chat.pending = { kind: 'history', loading: false, rows: '<div style="color:var(--text-faint)">' + esc(friendlyError(e)) + '</div>' };
     }
     this.renderChat(document.getElementById('app-main'));
   };

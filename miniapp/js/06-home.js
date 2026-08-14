@@ -168,6 +168,12 @@
 
   app.renderHub = function(main) {
     if (this.chat.key) return this.renderChat(main);
+    const outcomes = {
+      oracle: oracleLang() === 'en' ? 'Untangle one question' : 'Разобрать один вопрос',
+      astro: oracleLang() === 'en' ? 'Map and rhythms' : 'Карта и ритмы',
+      tarot: oracleLang() === 'en' ? 'A spread with context' : 'Расклад и контекст',
+      chiromant: oracleLang() === 'en' ? 'Photo and observations' : 'Фото и наблюдения'
+    };
     const list = this.agents.length ? this.agents : [
       { code: 'oracle', name: 'Лилит', title: 'Личный Оракул', emoji: '🔮', accent: '#e8c56b' },
       { code: 'astro', name: 'Урания', title: 'Астролог', emoji: '🌌', accent: '#7fb4e8' },
@@ -190,6 +196,7 @@
                     <div class="agent-title">${esc(a.name)}</div>
                   </div>
                   <div class="agent-role">${esc(a.title || a.code)}</div>
+                  <div class="agent-outcome">${esc(outcomes[a.code] || (oracleLang() === 'en' ? 'A gentle next step' : 'Бережный следующий шаг'))}</div>
                   <div class="agent-last">${esc(a.last_text || a.tagline || homeT('listening'))}</div>
                   <span class="online-label">${homeT('nearby')}</span>
                 </div>

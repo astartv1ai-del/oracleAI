@@ -154,7 +154,7 @@
       haptic('success');
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ Не получилось прочитать фото</div><p class="palm-muted">${esc(e.message || 'Попробуй ещё раз')}</p>${palmGuide()}<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Попробовать снова</button></section>` };
+      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ Не получилось прочитать фото</div><p class="palm-muted">${esc(friendlyError(e, 'Не получилось прочитать фото. Проверь кадр и попробуй ещё раз.'))}</p>${palmGuide()}<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Попробовать снова</button></section>` };
       haptic('error');
     }
     app.renderChat(document.getElementById('app-main'));
