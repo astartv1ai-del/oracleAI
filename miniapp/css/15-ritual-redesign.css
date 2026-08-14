@@ -2302,3 +2302,12 @@ html { scroll-behavior: smooth; }
 .composer-context-actions { display: inline-flex; align-items: center; gap: 6px; }
 .palm-quick-upload { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 9px; border: 1px solid var(--ac, #6fd6b0); border-radius: 999px; color: var(--ac-bright, #b7f5da); background: var(--ac-surface, rgba(111,214,176,.12)); font-size: 10.5px; font-weight: 800; }
 .palm-quick-upload:active { transform: scale(.97); }
+
+
+/* Live UI fix: keep the open tool sheet visually above the bottom navigation area. */
+#app-root { isolation: isolate; }
+.tool-expand { z-index: 1000; }
+.tool-expand .te-sheet {
+  bottom: calc(100px + env(safe-area-inset-bottom));
+  max-height: min(48vh, 430px);
+}
