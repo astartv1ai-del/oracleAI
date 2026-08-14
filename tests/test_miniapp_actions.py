@@ -119,6 +119,7 @@ def test_palm_photo_flow_and_agent_theme_contract() -> None:
     assert "t: 'Личная опора'" not in data
     assert "chatPractice" not in palm + chat
     assert "palm-quick-upload" in chat and "palm-start" in actions
+    assert "case 'palm':" in chat and "p.html" in chat
     assert "palm-camera" in palm and "palm-gallery" in palm and 'capture="environment"' in palm
     assert ".tool-expand { z-index: 400" in css or ".tool-expand {\n  z-index: 400" in css
     for color in ("#e8c56b", "#8cc8ff", "#e7a8d8", "#6fd6b0"):
