@@ -7,9 +7,8 @@
     const practices = (pulse.practices && pulse.practices.items) || [];
     const activePractice = practices.find(p => p.started && !p.finished) || practices.find(p => !p.finished) || null;
     // Домашний экран должен оставаться полезным даже при временной недоступности API.
-    const homeAgents = this.agents.length
-      ? this.agents
-      : AGENT_FALLBACK.map(a => this.normalizeAgent(a, a.code));
+    const homeAgents = (this.agents.length ? this.agents : AGENT_FALLBACK)
+      .map(a => this.normalizeAgent(a, a.code));
     const diaryDone = !!prompt.written_today;
     const ritualCompleted = (diaryDone ? 1 : 0) + (activePractice && activePractice.last_done ? 1 : 0);
     const ritualTone = ritualCompleted === 2
@@ -153,9 +152,9 @@
         <div class="section-title">${homeT('talkTo')}</div>
         <div class="dock-grid">
           ${homeAgents.map(a => `
-                          <button class="dock-item dock-item--${esc(a.code)}" type="button" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">
+                          <button class="dock-item dock-item--${esc(a.code)}" type="button" style="${this.agentThemeStyle(a, a.code)}" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">
 
-              <span class="dock-orb" style="--ac:${esc(a.accent || 'var(--gold)')}"><img class="dock-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span>
+              <span class="dock-orb" style="${this.agentThemeStyle(a, a.code)}"><img class="dock-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span>
               <span class="dock-name">${esc(a.name.split(' ')[0])}</span>
               ${a.title ? `<span class="dock-role">${esc(a.title)}</span>` : ''}
             </button>`).join('')}
@@ -174,12 +173,12 @@
       tarot: oracleLang() === 'en' ? 'A spread with context' : 'Расклад и контекст',
       chiromant: oracleLang() === 'en' ? 'Photo and observations' : 'Фото и наблюдения'
     };
-    const list = this.agents.length ? this.agents : [
+    const list = (this.agents.length ? this.agents : [
       { code: 'oracle', name: 'Лилит', title: 'Личный Оракул', emoji: '🔮', accent: '#e8c56b' },
       { code: 'astro', name: 'Урания', title: 'Астролог', emoji: '🌌', accent: '#7fb4e8' },
       { code: 'tarot', name: 'Мадам Ленорман', title: 'Таролог', emoji: '🎴', accent: '#c58bd8' },
       { code: 'chiromant', name: 'Мира', title: 'Проводник ладони', emoji: '✋', accent: '#e2a45e', avatar: '/static/img/agents/chiromant.jpg' },
-    ];
+    ]).map(a => this.normalizeAgent(a, a.code));
     main.innerHTML = `
       <div class="screen">
         <div class="hub-head">
@@ -188,7 +187,7 @@
         </div>
         <div class="agent-list">
           ${list.map(a => `
-            <div class="agent-card agent-card--${esc(a.code)} ${this.chat.key === a.code ? 'glow' : ''}" style="--ac:${esc(a.accent || 'var(--gold)')}" data-act="chat" data-chat="${a.code}">
+            <div class="agent-card agent-card--${esc(a.code)} ${this.chat.key === a.code ? 'glow' : ''}" style="${this.agentThemeStyle(a, a.code)}" data-act="chat" data-chat="${a.code}">
               <div class="ac-top">
                 <div class="agent-avatar">${agentSprite(a)}</div>
                 <div style="flex:1;min-width:0">
@@ -210,7 +209,7 @@
               <div class="section-kicker" style="margin:15px 0 7px;color:var(--ac)">${homeT('ask')}</div>
               <div class="agent-chips">
                 ${(FEATURES[a.code] || []).slice(0, 4).map(f => `
-                  <button class="tool" style="--ac2:${esc(a.accent || 'var(--gold)')}" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" aria-label="${esc(f.t)}: ${esc(f.d || '')}">
+                  <button class="tool" style="${this.agentThemeStyle(a, a.code)}" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" aria-label="${esc(f.t)}: ${esc(f.d || '')}">
                     <span class="tool-ico" aria-hidden="true">${sigilIcon(f.id)}</span>
                     <span class="tool-txt"><span class="tool-t">${esc(f.t)}</span>${f.d ? `<span class="tool-d">${esc(f.d)}</span>` : ''}</span>
                   </button>`).join('')}

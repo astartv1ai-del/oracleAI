@@ -53,6 +53,35 @@
   };
 
 
+  app.chartSectionHtml = function(section, first) {
+    if (!section) return '';
+    const items = Array.isArray(section.items) ? section.items : [];
+    return `<details class="chart-insight"${first ? ' open' : ''}>
+      <summary><span class="chart-insight__title">${esc(section.title || 'Раздел карты')}</span><span class="chart-insight__chevron" aria-hidden="true">⌄</span></summary>
+      <div class="chart-insight__body">
+        ${section.intro ? `<p class="chart-insight__intro">${esc(section.intro)}</p>` : ''}
+        <div class="chart-insight__items">
+          ${items.map(item => `<article class="chart-insight__item${item.available ? '' : ' is-muted'}">
+            <div class="chart-insight__item-head"><b>${esc(item.label || '')}</b><span>${esc(item.value || 'нет данных')}</span></div>
+            <p>${esc(item.meaning || '')}</p>
+          </article>`).join('')}
+        </div>
+        ${section.note ? `<p class="chart-insight__note">${esc(section.note)}</p>` : ''}
+      </div>
+    </details>`;
+  };
+
+  app.chartSectionsHtml = function(sections) {
+    const map = sections && sections.sections ? sections.sections : {};
+    const order = ['identity', 'mind_career', 'relationships', 'nodes'];
+    return `<section class="chart-insights" aria-label="Понятный разбор натальной карты">
+      <div class="chart-insights__kicker">КАК ЧИТАТЬ КАРТУ</div>
+      <h3 class="chart-insights__title">Не только колесо — четыре смысловых слоя</h3>
+      <p class="chart-insights__copy">Сначала смотри на факт размещения, затем на объяснение. Это символический инструмент самонаблюдения, а не диагноз и не приговор.</p>
+      ${order.map((key, i) => this.chartSectionHtml(map[key], i === 0)).join('')}
+    </section>`;
+  };
+
   app.chartHtml = function(c) {
     this.chart = c;
     const sun = c.sun || {};
@@ -108,6 +137,7 @@
           <p>${takeaway}</p>
           <small>Это ориентир для личного исследования, а не готовый ярлык.</small>
         </div>
+        ${this.chartSectionsHtml(c.sections)}
       </section>
       <details class="chart-details">
         <summary>Планеты, аспекты и детали карты</summary>

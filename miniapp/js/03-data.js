@@ -25,7 +25,6 @@ const FEATURES = {
   oracle: [
     { id: 'today', e: '🌅', t: 'Прогноз дня', d: 'Что звёзды и карты готовят тебе сегодня', m: 'Профиль · ~5 сек · короткий ориентир', h: 'featureToday' },
     { id: 'matrix', e: '🔢', t: 'Матрица Судьбы', d: 'Предназначение и энергии по дате', m: 'Дата рождения · ~3 сек · расчёт + вопрос к себе', h: 'featureMatrix' },
-    { id: 'practice', e: '🧘', t: 'Личная опора', d: 'Короткая фраза и мягкий шаг под твоё состояние', m: 'Ничего · ~10 сек · один бережный шаг', h: 'chatPractice' },
     { id: 'monthly', e: '📖', t: 'Астро-дневник', d: 'Отметить состояние и заметить свой ритм', m: 'Дневник по желанию · ~1 мин · темы месяца', h: 'chatMonthly' },
   ],
   tarot: [
@@ -49,9 +48,9 @@ const FEATURES = {
 /* Запасные агенты: пока /api/agents не пришёл или упал, табы/панель не пустуют */
 const AGENT_FALLBACK = [
   { code: 'oracle', name: 'Лилит', accent: '#e8c56b' },
-  { code: 'astro', name: 'Урания', accent: '#7fb4e8' },
-  { code: 'tarot', name: 'Мадам Ленорман', accent: '#c58bd8' },
-  { code: 'chiromant', name: 'Мира', accent: '#e2a45e', avatar: '/static/img/agents/chiromant.jpg' },
+  { code: 'astro', name: 'Урания', accent: '#8cc8ff' },
+  { code: 'tarot', name: 'Мадам Ленорман', accent: '#e7a8d8' },
+  { code: 'chiromant', name: 'Мира', accent: '#6fd6b0', avatar: '/static/img/agents/chiromant.jpg' },
 ];
 
 /* Богатые шаблоны-промпты по агенту: тап заполняет поле ввода для правки,

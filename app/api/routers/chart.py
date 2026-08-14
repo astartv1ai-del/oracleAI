@@ -45,6 +45,7 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
         "aspects": data.get("aspects", []),
         "nodes": data.get("nodes", []),
         "note": data.get("note"),
+        "sections": astro.chart_sections(data, time_known=known),
         "birth": {
             "date": user["birth_date"] if birth_date is _UNSET else birth_date,
             "time": user["birth_time"] if birth_time is _UNSET else birth_time,

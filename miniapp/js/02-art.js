@@ -19,8 +19,11 @@ function agentSigil(code) {
 }
 function agentSprite(a, cheer) {
   if (!a) return '';
-  const ac = a.accent || '#e6c178';
-  return `<span class="agent-sprite${cheer ? ' cheer' : ''}" style="--ac:${esc(ac)}" role="img" aria-label="${esc(a.name || '')}">
+  const ac = a.accent || '#e8c56b';
+  const bright = a.accentBright || ac;
+  const glow = a.accentGlow || 'rgba(230,193,120,.34)';
+  const surface = a.surface || 'rgba(230,193,120,.12)';
+  return `<span class="agent-sprite${cheer ? ' cheer' : ''}" style="--ac:${esc(ac)};--ac-bright:${esc(bright)};--ac-glow:${esc(glow)};--ac-surface:${esc(surface)}" role="img" aria-label="${esc(a.name || '')}">
       <img class="agent-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="${esc(a.name || '')}" loading="eager" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'">
       <span class="as-prop">${agentSigil(a.code)}</span>
     </span>`;

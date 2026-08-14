@@ -220,7 +220,7 @@
     };
     const introGuide = introGuides[a.code] || introGuides.oracle;
     const introHtml = messages.length <= 1 ? `
-        <section class="agent-intro agent-intro--compact agent-intro--${esc(a.code)}" style="--ac:${esc(a.accent || 'var(--gold)')}" aria-label="Знакомство с проводником">
+        <section class="agent-intro agent-intro--compact agent-intro--${esc(a.code)}" style="${this.agentThemeStyle(a, a.code)}" aria-label="Знакомство с проводником">
           <span class="ai-kicker">${introGuide.kicker}</span>
           <div class="ai-persona">
             <div class="ai-face">${agentSprite(a, false)}</div>
@@ -238,10 +238,10 @@
     const pendHtml = pending ? this.pendingHtml(pending) : '';
 
     main.innerHTML = `
-      <div class="chat-shell chat-shell--${esc(a.code)}">
+      <div class="chat-shell chat-shell--${esc(a.code)}" style="${this.agentThemeStyle(a, a.code)}">
         <div class="chat-head">
           <button class="back" data-act="back" aria-label="Вернуться к проводникам" title="К проводникам">‹</button>
-          <div class="agent-avatar" style="--ac:${esc(a.accent || 'var(--gold)')}">${agentSprite(a, cheer)}</div>
+          <div class="agent-avatar" style="${this.agentThemeStyle(a, a.code)}">${agentSprite(a, cheer)}</div>
           <div style="flex:1;min-width:0">
             <div class="cname">${esc(a.name || 'Лилит')}</div>
             <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
@@ -271,7 +271,7 @@
         </section>
         <div class="agent-tabs" role="tablist" aria-label="Выбор проводника">
           ${agents.slice(0, 4).map(b => `
-            <button type="button" class="atab ${b.code === a.code ? 'active' : ''}" style="--ac:${esc(b.accent || 'var(--gold)')}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}">
+            <button type="button" class="atab ${b.code === a.code ? 'active' : ''}" style="${this.agentThemeStyle(b, b.code)}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}">
               <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(b.name.split(' ')[0])}</span>
             </button>`).join('')}
         </div>
@@ -282,10 +282,14 @@
           ${busy ? `<div class="msg assistant"><div class="typing"><span></span><span></span><span></span></div></div>` : ''}
         </div>
         <div class="composer">
-          <div class="composer-context">
+                      <div class="composer-context">
             <span class="composer-presence"><i aria-hidden="true"></i>${esc(a.name || 'Проводник')} рядом</span>
-            <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть палитру инструментов" aria-expanded="false" aria-controls="tool-expand"><span class="composer-tools-copy__icon">${sigilIcon('spark')}</span><span>Инструменты</span><span class="composer-tools-copy__chevron" aria-hidden="true">↑</span></button>
+            <div class="composer-context-actions">
+              ${a.code === 'chiromant' ? '<button type="button" class="palm-quick-upload" data-act="palm-start" aria-label="Добавить фото ладони"><span aria-hidden="true">✋</span><span>Фото ладони</span></button>' : ''}
+              <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть палитру инструментов" aria-expanded="false" aria-controls="tool-expand"><span class="composer-tools-copy__icon">${sigilIcon('spark')}</span><span>Инструменты</span><span class="composer-tools-copy__chevron" aria-hidden="true">↑</span></button>
+            </div>
           </div>
+
           <div class="composer-top">
             <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
             <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
@@ -306,7 +310,7 @@
             <div class="te-body">
               ${currentFeatures.length ? `
                 <div class="te-group te-current">
-                  <div class="te-current-title" style="--ac:${esc(a.accent || 'var(--gold)')}">
+                  <div class="te-current-title" style="${this.agentThemeStyle(a, a.code)}">
                     <span>С ${esc(a.name || 'проводником')}</span><small>в этом диалоге</small>
                   </div>
                   <div class="te-grid">

@@ -110,6 +110,21 @@ def test_chiromant_is_present_on_all_agent_surfaces() -> None:
     assert "agents.slice(0, 4)" in chat
 
 
+def test_palm_photo_flow_and_agent_theme_contract() -> None:
+    data = (JS_DIR / "03-data.js").read_text(encoding="utf-8")
+    palm = (JS_DIR / "13-palm.js").read_text(encoding="utf-8")
+    chat = (JS_DIR / "07-chat.js").read_text(encoding="utf-8")
+    actions = ACTIONS.read_text(encoding="utf-8")
+    css = (ROOT / "miniapp" / "css" / "15-ritual-redesign.css").read_text(encoding="utf-8")
+    assert "t: 'Личная опора'" not in data
+    assert "chatPractice" not in palm + chat
+    assert "palm-quick-upload" in chat and "palm-start" in actions
+    assert "palm-camera" in palm and "palm-gallery" in palm and 'capture="environment"' in palm
+    assert ".tool-expand { z-index: 400" in css or ".tool-expand {\n  z-index: 400" in css
+    for color in ("#e8c56b", "#8cc8ff", "#e7a8d8", "#6fd6b0"):
+        assert color in (data + chat + css)
+
+
 def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
     index = (ROOT / "miniapp" / "index.html").read_text(encoding="utf-8")
     data = (JS_DIR / "03-data.js").read_text(encoding="utf-8")

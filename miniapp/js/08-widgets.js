@@ -464,21 +464,6 @@ const widgetShell = (p, { title, body, tail = '' }) => {
 
   /* ═══ ФИЧА: СОВМЕСТИМОСТЬ (Спидометр любви v2) ═══ */
 
-  app.chatPractice = async function() {
-    if (this.chat.pending && this.chat.pending.kind === 'practices') return; // B4 re-entry
-    const key = this.chat.key, view = this.view;
-    const pend = this.chat.pending = { kind: 'practices', loading: true, items: [], error: '' };
-    this.renderChat(document.getElementById('app-main'));
-    try {
-      const r = await api('/api/practices');
-      if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'practices', loading: false, items: (r && r.items) || [], error: '' };
-    } catch (e) {
-      if (!widAlive(key, view, pend)) return;
-      this.chat.pending = { kind: 'practices', loading: false, items: [], error: friendlyError(e) };
-    }
-    this.renderChat(document.getElementById('app-main'));
-  };
   // «Книга судьбы» — дневник со стриком, вечерним вопросом и месячной сводкой
 
   app.chatMonthly = async function() {

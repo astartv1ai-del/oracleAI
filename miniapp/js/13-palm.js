@@ -72,12 +72,20 @@
       <p class="w-sub">Я опишу только то, что действительно видно на фото, и превращу символы в вопросы к себе.</p>
       ${preview}
       ${palmGuide()}
-      <label class="palm-upload" for="palm-file">
-        <span class="palm-upload__icon" aria-hidden="true">＋</span>
-        <b>Выбрать фото ладони</b>
-        <small>JPEG, PNG или WebP · до 8 МБ</small>
-      </label>
-      <input id="palm-file" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" data-palm-input>
+      <div class="palm-upload-actions" role="group" aria-label="Источник фотографии">
+        <label class="palm-upload palm-upload--primary" for="palm-camera">
+          <span class="palm-upload__icon" aria-hidden="true">⌾</span>
+          <b>Сфотографировать ладонь</b>
+          <small>Камера · один кадр</small>
+        </label>
+        <label class="palm-upload" for="palm-gallery">
+          <span class="palm-upload__icon" aria-hidden="true">＋</span>
+          <b>Выбрать из галереи</b>
+          <small>JPEG, PNG или WebP · до 8 МБ</small>
+        </label>
+      </div>
+      <input id="palm-camera" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" data-palm-input>
+      <input id="palm-gallery" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" data-palm-input>
       <p class="palm-disclaimer">Это символическое чтение для саморефлексии, не медицинская диагностика и не предсказание.</p>
     </section>`;
   };
@@ -131,13 +139,23 @@
 
   async function upload(file) {
     if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (file.type && !allowed.includes(file.type.toLowerCase())) {
+      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ Нужен снимок ладони</div><p class="palm-muted">Выбери JPEG, PNG или WebP. Другие форматы не отправляются.</p><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Выбрать другое фото</button></section>` };
+      app.renderChat(document.getElementById('app-main'));
+      return;
+    }
     if (file.size > 8 * 1024 * 1024) {
       app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ Фото слишком большое</div><p class="palm-muted">Выбери изображение до 8 МБ.</p><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Попробовать снова</button></section>` };
       app.renderChat(document.getElementById('app-main'));
       return;
     }
     const key = app.chat.key, view = app.view;
-    try { app._palmPreview = URL.createObjectURL(file); } catch (e) { app._palmPreview = ''; }
+    try {
+      if (app._palmObjectUrl) URL.revokeObjectURL(app._palmObjectUrl);
+      app._palmObjectUrl = URL.createObjectURL(file);
+      app._palmPreview = app._palmObjectUrl;
+    } catch (e) { app._palmObjectUrl = ''; app._palmPreview = ''; }
     const pend = app.chat.pending = { kind: 'palm', loading: true, html: app.palmLoadingHtml() };
     app.renderChat(document.getElementById('app-main'));
     try {
@@ -162,6 +180,10 @@
 
   document.addEventListener('change', e => {
     const input = e.target && e.target.matches && e.target.matches('[data-palm-input]') ? e.target : null;
-    if (input && input.files && input.files[0]) upload(input.files[0]);
+    if (input && input.files && input.files[0]) {
+      const file = input.files[0];
+      input.value = '';
+      upload(file);
+    }
   });
 }());

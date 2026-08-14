@@ -355,6 +355,97 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
     }
 
 
+def _chart_planet(chart: dict, name: str) -> dict | None:
+    return next((p for p in chart.get("planets") or [] if p.get("name") == name), None)
+
+
+def _chart_house(chart: dict, number: int) -> dict | None:
+    return next((h for h in chart.get("houses") or [] if h.get("n") == number), None)
+
+
+def _chart_point_value(point: dict | None, *, include_house: bool = True) -> str:
+    if not point or not point.get("sign"):
+        return "нет данных"
+    value = str(point["sign"])
+    if point.get("deg") is not None:
+        value += f" · {point['deg']}°"
+    if include_house and point.get("house"):
+        value += f" · {point['house']}-й дом"
+    return value
+
+
+def chart_sections(chart: dict, *, time_known: bool | None = None) -> dict:
+    """Понятная карта смыслов поверх фактических положений.
+
+    Этот слой не делает предсказаний и не утверждает буквальную карму или прошлые
+    жизни. Он отдаёт клиенту проверяемые placements и короткие определения тем,
+    чтобы UI и LLM использовали один и тот же источник правды.
+    """
+    exact = bool(time_known is True and chart.get("precision", "exact") == "exact")
+    sun = chart.get("sun") or _chart_planet(chart, "Солнце") or {}
+    moon = _chart_planet(chart, "Луна")
+    mercury = _chart_planet(chart, "Меркурий")
+    mars = _chart_planet(chart, "Марс")
+    venus = _chart_planet(chart, "Венера")
+    asc = chart.get("ascendant") or {}
+    mc = chart.get("mc") or {}
+    seventh = _chart_house(chart, 7)
+    second = _chart_house(chart, 2)
+    sixth = _chart_house(chart, 6)
+    tenth = _chart_house(chart, 10)
+    nodes = {n.get("name", ""): n for n in chart.get("nodes") or []}
+    ketu = nodes.get("Кету (Южный узел)")
+    rahu = nodes.get("Раху (Северный узел)")
+
+    def item(key: str, label: str, point: dict | None, meaning: str, *, available: bool = True) -> dict:
+        return {"key": key, "label": label, "value": _chart_point_value(point),
+                "sign": (point or {}).get("sign"), "house": (point or {}).get("house"),
+                "meaning": meaning, "available": bool(available and point and point.get("sign"))}
+
+    sections = {
+        "identity": {
+            "title": "Ядро личности и маска",
+            "intro": "Три точки показывают внутренний центр, эмоциональную настройку и первое впечатление — это язык наблюдения, а не жёсткий ярлык.",
+            "items": [
+                item("ascendant", "Асцендент", asc, "Как человек входит в контакт с миром и какое первое впечатление создаёт.", available=exact),
+                item("sun", "Солнце", sun, "Центр воли, самоощущение, жизненная энергия и то, как человек собирает образ себя."),
+                item("moon", "Луна", moon, "Эмоциональные привычки, потребность в безопасности и внутренний мир, который проявляется наедине с собой."),
+            ],
+            "note": "Для точного Асцендента нужно подтверждённое время, координаты и часовой пояс рождения." if not exact else "",
+        },
+        "mind_career": {
+            "title": "Интеллект, общение, карьера и деньги",
+            "intro": "Планеты описывают стиль мышления и действия; дома — сферы жизни. Финансовый потенциал не является гарантией дохода и зависит от решений и обстоятельств.",
+            "items": [
+                item("mercury", "Меркурий", mercury, "Как человек думает, объясняет, шутит, учится и обрабатывает информацию."),
+                item("mars", "Марс", mars, "Как человек действует, защищает границы, проходит препятствия и переживает конфликт."),
+                {"key": "career", "label": "Карьера", "value": (f"MC в {mc.get('sign')} · 10-й дом {tenth.get('sign')}" if exact and mc.get("sign") and tenth else "нужны точные дома"), "sign": (mc.get("sign") if exact else None), "house": 10 if exact and tenth else None, "meaning": "Профессиональная среда, амбиции и способ строить видимый результат.", "available": bool(exact and (mc.get("sign") or tenth))},
+                {"key": "finance", "label": "Финансы", "value": (f"2-й дом {second.get('sign')} · 6-й дом {sixth.get('sign')}" if exact and (second or sixth) else "нужны точные дома"), "sign": (second or {}).get("sign") if exact else None, "house": 2 if exact and second else None, "meaning": "Ресурсы, привычки труда, отношение к ценности и устойчивому заработку — не обещание финансовой удачи.", "available": bool(exact and (second or sixth))},
+            ],
+            "note": "Без подтверждённого времени показываем планеты в знаках. Карьерные и финансовые дома пока недоступны: нужны точные дома." if not exact else "",
+        },
+        "relationships": {
+            "title": "Любовь, отношения и партнёрство",
+            "intro": "Венера показывает язык симпатии и удовольствия, а 7-й дом — стиль серьёзного партнёрства, если время рождения достаточно точное.",
+            "items": [
+                item("venus", "Венера", venus, "Как человек проявляет нежность, что считает красивым и какой формат близости приносит удовольствие."),
+                {"key": "seventh_house", "label": "7-й дом", "value": (_chart_point_value(seventh, include_house=False) if exact else "нужны точные дома"), "sign": (seventh or {}).get("sign") if exact else None, "house": 7 if exact and seventh else None, "meaning": "Какие качества человек ищет в серьёзном союзе и где в паре могут возникать повторяющиеся задачи.", "available": bool(exact and seventh)},
+            ],
+            "note": "Без точного времени можно говорить о Венере, но не делать выводы по 7-му дому." if not exact else "",
+        },
+        "nodes": {
+            "title": "Кармические узлы: привычное и направление роста",
+            "intro": "Узлы — символический язык для разговора о знакомых сценариях и развитии. Они не доказывают буквальную прошлую жизнь и не предсказывают судьбу.",
+            "items": [
+                item("ketu", "Кету · Южный узел", ketu, "В традиционной символике — привычный багаж, уже знакомые стратегии и зона комфорта, которую полезно замечать, а не считать грехом или приговором."),
+                item("rahu", "Раху · Северный узел", rahu, "В традиционной символике — направление любопытства и развития: навык, который можно пробовать выращивать маленькими действиями в настоящем."),
+            ],
+            "note": "Используй этот блок как рефлексивную метафору, а не как буквальное описание прошлой жизни или обязательной миссии." if ketu or rahu else "Узлы пока не рассчитаны.",
+        },
+    }
+    return {"version": 1, "exact": exact, "sections": sections}
+
+
 MOON_PHASES = [
     ("Новолуние", "🌑", "загадай намерение письменно и отпусти — Вселенная запомнит"),
     ("Растущий серп", "🌒", "первые шаги: знакомства, отклики, начало дела"),

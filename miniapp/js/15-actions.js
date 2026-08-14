@@ -30,6 +30,7 @@
       call(data.fn);
     },
     'tool-toggle': () => { tactile('open'); call('toggleToolbox'); },
+    'palm-start': () => { tactile('select'); call('featurePalm'); },
     'today-ask': () => call('todayAsk'),
     'day-flip': () => call('todayFlip'),
     'matrix-node': (el, data) => call('selectMatrixNode', data.key),

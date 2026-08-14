@@ -2216,3 +2216,89 @@ html { scroll-behavior: smooth; }
   .nav-copy b { font-size: 11px; }
   .te-sheet .te-chip-copy small { font-size: 10.5px; }
 }
+
+/* ── Agent themes and modal layering · v55 ──────────────────────────────── */
+:root {
+  --agent-oracle: #e8c56b;
+  --agent-astro: #8cc8ff;
+  --agent-tarot: #e7a8d8;
+  --agent-chiromant: #6fd6b0;
+}
+
+/* Every agent keeps its own accent while the shared midnight surface stays stable. */
+.chat-shell, .agent-card, .dock-item { --agent-accent: var(--ac, var(--champagne-400)); }
+.agent-card::before, .agent-card::after { background-color: var(--agent-accent); }
+.agent-card::after { background: radial-gradient(circle, var(--ac-surface, rgba(245,212,139,.18)), transparent 70%); }
+.agent-card:hover, .agent-card:active { border-color: var(--agent-accent); }
+.agent-avatar { background: radial-gradient(circle at 34% 28%, var(--ac-surface, rgba(185,166,255,.28)), rgba(15,12,39,.92)); }
+.agent-avatar::before { background: linear-gradient(150deg, var(--agent-accent), transparent 60%, var(--agent-accent)); }
+.agent-face { border-color: var(--agent-accent); box-shadow: 0 0 0 2px rgba(255,255,255,.06), 0 6px 16px -8px rgba(0,0,0,.8), 0 0 18px var(--ac-glow, rgba(230,193,120,.34)); }
+.agent-role, .agent-intro .ai-role, .atab.active, .te-current-title { color: var(--agent-accent); }
+.atab.active { border-color: var(--agent-accent); background: var(--ac-surface, rgba(245,212,139,.1)); box-shadow: 0 0 12px -4px var(--ac-glow, rgba(230,193,120,.34)); }
+.dock-item:hover, .dock-item:active { border-color: var(--agent-accent); }
+.dock-item .dock-orb { background: radial-gradient(circle at 35% 28%, var(--ac-surface, rgba(185,166,255,.28)), rgba(15,12,39,.92)); box-shadow: 0 0 0 4px rgba(255,255,255,.035), 0 0 22px -8px var(--ac-glow, rgba(230,193,120,.34)); }
+.dock-item .dock-name { color: var(--text-main); }
+.dock-item .dock-role { color: var(--agent-accent); }
+.online-label { color: var(--agent-accent); }
+.tool:hover, .te-chip:hover { color: var(--ac-bright, var(--champagne-300)); border-color: var(--agent-accent); background: var(--ac-surface, rgba(245,212,139,.09)); }
+.tool-ico, .te-ico { color: var(--agent-accent); background: var(--ac-surface, rgba(245,212,139,.1)); }
+.te-current { border-color: color-mix(in srgb, var(--agent-accent) 32%, transparent); background: linear-gradient(145deg, var(--ac-surface, rgba(245,212,139,.09)), rgba(185,166,255,.055)); }
+
+/* The sheet is a true modal layer: it must sit above the sticky header and bottom nav. */
+.tool-expand { z-index: 400; pointer-events: none; isolation: isolate; }
+.tool-expand.open { pointer-events: auto; }
+.tool-expand .te-mask { z-index: 0; }
+.tool-expand .te-sheet { z-index: 1; }
+
+/* The home atmosphere remains shared; agent identity lives in cards and accents, not a special backdrop. */
+.dock-item--chiromant, .dock-item--oracle, .dock-item--astro, .dock-item--tarot {
+  background: linear-gradient(145deg, rgba(255,255,255,.075), rgba(21,17,49,.72));
+}
+
+
+/* Palm upload: camera first, gallery second. */
+.palm-upload-actions { display: grid; grid-template-columns: 1.15fr .85fr; gap: 9px; margin: 14px 0 10px; }
+.palm-upload-actions .palm-upload { min-height: 128px; margin: 0; padding: 13px 10px; border-color: color-mix(in srgb, var(--ac, #6fd6b0) 58%, transparent); background: linear-gradient(145deg, var(--ac-surface, rgba(111,214,176,.12)), rgba(127,180,232,.06)); }
+.palm-upload-actions .palm-upload--primary { border-style: solid; box-shadow: 0 10px 24px -20px var(--ac-glow, rgba(111,214,176,.34)); }
+.palm-upload-actions .palm-upload:hover, .palm-upload-actions .palm-upload:focus-within { border-color: var(--ac, #6fd6b0); background: var(--ac-surface, rgba(111,214,176,.14)); transform: translateY(-1px); }
+.palm-upload-actions .palm-upload__icon { color: #172535; background: linear-gradient(135deg, var(--ac-bright, #b7f5da), var(--ac, #6fd6b0)); }
+.palm-upload-actions .palm-upload b { font-size: 12.5px; line-height: 1.2; }
+.palm-upload-actions .palm-upload small { font-size: 10px; }
+@media (max-width: 380px) {
+  .palm-upload-actions { grid-template-columns: 1fr; }
+  .palm-upload-actions .palm-upload { min-height: 96px; }
+}
+
+
+/* Natal chart insights: facts first, interpretation second. */
+.chart-insights { margin-top: 16px; padding: 15px; border: 1px solid rgba(140,200,255,.18); border-radius: var(--r-lg); background: linear-gradient(145deg, rgba(140,200,255,.08), rgba(255,255,255,.035)); }
+.chart-insights__kicker { color: var(--lilac-400); font-size: 9px; font-weight: 800; letter-spacing: .13em; }
+.chart-insights__title { margin-top: 5px; color: var(--text-main); font: 700 19px/1.15 var(--font-display); }
+.chart-insights__copy { margin: 7px 0 12px; color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.chart-insight { overflow: hidden; margin-top: 8px; border: 1px solid rgba(225,214,255,.12); border-radius: 15px; background: rgba(8,7,25,.28); }
+.chart-insight > summary { display: flex; align-items: center; justify-content: space-between; min-height: 50px; padding: 0 12px; cursor: pointer; list-style: none; color: var(--text-main); }
+.chart-insight > summary::-webkit-details-marker { display: none; }
+.chart-insight__title { font-size: 13px; font-weight: 800; }
+.chart-insight__chevron { color: var(--agent-accent, var(--lilac-400)); font-size: 17px; transition: transform .2s var(--ease-ritual); }
+.chart-insight[open] .chart-insight__chevron { transform: rotate(180deg); }
+.chart-insight__body { padding: 0 12px 12px; }
+.chart-insight__intro { margin: 0 0 9px; color: var(--text-soft); font-size: 11.5px; line-height: 1.45; }
+.chart-insight__items { display: grid; gap: 7px; }
+.chart-insight__item { padding: 9px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.035); }
+.chart-insight__item.is-muted { opacity: .72; border-style: dashed; }
+.chart-insight__item-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.chart-insight__item-head b { color: var(--agent-accent, var(--champagne-300)); font-size: 12px; }
+.chart-insight__item-head span { color: var(--text-main); font-size: 11px; font-weight: 700; text-align: right; }
+.chart-insight__item p { margin-top: 4px; color: var(--text-soft); font-size: 11.5px; line-height: 1.45; }
+.chart-insight__note { margin: 10px 0 0; padding: 8px 9px; border-left: 2px solid var(--agent-accent, var(--lilac-400)); color: var(--text-muted); font-size: 10.5px; line-height: 1.45; }
+@media (max-width: 380px) {
+  .chart-insights { padding: 12px; }
+  .chart-insight__item-head { display: block; }
+  .chart-insight__item-head span { display: block; margin-top: 3px; text-align: left; }
+}
+
+
+.composer-context { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.composer-context-actions { display: inline-flex; align-items: center; gap: 6px; }
+.palm-quick-upload { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 9px; border: 1px solid var(--ac, #6fd6b0); border-radius: 999px; color: var(--ac-bright, #b7f5da); background: var(--ac-surface, rgba(111,214,176,.12)); font-size: 10.5px; font-weight: 800; }
+.palm-quick-upload:active { transform: scale(.97); }
