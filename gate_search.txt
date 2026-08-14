@@ -1,0 +1,357 @@
+--- DATA CONTROL ROUTES ---
+app/api/main.py:237:            f"  <url><loc>{base}/privacy</loc></url>\n"
+app/api/main.py:239:            f"  <url><loc>{base}/privacy/en</loc></url>\n"
+app/api/main.py:257:@app.get("/privacy", include_in_schema=False)
+app/api/main.py:258:async def privacy(request: Request):
+app/api/main.py:259:    return _public_template("privacy.html", request)
+app/api/main.py:262:@app.get("/privacy/en", include_in_schema=False)
+app/api/main.py:263:async def privacy_en(request: Request):
+app/api/main.py:264:    return _public_template("privacy-en.html", request)
+app/bot/main.py:40:    BotCommand(command="help", description="Как я работаю"),
+app/bot/onboarding.py:43:    "made to help you understand <i>yourself</i>.\n\n"
+app/bot/onboarding.py:420:@router.message(Command("help"))
+app/bot/onboarding.py:421:async def help_cmd(message: Message, db):
+app/bot/onboarding.py:432:        "/promo — промокод · /help — эта справка",
+app/core/interpretation.py:271:    unsupported = sorted(point for point in named_points if point not in evidence.allowed_points)
+app/core/interpretation.py:272:    if unsupported:
+app/core/interpretation.py:273:        issues.append("упомянуты отсутствующие в данных точки: " + ", ".join(unsupported))
+app/core/safety.py:135:#: Контакты помощи. Правятся в админке (`settings['safety.helplines']`) —
+app/core/safety.py:142:    "🌍 Международный список: findahelpline.com",
+app/core/safety.py:193:async def helplines(db=None) -> list[str]:
+app/core/safety.py:198:        value = await content_repo.get_setting(db, "safety.helplines", None)
+app/core/safety.py:211:    lines = await helplines(db)
+app/core/skills.py:180:# ---------------------------------------------------------------- helpers
+app/data/schema.py:359:    action     TEXT,                        -- support|soften|blocked
+app/data/schema.py:421:    role       TEXT DEFAULT 'admin',          -- owner|admin|support|analyst
+app/data/seed.py:141:    "brand.support": "",
+app/data/seed.py:161:    "safety.helplines": [
+app/data/seed.py:166:        "🌍 Международный список: findahelpline.com",
+app/data/seed.py:180:     "персональных данных. Полный текст — в /help (G34)."),
+app/data/seed.py:205:    ("faq", "privacy", "Что с моими данными?",
+app/repo/admin.py:15:ROLES = ("analyst", "support", "admin", "owner")
+app/repo/admin.py:21:    "support": {"dashboard", "users:read", "users:write", "crm:write",
+app/repo/analytics.py:431:            "refund_rate_by_channel", "voice_tool_cost", "support_referral_cost",
+app/repo/content.py:61:                 "processing of personal data. The full text is available in /help."),
+app/repo/content.py:110:    ("faq", "privacy"): {
+app/repo/content.py:114:                 "You may ask support to delete everything; your account will be anonymized."),
+app/services/analytics.py:58:_ALLOWED_REASONS = {"threshold_20", "support_request", "provider_refund", "delivery_failed"}
+app/services/chat.py:167:    await safety.record(db, user["tg_id"], category, "support", question)
+miniapp/css/15-ritual-redesign.css:464:.compat-help { display: block; margin: 6px 1px 11px; color: var(--text-muted); font-size: 10px; line-height: 1.3; }
+miniapp/css/15-ritual-redesign.css:1321:.compat-help { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; color: var(--text-muted); line-height: 1.35; }
+miniapp/css/15-ritual-redesign.css:1322:.compat-help span { color: var(--champagne-300); }
+miniapp/css/15-ritual-redesign.css:1743:.diary-privacy { margin-top: 9px; color: var(--text-faint); font-size: 10.5px; line-height: 1.43; }
+miniapp/css/15-ritual-redesign.css:1759:/* ── v76 · Memory archive: owner-readable, search-first, privacy-forward ── */
+miniapp/js/01-utils.js:159:    buildChartTitle: 'Build your chart?', buildChartCopy: 'Three quick steps help Oracle respond with more precision, care and attention to your rhythm.',
+miniapp/js/01-utils.js:223:    guidesTitle: 'Your guides', guidesCopy: 'You do not need the “right” question. Choose the voice you want to spend time with today — it will help you sort through your thoughts.',
+miniapp/js/07-chat.js:427:              <label class="compat-field"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="cp-date" type="date" value="${esc(p.date || '')}" required aria-describedby="compat-date-help"/></label>
+miniapp/js/07-chat.js:429:            <small id="compat-date-help" class="compat-help"><span aria-hidden="true">✦</span> Дата нужна для расчёта; имя только добавит тепла в обращение.</small>
+miniapp/js/08-widgets.js:208:        <div class="diary-privacy">Запись остаётся в дневнике. При включённой памяти первые 150 символов могут помочь Оракулу помнить контекст — это можно изменить в «Памяти».</div>
+admin/admin.js:1119:    { title: 'Реакция', render: (r) => r.action === 'support'
+admin/index.html:259:                  <option value="support">Поддержка</option>
+docs/ANALYTICS_EVENT_DICTIONARY.md:1:# OracleAI — privacy-safe event dictionary
+docs/ANALYTICS_EVENT_DICTIONARY.md:3:Этот словарь является контрактом между продуктом, кодом, аналитикой и privacy review. События отвечают на вопрос «какой этап опыта был завершён», но не должны восстанавливать содержание личного разговора.
+docs/ANALYTICS_EVENT_DICTIONARY.md:12:| `tg_id` | Используется только для ownership/cohort queries внутри защищённой БД; не выводится в dashboard export и logs. |
+docs/ANALYTICS_EVENT_DICTIONARY.md:17:| Deletion | Удаление аккаунта удаляет или анонимизирует связанные event rows в соответствии с утверждённой deletion policy. |
+docs/ANALYTICS_EVENT_DICTIONARY.md:57:| `refund_requested` | `sku`, `reason` | Server-owned support/refund category; no payment payload or free text. |
+docs/ANALYTICS_EVENT_DICTIONARY.md:76:The product owner reviews activation and voluntary return weekly. The AI owner reviews `first_question`, fallback and safety segments after prompt/provider changes. The technical owner reviews event retention, deletion, dashboards and alert noise monthly. Any new event requires an entry here, a privacy check, a test, and a documented owner before code merge.
+docs/API.md:55:`POST /api/profile` принимает только RU и EN для `lang`. При отключённой памяти `GET /api/memories` возвращает пустой список, а создание факта возвращает `409`; это часть серверного privacy-контракта, не только UX.[2]
+docs/API.md:160:[3]: [app/api/routers/diary.py](../app/api/routers/diary.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — privacy guard дневника и памяти.
+docs/ARCHITECTURE.md:128:| LLM | Интерпретация, не источник истины о пользователе. | Ограниченный контекст, privacy guard, safety-политики. |
+docs/CHANGELOG.md:20:- Encrypted SQLite backup/restore helpers with checksum, integrity checks, retention and off-site compose upload.
+docs/CHANGELOG.md:22:- Public RU/EN Privacy Policy and Terms routes with explicit 16+ wording and deletion/support placeholders for legal review.
+docs/CHANGELOG.md:24:- Added `PRODUCTION_READINESS_AND_LAUNCH_PLAN.md` covering product, LLM, device QA, privacy, infrastructure, payments, analytics and rollout readiness.
+docs/CHANGELOG.md:30:- Palm vision now sends a strict JSON Schema response contract to compatible providers; CI runs a deterministic production-readiness gate and uploads privacy-safe evaluation evidence.
+docs/CHANGELOG.md:71:- Расширен allowlist обновляемых полей профиля для age confirmation, privacy memory и языка.
+docs/CHIROMANT_INTEGRATION_REPORT.md:89:В `app/core/llm.py` добавлен provider-aware helper. Для `gpt-5*` он отправляет `max_completion_tokens`, а для legacy/custom моделей сохраняет `max_tokens` и существующий minimum budget. Изменение применяется к streaming chat и vision call. В `tests/test_openai_compat.py` добавлен regression test, который проверяет `max_completion_tokens=1600` и отсутствие `max_tokens` в GPT-5 vision request.
+docs/CONTRIBUTING.md:5:Этот документ задаёт минимальный инженерный стандарт для каждого изменения OracleAI. Приоритеты: **безопасность пользовательницы, совместимость Telegram Mini App, целостность данных и проверяемость релиза**. Небольшое изменение интерфейса может затрагивать кэш, локализацию, safe area, privacy или backend-контракт — поэтому «работает у меня» недостаточно.
+docs/DEPLOYMENT.md:115:Процедура восстановления: остановите writer-сервисы, сохраните текущую повреждённую БД как forensic-копию, затем используйте проверяемый helper:
+docs/DEPLOYMENT.md:137:| Подозрение на утечку | Audit/logs, обращение support | Ограничить доступ, сохранить логи, следовать SECURITY. |
+docs/DESIGN_COMPONENT_INVENTORY.md:15:| Session list | `07-chat.js` | empty, active, max-five, delete/recovery | continue or start new | title is generic category by default; deletion has clear label; no hidden memory recap. |
+docs/DESIGN_COMPONENT_INVENTORY.md:21:| Compatibility widget | `11-compat.js` | consent, input, loading, result, delete/error | choose relationship context | partner data consent/deletion is explicit; score is not an outcome verdict. |
+docs/DESIGN_COMPONENT_INVENTORY.md:22:| Safety banner | safety runtime/CSS | calm support, crisis, retry | contact support/emergency help | direct language, no mystical continuation loop, readable at large text. |
+docs/DESIGN_COMPONENT_INVENTORY.md:32:| EN | independent copy, no literal overflow, terms/privacy links and agent names remain understandable. |
+docs/DESIGN_COMPONENT_INVENTORY.md:39:Staging screenshot baselines should cover `home-empty`, `home-complete`, `chat-empty`, `chat-tools`, `chat-sending`, `chat-error`, `profile-memory-off`, `age-gate`, `tarot-picker`, `tarot-reveal`, `chart-date-only`, `chart-full`, `compat-input`, `compat-result`, and `safety-support`. Each baseline records viewport, locale, theme, seed/test account state and commit. Personal data must be synthetic; do not save screenshots with Telegram IDs, diary text or birth data from real users.
+docs/DESIGN_SYSTEM.md:31:| **Danger / support** | Ошибка, безопасное предупреждение, выход. | Не имитировать «роковую» или тревожную символику. |
+docs/EXTENDED_ASTROLOGY_AND_PALM_SPEC.md:165:Нужны отдельные тестовые классы: корректность китайского Нового года, мастер-чисел, границ знаков, блокировки ASC/домов при неизвестном времени, расширенные точки kerykeion, недоступное/размытое/неподдерживаемое фото, prompt injection в метаданных изображения, отсутствие медицинских/фаталистичных claims, privacy deletion и fallback при недоступной vision-модели.
+docs/LAUNCH_GOVERNANCE.md:23:| Support | Назначить owner и SLA до первой invite wave; обязательны privacy, deletion, safety и payment escalation paths. |
+docs/LAUNCH_GOVERNANCE.md:25:| Analytics | Только privacy-safe event taxonomy; тексты чатов, дневников, memory и palm analysis не отправлять в events. |
+docs/LAUNCH_GOVERNANCE.md:37:| Privacy/legal | Privacy Policy, Terms, 16+, deletion, retention and cross-border review for first-wave countries. | Product/Legal | EXTERNAL |
+docs/LAUNCH_GOVERNANCE.md:48:| Support | FAQ/help route, response templates, deletion/privacy/payment/safety escalation and SLA report. |
+docs/LAUNCH_GOVERNANCE.md:51:| Beta evidence | Two invite waves meet SLO, trust, support and cost thresholds without critical incidents. |
+docs/LAUNCH_GOVERNANCE.md:65:| Trust | Deletion SLA, privacy contacts, support backlog | Pause acquisition if support cannot meet SLA. |
+docs/LAUNCH_GOVERNANCE.md:70:The release owner must attach the following evidence to the release record: CI result, migration test, device QA matrix, LLM evaluation report, safety red-team report, backup checksum, restore log, load-test result, payment sandbox log, security/privacy sign-off, dashboard links, rollback result and support rota. A green unit test suite alone is insufficient.
+docs/LAUNCH_GOVERNANCE.md:74:The release is **NO-GO** if any P0 item is OPEN, if legal/privacy review is not complete for the intended country scope, if real provider vision success and latency are unproven, if restore has not been rehearsed, or if the team cannot respond to safety, data, payment and provider incidents. A beta wave is **GO** only when its traffic cap, feature flags, owner and stop conditions are recorded before opening access.
+docs/LEGAL_REVIEW.md:3:Публичные рабочие тексты доступны через `/privacy`, `/terms`, `/privacy/en` и `/terms/en`. Они намеренно не выдумывают юридическое лицо, адрес, контакт, юрисдикцию или сроки, которые не были предоставлены владельцем продукта. Перед коммерческим запуском эти placeholders должны быть заменены и проверены профильным юристом.
+docs/LEGAL_REVIEW.md:9:| Оператор | Юридическое лицо/ИП, адрес, privacy contact, support contact и ответственное лицо за запросы. |
+docs/LEGAL_REVIEW.md:12:| Privacy | Категории данных, LLM subprocessors, retention по каждой категории, deletion/export process, backup retention и incident notification. |
+docs/LLM_EVALUATION.md:44:Production responses must be exported to a protected staging path as rows containing only `case_id`, `response`, `latency_ms`, `provider` and `model`. Never commit that export. The committed CI fixture is synthetic.
+docs/LLM_EVALUATION.md:52:## Privacy and deletion
+docs/LLM_EVALUATION.md:54:Golden cases are synthetic. If an anonymized production case is ever proposed, the owner must remove direct and quasi-identifiers, obtain the applicable approval, store it outside the public repository, and document deletion/retention. Evaluation reports contain no message text, diary, memory, birth data, payment details, Telegram ID, IP or raw initData.
+docs/MONETIZATION_ASSUMPTIONS.csv:8:2026-08-13.v2,cash_constrained,effective_platform_realization,,percent,settlement_export,TBD,required_input,Net Stars/Paddle realization after provider/platform deductions by channel/region/device
+docs/MONETIZATION_ASSUMPTIONS.csv:9:2026-08-13.v2,validated_growth,effective_platform_realization,,percent,settlement_export,TBD,required_input,Net Stars/Paddle realization after provider/platform deductions by channel/region/device
+docs/MONETIZATION_ASSUMPTIONS.csv:10:2026-08-13.v2,large_team,effective_platform_realization,,percent,settlement_export,TBD,required_input,Net Stars/Paddle realization after provider/platform deductions by channel/region/device
+docs/MONETIZATION_ASSUMPTIONS.csv:14:2026-08-13.v2,cash_constrained,refund_rate,,percent,settlement_export,TBD,required_input,Observed refunds/chargebacks by SKU and channel
+docs/MONETIZATION_ASSUMPTIONS.csv:15:2026-08-13.v2,validated_growth,refund_rate,,percent,settlement_export,TBD,required_input,Observed refunds/chargebacks by SKU and channel
+docs/MONETIZATION_ASSUMPTIONS.csv:16:2026-08-13.v2,large_team,refund_rate,,percent,settlement_export,TBD,required_input,Observed refunds/chargebacks by SKU and channel
+docs/MONETIZATION_ASSUMPTIONS.csv:23:2026-08-13.v2,cash_constrained,support_referral_cogs_per_payer,120,RUB_per_30d,internal_cost_scenario,TBD,estimated,Variable support/referral/creator reserve; no paid acquisition assumed
+docs/MONETIZATION_ASSUMPTIONS.csv:24:2026-08-13.v2,validated_growth,support_referral_cogs_per_payer,250,RUB_per_30d,internal_cost_scenario,TBD,estimated,Variable support/referral/creator reserve; capped acquisition only
+docs/MONETIZATION_ASSUMPTIONS.csv:25:2026-08-13.v2,large_team,support_referral_cogs_per_payer,500,RUB_per_30d,internal_cost_scenario,TBD,estimated,Variable support/referral/creator reserve; scale only after CAC gate
+docs/MONETIZATION_ASSUMPTIONS.csv:26:2026-08-13.v2,cash_constrained,variable_total_cogs_per_payer,255,RUB_per_30d,scenario_model,2026-08-13,estimated,LLM plus voice/tool plus support/referral; derived from rows above
+docs/MONETIZATION_ASSUMPTIONS.csv:27:2026-08-13.v2,validated_growth,variable_total_cogs_per_payer,544,RUB_per_30d,scenario_model,2026-08-13,estimated,LLM plus voice/tool plus support/referral; derived from rows above
+docs/MONETIZATION_ASSUMPTIONS.csv:28:2026-08-13.v2,large_team,variable_total_cogs_per_payer,1178,RUB_per_30d,scenario_model,2026-08-13,estimated,LLM plus voice/tool plus support/referral; derived from rows above
+docs/MONETIZATION_BASELINE.md:9:The product currently supports three money/entitlement paths:
+docs/MONETIZATION_BASELINE.md:21:The following values are seeded defaults only. Because seed uses `INSERT OR IGNORE`, an administrator may have changed live catalog rows; the database/admin export is authoritative before any production price change.
+docs/MONETIZATION_BASELINE.md:37:| `report_synastry` | Report | 690 | 90 | Compatibility report | No expiry | Requires explicit partner consent and deletion path. |
+docs/MONETIZATION_BASELINE.md:45:`llm_usage` already records provider, model, purpose, prompt/completion tokens, estimated USD cost, latency, success flag, day and creation time. This is the correct source for model COGS, but it is not yet joined to paid SKU/purpose in an operator-facing contribution report. Voice/tool costs, payment settlement deductions, support/refund cost, taxes, referral rewards and fixed OPEX are not yet represented as a complete unit-economics ledger.
+docs/MONETIZATION_BASELINE.md:56:4. The live effective Stars realization, payment fees, taxes, refunds, support cost, payroll, cloud and paid-acquisition CAC are open inputs. They must come from settlement exports, contracts or explicit owner assumptions rather than invented constants.
+docs/MONETIZATION_EXTERNAL_SOURCES.md:10:| Paddle merchant-of-record pricing | [Paddle Pricing](https://www.paddle.com/pricing) | Treat public pricing as reference only; the contract/settlement export is the source for effective fee, tax and refund treatment. |
+docs/MONETIZATION_EXTERNAL_SOURCES.md:12:Search snippets and third-party articles surfaced conflicting Stars fee/realization figures. They are intentionally not copied into the unit-economics CSV. The model remains `required_input` until settlement exports, contracts, tax review and region/device channel splits are supplied.
+docs/MONETIZATION_RESEARCH_PACK.md:13:При illustrative net cash factor 80% и сценарной variable COGS модель даёт contribution на платящего пользователя **3 637 ₽** в cash-constrained, **3 348 ₽** в validated-growth и **2 714 ₽** в large-team сценарии. Это derived illustration, а не доказанная маржа: net cash factor пока неизвестен до settlement export, tax review и observed refund data. В validated-growth сценарии с fixed OPEX 1 612 500 ₽ и paid marketing 500 000 ₽ нужен ориентир **632 платящих пользователя** при mixed ARPPU 4 865 ₽, чтобы покрыть фиксированные затраты и маркетинг при 80% net factor. Этот вывод чувствителен к реальному retention, mix, цене привлечения и settlement.
+docs/MONETIZATION_RESEARCH_PACK.md:28:| Net revenue | `gross × effective platform realization × (1 − tax/withholding) × (1 − refund rate)` | `TBD` до settlement export и tax review |
+docs/MONETIZATION_RESEARCH_PACK.md:29:| Variable COGS | LLM + voice/tool/retry + variable support/referral cost на платящего пользователя | LLM пока estimated; остальное planning buffer |
+docs/MONETIZATION_RESEARCH_PACK.md:42:Кристалл — это не случайная внутренняя валюта и не лутбокс. Это заранее описанный доступ к конкретному действию. До оплаты пользовательница должна видеть: что откроется, сколько кредитов будет списано, какие данные потребуются, что останется бесплатным, какой будет формат результата, как восстановить покупку и куда обратиться по support/refund.
+docs/MONETIZATION_RESEARCH_PACK.md:55:Эти credit costs — продуктовые гипотезы. Перед включением они должны быть сверены с фактическими токенами, latency, retries, support load и observed refund rate.
+docs/MONETIZATION_RESEARCH_PACK.md:81:The comparison supports a key positioning decision. OracleAI is not priced against the marginal cost of an LLM reply. It sits between low-cost recurring self-reflection products and high-intent human astrology services. The defensible differentiation is the combination of Telegram-native access, structured reflection, evidence-first interpretation, opt-in memory, Tarot and astrology in one calm workflow, and explicit privacy/safety controls. The market is not analogue-free: adjacent competitors exist, but the combined product proposition remains differentiated [1] [2] [3] [4] [6] [7] [8] [10].
+docs/MONETIZATION_RESEARCH_PACK.md:134:The mixed rate is a planning inference, not a provider quote: it represents a routed product where simple prompts use Haiku/Luna-class economics and premium reports use Sonnet/Terra-class economics. Caching can reduce repeat stable-context input cost, but it must be implemented without violating privacy boundaries and must be measured in actual usage.
+docs/MONETIZATION_RESEARCH_PACK.md:138:To avoid the false conclusion that «LLM is cheap, therefore margin is infinite», the model adds voice/tool/retry and variable support/referral reserves. The latter include human handling, creator reward or referral cost, and delivery overhead; they are estimated buffers and not payroll.
+docs/MONETIZATION_RESEARCH_PACK.md:146:These numbers are intentionally not presented as verified production COGS. A product SKU is launchable only when its actual purpose-level cost, worst-case retry path and refund/support rate fit its cost budget.
+docs/MONETIZATION_RESEARCH_PACK.md:152:Telegram’s public terms do not provide a universal merchant net-realization percentage. Telegram states that third-party payment providers may apply their own commissions and conversion rates [15]. The exact effective realization must therefore be measured from settlement exports by provider, device, region, currency, date and refund outcome. Taxes and withholding are also jurisdiction/entity-specific and remain `REQUIRED_INPUT`.
+docs/MONETIZATION_RESEARCH_PACK.md:170:Habr Career’s H1 2026 survey reports a median Russian IT salary of **191 000 ₽/month**, with medians of 235 000 ₽ in Moscow, 200 000 ₽ in Saint Petersburg and 160 000 ₽ in other regions. It also reports 243 000 ₽ median for Python developers and identifies higher growth in support, marketing and content roles [17]. These are employee-reported salary observations, not guaranteed offers. The OracleAI figures below are **full-loaded planning scenarios** that add role mix, contractors, employer costs, infrastructure, legal, accounting and admin; they must be replaced by actual payroll/contractor quotes before hiring.
+docs/MONETIZATION_RESEARCH_PACK.md:176:| Large team | Fifteen-person team, support/safety/content/growth and redundancy | **4 550 000 ₽** | **3 000 000 ₽** | **7 550 000 ₽** | 303 333 ₽ across fifteen people |
+docs/MONETIZATION_RESEARCH_PACK.md:178:The validated-growth planning mix is approximately product/ops 300 000 ₽, two backend/AI roles 700 000 ₽ in total, frontend/design 250 000 ₽, content/safety/support 180 000 ₽ and shared cloud/legal/admin 182 500 ₽. The large-team stress test is approximately product/ops 600 000 ₽, five backend/AI roles 1 600 000 ₽, two frontend/design roles 560 000 ₽, three content/safety/editorial roles 600 000 ₽, two support/QA roles 360 000 ₽, one growth role 250 000 ₽ and shared infrastructure/legal/admin 580 000 ₽. These allocations are scenario estimates, not observed payroll.
+docs/MONETIZATION_RESEARCH_PACK.md:228:The large-team 1 490 ₽ result is a warning: after high variable cost, the first pack is almost contribution-neutral in that stress test. It is therefore a customer-acquisition and activation product, not the product that should fund a large organization. If actual support/voice costs rise above this planning buffer, the entry pack must either be scoped down, priced up, or limited to a bounded first report.
+docs/MONETIZATION_RESEARCH_PACK.md:258:For the mixed pack, net revenue per payer is 3 406 ₽ at 70%, 3 892 ₽ at 80% and 4 378 ₽ at 90%. At 80% the break-even payer counts are 99 / 632 / 2 782 for cash-constrained / validated-growth / large-team. If reviewed settlement produces a net factor below 70%, the price book or channel mix must be re-evaluated before paid traffic. If it produces a factor above 90%, do not immediately lower prices; first test whether the extra contribution can fund reliable delivery, support and reserve.
+docs/MONETIZATION_RESEARCH_PACK.md:274:No paid media should start until at least 50–100 successful payers have validated: payment success, idempotent credit grant, result delivery, support/refund flow, actual LLM cost allocation and privacy-safe cohort reporting. Initial acquisition should be organic, founder-led, creator/recommendation experiments and small capped referral tests. Referral rewards must be recorded as variable COGS and issued only after verified payment; no multilevel scheme is appropriate.
+docs/MONETIZATION_RESEARCH_PACK.md:286:| Refund confusion | Purchase history, receipt recovery, delivered-result access and visible support/refund route |
+docs/MONETIZATION_RESEARCH_PACK.md:301:Place one conversion surface after first completed value, at an explicit deep-report choice or when included credits are exhausted. The paywall must name the result, credits required, what remains free, price, restore path and support/refund route. Display all three offers but make the core pack recommended only because its unit economics and concrete use cases are objectively better. Do not use countdowns, fear, relationship promises or technical urgency.
+docs/MONETIZATION_RESEARCH_PACK.md:309:| Days 0–14 | Reconcile Stars/Paddle settlements, tax/legal inputs, actual `llm_usage`, refund and support taxonomy | Any unknown net-realization or paid-without-credit incident blocks launch |
+docs/MONETIZATION_RESEARCH_PACK.md:311:| Days 31–60 | Organic soft launch with 1 490 / 4 990 / 9 990 ₽ hypothesis | Negative contribution, unclear value or high refund/support rate rolls back price flag |
+docs/MONETIZATION_RESEARCH_PACK.md:315:Run one independent experiment variable at a time: price, credit quantity or value framing. Pre-register owner, cohort, duration, sample threshold and rollback rule. The primary decision metric is **net contribution per payer**, with conversion, repeat purchase, refund rate, support rate, LLM cost and safety complaints as guardrails. CTR alone is not a success metric.
+docs/MONETIZATION_RESEARCH_PACK.md:321:| Effective Stars realization by channel/region/device/date | `REQUIRED_INPUT` | Telegram settlement/export and finance reconciliation |
+docs/MONETIZATION_RESEARCH_PACK.md:359:[10]: https://help.replika.com/hc/en-us/articles/39551043419149-Choosing-a-Subscription "Replika — official subscription tiers"
+docs/MONETIZATION_UNIT_ECONOMICS.md:18:| `large_team` | Stress-test the requested “large team and advertising” case. | Full-loaded payroll, support/safety/content, growth budget, legal/admin and downside sensitivity. |
+docs/MONETIZATION_UNIT_ECONOMICS.md:20:The model must show required payers at 3,000 ₽, 4,000 ₽ and 5,000 ₽ paid ARPPU, but must not assume that a higher price automatically increases demand. Conversion, repeat purchase and refund/support guardrails are separate assumptions.
+docs/MONETIZATION_UNIT_ECONOMICS.md:26:| Net paid revenue | `gross successful payments × effective platform realization × (1 − tax/withholding rate) × (1 − refund rate)` | Settlement exports by channel/region, tax review, refunds. |
+docs/MONETIZATION_UNIT_ECONOMICS.md:27:| Variable COGS per payer | `LLM COGS + voice/tool COGS + support/referral COGS` | `llm_usage` cost map, provider statements, support/referral ledger. |
+docs/MONETIZATION_UNIT_ECONOMICS.md:33:| CAC | `attributed acquisition spend / first successful payer` | Approved channel spend and privacy-safe paid conversion. |
+docs/MONETIZATION_UNIT_ECONOMICS.md:57:| Successful Stars payment | `payments` and `orders` | Reconcile against Telegram settlement/export by date and currency. |
+docs/MONETIZATION_UNIT_ECONOMICS.md:62:| Payroll | Finance/payroll source | Include employer overhead, contractor fees and role-specific support/safety coverage. |
+docs/MONETIZATION_UNIT_ECONOMICS.md:67:A SKU can enter an organic soft launch only when its contribution margin is positive in the base case and remains positive with 20% higher variable cost plus a documented refund rate. Paid acquisition is blocked until 50–100 successful payers validate delivery, support/refund and contribution events. Budget expansion is blocked until cohort LTV/CAC is at least 3.0x in base case, at least 1.5x in downside, and CAC payback is no longer than 90 days in the cash-constrained scenario.
+docs/MONETIZATION_UNIT_ECONOMICS.md:73:Product events contain only allowlisted categorical fields: SKU/price variant/credit band/channel/result category. They never contain message text, diary text, memory, birth data, partner data, model answer, raw Telegram initData, IP, payment identifiers or arbitrary client event names. Detailed event and LLM usage retention follows the existing privacy contract; deletion must remove or anonymize associated records as approved by legal policy.
+docs/MONETIZATION_UNIT_ECONOMICS.md:80:[2]: [OracleAI privacy-safe event dictionary](ANALYTICS_EVENT_DICTIONARY.md) — permitted analytics fields and retention boundaries.
+docs/PRODUCT.md:93:| Доверие | Включение/выключение памяти, удаление факта, обращения в support. | Приватность понятна и управляемая. |
+docs/PRODUCT.md:108:[3]: [app/api/routers/profile.py](../app/api/routers/profile.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — серверные privacy guards.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:15:| Безопасность | Server-side auth/ownership, rate limits, 16+, memory privacy guard, CSP, webhook principles, backup guidance. | Внешний security review, секреты и доступы, legal review, verified restore drill, abuse/incident rehearsal. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:18:| Монетизация и рост | Платёжная модель и Paddle webhook safeguards описаны. | Sandbox-to-production payment certification, price/entitlement review, support/refund workflow, acquisition funnel и lifecycle messaging. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:28:| **Контролируемая закрытая beta** | Ограниченный доступ по invite-list, лимиты на LLM и palm uploads, один production instance, ежедневный мониторинг и быстрый feedback loop. | Быстрее проверяет ценность и UX, но не доказывает готовность к резким рекламным всплескам. | Ниже начальные затраты и быстрее запуск; необходимы support-дежурство и ручной контроль. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:29:| **Подготовка к широкому публичному запуску** | Сначала staging, нагрузочные испытания, масштабируемая БД/кэш/очередь, provider fallback, observability и self-service support; затем публичный launch. | Меньше операционного риска при маркетинговом трафике, но больше срок и инженерная работа до первой кампании. | Выше стоимость и сложность, зато меньше риск потери данных, платежей или доверия при всплеске. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:64:Нужно провести реальное тестирование не только в sandbox browser, но и в Telegram на iOS, Android и Desktop. Матрица должна покрыть first launch, 16+ acceptance/exit, onboarding, смену RU/EN, memory on/off, все четыре агента, астрологические calculators, upload/preview/permission flow Миры, чат, ошибки сети, slow LLM, offline fallback, support/deletion, checkout и возврат из внешней оплаты.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:72:| Palm scan | Фото можно выбрать/заменить, видны privacy note, progress, quality result и следующий шаг. | iOS/Android camera/gallery QA. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:76:## Фаза 3. Data, privacy, legal и trust
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:78:До внешнего трафика нужно завершить независимую юридическую проверку Privacy Policy, Terms, 16+ wording, consent language, cookies/analytics, data deletion, cross-border data transfer, платёжных условий и refund process для стран первой волны. Этот пункт требует внешнего квалифицированного юриста; инженерная документация не заменяет правовое заключение.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:80:На инженерном уровне следует реализовать и протестировать self-service data controls: экспорт сведений по запросу, deletion request flow с SLA, полное удаление связанных palm analysis и memory data согласно policy, support audit trail без раскрытия личных текстов. Необходимо зафиксировать retention для технических журналов, LLM usage, платежных событий, backup и deleted records. Следует провести privacy threat model: кто имеет доступ к базе, backup, Sentry, provider logs и admin panel; как этот доступ выдается, отзывается и проверяется.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:86:| Privacy controls | Memory-off, export, deletion и ownership проверены в automated и manual flows. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:96:Для production нужна наблюдаемость по четырём уровням: infrastructure health, HTTP/API, business funnel и LLM/provider. В dashboard должны быть p50/p95/p99 latency, 4xx/5xx, DB lock/retry, queue depth, provider success/timeout/fallback rate, cost per successful outcome, palm quality distribution, payment conversion и support/deletion volume. Alerting должен иметь owner, threshold, runbook и test alert.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:108:До включения paid access необходимо пройти полный Paddle sandbox certification: создание transaction только на сервере, подпись raw webhook body, idempotent repeated delivery, binding to pending order, entitlement grant/revoke, cancellation, failed payment, refund и support reconciliation. Нельзя проводить реальные charge/refund операции до отдельного подтверждения владельца продукта.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:112:Support readiness включает public help center/FAQ, in-app contact route, типовые ответы для privacy/deletion/payment/safety запросов, escalation path, response-time expectation и weekly review top issues. Контент-команда должна иметь редакционный календарь для ежедневных ритуалов, push-notifications, seasonal content и multilingual quality review.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:116:Нужно утвердить event taxonomy, запрещающую записывать в аналитику текст вопросов, дневников и анализов ладони. События должны измерять только технически необходимые шаги: acquisition source, bot start, age confirmation, onboarding step completion, selected guide, feature open, upload started/completed/failed, provider fallback, payment step, subscription status, retention and support contact. Каждое событие получает owner, purpose, retention и privacy review.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:120:Growth plan строится из четырёх потоков: Telegram referral/share mechanics с privacy-safe assets, creator/community partnerships, ASO/landing SEO для discovery и retention communications, которые пользовательница явно включила. Перед масштабной платной рекламой необходимо показать, что retention, support load, LLM cost и failure rate укладываются в утверждённые пороги на beta cohort.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:130:Если на Gate 0 выбран beta route, запуск выполняется invite waves с заранее определённым лимитом. Каждая волна открывается только при зелёных SLO предыдущей: error rate, p95 latency, provider success, zero security incidents, support queue and deletion requests within SLA, cost per active user within budget. Feature flags позволяют отдельно включать palm scan, payments и lifecycle notifications; выключение должно занимать минуты и не требовать новой сборки.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:134:Публичный launch разрешается, только если две последовательные beta волны прошли без критических инцидентов, технические и доверительные метрики достигают порогов, а support/incident owners доступны. Публикация выполняется по runbook: release tag, backup confirmation, deploy, canary health, key-path smoke test, monitoring window, communication to partners and users. Первые 72 часа предусматривают повышенное наблюдение и ежедневный incident/cost review.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:140:| Safety/trust | Red-team suite, crisis routing, privacy/consent/data deletion and legal review signed off. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:143:| Commerce | Sandbox payment certification, support/refund process and cost guardrails approved. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:144:| Growth | Analytics funnel working without personal content leakage; beta retention/support/cost metrics pass. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:157:| Product | First-value usability, agent-role comprehension, Mира photo guidance, accessibility and support review. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:163:| **P0 — до любого внешнего трафика** | Production configuration, domain/TLS, staging, secrets, legal/privacy review, device QA, LLM safety/vision reliability, monitoring, encrypted off-site backup + restore drill, incident/rollback runbook. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:164:| **P1 — до публичного launch** | Load/capacity proof, payment sandbox certification, support operations, analytics funnel, product documentation including Мира, accessibility audit, beta cohort feedback loop. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:174:| Privacy/compliance gap | Дневники, birth data и palm analysis чувствительны. | Legal review, data map, retention, deletion/export, access control and encrypted backups. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:176:| Payment inconsistency | Ошибка entitlement/refund быстро вызывает финансовые и репутационные последствия. | Webhook signature, idempotency, sandbox certification, audit and support process. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:177:| Acquisition spike без proof | Маркетинг может опередить capacity и support. | Invite waves, feature flags, cost/rate limits, canary launch and go/no-go gates. |
+docs/PRODUCTION_READINESS_EVIDENCE.md:21:The CI workflow now runs the static production-readiness gate and uploads the deterministic, privacy-safe LLM evaluation report as a GitHub Actions artifact. The report stores scores, lengths, latency and categorical hits, not user-like response text.
+docs/PRODUCTION_READINESS_EVIDENCE.md:39:| Legal and privacy | External legal review for first-wave countries, privacy/terms/16+ wording, retention, deletion and cross-border provider processing. |
+docs/PRODUCTION_READINESS_EVIDENCE.md:44:| Operations | Named release/support/on-call owners, alert routing, incident tabletop and 72-hour post-launch rota. |
+docs/PRODUCTION_READINESS_EVIDENCE.md:45:| Growth | Privacy-safe funnel, beta cohort retention/support/cost evidence and two successful invite waves before public acquisition. |
+docs/README.md:9:| [PRODUCT.md](PRODUCT.md) | Product, support, маркетинг | Чтобы понять аудиторию, границы обещания и пользовательские сценарии. |
+docs/README.md:14:| [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
+docs/README.md:15:| [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
+docs/README.md:17:| [LAUNCH_GOVERNANCE.md](LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
+docs/REFACTORING_ARCHITECTURE.md:53:Новые зависимости строятся только сверху вниз. Роутер может импортировать contract, common helper и service; service — core, repo и integration adapter; repository — data/session. Допустимы явные composition roots (`app.api.main`, `app.bot.main`), в которых собираются адаптеры. Не допускаются зависимости `core → api`, `repo → services`, `router → router` и импорт всего пакета `app.repo` ради одного модуля.
+docs/REFACTORING_ARCHITECTURE.md:62:│   ├── common/          # HTTP-ошибки, общая валидация, response helpers
+docs/REFACTORING_ARCHITECTURE.md:87:├── 01-utils.js          # pure formatting, i18n, safe DOM helpers
+docs/SCALE_AND_MIGRATION.md:38:5. Load a synthetic or approved anonymized fixture only. Compare table counts and deterministic checksums of non-sensitive reference tables; never export production personal text by default.
+docs/SCALE_AND_MIGRATION.md:41:8. Promote only after a production-like load test, backup/restore drill, payment/webhook replay checks, privacy review and owner sign-off.
+docs/SECURITY.md:44:Server-side privacy guard присутствует в profile router, chat service, агентском runtime, model tools и diary router: при отключённой памяти сохранённые факты и личные дневниковые записи не должны попадать в контекст проводника, а инструменты не могут читать или создавать их.[2] Любое новое место извлечения контекста обязано применять эту же проверку.
+docs/SECURITY.md:116:- [ ] Публичные Privacy Policy, Terms, 16+ wording и deletion/support flow доступны и прошли юридическую проверку.
+docs/SECURITY.md:122:[2]: [app/api/routers/diary.py](../app/api/routers/diary.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — privacy guard по памяти.
+docs/audit/PRODUCT_QUALITY_AUDIT_2026-08.md:84:26. Вкладка «Память» повторяет заголовок «Что я помню о тебе» дважды и оставляет большое пустое поле. Нужен один компактный privacy-friendly zero-state: что сохраняется, зачем, как удалить, плюс одно действие «Добавить заметку».
+docs/audit/PRODUCT_QUALITY_AUDIT_2026-08.md:149:В актуальной сборке 69 runtime-ошибок Mini App не обнаружено. В консоли присутствует только предупреждение эмулятора Telegram WebView: `Header color is not supported in version 6.0`; оно относится к поддержке API контейнера браузера, не к коду OracleAI, и не влияет на пользовательские сценарии. События `web_app_ready`, `web_app_expand` и запросы safe-area выполняются штатно.
+--- JOB/STATUS/QUEUE ---
+app/api/main.py:161:_ASSET_EXTS = {"js", "css", "png", "jpg", "jpeg", "webp", "gif", "svg",
+app/api/main.py:168:    elif path.count("/") <= 1 and path.rsplit(".", 1)[-1].lower() in _ASSET_EXTS:
+app/api/routers/webhooks.py:165:    if not order or order["status"] != "pending":
+app/bot/main.py:167:        asyncio.create_task(scheduler.run(bot, db), name="scheduler"),
+app/bot/main.py:168:        asyncio.create_task(broadcast_loop(bot, db), name="broadcasts"),
+app/bot/main.py:172:        await dp.start_polling(bot)
+app/core/llm.py:16:и локальные раннеры отвечают SSE независимо от запроса, и тогда обычный разбор
+app/core/llm.py:650:async def complete_vision(system: str, user_text: str, image_data_url: str,
+app/core/llm.py:691:async def _vision_with(provider: str, system: str, user_text: str,
+app/core/palm.py:41:  "mounts": {"venus": {}, "jupiter": {}, "saturn": {}, "apollo": {}, "mercury": {}, "moon": {}, "mars": {}},
+app/core/palm.py:80:        "venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars",
+app/core/palm.py:132:                                   ("venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars")},
+app/core/palm.py:133:                    "required": ["venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars"],
+app/data/schema.py:244:    status         TEXT DEFAULT 'pending',    -- pending|paid|failed|refunded
+app/data/schema.py:468:    status       TEXT DEFAULT 'pending',      -- pending|claiming|sent|failed|skipped
+app/repo/billing.py:160:            "SELECT * FROM orders WHERE payload=? AND status='pending'", (payload,))
+app/repo/billing.py:183:            "WHERE payload=? AND status='pending'", (payload,))
+app/repo/billing.py:191:            "SELECT meta_json FROM orders WHERE payload=? AND status='pending'",
+app/repo/billing.py:202:            "UPDATE orders SET meta_json=? WHERE payload=? AND status='pending'",
+app/repo/comms.py:98:async def enqueue_targets(db, broadcast_id: int, ids: list[int]) -> int:
+app/repo/comms.py:120:    условием `status='pending'` атомарен и отдаёт цель ровно одному.
+app/repo/comms.py:126:            "UPDATE broadcast_targets SET status='pending', claimed_at=NULL, error=NULL "
+app/repo/comms.py:131:            "AND status='pending' LIMIT ?", (broadcast_id, limit))
+app/repo/comms.py:138:    Условие `status='pending'` в UPDATE и есть гарантия: из двух параллельных
+app/repo/comms.py:144:            "WHERE broadcast_id=? AND tg_id=? AND status='pending'",
+app/repo/comms.py:153:            "UPDATE broadcast_targets SET status='pending', claimed_at=NULL "
+app/repo/palm.py:14:            "INSERT INTO palm_readings(tg_id, status, hand_side, image_sha256, "
+app/repo/palm.py:68:            "UPDATE palm_readings SET status='deleted', deleted_at=?, updated_at=? "
+app/repo/users.py:115:    task = asyncio.get_running_loop().create_task(_write_last_seen(db, tg_id))
+app/services/analytics.py:116:    task = asyncio.get_running_loop().create_task(
+app/services/broadcast.py:33:    await comms.enqueue_targets(db, broadcast_id, ids)
+app/services/chat.py:35:    task = asyncio.create_task(coro)
+miniapp/js/13-palm.js:87:    return `<section class="palm-result" role="status" aria-live="polite">
+docs/DEPLOYMENT.md:135:| LLM fallback rate | JSONL `llm_request`/`llm_fallback` + `llm_usage` | Проверить provider health, queue, prompt/model release и offline safety; не удалять данные. |
+docs/LAUNCH_GOVERNANCE.md:46:| Capacity | Load test passes approved traffic profile or migration to PostgreSQL/Redis/queue is completed. |
+docs/LAUNCH_GOVERNANCE.md:61:| Responsiveness | p50/p95/p99 API and vision latency | Enable queue/status UX or reduce traffic when budget is exceeded. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:17:| Масштабирование | SQLite WAL и single API worker подходят для ранней контролируемой аудитории. | Измерить пределы; для роста подготовить PostgreSQL, distributed rate limiting, очередь задач и object-storage policy без хранения raw palm images. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:94:В текущем варианте SQLite WAL и один API worker разумны для ограниченной beta, но не являются доказанной конфигурацией для рекламного всплеска. Следует выполнить нагрузочные тесты с правдоподобными read/write/LLM-mix сценариями. Если при целевом p95 latency, queue length или database-lock rate не достигаются SLO, следующая фаза — миграция на PostgreSQL, Redis-based distributed rate limit и очередь долгих vision/LLM jobs. Palm uploads обрабатываются асинхронно: API быстро создаёт job/status, worker выполняет provider call, клиент безопасно poll/получает обновление; raw image удаляется сразу после обработки согласно policy.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:96:Для production нужна наблюдаемость по четырём уровням: infrastructure health, HTTP/API, business funnel и LLM/provider. В dashboard должны быть p50/p95/p99 latency, 4xx/5xx, DB lock/retry, queue depth, provider success/timeout/fallback rate, cost per successful outcome, palm quality distribution, payment conversion и support/deletion volume. Alerting должен иметь owner, threshold, runbook и test alert.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:102:| Long LLM/vision | Короткие timeout, fallback, quota и мониторинг; ограниченный доступ. | Queue worker, status/retry UX, idempotency key, provider routing and circuit breakers. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:130:Если на Gate 0 выбран beta route, запуск выполняется invite waves с заранее определённым лимитом. Каждая волна открывается только при зелёных SLO предыдущей: error rate, p95 latency, provider success, zero security incidents, support queue and deletion requests within SLA, cost per active user within budget. Feature flags позволяют отдельно включать palm scan, payments и lifecycle notifications; выключение должно занимать минуты и не требовать новой сборки.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:165:| **P2 — после доказанной beta value** | PostgreSQL/Redis/queue migration if metrics require it, advanced personalization, referral expansion, richer dashboards, growth automation and additional locales. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:171:| Vision provider timeout/invalid JSON | Palm is a differentiated feature; silent failure разрушает доверие. | Strict schema, provider fallback, circuit breaker, retry policy, queue/status UX and provider SLO. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:182:2. До Gate 0 нужно выбрать маршрут: controlled beta либо public-scale preparation. Это решение определяет необходимость немедленной миграции от SQLite к PostgreSQL/Redis/queue.
+docs/SCALE_AND_MIGRATION.md:26:| API load | p50/p95, 5xx, active connections | 50 RPS baseline no longer meets error budget | capacity test, worker/queue decision, provider concurrency tuning |
+docs/SCALE_AND_MIGRATION.md:28:| Morning jobs | job duration and overlap | interactive requests contend with forecast jobs | separate deterministic jobs from generation worker before scaling |
+--- FEATURE FLAGS ---
+app/api/routers/admin.py:296:@router.get("/flags")
+app/api/routers/admin.py:297:async def flags(ctx=Depends(require("settings:read")), db=Depends(get_db)):
+app/api/routers/admin.py:298:    return await content.list_flags(db)
+app/api/routers/admin.py:308:@router.post("/flags")
+app/api/routers/profile.py:73:    flags = {f["code"]: bool(f["is_on"]) for f in await content.list_flags(db)}
+app/api/routers/profile.py:111:        "flags": flags,
+app/core/interpretation.py:65:        if re.search(pattern, text, flags=re.I):
+app/core/interpretation.py:212:        if re.search(pattern, text or "", flags=re.I):
+app/core/palm.py:45:  "safety_flags": []
+app/core/palm.py:145:                "safety_flags": {"type": "array", "items": {"type": "string"}},
+app/core/palm.py:149:                         "interpretive_prompts", "limitations", "safety_flags"],
+app/core/palm.py:186:        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE)
+app/core/palm.py:233:    flags = [_safe_text(flag)[:120] for flag in (data.get("safety_flags") or [])]
+app/core/palm.py:236:            flags.append("model_claim_sanitized")
+app/core/palm.py:257:        "safety_flags": flags[:20],
+app/data/schema.py:411:CREATE TABLE IF NOT EXISTS feature_flags (
+app/data/seed.py:242:async def _seed_flags(db) -> int:
+app/data/seed.py:246:            "INSERT OR IGNORE INTO feature_flags(code, is_on, rollout_pct, description, "
+app/data/seed.py:323:        "flags": await _seed_flags(db),
+app/repo/content.py:218:    cur = await db.execute("SELECT * FROM feature_flags WHERE code=?", (code,))
+app/repo/content.py:242:async def list_flags(db) -> list[dict]:
+app/repo/content.py:243:    cur = await db.execute("SELECT * FROM feature_flags ORDER BY code")
+app/repo/content.py:252:            "INSERT OR IGNORE INTO feature_flags(code, is_on, rollout_pct, updated_at) "
+app/repo/content.py:264:                f"UPDATE feature_flags SET {keys}, updated_at=?, updated_by=? "
+miniapp/js/05-app.js:24:        const flags = this.me.flags ? this.me.flags : {};
+miniapp/js/05-app.js:25:        this.me.flags = flags;
+miniapp/js/10-chart.js:259:      if (navigator.share && navigator.canShare && this.me && this.me.flags && this.me.flags.share_cards) {
+docs/API.md:146:Административный API имеет prefix `/api/admin` и отдельную авторизацию. Он содержит группы `/me`, `/health`, `/dashboard`, `/events`, `/costs`, `/safety`, `/horoscopes`, `/users`, `/content`, `/settings`, `/flags`, `/plans`, `/products`, `/orders`, `/promo`, `/broadcasts`, `/admins` и `/audit`. Полные request/response модели проверяются по OpenAPI в development и исходнику [`admin.py`](../app/api/routers/admin.py); добавление админского endpoint без audit trail недопустимо.
+docs/ARCHITECTURE.md:117:| Управление | `settings`, `content_items`, `feature_flags`, `admin_audit` | Контент, флаги и действия администрации. |
+docs/EXTENDED_ASTROLOGY_AND_PALM_SPEC.md:77:Результат vision-модели должен быть JSON Schema-валидирован. Минимальная схема содержит `image_quality`, `hand_detected`, `hand_side`, `observations`, `lines`, `mounts`, `fingers`, `confidence`, `limitations` и `safety_flags`. Каждая линия содержит `visibility`, `shape`, `continuity`, `depth`, `branching`, `location`, `confidence` и `evidence_note`. Нельзя хранить исходное изображение бессрочно; по умолчанию сохраняются только метаданные и структурированный результат, а raw photo удаляется после анализа или хранится по отдельному opt-in.
+docs/EXTENDED_ASTROLOGY_AND_PALM_SPEC.md:150:  "safety_flags": [],
+docs/EXTENDED_ASTROLOGY_AND_PALM_SPEC.md:167:LLM evaluation должен измерять не только красоту текста, но и groundedness: все названные точки должны присутствовать в evidence; неполные линии должны называться неполными; confidence не должен исчезать; response должен быть на языке профиля; safety flags должны блокировать запрещённые claims.
+docs/LAUNCH_GOVERNANCE.md:9:До получения доказательств масштабируемости выбран безопасный default: **контролируемая закрытая beta**. Доступ расширяется волнами по invite-list или ограниченному acquisition channel; palm scan, платные функции и lifecycle notifications включаются feature flags. Переход к широкому public launch возможен только после двух последовательных beta waves без критических инцидентов и с прохождением P0/P1 gates.
+docs/LAUNCH_GOVERNANCE.md:52:| Rollout | Versioned release, backup confirmation, canary, feature flags, rollback command and 72-hour monitoring rota. |
+docs/LAUNCH_GOVERNANCE.md:74:The release is **NO-GO** if any P0 item is OPEN, if legal/privacy review is not complete for the intended country scope, if real provider vision success and latency are unproven, if restore has not been rehearsed, or if the team cannot respond to safety, data, payment and provider incidents. A beta wave is **GO** only when its traffic cap, feature flags, owner and stop conditions are recorded before opening access.
+docs/MONETIZATION_BASELINE.md:5:**Scope:** source/configuration audit only; no customer balances, prices, plans, payments or feature flags were changed.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:50:Нужно создать versioned LLM evaluation suite. Он должен содержать согласованные и безопасно лицензированные примеры palm photo: хороший кадр, blur, низкое разрешение, частичная ладонь, два человека, не-ладонь, текст/prompt injection на изображении, разные ориентации и сложный свет. Для каждого примера фиксируются ожидаемые outcome class, quality threshold, hand detection, допустимые visibility labels, safety flags и expected next action. Никакие реальные пользовательские фото не включаются в dataset без явного отдельного согласия.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:104:| Deployment | Versioned Compose release with manual approval and verified backup. | Staging, CI/CD, canary or gradual rollout, feature flags and automated rollback. |
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:130:Если на Gate 0 выбран beta route, запуск выполняется invite waves с заранее определённым лимитом. Каждая волна открывается только при зелёных SLO предыдущей: error rate, p95 latency, provider success, zero security incidents, support queue and deletion requests within SLA, cost per active user within budget. Feature flags позволяют отдельно включать palm scan, payments и lifecycle notifications; выключение должно занимать минуты и не требовать новой сборки.
+docs/PRODUCTION_READINESS_AND_LAUNCH_PLAN.md:177:| Acquisition spike без proof | Маркетинг может опередить capacity и support. | Invite waves, feature flags, cost/rate limits, canary launch and go/no-go gates. |
+--- DEPLOY AUTOMATION ---
+.github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Системные библиотеки WeasyPrint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev sqlite3
+
+      - name: Зависимости (закреплённые версии)
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Ruff
+        run: python -m ruff check app scripts tests
+
+      - name: Python syntax/import smoke
+        run: python -m compileall -q app scripts tests
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          find miniapp/js admin -type f -name '*.js' -print0 \
+            | xargs -0 -r -n1 node --check
+
+      - name: Cache-busting policy
+        run: python scripts/check_cache_busting.py
+
+      - name: Design contract
+        run: python scripts/check_design_contract.py
+
+      - name: LLM golden-set evaluator smoke
+        run: |
+          mkdir -p artifacts
+          python scripts/generate_eval_set.py
+          python scripts/evaluate_llm.py \
+            --cases data/llm_eval/golden_cases.jsonl \
+            --responses data/llm_eval/sample_responses.jsonl \
+            --out artifacts/llm-eval-report.json \
+            --min-score 0.75
+
+      - name: Migration-focused tests
+        run: python -m pytest tests/test_migrations.py tests/test_data.py -q -p no:cacheprovider --timeout=120
+
+      - name: Full tests
+        run: python -m pytest tests/ -q -p no:cacheprovider --timeout=120
+
+      - name: Dependency audit
+        run: python -m pip_audit -r requirements.txt
+
+      - name: Selfcheck
+        run: python scripts/selfcheck.py
+
+      - name: Production-readiness static gate
+        run: python scripts/release_gate.py
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ github.sha }}
+          path: artifacts/llm-eval-report.json
+          if-no-files-found: ignore

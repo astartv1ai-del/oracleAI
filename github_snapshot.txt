@@ -1,0 +1,20 @@
+--- REPO ---
+[1;38m{[m
+[1;34m"archived"[m[1;38m:[m [33mfalse[m[1;38m,[m
+[1;34m"default_branch"[m[1;38m:[m [32m"master"[m[1;38m,[m
+[1;34m"description"[m[1;38m:[m [36mnull[m[1;38m,[m
+[1;34m"forks_count"[m[1;38m:[m 0[1;38m,[m
+[1;34m"full_name"[m[1;38m:[m [32m"astartv1ai-del/oracleAI"[m[1;38m,[m
+[1;34m"html_url"[m[1;38m:[m [32m"https://github.com/astartv1ai-del/oracleAI"[m[1;38m,[m
+[1;34m"language"[m[1;38m:[m [32m"Python"[m[1;38m,[m
+[1;34m"license"[m[1;38m:[m [36mnull[m[1;38m,[m
+[1;34m"name"[m[1;38m:[m [32m"oracleAI"[m[1;38m,[m
+[1;34m"open_issues_count"[m[1;38m:[m 0[1;38m,[m
+[1;34m"private"[m[1;38m:[m [33mfalse[m[1;38m,[m
+[1;34m"pushed_at"[m[1;38m:[m [32m"2026-08-13T15:56:44Z"[m[1;38m,[m
+[1;34m"stargazers_count"[m[1;38m:[m 0[1;38m,[m
+[1;34m"updated_at"[m[1;38m:[m [32m"2026-08-13T15:56:52Z"[m
+[1;38m}[m
+--- ISSUES ---
+--- PULLS ---
+1	closed	Feat/ultrawork polish v29	2026-08-10T02:40:54Z	https://github.com/astartv1ai-del/oracleAI/pull/1

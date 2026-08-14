@@ -1,0 +1,272 @@
+--- PYTEST SUMMARY ---
+........................................................................ [ 18%]
+........................................................................ [ 37%]
+........................................................................ [ 56%]
+........................................................................ [ 75%]
+........................................................................ [ 94%]
+.....................                                                    [100%]
+--- GIT HYGIENE ---
+--- CI WORKFLOW ---
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Системные библиотеки WeasyPrint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev sqlite3
+
+      - name: Зависимости (закреплённые версии)
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Ruff
+        run: python -m ruff check app scripts tests
+
+      - name: Python syntax/import smoke
+        run: python -m compileall -q app scripts tests
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          find miniapp/js admin -type f -name '*.js' -print0 \
+            | xargs -0 -r -n1 node --check
+
+      - name: Cache-busting policy
+        run: python scripts/check_cache_busting.py
+
+      - name: Design contract
+        run: python scripts/check_design_contract.py
+
+      - name: LLM golden-set evaluator smoke
+        run: |
+          mkdir -p artifacts
+          python scripts/generate_eval_set.py
+          python scripts/evaluate_llm.py \
+            --cases data/llm_eval/golden_cases.jsonl \
+            --responses data/llm_eval/sample_responses.jsonl \
+            --out artifacts/llm-eval-report.json \
+            --min-score 0.75
+
+      - name: Migration-focused tests
+        run: python -m pytest tests/test_migrations.py tests/test_data.py -q -p no:cacheprovider --timeout=120
+
+      - name: Full tests
+        run: python -m pytest tests/ -q -p no:cacheprovider --timeout=120
+
+      - name: Dependency audit
+        run: python -m pip_audit -r requirements.txt
+
+      - name: Selfcheck
+        run: python scripts/selfcheck.py
+
+      - name: Production-readiness static gate
+        run: python scripts/release_gate.py
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ github.sha }}
+          path: artifacts/llm-eval-report.json
+          if-no-files-found: ignore
+--- DOCKER COMPOSE ---
+# Запуск на VPS:  docker compose -f infra/docker-compose.yml up -d --build
+# Домен в Caddyfile + WEBAPP_URL=https://домен в ../.env
+#
+# Процессов ровно два, и это принципиально: планировщик и рассылки живут ТОЛЬКО
+# в процессе бота. Если поднять второй бот, клиентки получат каждое сообщение
+# дважды. API масштабируется свободно — он ничего не рассылает.
+
+services:
+  bot:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    env_file: ../.env
+    volumes: [ oracle_data:/opt/oracle/data ]
+    restart: unless-stopped
+    stop_grace_period: 30s        # успеть закрыть WAL и сохранить прогресс рассылки
+    healthcheck:
+      # HTTP бот не поднимает, поэтому liveness решается по хартбиту планировщика
+      # (см. scripts/healthcheck.py): бот жив, пока тик регулярно обновляет метку
+      test: ["CMD", "python", "/opt/oracle/scripts/healthcheck.py"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  api:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    # 1 воркер обязателен: rate-limiter `_hits` и бакет исходящих — in-process
+    # (G22). Несколько воркеров дадут каждому свой запас и удвоят бюджет.
+    command: >
+      uvicorn app.api.main:app --host 0.0.0.0 --port 8080 --workers 1
+    env_file: ../.env
+    volumes: [ oracle_data:/opt/oracle/data ]
+    restart: unless-stopped
+    expose: [ "8080" ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  caddy:
+    image: caddy:2
+    env_file: ../.env
+    ports: [ "80:80", "443:443" ]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Ежедневный backup чувствительной SQLite-базы. Production требует ключ:
+  # raw .db snapshots не создаются, копия получает checksum и уходит off-site.
+  backup:
+    image: alpine:3
+    volumes:
+      - oracle_data:/data:ro
+      - oracle_backups:/backups
+      - ${BACKUP_ENCRYPTION_KEY_HOST_PATH:-/etc/oracle/backup.key}:/run/secrets/oracle-backup-key:ro
+    environment:
+      BACKUP_S3_URL: ${BACKUP_S3_URL:-}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      BACKUP_ENCRYPTION_KEY_FILE: /run/secrets/oracle-backup-key
+      BACKUP_REQUIRE_ENCRYPTION: ${BACKUP_REQUIRE_ENCRYPTION:-1}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    entrypoint: >
+      sh -c "apk add --no-cache openssl sqlite s3cmd >/dev/null &&
+             [ -r \"\$BACKUP_ENCRYPTION_KEY_FILE\" ] ||
+               { echo 'backup key is required'; exit 1; };
+             while true; do
+               ts=\$$(date -u +%Y%m%d-%H%M%S);
+               tmp=/backups/.oracle-\$\$ts.db.tmp;
+               file=/backups/oracle-\$\$ts.db.enc;
+               sqlite3 /data/oracle.db \".backup '\$\$tmp'\" &&
+               [ \"\$(sqlite3 \"\$\$tmp\" 'PRAGMA integrity_check;')\" = ok ] &&
+               openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+                 -pass file:\"\$BACKUP_ENCRYPTION_KEY_FILE\" \
+                 -in \"\$\$tmp\" -out \"\$\$file\" &&
+               rm -f \"\$\$tmp\" &&
+               sha256sum \"\$\$file\" > \"\$\$file.sha256\" &&
+               echo \"encrypted backup ok: `basename \"\$\$file\"`\";
+               if [ -n \"\$BACKUP_S3_URL\" ] && [ -n \"\$BACKUP_S3_BUCKET\" ]; then
+                 export AWS_ACCESS_KEY_ID=\$BACKUP_S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$BACKUP_S3_SECRET_KEY;
+                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION \
+                       put \"\$\$file\" s3://\$BACKUP_S3_BUCKET/ &&
+                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION \
+                       put \"\$\$file.sha256\" s3://\$BACKUP_S3_BUCKET/;
+               fi;
+               find /backups -maxdepth 1 -type f -name 'oracle-*.db.enc' -mtime +14 -delete;
+               find /backups -maxdepth 1 -type f -name 'oracle-*.db.enc.sha256' -mtime +14 -delete;
+               sleep 86400;
+             done"
+    restart: unless-stopped
+
+volumes:
+  oracle_data:
+  oracle_backups:
+  caddy_data:
+  caddy_config:
+--- DOCKERFILE ---
+# Один образ на оба процесса (бот и API) — они делят код и базу.
+# Команда по умолчанию — бот; API поднимается тем же образом с своим CMD
+# (см. infra/docker-compose.yml).
+FROM python:3.12-slim
+
+# Системные библиотеки: cairo/pango нужны WeasyPrint (PDF-разборы),
+# libjpeg/zlib — Pillow (карточки для сторис). tzdata нужен zoneinfo:
+# без него планировщик не сможет посчитать «9 утра по её таймзоне».
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        tzdata \
+        libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+        libffi8 shared-mime-info \
+        libjpeg62-turbo zlib1g \
+        fonts-dejavu-core \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/oracle
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app ./app
+COPY miniapp ./miniapp
+COPY admin ./admin
+COPY scripts ./scripts
+
+# Пишем только в data/ — остальное дерево может быть read-only
+RUN useradd --create-home --uid 10001 oracle \
+    && mkdir -p /opt/oracle/data \
+    && chown -R oracle:oracle /opt/oracle
+USER oracle
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DATA_DIR=/opt/oracle/data
+
+CMD ["python", "-m", "app.bot.main"]
+--- ENV KEYS ---
+ADMIN_ID
+ANTHROPIC_API_KEY
+ANTHROPIC_MODEL_LITE
+ANTHROPIC_MODEL_MAIN
+BOT_TOKEN
+CUSTOM_LLM_API_KEY
+CUSTOM_LLM_BASE_URL
+CUSTOM_LLM_MODEL
+CUSTOM_LLM_MODEL_LITE
+DATA_DIR
+DB_PATH
+DEV_MODE
+DOMAIN
+EMBED_MODEL
+EMBED_VIA_CUSTOM
+HOROSCOPE_CHANNELS
+LLM_PROVIDER
+LOG_LEVEL
+OPENAI_API_KEY
+OPENAI_MODEL_LITE
+OPENAI_MODEL_MAIN
+PADDLE_API_KEY
+PADDLE_API_URL
+PADDLE_CHECKOUT_URL
+PADDLE_PRICE_IDS
+PADDLE_WEBHOOK_SECRET
+PUBLIC_URL
+TRIAL_CRYSTALS
+TRIAL_DAYS
+TTS_MODEL
+TTS_VOICE
+WEBAPP_URL
