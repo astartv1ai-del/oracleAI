@@ -69,5 +69,7 @@ def test_production_config_fails_closed(monkeypatch):
     monkeypatch.setattr(settings, "bot_token", "")
     monkeypatch.setattr(settings, "admin_id", 0)
     monkeypatch.setattr(settings, "webapp_url", "")
+    # Локальный .env может задавать APP_ENV=dev/test и выключить проверку.
+    monkeypatch.delenv("APP_ENV", raising=False)
     with pytest.raises(RuntimeError, match="BOT_TOKEN"):
         _validate_production_config()

@@ -189,7 +189,17 @@ async def index():
 @app.get("/admin/", include_in_schema=False)
 async def admin_index():
     """Панель открывается кнопкой из бота — вход по подписи Telegram."""
-    return _file(ADMIN_DIR, "index.html")
+    path = ADMIN_DIR / "index.html"
+    if not path.is_file():
+        return JSONResponse({"detail": "не найдено"}, status_code=404)
+    # JS/CSS живут в CDN-кеше час, поэтому имя выдачи получает версию от их
+    # mtime. После любого деплоя HTML no-cache подхватит новые ассеты сразу.
+    asset_version = str(max(
+        (ADMIN_DIR / "admin.js").stat().st_mtime_ns,
+        (ADMIN_DIR / "admin.css").stat().st_mtime_ns,
+    ))
+    return HTMLResponse(path.read_text(encoding="utf-8").replace(
+        "__ADMIN_ASSET_VERSION__", asset_version))
 
 
 if MINIAPP_DIR.is_dir():

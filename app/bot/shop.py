@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 
 from aiogram import F, Router
-from aiogram.types import (CallbackQuery, LabeledPrice, Message,
+from aiogram.types import (CallbackQuery, InlineKeyboardButton,
+                           InlineKeyboardMarkup, LabeledPrice, Message,
                            PreCheckoutQuery)
 
 from ..repo import admin as admin_repo
@@ -48,9 +49,9 @@ async def shop(cb: CallbackQuery, db):
     await analytics.track(db, analytics.E_SHOP_VIEW, cb.from_user.id)
     await cb.message.answer(
         f"💎 <b>Лавка Оракула</b>\n\n"
-        f"У тебя ✦{user['crystals']} Кристаллов · "
-        f"{'подписка активна' if users.sub_active(user) else 'подписки нет'}\n\n"
-        f"<i>Расклады и разборы можно брать по одному — подписка не обязательна.</i>",
+        f"У тебя ✦{user['crystals']} Кристаллов.\n\n"
+        f"<i>Пополняй Кристаллы и открывай расклады, разборы и вопросы — "
+        f"по одному, когда нужно.</i>",
         reply_markup=shop_kb())
     await cb.answer()
 
@@ -84,6 +85,8 @@ async def _show_products(cb: CallbackQuery, db, kind: str) -> None:
     if not products:
         await cb.answer("Здесь пока пусто")
         return
+    from ...config import settings
+    crypto_on = bool(settings.cryptobot_api_token)
     title, hint = KIND_TITLES.get(kind, ("💎 <b>Товары</b>", ""))
     lines = [title, f"<i>{hint}</i>", ""]
     for product in products:
@@ -96,7 +99,9 @@ async def _show_products(cb: CallbackQuery, db, kind: str) -> None:
         if product["description"]:
             lines.append(f"<i>{product['description']}</i>")
         lines.append("")
-    await cb.message.answer("\n".join(lines), reply_markup=products_kb(products))
+    await cb.message.answer("\n".join(lines), reply_markup=products_kb(
+        products,
+        crypto_skus=billing_svc.CRYSTAL_PACKS_USD if crypto_on else ()))
     await cb.answer()
 
 
@@ -169,6 +174,30 @@ async def buy_sku(cb: CallbackQuery, db):
         prices=[LabeledPrice(label=order["title"][:32],
                              amount=order["amount_stars"])])
     await cb.answer()
+
+
+@router.callback_query(F.data.startswith("buy_crypto:"))
+async def buy_crypto(cb: CallbackQuery, db):
+    """Крипто-оплата пакета Кристаллов через Crypto Pay (без юрлица)."""
+    from ...config import settings
+    if not settings.cryptobot_api_token:
+        await cb.answer("Крипто-оплата скоро откроется 🌙")
+        return
+    sku = cb.data.split(":", 1)[1]
+    try:
+        order = await billing_svc.checkout_crypto_crystals(db, cb.from_user.id, sku)
+    except billing_svc.PurchaseError as e:
+        await cb.answer(str(e), show_alert=True)
+        return
+    await cb.answer()
+    await cb.message.answer(
+        f"₿ <b>{order['title']}</b> — ${order['amount_usd']:.2f}\n\n"
+        f"Оплатить можно картой или криптой (USDT, TON, BTC…) через @CryptoBot. "
+        f"Кристаллы придут автоматически сразу после оплаты.\n"
+        f"<i>Если оплата не прошла — напиши /start и попробуй ещё раз.</i>",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="₿ Оплатить", url=order["link"])],
+            [InlineKeyboardButton(text="← Лавка", callback_data="shop")]]))
 
 
 @router.callback_query(F.data.startswith("buy_crystals:"))

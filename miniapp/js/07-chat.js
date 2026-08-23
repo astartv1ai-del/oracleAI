@@ -460,9 +460,6 @@
         return this.careerWidget(p);
 
       case 'palm':
-      case 'palm-map':
-      case 'palm-quality':
-      case 'palm-compare':
         return p.html ? `<div class="msg assistant">${p.html}</div>` : '';
 
       case 'history':

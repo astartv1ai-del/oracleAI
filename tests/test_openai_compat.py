@@ -14,6 +14,8 @@ import asyncio
 import json
 from types import SimpleNamespace
 
+import pytest
+
 from app.config import settings
 from app.core import llm
 
@@ -198,10 +200,7 @@ async def test_pretool_respects_chiromant_allowlist(monkeypatch):
 
     monkeypatch.setattr(llm, "_gather_tools", fake_gather)
     monkeypatch.setattr(llm, "_stream_chat", fake_stream)
-    tools = [{"name": name} for name in (
-        "check_palm_quality", "get_palm_reading", "get_palm_focus",
-        "get_palm_map", "request_better_palm_photo",
-    )]
+    tools = [{"name": "palm_scanner"}]
 
     text = await llm._run_pretool(
         None, "model", "Ты — Мира", [
@@ -210,9 +209,94 @@ async def test_pretool_respects_chiromant_allowlist(monkeypatch):
     )
 
     assert "Мира" in text
-    assert [name for name, _ in calls] == ["check_palm_quality", "get_palm_focus"]
+    assert [name for name, _ in calls] == ["palm_scanner"]
     assert all(not name.startswith(("get_chart", "get_transits", "draw_tarot", "get_matrix"))
                for name, _ in calls)
+
+
+@pytest.mark.parametrize("question", [
+    "Как переснять фото ладони?",
+    "Какие чтения ладони у меня были раньше?",
+    "Дай мне вопрос для саморефлексии по ладони",
+    "Сравни два моих чтения ладони",
+])
+async def test_pretool_palm_single_call(monkeypatch, question):
+    """Любой ладонный вопрос без function-calling — ровно один вызов palm_scanner."""
+    calls = []
+
+    async def fake_gather(execute, wanted):
+        calls.extend(wanted)
+        return [f"{name}:{args}" for name, args in wanted]
+
+    async def fake_stream(client, model, messages, max_tokens, **kwargs):
+        return "Мира отвечает по evidence ладони.", []
+
+    monkeypatch.setattr(llm, "_gather_tools", fake_gather)
+    monkeypatch.setattr(llm, "_stream_chat", fake_stream)
+    tools = [{"name": "palm_scanner"}]
+
+    text = await llm._run_pretool(
+        None, "model", "Ты — Мира",
+        [{"role": "user", "content": question}],
+        tools, lambda *_: "", 500, None,
+    )
+
+    assert "Мира" in text
+    assert [name for name, _ in calls] == ["palm_scanner"], \
+        f"ожидали один palm_scanner для «{question}»"
+
+
+async def test_pretool_other_agents_unaffected(monkeypatch):
+    """Не-ладонные вопросы не тянут palm_scanner, а общие скиллы сохраняются."""
+    calls = []
+
+    async def fake_gather(execute, wanted):
+        calls.extend(wanted)
+        return [f"{name}" for name, _ in wanted]
+
+    async def fake_stream(client, model, messages, max_tokens, **kwargs):
+        return "Лилит отвечает.", []
+
+    monkeypatch.setattr(llm, "_gather_tools", fake_gather)
+    monkeypatch.setattr(llm, "_stream_chat", fake_stream)
+    tools = [{"name": "get_chart"}, {"name": "palm_scanner"}, {"name": "draw_tarot"}]
+
+    text = await llm._run_pretool(
+        None, "model", "Ты — Лилит",
+        [{"role": "user", "content": "Какой у меня знак? Сделай расклад таро."}],
+        tools, lambda *_: "", 500, None,
+    )
+
+    names = [name for name, _ in calls]
+    assert "get_chart" in names and "draw_tarot" in names
+    assert "palm_scanner" not in names
+
+
+async def test_openai_like_budget_exhaust_returns_partial(monkeypatch):
+    """Исчерпание бюджета tool-use не уходит в pre-tool и не теряет собранный текст."""
+    async def fake_stream(client, model, messages, max_tokens, tools=None, **kwargs):
+        return "Лилит уже начала ответ.", [{"name": "get_chart", "args": "{}", "id": "c1"}]
+
+    async def fake_gather(execute, wanted, budget=None):
+        return ["данные скилла"]
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("pre-tool не должен вызываться при исчерпании бюджета")
+
+    monkeypatch.setattr(llm, "_openai_client", lambda provider: None)
+    monkeypatch.setattr(llm, "_stream_chat", fake_stream)
+    monkeypatch.setattr(llm, "_gather_tools", fake_gather)
+    monkeypatch.setattr(llm, "_run_pretool", boom)
+    budget = llm._WorkflowBudget(timeout=10, max_tool_calls=1, max_cost_usd=1.0)
+    tools = [{"name": "get_chart", "description": "Карта",
+              "input_schema": {"type": "object", "properties": {}}}]
+
+    text = await llm._run_openai_like(
+        "custom", "Ты — Лилит", [{"role": "user", "content": "Привет"}],
+        tools, lambda *_: "", "main", 500, llm._Meter(), max_iters=5, budget=budget,
+    )
+
+    assert "Лилит уже начала ответ" in text
 
 
 async def test_gpt5_vision_uses_completion_token_budget(monkeypatch):

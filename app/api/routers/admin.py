@@ -11,6 +11,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from ...config import settings
 from ...data.session import healthcheck
 from ...repo import admin as admin_repo
 from ...repo import (analytics as analytics_repo, billing, comms, content, crm,
@@ -44,7 +45,11 @@ async def whoami(ctx=Depends(current_admin), db=Depends(get_db)):
 
 @router.get("/health")
 async def health(ctx=Depends(require("dashboard")), db=Depends(get_db)):
-    return await healthcheck(db)
+    result = await healthcheck(db)
+    # Не раскрываем URL или секреты, но владелец сразу видит, доступна ли
+    # панель через кнопку Telegram, а не только на локальном адресе.
+    result["telegram_webapp_ready"] = settings.webapp_url.startswith("https://")
+    return result
 
 
 # ────────────────────────────── аналитика ─────────────────────────────────────
@@ -393,6 +398,14 @@ async def promo_list(batch: str | None = None, unused: bool = False,
             "codes": await growth.list_codes(db, batch=batch, unused_only=unused)}
 
 
+@router.get("/promo/redemptions")
+async def promo_redemptions(batch: str | None = None,
+                            limit: int = Query(default=200, ge=1, le=1000),
+                            ctx=Depends(require("promo")), db=Depends(get_db)):
+    """Кто и когда активировал купоны."""
+    return await growth.list_redemptions(db, batch=batch, limit=limit)
+
+
 class PromoBatchIn(BaseModel):
     count: int = Field(ge=1, le=1000)
     kind: str = "plan_days"
@@ -489,7 +502,7 @@ async def admins(ctx=Depends(require("settings:read")), db=Depends(get_db)):
 
 
 class AdminIn(BaseModel):
-    tg_id: int
+    tg_id: int = Field(gt=0)
     role: str = "admin"
     title: str = Field(default="", max_length=60)
 
@@ -504,6 +517,30 @@ async def admin_add(item: AdminIn, ctx=Depends(current_admin), db=Depends(get_db
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     await admin_repo.audit(db, ctx.tg_id, "admin.add", target=str(item.tg_id),
+                           payload={"role": item.role})
+    return {"ok": True}
+
+
+class AdminRoleIn(BaseModel):
+    role: str
+    title: str | None = Field(default=None, max_length=60)
+
+
+@router.patch("/admins/{tg_id}")
+async def admin_set_role(tg_id: int, item: AdminRoleIn,
+                         ctx=Depends(current_admin), db=Depends(get_db)):
+    if ctx.role != "owner":
+        raise HTTPException(403, "менять роли может только владелец")
+    if tg_id == ctx.tg_id:
+        raise HTTPException(400, "нельзя менять свою роль")
+    try:
+        changed = await admin_repo.update_admin_role(
+            db, tg_id, item.role, title=item.title, changed_by=ctx.tg_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not changed:
+        raise HTTPException(404, "администратор не найден")
+    await admin_repo.audit(db, ctx.tg_id, "admin.role", target=str(tg_id),
                            payload={"role": item.role})
     return {"ok": True}
 

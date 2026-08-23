@@ -88,6 +88,26 @@ async def web_checkout(item: InvoiceIn, user=Depends(current_user),
             "price_usd": order["plan"]["price_usd"]}
 
 
+class CryptoIn(BaseModel):
+    sku: str = Field(min_length=1, max_length=40)
+
+
+@router.post("/crypto-invoice", dependencies=[Depends(rate_limit("write"))])
+async def crypto_invoice(item: CryptoIn, user=Depends(current_user),
+                         db=Depends(get_db)):
+    """Ссылка на оплату пакета Кристаллов криптой (Crypto Pay)."""
+    from ...config import settings
+    if not settings.cryptobot_api_token:
+        raise HTTPException(503, "крипто-оплата не настроена")
+    try:
+        order = await billing_svc.checkout_crypto_crystals(
+            db, user["tg_id"], item.sku)
+    except billing_svc.PurchaseError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from exc
+    return {"link": order["link"], "sku": order["sku"],
+            "amount_usd": order["amount_usd"]}
+
+
 class CrystalsIn(BaseModel):
     sku: str = Field(min_length=1, max_length=40)
 

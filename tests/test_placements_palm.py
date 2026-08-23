@@ -87,12 +87,7 @@ def test_chiromant_is_registered_with_palm_tools():
     assert "chiromant" in codes()
     agent = get("chiromant")
     assert agent is not None
-    expected = {
-        "check_palm_quality", "get_palm_map", "get_palm_reading", "get_palm_focus",
-        "get_palm_reflection", "compare_palm_readings", "list_palm_readings",
-        "request_better_palm_photo",
-    }
-    assert set(agent.skills) == expected
+    assert set(agent.skills) == {"palm_scanner", "palm_photo_guide", "palm_history"}
     assert not ({"draw_tarot", "get_chart", "get_matrix", "get_transits"} & set(agent.skills))
     assert {"get_placement", "get_all_placements", "get_life_path", "get_chinese_zodiac"}.issubset(SKILLS)
 
@@ -123,7 +118,15 @@ def test_palm_response_format_is_strict_and_closed():
     assert root["additionalProperties"] is False
     assert set(root["required"]) == set(root["properties"])
     assert root["properties"]["status"]["enum"] == ["complete", "needs_photo"]
-    for section in ("lines", "mounts", "fingers"):
+    for section in ("mounts", "fingers"):
         nested = root["properties"][section]
         assert nested["additionalProperties"] is False
         assert set(nested["required"]) == set(nested["properties"])
+    lines = root["properties"]["lines"]
+    assert lines["additionalProperties"] is False
+    assert {"life", "head", "heart", "fate", "sun"}.issubset(lines["required"])
+    for extra in ("children", "travel"):
+        assert extra in lines["properties"]
+    assert "photo_assessment" in root["required"]
+    assert root["properties"]["photo_assessment"]["properties"]["view_type"]["enum"] == [
+        "open_palm", "folded_edge", "unclear"]

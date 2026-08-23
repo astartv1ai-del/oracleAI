@@ -57,7 +57,7 @@
       this.showModal(`<h3>✨ ${esc(s.title)}</h3>
         <button class="m-close" data-act="modal-close">✕</button>
         <div class="fc-adv" style="margin-top:4px">
-          Это премиум-расклад. Открой подписку «Искра» или приведи подругу — и получи доступ к нему.
+          Это премиум-расклад. Купи Кристаллы в лавке 💎 или приведи подругу — и получи доступ к нему.
         </div>
         <button class="btn btn-primary" style="margin-top:14px" data-act="modal-close">Понятно ✨</button>`);
       return;

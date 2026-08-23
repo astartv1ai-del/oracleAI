@@ -82,6 +82,10 @@ class Settings:
     # `vip:pri_...,basic:pri_...` — never derive a provider price from client input.
     paddle_price_ids: str = os.getenv("PADDLE_PRICE_IDS", "")
 
+    # ── Crypto Pay (@CryptoBot): приём крипты за Кристаллы без юрлица ──
+    cryptobot_api_token: str = os.getenv("CRYPTOBOT_API_TOKEN", "")
+    cryptobot_app_name: str = os.getenv("CRYPTOBOT_APP_NAME", "")
+
     # ── окружение и наблюдаемость ──
     app_env: str = os.getenv("APP_ENV", "dev").lower()
     dev_mode: bool = os.getenv("DEV_MODE", "0") == "1"

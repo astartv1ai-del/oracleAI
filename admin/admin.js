@@ -15,12 +15,14 @@ const DEV_USER = qs.get('dev_user');
 
 const state = {
   role: null,
+  tgId: null,
   permissions: [],
   period: 30,
   view: 'dashboard',
   users: { q: '', segment: 'all', order: 'created_at', offset: 0, limit: 50, total: 0 },
   segments: [],
   content: { kind: '', items: [], current: null },
+  promoBatch: '',
   plans: [],
 };
 
@@ -49,6 +51,7 @@ async function api(path, opts = {}) {
 const get = (p) => api(p);
 const post = (p, body) => api(p, { method: 'POST', body: JSON.stringify(body ?? {}) });
 const del = (p) => api(p, { method: 'DELETE' });
+const patch = (p, body) => api(p, { method: 'PATCH', body: JSON.stringify(body ?? {}) });
 
 /* ── утилиты ── */
 const $ = (id) => document.getElementById(id);
@@ -240,6 +243,22 @@ async function loadDashboard() {
     { values: d.timeseries.map((t) => t.users), color: '#7fd8a8' },
   ]);
   barChart($('chart-revenue'), days, d.timeseries.map((t) => t.stars));
+
+  const m = d.monetization || {};
+  $('kpi-monetization').innerHTML = [
+    { label: `ARPPU за ${m.days ?? state.period} дн.`, value: `${num(m.paid_arppu_stars)} ⭐`,
+      sub: `${num(m.paid_payers)} плательщиц`, cls: 'accent' },
+    { label: 'Повторных оплат', value: pct(m.repeat_payer_rate),
+      sub: `${num(m.repeat_payers)} человек`, cls: '' },
+    { label: 'Возвраты', value: pct(m.refund_rate),
+      sub: `${num(m.refund_orders)} заказов`, cls: m.refund_rate > 5 ? 'bad' : 'good' },
+    { label: 'Активаций купонов', value: num(d.promo_batches.reduce((s, b) => s + b.used, 0)),
+      sub: `в ${num(d.promo_batches.length)} партиях`, cls: '' },
+  ].map((k) => `<div class="kpi ${k.cls}">
+      <div class="kpi-label">${esc(k.label)}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${esc(k.sub)}</div>
+    </div>`).join('');
 
   const r = d.revenue;
   $('revenue-facts').innerHTML = `
@@ -734,24 +753,56 @@ function wireCatalogEdits() {
 async function loadPromo() {
   if (!state.plans.length) await loadCatalog();
   const unused = $('promo-unused').checked;
-  const data = await get(`/api/admin/promo${unused ? '?unused=true' : ''}`);
+  const batch = state.promoBatch;
+  const params = new URLSearchParams();
+  if (unused) params.set('unused', 'true');
+  if (batch) params.set('batch', batch);
+  const [data, redemptions] = await Promise.all([
+    get(`/api/admin/promo?${params}`),
+    get('/api/admin/promo/redemptions?limit=300'),
+  ]);
 
   $('promo-batches').innerHTML = table([
-    { title: 'Партия', render: (b) => esc(b.batch) },
+    { title: 'Партия', render: (b) => `<code>${esc(b.batch)}</code>
+        ${state.promoBatch === b.batch ? '<span class="badge on">фильтр</span>' : ''}` },
     { title: 'Кодов', num: true, render: (b) => num(b.total) },
     { title: 'Активировано', num: true, render: (b) => num(b.used) },
     { title: 'Конверсия', num: true, render: (b) => pct(b.total ? (b.used * 100) / b.total : 0) },
     { title: 'Создана', render: (b) => date(b.created_at) },
-  ], data.batches, { empty: 'Партий пока нет' });
+  ], data.batches, { onRow: true, empty: 'Партий пока нет' });
+  bindRows($('promo-batches'), data.batches, (b) => {
+    state.promoBatch = state.promoBatch === b.batch ? '' : b.batch;
+    $('promo-batch-hint').textContent = state.promoBatch
+      ? `фильтр: партия «${state.promoBatch}» (клик по партии ещё раз — снять)` : '';
+    loadPromo().catch(fail);
+  });
 
+  const who = new Map(redemptions.map((r) => [r.code, r]));
   $('promo-codes').innerHTML = table([
     { title: 'Код', render: (c) => `<code>${esc(c.code)}</code>` },
     { title: 'Что даёт', render: (c) => c.kind === 'crystals' ? `✦${c.crystals}`
         : c.kind === 'product' ? esc(c.sku || '') : `${c.days} дн. ${esc(c.plan_code || '')}` },
     { title: 'Партия', render: (c) => esc(c.batch || '—') },
     { title: 'Использован', num: true, render: (c) => `${c.used_count || 0}/${c.max_uses || 1}` },
+    { title: 'Кем', render: (c) => { const r = who.get(c.code); return r
+        ? `<b>${esc(r.name || r.tg_id)}</b>${r.username ? ` <span class="muted small">@${esc(r.username)}</span>` : ''}`
+        : '—'; } },
+    { title: 'Когда', render: (c) => { const r = who.get(c.code);
+        return r ? date(r.created_at, true) : '—'; } },
     { title: 'Действует до', render: (c) => date(c.expires_at) },
-  ], data.codes, { empty: 'Кодов нет' });
+  ], data.codes, { onRow: true, empty: 'Кодов нет' });
+  bindRows($('promo-codes'), data.codes, (c) => c.used_by && openUser(c.used_by));
+
+  $('promo-redemptions').innerHTML = table([
+    { title: 'Когда', render: (r) => date(r.created_at, true) },
+    { title: 'Кто', render: (r) => `<b>${esc(r.name || r.tg_id)}</b>
+        ${r.username ? `<div class="muted small">@${esc(r.username)}</div>` : ''}` },
+    { title: 'Код', render: (r) => `<code>${esc(r.code)}</code>` },
+    { title: 'Партия', render: (r) => esc(r.batch || '—') },
+    { title: 'Что дало', render: (r) => r.kind === 'crystals' ? `✦${r.crystals}`
+        : r.kind === 'product' ? esc(r.sku || '') : `${r.days} дн. ${esc(r.plan_code || '')}` },
+  ], redemptions, { onRow: true, empty: 'Активаций пока не было' });
+  bindRows($('promo-redemptions'), redemptions, (r) => openUser(r.tg_id));
 }
 $('promo-unused').addEventListener('change', () => loadPromo().catch(fail));
 
@@ -1002,11 +1053,23 @@ async function loadSettings() {
 
   $('admins-list').innerHTML = table([
     { title: 'id', render: (a) => a.tg_id },
-    { title: 'Роль', render: (a) => `<span class="badge warn">${esc(a.role)}</span>` },
+    { title: 'Роль', render: (a) => {
+        if (state.role !== 'owner' || !a.created_at || a.tg_id === state.tgId) return `<span class="badge warn">${esc(a.role)}</span>`;
+        return `<select class="input slim" data-role-for="${a.tg_id}">
+          ${['analyst', 'support', 'admin', 'owner'].map((r) =>
+            `<option value="${r}" ${a.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+        </select>`;
+      } },
     { title: 'Подпись', render: (a) => esc(a.title || '') },
-    { title: '', render: (a) => (state.role === 'owner' && a.created_at)
+    { title: '', render: (a) => (state.role === 'owner' && a.created_at && a.tg_id !== state.tgId)
         ? `<button class="btn tiny danger" data-rm-admin="${a.tg_id}">Убрать</button>` : '' },
   ], admins, { empty: 'Только владелец из .env' });
+
+  $('admins-list').querySelectorAll('[data-role-for]').forEach((sel) =>
+    sel.addEventListener('change', async () => {
+      try { await patch(`/api/admin/admins/${sel.dataset.roleFor}`, { role: sel.value }); toast('Роль обновлена'); }
+      catch (e) { fail(e); loadSettings().catch(() => {}); }
+    }));
 
   $('admins-list').querySelectorAll('[data-rm-admin]').forEach((btn) =>
     btn.addEventListener('click', async () => {
@@ -1020,9 +1083,14 @@ $('admin-add').addEventListener('click', async () => {
   const tgId = +$('admin-id').value;
   if (!tgId) { toast('Нужен Telegram id', true); return; }
   try {
-    await post('/api/admin/admins', { tg_id: tgId, role: $('admin-role').value });
+    await post('/api/admin/admins', {
+      tg_id: tgId,
+      role: $('admin-role').value,
+      title: $('admin-title').value.trim(),
+    });
     toast('Добавлен');
     $('admin-id').value = '';
+    $('admin-title').value = '';
     loadSettings().catch(fail);
   } catch (e) { fail(e); }
 });
@@ -1137,6 +1205,7 @@ async function boot() {
   try {
     const me = await get('/api/admin/me');
     state.role = me.role;
+    state.tgId = me.tg_id;
     state.permissions = me.permissions;
     $('who').innerHTML = `<b>${esc(me.name)}</b><br>роль: ${esc(me.role)}`;
     $('gate').classList.add('hidden');
@@ -1155,7 +1224,10 @@ async function boot() {
 
     get('/api/admin/health').then((h) => {
       $('health').innerHTML =
-        `<span>БД: ${h.ok ? '✅' : '⚠️'}</span><span>${num(h.users)} клиенток</span>`;
+        `<span>БД: ${h.ok ? '✅' : '⚠️'}</span><span>${num(h.users)} клиенток</span>` +
+        (h.telegram_webapp_ready
+          ? '<span>Бот: ✅</span>'
+          : '<span class="bad" title="Задай HTTPS WEBAPP_URL на сервере">Бот: URL не задан</span>');
     }).catch(() => {});
 
     switchView('dashboard');

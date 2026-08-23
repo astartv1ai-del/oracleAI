@@ -18,7 +18,7 @@ from ...repo import billing as billing_repo
 from ...repo import content as content_repo
 from ...repo import dialog as dialog_repo
 from ...repo import users as users_repo
-from .. import astro, llm, memory, skills, tarot
+from .. import astro, llm, memory, palm, skills, tarot
 from .. import matrix as mx
 from ..personas import persona_style
 from ..stable import stable_seed

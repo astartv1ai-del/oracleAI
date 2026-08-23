@@ -248,6 +248,9 @@ async def timeseries(db, days: int = 30) -> list[dict]:
     active = await by_day(
         "SELECT day d, COUNT(DISTINCT tg_id) FROM events WHERE day>=? GROUP BY day",
         start)
+    promos = await by_day(
+        "SELECT substr(created_at,1,10) d, COUNT(*) FROM promo_redemptions "
+        "WHERE substr(created_at,1,10)>=? GROUP BY d", start)
 
     out = []
     for i in range(days):
@@ -257,6 +260,7 @@ async def timeseries(db, days: int = 30) -> list[dict]:
                     "questions": questions.get(day, 0),
                     "readings": readings.get(day, 0),
                     "stars": stars.get(day, 0) or 0,
+                    "promos": promos.get(day, 0),
                     "active": active.get(day, 0)})
     return out
 

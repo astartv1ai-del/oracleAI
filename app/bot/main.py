@@ -37,6 +37,7 @@ COMMANDS = [
     BotCommand(command="practice", description="Практики и мантры"),
     BotCommand(command="moon", description="Лунная неделя"),
     BotCommand(command="promo", description="Ввести промокод"),
+    BotCommand(command="admin", description="Панель управления (для команды)"),
     BotCommand(command="help", description="Как я работаю"),
 ]
 

@@ -29,6 +29,7 @@ from ...data.session import transaction, utcnow
 from ...repo import billing as billing_repo
 from ...services import analytics
 from ...services import billing as billing_svc
+from ...services import cryptobot
 from ...core.observability import log_event
 from ..deps import get_db
 
@@ -200,4 +201,75 @@ async def paddle(request: Request, db=Depends(get_db),
     if duplicate:
         log.info("вебхук %s уже записан после идемпотентной обработки", event_id)
     log.info("web-оплата: клиентка %s, тариф %s", tg_id, order["sku"])
+    return {"ok": True, "granted": bool(result), "duplicate": duplicate}
+
+
+@router.post("/cryptobot")
+async def cryptobot_webhook(request: Request, db=Depends(get_db)):
+    """Оплата Кристаллов криптой (Crypto Pay). Схема та же, что у Paddle:
+    подпись → payload → pending-заказ → apply_payment → журнал идемпотентности.
+
+    Crypto Pay шлёт обновления статусов; выдача — только на `paid`.
+    """
+    raw = await request.body()
+    if len(raw) > 512 * 1024:
+        raise HTTPException(413, "тело вебхука слишком большое")
+    if not settings.cryptobot_api_token:
+        _failure("cryptobot token is not configured", status_code=503)
+        raise HTTPException(503, "крипто-оплата не настроена")
+    if not cryptobot.verify_webhook(raw, request.headers.get("crypto-pay-api-signature")):
+        _failure("cryptobot webhook signature rejected", status_code=401)
+        raise HTTPException(401, "подпись не подтверждена")
+
+    try:
+        body = json.loads(raw.decode("utf-8"))
+    except ValueError as e:
+        _failure("cryptobot webhook body is not JSON", status_code=400)
+        raise HTTPException(400, "тело не JSON") from e
+
+    payload_data = body.get("payload") or {}
+    update_type = str(payload_data.get("update_type") or "")
+    invoice = payload_data.get("payload") or {}
+    if not isinstance(invoice, dict):
+        invoice = {}
+    invoice_id = str(invoice.get("invoice_id") or "")
+
+    if update_type != "invoice_paid":
+        event_key = f"{invoice_id}:{update_type or 'unknown'}"
+        duplicate = await _already_seen(
+            db, event_key, "cryptobot", update_type or "unknown",
+            raw.decode("utf-8", "ignore"))
+        return {"ok": True, "duplicate": True} if duplicate else {"ok": True}
+
+    order_payload = str(invoice.get("payload") or "")
+    if not order_payload or len(order_payload) > 120:
+        _failure("cryptobot webhook order payload is invalid")
+        return {"ok": True, "unmatched": True}
+    order = await billing_repo.order_by_payload(db, order_payload)
+    if not order or order["status"] != "pending":
+        duplicate = await _already_seen(
+            db, f"{invoice_id}:paid", "cryptobot", "invoice_paid",
+            raw.decode("utf-8", "ignore"))
+        return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "unmatched": True}
+    if order["kind"] != "crystals" or (order["surface"] or "") == "web":
+        log.error("крипто-вебхук %s с недопустимым заказом", invoice_id)
+        return {"ok": True, "unmatched": True}
+
+    order_meta = billing_svc._order_meta(order)
+    expected_invoice = str(order_meta.get("cryptobot_invoice_id") or "")
+    if expected_invoice and expected_invoice != invoice_id:
+        log.error("крипто-вебхук %s не совпал с invoice_id заказа", invoice_id)
+        return {"ok": True, "unmatched": True}
+
+    result = await billing_svc.apply_payment(
+        db, order["payload"], charge_id=f"crypto:{invoice_id}",
+        amount_stars=0, provider="cryptobot",
+        currency=str(invoice.get("fiat") or invoice.get("asset") or "USD"))
+    await analytics.track(db, "crypto_payment", order["tg_id"],
+                          props={"sku": order["sku"], "invoice_id": invoice_id},
+                          surface="bot")
+    duplicate = await _already_seen(
+        db, f"{invoice_id}:paid", "cryptobot", "invoice_paid",
+        raw.decode("utf-8", "ignore"))
+    log.info("крипто-оплата: пользователь %s, пакет %s", order["tg_id"], order["sku"])
     return {"ok": True, "granted": bool(result), "duplicate": duplicate}

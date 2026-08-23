@@ -126,32 +126,27 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
 
     chiromant = get("chiromant")
     tool_names = {tool["name"] for tool in skills.tools_for(chiromant.skills)}
-    assert {"check_palm_quality", "get_palm_map", "get_palm_reading", "get_palm_focus",
-            "get_palm_reflection", "compare_palm_readings", "list_palm_readings",
-            "request_better_palm_photo"}.issubset(tool_names)
-    evidence = await skills.execute(db, user, "get_palm_reading", {"reading_id": reading_id})
+    assert tool_names == {"palm_scanner", "palm_photo_guide", "palm_history"}
+    evidence = await skills.execute(
+        db, user, "palm_scanner", {"reading_id": reading_id})
     assert "heart_line" in evidence
-    assert "vision-наблюдений" in evidence
-    focus = await skills.execute(db, user, "get_palm_focus", {"topic": "heart_line"})
-    assert '"topic":"heart_line"' in focus
-    assert "continuous" in focus
-    quality = await skills.execute(db, user, "check_palm_quality", {"reading_id": reading_id})
-    assert '"score":0.93' in quality and "raw_image_stored" in quality
-    palm_map = await skills.execute(db, user, "get_palm_map", {"reading_id": reading_id})
-    assert '"label":"линия сердца"' in palm_map and '"visibility":"partial"' in palm_map
-    reflection = await skills.execute(db, user, "get_palm_reflection", {"reading_id": reading_id})
-    assert '"questions"' in reflection and "heart_line" in reflection
+    assert "Полное сканирование ладони" in evidence
+    assert '"score":0.93' in evidence
+    assert '"label":"линия сердца"' in evidence
+    assert "hand_shape_element" in evidence
+    assert "continuous" in evidence
+
+    empty_args = await skills.execute(db, user, "palm_scanner", {})
+    assert "heart_line" in empty_args
+
     second_id = await palm_repo.save_reading(
         db, user["tg_id"], result,
         image_sha256=hashlib.sha256(image + b"-second").hexdigest(),
         image_size=len(image), surface="integration",
     )
-    comparison = await skills.execute(db, user, "compare_palm_readings", {
-        "current_reading_id": reading_id, "previous_reading_id": second_id,
-    })
-    assert '"shared_visible_topics"' in comparison and "heart_line" in comparison
-    listing = await skills.execute(db, user, "list_palm_readings", {})
-    assert f"#{reading_id}" in listing and f"#{second_id}" in listing
+    by_id = await skills.execute(
+        db, user, "palm_scanner", {"reading_id": second_id})
+    assert f'"reading_id":{second_id}' in by_id
 
     deleted = await client.delete(f"/api/palm/{reading_id}", params={"dev_user": user["tg_id"]})
     assert deleted.status_code == 200
@@ -159,7 +154,7 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     assert (await client.get(f"/api/palm/{reading_id}", params={"dev_user": user["tg_id"]})).status_code == 404
     deleted_second = await client.delete(f"/api/palm/{second_id}", params={"dev_user": user["tg_id"]})
     assert deleted_second.status_code == 200
-    assert "чтений ладони пока нет" in await skills.execute(db, user, "get_palm_reading", {})
+    assert "чтений ладони пока нет" in await skills.execute(db, user, "palm_scanner", {})
 
 
 @pytest.mark.asyncio

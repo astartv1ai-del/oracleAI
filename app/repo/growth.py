@@ -89,6 +89,24 @@ async def redeem(db, code: str, tg_id: int) -> dict | None:
             "batch": promo["batch"]}
 
 
+async def list_redemptions(db, *, batch: str | None = None,
+                           limit: int = 200) -> list[dict]:
+    """Кто и когда активировал купоны — для панели админа."""
+    sql = ["SELECT r.code, r.tg_id, r.created_at, c.batch, c.kind, "
+           "c.crystals, c.days, c.sku, u.name, u.username "
+           "FROM promo_redemptions r "
+           "JOIN promo_codes c ON c.code=r.code "
+           "LEFT JOIN users u ON u.tg_id=r.tg_id WHERE 1=1"]
+    params: list = []
+    if batch:
+        sql.append("AND c.batch=?")
+        params.append(batch)
+    sql.append("ORDER BY r.created_at DESC LIMIT ?")
+    params.append(limit)
+    cur = await db.execute(" ".join(sql), params)
+    return [dict(r) for r in await cur.fetchall()]
+
+
 async def batch_stats(db) -> list[dict]:
     cur = await db.execute(
         "SELECT COALESCE(batch,'(без партии)') batch, COUNT(*) total, "

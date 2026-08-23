@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Оракул · панель</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/admin/static/admin.css">
+<link rel="stylesheet" href="/admin/static/admin.css?v=__ADMIN_ASSET_VERSION__">
 </head>
 <body>
 
@@ -56,6 +56,7 @@
     <!-- ДАШБОРД -->
     <section class="view active" id="view-dashboard">
       <div id="kpi" class="kpi-grid"></div>
+      <div id="kpi-monetization" class="kpi-grid"></div>
 
       <div class="row-2">
         <div class="card">
@@ -176,9 +177,16 @@
       </div>
       <div class="card">
         <div class="card-head"><h3>Коды</h3>
+          <span id="promo-batch-hint" class="muted small"></span>
           <label class="check"><input type="checkbox" id="promo-unused"> только неиспользованные</label>
         </div>
         <div id="promo-codes" class="table-wrap"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Активации купонов</h3>
+          <span class="muted small">Кто и когда применил код — клик по строке открывает клиентку</span>
+        </div>
+        <div id="promo-redemptions" class="table-wrap"></div>
       </div>
     </section>
 
@@ -261,6 +269,8 @@
                   <option value="owner">Владелец</option>
                 </select></label>
               </div>
+              <label>Подпись (необязательно)<input id="admin-title" class="input" maxlength="60"
+                placeholder="Например: редактор контента"></label>
               <button id="admin-add" class="btn ghost">Добавить</button>
             </div>
           </div>
@@ -332,6 +342,6 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="/admin/static/admin.js"></script>
+<script src="/admin/static/admin.js?v=__ADMIN_ASSET_VERSION__"></script>
 </body>
 </html>

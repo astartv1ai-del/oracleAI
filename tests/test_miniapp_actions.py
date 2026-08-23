@@ -106,7 +106,7 @@ def test_chiromant_is_present_on_all_agent_surfaces() -> None:
     for source in (data, app, art, home, chat, specs):
         assert "chiromant" in source
     assert "chiromant.jpg" in app
-    assert "get_palm_focus" in specs
+    assert "palm_scanner" in specs
     assert "agents.slice(0, 4)" in chat
 
 
@@ -137,6 +137,7 @@ def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
     assert 'aria-live="polite"' in placements
     assert 'data-placement-code' in placements
     assert 'palm-preview' in palm and 'palm-confidence' in palm
-    assert all(name in palm for name in ('featurePalmMap', 'featurePalmQuality', 'featurePalmCompare', 'palm-workflow'))
-    assert 'featurePalmMap' in data and 'featurePalmCompare' in data
+    # Один инструмент хироманта: только сканер, workflow-экраны map/quality/compare удалены
+    assert all(name not in palm for name in ('featurePalmMap', 'featurePalmQuality', 'featurePalmCompare', 'palm-workflow'))
+    assert 'featurePalmMap' not in data and 'featurePalmCompare' not in data
     assert '.placement-explorer' in css and '.palm-progress' in css

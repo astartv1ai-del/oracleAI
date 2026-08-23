@@ -156,6 +156,48 @@ async def checkout_web_plan(db, tg_id: int, plan_code: str, *,
             "plan": plan}
 
 
+#: USD-цены пакетов Кристаллов для крипто-оплаты. Источник цены — только сервер:
+#: клиент передаёт sku, всё остальное смотрим здесь.
+CRYSTAL_PACKS_USD = {"crystals_100": 5.49, "crystals_250": 11.49,
+                     "crystals_600": 21.49}
+
+
+async def checkout_crypto_crystals(db, tg_id: int, sku: str) -> dict:
+    """Pending-заказ + инвойс Crypto Pay на пакет Кристаллов.
+
+    Выдача произойдёт только после подписанного вебхука — как у Stars/Paddle.
+    """
+    product = await repo.get_product(db, sku)
+    if not product or product["kind"] != "crystals":
+        raise PurchaseError("Криптой можно пополнить только пакеты Кристаллов 💎")
+    amount_usd = CRYSTAL_PACKS_USD.get(sku)
+    if not amount_usd:
+        raise PurchaseError("Для этого пакета не задана крипто-цена 🌙")
+    order = await repo.create_order(
+        db, tg_id, "crystals", sku=sku, title=product["title"],
+        amount_stars=0, surface="bot",
+        meta={"grant_kind": "crystals", "grant_code": sku,
+              "grant_qty": product["grant_qty"], "valid_days": None,
+              "provider": "cryptobot", "amount_usd": amount_usd})
+    from . import cryptobot
+    try:
+        created = await cryptobot.create_invoice(
+            amount_usd=amount_usd, payload=order["payload"],
+            description=f"Oracle: {product['title']}")
+    except cryptobot.CryptoPayError as exc:
+        await repo.mark_order_failed(db, order["payload"])
+        raise PurchaseError(
+            "крипто-оплата сейчас недоступна, попробуй позже 🌙",
+            status_code=503) from exc
+    await repo.set_order_meta(db, order["payload"],
+                              cryptobot_invoice_id=created["invoice_id"])
+    await analytics.track(db, "crypto_checkout", tg_id, props={"sku": sku},
+                          surface="bot")
+    return {**order, "link": created["link"],
+            "amount_usd": amount_usd,
+            "description": product["description"] or product["title"]}
+
+
 async def pay_with_crystals(db, tg_id: int, sku: str, *,
                             surface: str = "bot") -> dict:
     """Покупка товара за Кристаллы — без Telegram-инвойса, сразу."""

@@ -120,7 +120,8 @@ def spread_offer_kb(item: dict) -> InlineKeyboardMarkup:
         rows.append([InlineKeyboardButton(
             text=f"✦ Открыть за {item['price_crystals']} Кристаллов",
             callback_data=f"buy_crystals:{item['sku']}")])
-    rows.append([InlineKeyboardButton(text="👑 Взять подписку", callback_data="plans")])
+    # Подписка на витринах скрыта (этап «только Кристаллы»); хендлер `plans`
+    # оставлен — вернём кнопкой, когда решим снова продавать.
     rows.append([InlineKeyboardButton(text="← К раскладам", callback_data="tarot")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -134,8 +135,6 @@ def limit_kb(cost: int, *, has_crystals: bool, lang: str = "ru") -> InlineKeyboa
             text=(f"🔮 Emergency question · ✦{cost}" if en
                   else f"🔮 Экстренный вопрос · ✦{cost}"), callback_data="emergency")])
     rows += [
-        [InlineKeyboardButton(text=("👑 More questions each day" if en
-                                    else "👑 Больше вопросов в день"), callback_data="plans")],
         [InlineKeyboardButton(text=("💎 Buy Crystals" if en else "💎 Купить Кристаллы"),
                               callback_data="shop_crystals")],
         [InlineKeyboardButton(text=("← Menu" if en else "← Меню"), callback_data=CB_MENU)],
@@ -145,7 +144,6 @@ def limit_kb(cost: int, *, has_crystals: bool, lang: str = "ru") -> InlineKeyboa
 
 def shop_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👑 Подписки", callback_data="plans")],
         [InlineKeyboardButton(text="🎴 Одиночные расклады", callback_data="shop_spreads")],
         [InlineKeyboardButton(text="📜 Большие разборы", callback_data="shop_reports")],
         [InlineKeyboardButton(text="💬 Дополнительные вопросы", callback_data="shop_questions")],
@@ -169,8 +167,13 @@ def plans_kb(plans: list[dict], current: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def products_kb(products: list[dict], *, back: str = "shop") -> InlineKeyboardMarkup:
-    """Витрина товаров: Stars и Кристаллы — двумя кнопками, чтобы не путать."""
+def products_kb(products: list[dict], *, back: str = "shop",
+                crypto_skus: tuple = ()) -> InlineKeyboardMarkup:
+    """Витрина товаров: Stars и Кристаллы — двумя кнопками, чтобы не путать.
+
+    Для пакетов Кристаллов добавляется третья кнопка — крипта (Crypto Pay):
+    без юрлица это единственный канал с картой/USDT и низкой комиссией.
+    """
     rows = []
     for product in products:
         line = []
@@ -182,6 +185,9 @@ def products_kb(products: list[dict], *, back: str = "shop") -> InlineKeyboardMa
             line.append(InlineKeyboardButton(
                 text=f"✦{product['price_crystals']}",
                 callback_data=f"buy_crystals:{product['sku']}"))
+        if product["kind"] == "crystals" and product["sku"] in crypto_skus:
+            line.append(InlineKeyboardButton(
+                text="₿ Криптой", callback_data=f"buy_crypto:{product['sku']}"))
         rows.append([InlineKeyboardButton(text=product["title"][:60],
                                           callback_data=f"product:{product['sku']}")])
         if line:
@@ -192,9 +198,7 @@ def products_kb(products: list[dict], *, back: str = "shop") -> InlineKeyboardMa
 
 def profile_kb(*, push_on: bool, sub_active: bool) -> InlineKeyboardMarkup:
     rows = []
-    if not sub_active:
-        rows.append([InlineKeyboardButton(text="👑 Продлить доступ",
-                                          callback_data="plans")])
+    # «Продлить доступ» скрыт вместе с подписками (этап «только Кристаллы»).
     rows += [
         [InlineKeyboardButton(text="💎 Лавка", callback_data="shop")],
         [InlineKeyboardButton(text="🌟 Пригласить близкого", callback_data="invite")],

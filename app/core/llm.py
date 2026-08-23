@@ -539,39 +539,48 @@ async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
         msgs = [dict(m) for m in messages]
         kept = ""
         for _ in range(max_iters):
-            if budget is not None:
-                budget.check()
-            before_prompt, before_completion = meter.prompt, meter.completion
-            resp = await _with_retries(
-                lambda: client.messages.create(
-                    model=_models("anthropic", tier), max_tokens=max_tokens,
-                    system=sys_block, tools=tools, messages=msgs),
-                "anthropic", "agent")
-            meter.add(getattr(resp, "usage", None))
-            if budget is not None:
-                budget.add_usage(
-                    _models("anthropic", tier),
-                    meter.prompt - before_prompt,
-                    meter.completion - before_completion,
-                )
-            piece = "".join(b.text for b in resp.content
-                            if b.type == "text").strip()
-            if resp.stop_reason != "tool_use":
-                return piece
-            if piece:
-                # модель часто пишет предисловие до tool_use — не теряем его,
-                # если потолок итераций исчерпан (иначе уходит в офлайн-фолбэк)
-                kept = piece
-            msgs.append({"role": "assistant", "content": resp.content})
-            blocks = [b for b in resp.content if b.type == "tool_use"]
-            if budget is not None:
-                budget.reserve_tools(len(blocks))
-            tool_calls = [(b.name, dict(b.input or {})) for b in blocks]
-            outputs = (await _gather_tools(execute, tool_calls, budget)
-                       if budget is not None else await _gather_tools(execute, tool_calls))
-            msgs.append({"role": "user", "content": [
-                {"type": "tool_result", "tool_use_id": b.id, "content": out}
-                for b, out in zip(blocks, outputs)]})
+            try:
+                if budget is not None:
+                    budget.check()
+                before_prompt, before_completion = meter.prompt, meter.completion
+                resp = await _with_retries(
+                    lambda: client.messages.create(
+                        model=_models("anthropic", tier), max_tokens=max_tokens,
+                        system=sys_block, tools=tools, messages=msgs),
+                    "anthropic", "agent")
+                meter.add(getattr(resp, "usage", None))
+                if budget is not None:
+                    budget.add_usage(
+                        _models("anthropic", tier),
+                        meter.prompt - before_prompt,
+                        meter.completion - before_completion,
+                    )
+                piece = "".join(b.text for b in resp.content
+                                if b.type == "text").strip()
+                if resp.stop_reason != "tool_use":
+                    return piece
+                if piece:
+                    # модель часто пишет предисловие до tool_use — не теряем его,
+                    # если потолок итераций исчерпан (иначе уходит в офлайн-фолбэк)
+                    kept = piece
+                msgs.append({"role": "assistant", "content": resp.content})
+                blocks = [b for b in resp.content if b.type == "tool_use"]
+                if budget is not None:
+                    budget.reserve_tools(len(blocks))
+                tool_calls = [(b.name, dict(b.input or {})) for b in blocks]
+                outputs = (await _gather_tools(execute, tool_calls, budget)
+                           if budget is not None else await _gather_tools(execute, tool_calls))
+                msgs.append({"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": b.id, "content": out}
+                    for b, out in zip(blocks, outputs)]})
+            except Exception as e:  # noqa: BLE001
+                # Бюджет (tool-use/стоимость/дедлайн) — лимит всей workflow, а не
+                # сетевой сбой: возвращаем уже собранный текст вместо офлайн-шаблона.
+                if ("budget exceeded" in str(e).lower()
+                        or "workflow deadline exceeded" in str(e).lower()):
+                    log.info("anthropic: исчерпан бюджет workflow — частичный ответ")
+                    return kept or _fallback_text()
+                raise
         return kept or _fallback_text()
     finally:
         await _close_client(client)
@@ -613,6 +622,11 @@ async def _run_openai_like(provider, system, messages, tools, execute,
                 lambda: _stream_chat(client, model, msgs, max_tokens, oa_tools,
                                      meter=meter),
                 provider, "agent")
+            # Сохраняем собранный текст до add_usage/reserve_tools: бюджет может
+            # бросить «cost/tool-call budget exceeded», и без этого частичный
+            # ответ терялся бы и уходил в офлайн-шаблон.
+            if text:
+                kept = text
             if budget is not None:
                 budget.add_usage(
                     model,
@@ -621,8 +635,6 @@ async def _run_openai_like(provider, system, messages, tools, execute,
                 )
             if not calls:
                 return text
-            if text:
-                kept = text
             msgs.append({
                 "role": "assistant",
                 "content": text,
@@ -645,6 +657,12 @@ async def _run_openai_like(provider, system, messages, tools, execute,
                 msgs.append({"role": "tool", "tool_call_id": c["id"], "content": out})
         return kept or _fallback_text()
     except Exception as e:  # noqa: BLE001
+        # Исчерпан бюджет (tool-use/стоимость) или дедлайн всей workflow — это
+        # не «провайдер без tool-use» (в pre-tool каскад ломиться нельзя: он
+        # снова упрётся в тот же бюджет). Возвращаем уже собранный текст.
+        if "budget exceeded" in str(e).lower() or "workflow deadline exceeded" in str(e).lower():
+            log.info("%s: исчерпан бюджет workflow — возвращаю частичный ответ", provider)
+            return kept or _fallback_text()
         # сервер не умеет tools (400/устаревший API) → pre-tool режим
         if "tool" not in str(e).lower() and "function" not in str(e).lower():
             raise
@@ -669,8 +687,9 @@ async def _run_pretool(client, model, system, messages, tools, execute,
     wanted: list[tuple[str, dict]] = []
 
     def add(name: str, args: dict | None = None) -> None:
-        if name in allowed and all(existing != name for existing, _ in wanted):
-            wanted.append((name, args or {}))
+        if name not in allowed or any(existing == name for existing, _ in wanted):
+            return
+        wanted.append((name, args or {}))
 
     add("get_chart")
     add("get_transits")
@@ -683,22 +702,10 @@ async def _run_pretool(client, model, system, messages, tools, execute,
     if any(w in lower for w in ("стрижк", "свадьб", "переезд", "поездк", "выбер")):
         add("get_moon_week", {"days": 7})
 
-    if allowed & {"check_palm_quality", "get_palm_map", "get_palm_reading"} and any(
-        w in lower for w in ("ладон", "лини", "холм", "пальц", "снимк", "фото")
+    if "palm_scanner" in allowed and any(
+        w in lower for w in ("ладон", "лини", "холм", "пальц", "снимк", "фото", "чтени")
     ):
-        add("check_palm_quality")
-        if any(w in lower for w in ("карт", "зон", "обзор")):
-            add("get_palm_map")
-        if any(w in lower for w in ("сравн", "два чтения", "два снимка")):
-            add("compare_palm_readings")
-        elif any(w in lower for w in ("сердц", "голов", "жизн", "судьб", "солнц", "отнош", "холм", "пальц")):
-            topic = ("heart_line" if "сердц" in lower else "head_line" if "голов" in lower
-                     else "life_line" if "жизн" in lower else "fate_line" if "судьб" in lower
-                     else "sun_line" if "солнц" in lower else "relationship_line" if "отнош" in lower
-                     else "mounts" if "холм" in lower else "fingers")
-            add("get_palm_focus", {"topic": topic})
-        else:
-            add("get_palm_reading")
+        add("palm_scanner")
 
     if budget is not None:
         budget.reserve_tools(len(wanted))
@@ -708,7 +715,17 @@ async def _run_pretool(client, model, system, messages, tools, execute,
                + "\n\n".join(context_parts))
     msgs = [{"role": "system", "content": system2}]
     msgs += [{"role": m["role"], "content": m["content"]} for m in messages]
+    if meter is not None:
+        before_prompt, before_completion = meter.prompt, meter.completion
     text, _ = await _stream_chat(client, model, msgs, max_tokens, meter=meter)
+    # Обычный цикл учитывает каждый вызов в cost-потолке; pre-tool должен
+    # делать то же, но превышение потолка не стоит потери готового ответа.
+    if budget is not None and meter is not None:
+        try:
+            budget.add_usage(model, meter.prompt - before_prompt,
+                             meter.completion - before_completion)
+        except RuntimeError:
+            pass
     return text
 
 

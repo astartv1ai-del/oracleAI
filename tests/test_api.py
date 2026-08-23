@@ -461,6 +461,18 @@ async def test_admin_owner_from_env_has_access(client, db):
     assert res.json()["role"] == "owner"
 
 
+async def test_admin_health_reports_telegram_webapp_readiness(client, db, monkeypatch):
+    from app.config import settings
+
+    await users.ensure(db, 1, "Владелец")
+    monkeypatch.setattr(settings, "webapp_url", "")
+    missing = await client.get("/api/admin/health", params={"dev_user": 1})
+    assert missing.json()["telegram_webapp_ready"] is False
+    monkeypatch.setattr(settings, "webapp_url", "https://oracle.example")
+    ready = await client.get("/api/admin/health", params={"dev_user": 1})
+    assert ready.json()["telegram_webapp_ready"] is True
+
+
 async def test_admin_dashboard_and_users(client, db, user):
     await users.ensure(db, 1, "Владелец")
     dash = await client.get("/api/admin/dashboard", params={"dev_user": 1})
@@ -595,3 +607,67 @@ async def test_admin_broadcast_rejects_unknown_segment(client, db):
     res = await client.post("/api/admin/broadcasts", params={"dev_user": 1},
                             json={"title": "t", "body": "b", "segment": "выдумка"})
     assert res.status_code == 400
+
+
+async def test_owner_manages_roles_without_losing_admin_title(client, db):
+    """Владелец выдаёт/меняет роли, поддержка не может повышать права."""
+    from app.repo import users as users_repo
+
+    await users_repo.ensure(db, 1, "Владелец")
+    await users_repo.ensure(db, 2002, "Саппорт")
+    created = await client.post("/api/admin/admins", params={"dev_user": 1}, json={
+        "tg_id": 2002, "role": "support", "title": "Служба заботы",
+    })
+    assert created.status_code == 200
+
+    # Роль support годится для работы с клиентками, но не для выдачи ролей.
+    support_me = await client.get("/api/admin/me", params={"dev_user": 2002})
+    assert support_me.json()["role"] == "support"
+    forbidden = await client.post("/api/admin/admins", params={"dev_user": 2002},
+                                  json={"tg_id": 2003, "role": "admin"})
+    assert forbidden.status_code == 403
+
+    changed = await client.patch("/api/admin/admins/2002", params={"dev_user": 1},
+                                 json={"role": "analyst"})
+    assert changed.status_code == 200
+    admins = (await client.get("/api/admin/admins", params={"dev_user": 1})).json()
+    managed = next(item for item in admins if item["tg_id"] == 2002)
+    assert managed["role"] == "analyst"
+    assert managed["title"] == "Служба заботы"
+
+    missing = await client.patch("/api/admin/admins/999999", params={"dev_user": 1},
+                                 json={"role": "admin"})
+    assert missing.status_code == 404
+    self_change = await client.patch("/api/admin/admins/1", params={"dev_user": 1},
+                                     json={"role": "analyst"})
+    assert self_change.status_code == 400
+    invalid_id = await client.post("/api/admin/admins", params={"dev_user": 1},
+                                   json={"tg_id": -1, "role": "admin"})
+    assert invalid_id.status_code == 422
+
+    audit = (await client.get("/api/admin/audit", params={"dev_user": 1})).json()
+    assert any(item["action"] == "admin.role" and item["target"] == "2002"
+               for item in audit)
+
+
+async def test_admin_sees_coupon_activations_and_can_filter_batch(client, db, user):
+    from app.repo import growth
+    from app.repo import users as users_repo
+
+    await users_repo.ensure(db, 1, "Владелец")
+    code = (await growth.create_codes(
+        db, 1, kind="crystals", crystals=10, batch="creator-campaign",
+        created_by=1))[0]
+    assert await growth.redeem(db, code, user["tg_id"])
+
+    res = await client.get("/api/admin/promo/redemptions", params={
+        "dev_user": 1, "batch": "creator-campaign",
+    })
+    assert res.status_code == 200
+    [redemption] = res.json()
+    assert redemption["code"] == code
+    assert redemption["tg_id"] == user["tg_id"]
+    assert redemption["batch"] == "creator-campaign"
+    assert redemption["kind"] == "crystals"
+    assert redemption["crystals"] == 10
+    assert redemption["name"] == "Тестовая"

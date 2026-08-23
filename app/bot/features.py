@@ -552,3 +552,14 @@ async def admin_stats(message: Message, db):
         f"⭐ Stars всего: {o['stars_total']} от {o['payers']} плательщиц\n\n"
         "📊 Воронка, CRM, рассылки и контент — в панели управления "
         "(кнопка в меню).")
+
+
+@router.message(Command("admin"))
+async def admin_panel(message: Message, db):
+    """Открыть веб-панель. Доступна только администраторам."""
+    role = await admin_repo.resolve_role(db, message.from_user.id)
+    if not role:
+        return
+    from .keyboards import main_menu
+    kb = main_menu(is_admin=True)
+    await message.answer("📊 Открываю панель управления…", reply_markup=kb)

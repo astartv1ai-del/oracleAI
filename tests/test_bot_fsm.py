@@ -17,6 +17,26 @@ from app.bot.onboarding import (
 from app.repo import users
 
 
+def test_admin_panel_button_is_visible_only_to_admin_and_uses_https_url(monkeypatch):
+    from app.bot.keyboards import main_menu
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "webapp_url", "https://oracle.example")
+    admin_buttons = [button for row in main_menu(is_admin=True).inline_keyboard
+                     for button in row if button.text == "📊 Панель управления"]
+    assert len(admin_buttons) == 1
+    assert admin_buttons[0].web_app.url == "https://oracle.example/admin"
+    assert not any(button.text == "📊 Панель управления"
+                   for row in main_menu(is_admin=False).inline_keyboard
+                   for button in row)
+
+
+def test_admin_command_is_registered():
+    from app.bot.main import COMMANDS
+
+    assert any(command.command == "admin" for command in COMMANDS)
+
+
 class _User:
     def __init__(self, tg_id: int):
         self.id = tg_id

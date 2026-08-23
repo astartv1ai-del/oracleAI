@@ -71,6 +71,28 @@ async def add_admin(db, tg_id: int, role: str = "admin", *, title: str = "",
             (tg_id, role, title, added_by, tg_id, utcnow()))
 
 
+async def update_admin_role(db, tg_id: int, role: str, *,
+                            title: str | None = None,
+                            changed_by: int | None = None) -> bool:
+    """Меняет роль существующего администратора, не затирая его подпись.
+
+    Добавление нового сотрудника остаётся отдельным действием (`add_admin`).
+    Это защищает от опечатки в id в форме смены роли.
+    """
+    if role not in ROLE_LEVEL:
+        raise ValueError(f"неизвестная роль: {role}")
+    async with transaction(db):
+        if title is None:
+            cur = await db.execute(
+                "UPDATE admins SET role=?, added_by=? WHERE tg_id=?",
+                (role, changed_by, tg_id))
+        else:
+            cur = await db.execute(
+                "UPDATE admins SET role=?, title=?, added_by=? WHERE tg_id=?",
+                (role, title, changed_by, tg_id))
+    return bool(cur.rowcount)
+
+
 async def remove_admin(db, tg_id: int) -> None:
     async with transaction(db):
         await db.execute("DELETE FROM admins WHERE tg_id=?", (tg_id,))
