@@ -9,7 +9,10 @@
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 from .base import AgentSpec
+from .file_loader import profile_for_legacy
 
 ORACLE = AgentSpec(
     code="oracle",
@@ -188,9 +191,39 @@ CHIROMANT = AgentSpec(
                  "Какой тип руки у меня по стихии?"),
 )
 
-REGISTRY: dict[str, AgentSpec] = {
+_LEGACY_REGISTRY: dict[str, AgentSpec] = {
     spec.code: spec
     for spec in (ORACLE, ASTROLOGER, TAROLOGIST, CHIROMANT)
+}
+
+
+def _with_file_profile(spec: AgentSpec) -> AgentSpec:
+    """Overlay file-backed profile data without changing legacy API codes."""
+    profile = profile_for_legacy(spec.code)
+    if profile is None:
+        return spec
+    data = profile.data
+    return replace(
+        spec,
+        name=str(data.get("name", spec.name)),
+        emoji=str(data.get("emoji", spec.emoji)),
+        title=str(data.get("title", spec.title)),
+        tagline=str(data.get("tagline", spec.tagline)),
+        accent=str(data.get("accent", spec.accent)),
+        greeting=str(data.get("greeting", spec.greeting)),
+        suggestions=tuple(data.get("suggestions", spec.suggestions)),
+        tier=str(data.get("tier", spec.tier)),
+        max_tokens=int(data.get("max_tokens", spec.max_tokens)),
+        history_limit=int(data.get("history_limit", spec.history_limit)),
+        skills=tuple(data.get("tools", spec.skills)),
+        style="",
+        rules=profile.system,
+    )
+
+
+REGISTRY: dict[str, AgentSpec] = {
+    code: _with_file_profile(spec)
+    for code, spec in _LEGACY_REGISTRY.items()
 }
 
 DEFAULT_AGENT = ORACLE.code

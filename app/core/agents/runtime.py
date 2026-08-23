@@ -18,12 +18,13 @@ from ...repo import billing as billing_repo
 from ...repo import content as content_repo
 from ...repo import dialog as dialog_repo
 from ...repo import users as users_repo
-from .. import astro, llm, memory, palm, skills, tarot
+from .. import astro, llm, memory, skills, tarot
 from .. import matrix as mx
 from ..personas import persona_style
 from ..stable import stable_seed
 from .base import build_system_prompt
 from .context import build_bounded_history
+from .file_loader import skill_context
 from ..interpretation import validate_nonfatal_text
 from .specs import DEFAULT_AGENT, REGISTRY, get
 
@@ -96,7 +97,10 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
     language_rule = ("Reply in clear, warm English. Keep card and calculation names "
                      "recognisable; never pretend a translation is an exact calculation."
                      if user["lang"] == "en" else "")
-    combined_extra_rules = "\n".join(rule for rule in (extra_rules, language_rule) if rule)
+    active_skills = skill_context(spec.code, question, limit=3)
+    combined_extra_rules = "\n".join(
+        rule for rule in (extra_rules, language_rule, active_skills) if rule
+    )
     return build_system_prompt(
         spec, user=user, agent_name=spec.display_name(user), chart_brief=brief,
         matrix_brief=matrix_brief, memories=memories,

@@ -261,7 +261,7 @@ async def test_pretool_other_agents_unaffected(monkeypatch):
     monkeypatch.setattr(llm, "_stream_chat", fake_stream)
     tools = [{"name": "get_chart"}, {"name": "palm_scanner"}, {"name": "draw_tarot"}]
 
-    text = await llm._run_pretool(
+    await llm._run_pretool(
         None, "model", "Ты — Лилит",
         [{"role": "user", "content": "Какой у меня знак? Сделай расклад таро."}],
         tools, lambda *_: "", 500, None,

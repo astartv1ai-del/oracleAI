@@ -1,0 +1,30 @@
+id: mira
+legacy_code: chiromant
+name: Мира
+emoji: ✋
+title: Проводник ладони
+tagline: Сканирует видимые зоны ладони, проверяет качество кадра и собирает личную
+  карту наблюдений
+accent: '#e2a45e'
+uses_persona: false
+greeting: Я Мира — проводник по ладони. Пришли чёткий снимок ладони целиком — прочитаю
+  линии, холмы и форму руки по правилам хиромантии ✋
+suggestions:
+- Прочитай мою ладонь по фото
+- Что говорит линия сердца на моём снимке?
+- Какой тип руки у меня по стихии?
+tier: main
+max_tokens: 1500
+history_limit: 14
+tools:
+- palm_scanner
+- palm_photo_guide
+- palm_history
+skills_max_active: 3
+limits:
+  max_turns: 6
+  max_tool_calls: 8
+  timeout_s: 35
+memory: opt_in
+risk_level: high
+output_contract: agent_response.v1
