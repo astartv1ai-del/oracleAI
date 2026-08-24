@@ -245,6 +245,12 @@ const HOME_I18N = {
 const homeT = (key, fallback = '') => (HOME_I18N[oracleLang()] || HOME_I18N.ru)[key] || fallback || key;
 const homeFormat = (key, values = {}) => Object.entries(values).reduce(
   (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), homeT(key));
+const homeCount = (count, enOne, enMany, ruOne, ruFew, ruMany) => {
+  const n = Math.abs(Number(count)) % 100;
+  const last = n % 10;
+  const ru = n >= 11 && n <= 14 ? ruMany : last === 1 ? ruOne : last >= 2 && last <= 4 ? ruFew : ruMany;
+  return `${count} ${oracleLang() === 'en' ? (Number(count) === 1 ? enOne : enMany) : ru}`;
+};
 
 // P3: детерминированный вариант без сторонних трекеров. В событие уходят только
 // имя эксперимента и вариант; вопрос, дневник и другие личные данные не передаются.

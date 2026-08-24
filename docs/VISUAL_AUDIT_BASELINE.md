@@ -1,45 +1,71 @@
-# Visual UX audit baseline
+# Финальный visual UX/UI audit OracleAI
 
-Date: 2026-08-24. Scope: OracleAI Mini App shell, home screen and agent navigation in local dev preview.
+**Дата:** 24 августа 2026 года
 
-The first viewport is a centered narrow mobile-style canvas even on a desktop-sized browser. The cosmic atmosphere is distinctive and the champagne/lilac hierarchy is coherent, but the screen contains several simultaneous attention layers: dense starfield, nebula, silhouette, header, hero orb, onboarding/ritual card, forecast card, agent invitation section and fixed bottom dock. This works as a moodboard, but not yet as a calm product surface.
+**Ветка:** `feat/agent-first-harness`
 
-Observed improvement targets are: shorten persistent explanatory copy; reserve the strongest glow/animation for the active action; keep proof metadata secondary and collapsible; prevent badges and header metadata from competing with the agent name; make long agent/tool descriptions wrap rather than ellipsize critical meaning; and reduce the number of always-visible sections on narrow screens. The existing bottom dock is legible and the hero has a clear CTA, but the desktop screenshot shows unused side space while the app canvas remains phone-width, so a bounded reading column with deliberate desktop framing is preferable to uncontrolled stretching.
+**Область:** Mini App shell, home/agent hub, Tarot, Mira, natal chart, compatibility, placements, profile/history and public bilingual landing.
 
-The current onboarding can be dismissed and the home screen remains functional. The dev query does not authenticate subsequent API calls automatically, so authenticated agent/tool states must be validated through existing API tests and static rendering checks; this is recorded separately in LOCAL_VISUAL_QA.md.
+## Итог
 
-## Agent hub checkpoint
+Второй UX/UI проход сохранил концепцию **Astral Midnight** и существующие avatar signatures, но сделал интерфейс более последовательным: сначала одно действие и один результат, затем доказательства и дополнительные инструменты через disclosure. Основная постоянная информация теперь ограничена именем агента, ожидаемым результатом, CTA и коротким evidence label. Остальные quick tools and question ideas are progressive rather than wall-of-text.
 
-The agent hub has strong visual identity and consistent avatar treatment. On the narrow viewport, however, every card shows the avatar/header, outcome, last message, evidence badge, online label, CTA, three suggested questions, a section label and multiple tool rows at once. Urania additionally shows a four-tile Vedic block, making the page feel like a feature catalog rather than a calm choice. The screenshot also shows one-line ellipsis in several secondary descriptions; this preserves height but hides useful meaning. The redesign should keep one primary action and one or two compact capability previews visible, with the full tool set revealed on demand.
+## Live Tarot flip
 
-## Tarot checkpoint
+Tarot was tested through the local FastAPI preview with an authenticated QA profile and a real API round trip. The question was `Что мне важно увидеть в ближайшем шаге?`; the draw returned three cards; the first card was opened by an actual click, not by DOM injection. Post-click DOM verification recorded `.tcard.open`, a populated card title/meaning, and the opened-card progress state `1 из 3`.
 
-The Tarot picker has a good single-column hierarchy, but it currently shows school selector, provenance sentence, spread selector, hint, three prompt chips, question field, status, CTA, chat composer, suggestions and onboarding overlay in the same viewport. The overlay can obscure the active Tarot surface, which is a major first-use distraction. The school row should become a compact selected-school card with a progressive details disclosure; the provenance note should be a short status line; prompt chips should be reduced or horizontally scrollable; and the card stage should prioritize card image, position and short meaning, with full evidence/combination detail revealed after all cards are opened.
+Evidence files:
 
-## v95 redesign checkpoint
+- Full post-click viewport: `docs/assets/ux-qa/tarot-opened-live.webp`.
+- v98 card-face crop: `docs/assets/ux-qa/tarot-card-opened-v98.webp`.
+- PNG crop: `docs/assets/ux-qa/tarot-card-opened-v98.png`.
 
-After the first density pass, the hub renders each agent as a compact card with avatar, role, one-line outcome/description, proof row and a single `Показать возможности` disclosure. The details summary is keyboard-accessible and the browser exposes separate tool buttons only after expansion. Visual annotation boxes are browser QA markers, not page elements; the underlying card geometry remains inside the centered app canvas.
+The Tarot interaction keeps the face image and meaning hidden until reveal, uses a short tactile flip/tilt, and disables non-essential motion under `prefers-reduced-motion`. No generic onboarding overlay remained above the active picker during the final interaction.
 
-## Chat guide lifecycle diagnostic
+## Mobile horizontal-scroll QA
 
-The live console showed `pending: null` and `chat-guide: true` after opening the agent's primary `Начать` CTA. This is expected for a normal empty chat and is not the Tarot widget path. The generic guide was shortened; tool-specific flows are guarded so they should not display it after the tool callback creates a pending widget. The next interaction check should close the guide, open the chat's `Инструменты` sheet and launch the Tarot action from there.
+A reproducible CDP runner checked real viewport widths **320, 375 and 390 CSS px** with cache disabled. It measured `documentElement.scrollWidth`, `body.scrollWidth`, the app shell, agent cards, details panels, Tarot picker, Mira picker, compatibility form, placements and chart form/result containers. The final semantic rule counts page-level overflow or an actual `overflow-x:auto/scroll` container with excess width; harmless intrinsic overflow from transformed icons or line-clamp text is not reported as user-visible scrolling.
 
-## Quantitative Tarot QA
+| Surface | 320 px | 375 px | 390 px | Result |
+|---|---:|---:|---:|---|
+| Page/app shell | 320 / 320 | 375 / 375 | 390 / 390 | No horizontal scroll |
+| Agent hub/cards | 320 / 320 | 375 / 375 | 390 / 390 | No horizontal scroll |
+| Tarot picker | 320 / 320 | 375 / 375 | 390 / 390 | No horizontal scroll |
+| Mira picker | 320 / 320 | 375 / 375 | 390 / 390 | No horizontal scroll |
+| Compatibility form | 320 / 320 | 375 / 375 | 390 / 390 | No horizontal scroll |
+| Placements surface | 320 / 320 | 375 / 375 | 390 / 390 | No horizontal scroll |
+| Chart form | 320 / 320 | 375 / 375 | 390 / 390 | No horizontal scroll |
 
-The live v95 Tarot picker reported no horizontal clipping descendants. Its widget measured 378px wide by 587px high inside the reading column; two prompt buttons measured 261px and 237px wide with wrapped copy; the draw button measured 346px wide. The main app surface had no extra scroll beyond its intended internal container, and no `#intro`, `#chat-guide` or modal overlay was present during the active Tarot tool. This confirms the density pass reduced clutter without producing a new overflow layer.
+The only confirmed issue was an inner horizontal suggestion-chip rail in the agent hub at narrow width. It was changed to a wrapping layout. The final report contains `horizontalOverflow: false` for all tested stages and widths in `docs/assets/ux-qa/mobile-overflow-metrics.json`.
 
-## Mira capture checkpoint
+## Agent and tool hierarchy
 
-The live Mira capture surface presents the two primary upload actions as balanced side-by-side cards with large touch targets, short labels and file constraints. The guide block is visually distinct, the disclaimer is separated from the actions, and the composer remains outside the capture card. The screenshot showed no overlap between upload cards, bottom composer or dock. The remaining opportunity is to make the later result/evidence surface progressively reveal technical details rather than showing quality, geometry, limitations, prompts and disclaimer at once.
+The agent hub now presents each guide as a compact article card with avatar, role/outcome, primary `Начать` action and a short evidence row. Capabilities, quick tools and question ideas appear in one native disclosure; a global `toggle` handler keeps only one disclosure open at a time. Count labels now use correct Russian and English singular/plural forms, so labels such as `1 инструмент`, `2 инструмента`, `5 инструментов`, `1 quick tool` and `2 quick tools` remain natural.
 
-## v96 final hub checkpoint
+Mira's picker was tightened without weakening its evidence-first framing. The photo guide keeps the three practical capture conditions but removes the repeated phrase about filters, glare and relaxed fingers from the main sentence. The result continues to show visible observations first, while the map of zones and techniques stays behind a details disclosure. MediaPipe is described honestly as hand geometry/capture support; the UI does not claim line segmentation, diagnosis, fate prediction or medical inference.
 
-The v96 hub screenshot shows the four agent cards in a much calmer stack. The repeated online label is gone; each card keeps one evidence badge, optional tool count, compact avatar/header, a short role/outcome and a clear `Начать` CTA. The full capability list is behind a native disclosure row. The fixed bottom navigation remains visually separated from the cards and no element crosses the app canvas boundary.
+Chart, compatibility, placements and profile/history surfaces already use the same general hierarchy: calculation or fact first, interpretation second, and deeper details in disclosure/modal surfaces. Their existing progress, error, precision and empty states were checked for safe wording. No new oversized or horizontally clipping container was introduced in the final pass.
 
-## Expanded hub metrics
+## LLM-facing state audit
 
-With Lilith details open, the four card widths remained 434px within the 480px app canvas and only one details panel was open. The expanded card measured 413px high and the others 194px. The browser reported no visible horizontal overflow in the page, but intrinsic `scrollWidth` was larger on transformed avatar/sprite and line-clamped text nodes; this is a follow-up QA item to distinguish harmless intrinsic paint overflow from any real visible clipping before commit.
+The UI is aligned with the actual backend contract. The backend can use an ordered provider chain, fall back when a provider or tool is unavailable, and ultimately return an offline reflective response. Tool failures are converted into neutral user-safe wording; reasoning content is intentionally discarded. The frontend exposes `Факты → интерпретация` / `Evidence → reflection` and tool names, but does not expose provider keys, internal retries, raw errors or chain-of-thought.
 
-## v97 final browser checkpoint
+In the local visual preview, `LLM_PROVIDER=off` is intentionally used, so the preview is an offline/degraded environment rather than proof of production provider availability. Strict Telegram authentication remains unchanged outside `DEV_MODE`; the QA query path was used only by the local preview. User-facing error normalization continues to hide authentication/provider details and guide the user toward a safe next step.
 
-The final cache-busted v97 home and hub renders preserve the Astral Midnight concept, but reduce the active visual hierarchy to one hero action, one evidence row and one disclosure row per guide. The browser showed balanced cards, readable primary CTAs, clean bottom navigation separation and no visible overlap. The motion layer is intentionally restrained: avatar signatures and tool/card hover feedback are subtle, and all new motion is disabled under `prefers-reduced-motion`.
+## Public SEO copy audit
+
+The Russian and English landing pages now describe the actual product surface more precisely: natal charts, Rahu and Ketu, Tarot and Lenormand, palm-photo observations, journaling and personal rituals. The structured data adds a concise `featureList` matching those claims, and the guide copy names all four current agents. The existing `__PUBLIC_BASE_URL__` tokens remain intentionally deploy-safe because the FastAPI public-template route replaces them from the request host; the runtime robots and sitemap routes also generate the public base URL dynamically.
+
+No Similarweb traffic, Ahrefs/Semrush keyword, or stock-analysis claims were fabricated. A competitor SEO report would require an accessible target dataset and a defined competitor scope; the current work therefore improves first-party public copy and metadata only.
+
+## Validation checklist
+
+- `node --check` for every Mini App JavaScript file.
+- `ruff check app tests scripts`.
+- Full `pytest` suite with `LLM_PROVIDER=off`.
+- Cache-busting consistency check after the v98 bump.
+- Agent quality/routing check.
+- `git diff --check`.
+- Live Tarot draw, click-to-open state and screenshot evidence.
+- Mobile widths 320/375/390 with page and component overflow measurements.
+- Reduced-motion rules retained for the newly added interactions.

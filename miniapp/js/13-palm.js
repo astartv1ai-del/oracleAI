@@ -9,8 +9,8 @@
   const VISIBILITY = { clear: 'видно', partial: 'частично', unclear: 'неясно', not_visible: 'не видно' };
   const palmGuide = () => `
     <div class="palm-guide" role="note">
-      <b>Снимок, который поможет</b>
-      <span>Одна ладонь целиком · ровный свет · камера сверху · пальцы расслаблены. Без фильтров, бликов и украшений.</span>
+      <b>Чтобы фото читалось</b>
+      <span>Ладонь целиком · ровный свет · камера сверху.</span>
       <div class="palm-guide__steps"><i>1</i><i>2</i><i>3</i><small>целиком</small><small>без бликов</small><small>пальцы свободны</small></div>
     </div>`;
 

@@ -200,10 +200,10 @@
               </div>
               <div class="agent-proof-row" aria-label="${homeT('profileQuality')}">
                 <span class="agent-proof-badge">✦ ${homeT('evidenceFirst')}</span>
-                ${(a.capabilities && a.capabilities.length) ? `<span class="agent-proof-count">${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
+                ${(a.capabilities && a.capabilities.length) ? `<span class="agent-proof-count">${homeCount(a.capabilities.length, 'tool', 'tools', 'инструмент', 'инструмента', 'инструментов')}</span>` : ''}
               </div>
               <details class="agent-card__more">
-                <summary><span>${oracleLang() === 'en' ? 'See capabilities' : 'Показать возможности'}</span><span class="agent-card__more-meta">${(FEATURES[a.code] || []).length}${oracleLang() === 'en' ? ' quick tools' : ' быстрых действий'}</span></summary>
+                <summary><span>${oracleLang() === 'en' ? 'See capabilities' : 'Показать возможности'}</span><span class="agent-card__more-meta">${homeCount((FEATURES[a.code] || []).length, 'quick tool', 'quick tools', 'быстрое действие', 'быстрых действия', 'быстрых действий')}</span></summary>
                 ${(a.suggestions && a.suggestions.length) ? `
                 <div class="agent-ask-chips" aria-label="${oracleLang() === 'en' ? 'Question ideas' : 'Идеи вопросов'}">
                   ${a.suggestions.slice(0, 2).map(s => `

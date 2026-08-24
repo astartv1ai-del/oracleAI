@@ -280,7 +280,7 @@
             <div class="cname">${esc(a.name || 'Лилит')}</div>
             <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
             <div class="chat-proof-strip" aria-label="${homeT('profileQuality')}">
-              <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
+              <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeCount(a.capabilities.length, 'tool', 'tools', 'инструмент', 'инструмента', 'инструментов')}</span>` : ''}
             </div>
           </div>
           <button type="button" class="chat-thread-toggle" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="Открыть мои чаты">

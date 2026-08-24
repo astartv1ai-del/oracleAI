@@ -2391,9 +2391,8 @@ html { scroll-behavior: smooth; }
 .agent-card__more[open] .agent-more-kicker,
 .agent-card__more[open] .agent-chips,
 .agent-card__more[open] .vedic-surface { animation: detailReveal 220ms var(--ease-ritual) both; }
-.agent-card .agent-ask-chips { display: flex; gap: 6px; overflow-x: auto; margin: 2px 0 3px; padding: 2px 1px 3px; scrollbar-width: none; }
-.agent-card .agent-ask-chips::-webkit-scrollbar { display: none; }
-.agent-card .ask-chip { flex: 0 0 auto; max-width: 82%; min-height: 34px; }
+.agent-card .agent-ask-chips { display: flex; flex-wrap: wrap; gap: 6px; overflow: visible; margin: 2px 0 3px; padding: 2px 1px 3px; }
+.agent-card .ask-chip { flex: 1 1 auto; min-width: 0; max-width: 100%; min-height: 34px; white-space: normal; line-height: 1.25; }
 .agent-more-kicker { margin: 10px 0 6px !important; font-size: 9px !important; }
 .agent-card .agent-chips { gap: 6px; margin-top: 0; }
 .agent-card .agent-chips .tool { min-height: 56px; padding: 9px 10px; }
