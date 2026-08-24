@@ -305,10 +305,10 @@
           "text": "",
           "clientWidth": 42,
           "scrollWidth": 48,
-          "rectWidth": 42.24,
-          "rectHeight": 42.24,
+          "rectWidth": 42.25,
+          "rectHeight": 42.25,
           "rectLeft": 30.87,
-          "rectRight": 73.11,
+          "rectRight": 73.12,
           "overflowX": "visible",
           "clipped": true,
           "isScrollContainer": false
@@ -807,9 +807,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": true,
-        "transform": "matrix(1, 0, 0, 1, -5.15747, 0)",
+        "transform": "matrix(1, 0, 0, 1, -2.9256, 0)",
         "rectWidth": 281.59,
-        "rectLeft": -5.16
+        "rectLeft": -2.93
       },
       "sidebarOpen": true,
       "scrollContainers": [],
@@ -1523,8 +1523,8 @@
           "text": "",
           "clientWidth": 48,
           "scrollWidth": 51,
-          "rectWidth": 48.01,
-          "rectHeight": 48.01,
+          "rectWidth": 48.02,
+          "rectHeight": 48.02,
           "rectLeft": 27.99,
           "rectRight": 76.01,
           "overflowX": "visible",
@@ -1903,8 +1903,8 @@
           "scrollWidth": 51,
           "rectWidth": 48.05,
           "rectHeight": 48.05,
-          "rectLeft": 27.98,
-          "rectRight": 76.02,
+          "rectLeft": 27.97,
+          "rectRight": 76.03,
           "overflowX": "visible",
           "clipped": true,
           "isScrollContainer": false
@@ -2041,9 +2041,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": true,
-        "transform": "matrix(1, 0, 0, 1, -5.94749, 0)",
+        "transform": "matrix(1, 0, 0, 1, -9.89896, 0)",
         "rectWidth": 324,
-        "rectLeft": -5.95
+        "rectLeft": -9.9
       },
       "sidebarOpen": true,
       "scrollContainers": [],
@@ -2741,8 +2741,8 @@
           "text": "",
           "clientWidth": 54,
           "scrollWidth": 58,
-          "rectWidth": 54.02,
-          "rectHeight": 54.02,
+          "rectWidth": 54.01,
+          "rectHeight": 54.01,
           "rectLeft": 33.99,
           "rectRight": 88.01,
           "overflowX": "visible",
@@ -3259,9 +3259,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": true,
-        "transform": "matrix(1, 0, 0, 1, -9.88473, 0)",
+        "transform": "matrix(1, 0, 0, 1, -15.9185, 0)",
         "rectWidth": 324,
-        "rectLeft": -9.88
+        "rectLeft": -15.92
       },
       "sidebarOpen": true,
       "scrollContainers": [],

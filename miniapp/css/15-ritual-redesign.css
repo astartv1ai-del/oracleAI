@@ -2861,3 +2861,88 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .screen-home .home-secondary > .card-day-big { margin-bottom:28px; }
   .screen-home .home-secondary > .na-card { margin-bottom:28px; }
 }
+
+
+/* v108 · Tarot slot is the card, not a smaller child inside it */
+.tarot-grid {
+  overflow: clip;
+  isolation: isolate;
+}
+.tarot-grid .tpos {
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  isolation: isolate;
+}
+.tarot-grid .tcard {
+  width: 100%;
+  max-width: none;
+  aspect-ratio: 330 / 568;
+  position: relative;
+  overflow: visible;
+}
+.tarot-grid .tcard-inner,
+.dc-card-inner,
+.tarot-card-big .tb-inner {
+  will-change: transform;
+  transform: translateZ(0);
+}
+.tarot-grid .tcard-face,
+.tarot-grid .tcard-face img,
+.dc-face,
+.dc-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover !important;
+}
+.tarot-grid .tcard-face,
+.dc-face,
+.tarot-card-big .tb-face {
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.tarot-card-big {
+  width: 124px;
+  height: auto;
+  aspect-ratio: 330 / 568;
+}
+.tb-face, .tb-front { background-size: cover !important; }
+.dc-card {
+  width: 74px;
+  height: auto;
+  aspect-ratio: 330 / 568;
+}
+@media (max-width: 899px) {
+  .tarot-grid { overflow: clip; }
+  .tarot-grid .tcard { max-width: none; }
+}
+
+
+/* v109 · deterministic Tarot 3D flip contract */
+.tarot-grid .tcard { perspective: 1000px; }
+.tarot-grid .tcard-inner,
+.dc-card-inner,
+.tarot-card-big .tb-inner {
+  transform-style: preserve-3d;
+  transition: transform 560ms cubic-bezier(.22, 1, .36, 1);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.tarot-grid .tcard-back,
+.tarot-grid .tcard-front,
+.dc-back,
+.dc-front,
+.tarot-card-big .tb-back,
+.tarot-card-big .tb-front {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.tarot-grid .tcard-back { transform: rotateY(0deg) translateZ(.1px); }
+.tarot-grid .tcard-front { transform: rotateY(180deg) translateZ(.1px); }
+.tarot-grid .tcard.open .tcard-inner { transform: rotateY(180deg) translateZ(0); }
+@media (prefers-reduced-motion: reduce) {
+  .tarot-grid .tcard-inner,
+  .dc-card-inner,
+  .tarot-card-big .tb-inner { transition: none !important; }
+}
