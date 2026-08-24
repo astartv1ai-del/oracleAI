@@ -116,10 +116,23 @@ async def test_me_returns_full_state(client, user):
     assert res.status_code == 200
     data = res.json()
     for key in ("name", "plan", "allowance", "agents", "flags", "crystals",
-                "sub_active", "questions_left", "gender"):
+                "sub_active", "questions_left", "gender", "tarot_deck_id", "tarot_deck"):
         assert key in data, key
     assert data["allowance"]["limit"] == 3
     assert len(data["agents"]) >= 3
+
+
+async def test_profile_tarot_deck_preference_is_persisted_and_validated(client, user):
+    updated = await client.patch("/api/profile", params=as_user(user),
+                                 json={"tarot_deck_id": "lenormand-36-game-of-hope-v1"})
+    assert updated.status_code == 200
+    assert updated.json()["updated"] == ["tarot_deck_id"]
+    profile = await client.get("/api/me", params=as_user(user))
+    assert profile.json()["tarot_deck_id"] == "lenormand-36-game-of-hope-v1"
+    assert profile.json()["tarot_deck"]["card_count"] == 36
+    bad = await client.patch("/api/profile", params=as_user(user),
+                             json={"tarot_deck_id": "not-a-deck"})
+    assert bad.status_code == 400
 
 
 async def test_profile_update_validates_persona(client, user):
@@ -251,11 +264,39 @@ async def test_partner_can_be_saved_and_removed(client, user):
 
 # ──────────────────────────────── Таро ────────────────────────────────────────
 
+async def test_tarot_deck_catalog_has_three_separate_traditions(client, user):
+    res = await client.get("/api/tarot/decks", params=as_user(user))
+    assert res.status_code == 200
+    decks = {item["deck_id"]: item for item in res.json()}
+    assert set(decks) >= {"rws-78-geldard-v1", "lenormand-36-game-of-hope-v1", "marseille-78-conver-v1"}
+    assert decks["rws-78-geldard-v1"]["asset_root"] != decks["lenormand-36-game-of-hope-v1"]["asset_root"]
+    assert decks["lenormand-36-game-of-hope-v1"]["supports_reversals"] is False
+
+
 async def test_spread_catalog(client, user):
     res = await client.get("/api/tarot/spreads", params=as_user(user))
     assert res.status_code == 200
     codes = {s["code"] for s in res.json()}
     assert {"one", "three", "love", "celtic"} <= codes
+    lenormand = await client.get("/api/tarot/spreads", params=as_user(user, {"deck_id": "lenormand-36-game-of-hope-v1"}))
+    assert {s["code"] for s in lenormand.json()} == {"one", "three", "line5", "relationship"}
+
+
+async def test_lenormand_draw_persists_selected_deck_and_ledger(client, user):
+    drawn = await client.post("/api/tarot/draw", params=as_user(user, {"spread": "line5"}),
+                              json={"question": "Какой следующий шаг?", "deck_id": "lenormand-36-game-of-hope-v1"})
+    assert drawn.status_code == 200
+    data = drawn.json()
+    assert data["deck_id"] == "lenormand-36-game-of-hope-v1"
+    assert len(data["cards"]) == 5
+    assert all(card["deck_id"] == data["deck_id"] and card["reversed"] is False for card in data["cards"])
+    assert data["ledger"]["asset_root"] == "/static/img/lenormand"
+    assert data["ledger"]["card_count"] == 36
+    await client.post(f"/api/tarot/interpret/{data['reading_id']}", params=as_user(user))
+    history = await client.get("/api/tarot/history", params=as_user(user))
+    row = next(item for item in history.json() if item["id"] == data["reading_id"])
+    assert row["deck_id"] == data["deck_id"]
+    assert row["ledger"]["checksum"] == data["ledger"]["checksum"]
 
 
 async def test_draw_then_interpret(client, user):

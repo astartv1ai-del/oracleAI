@@ -292,10 +292,11 @@
       const rows = await api('/api/tarot/history');
       const r = rows.find(x => x.id === id) || rows[0];
       const cardStrip = (r.cards || []).map(c => `
-        <div class="rc-strip"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+        <div class="rc-strip"><img src="${tarotAssetUrl(c, r.ledger || { deck_id: r.deck_id })}" alt="${esc(c.name)}" loading="lazy">
           <span>${esc(c.name)}${c.reversed ? ' ↺' : ''}</span></div>`).join('');
       const cards = (r.cards || []).map(c => `${c.emoji} ${c.name}${c.reversed ? ' ↺' : ''} — ${c.meaning}`).join('\n');
       this.showModal(`<h3>🎴 ${esc(r.question || profileT('readingFallback'))}</h3><button class="m-close" data-act="modal-close">✕</button>
+        <div class="tarot-deck-source">${esc(tarotDeckLabel(r.ledger, r.deck_id || 'RWS'))}</div>
         <div class="rc-strip-row">${cardStrip}</div>
         <div style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;margin:8px 0">${esc(cards)}</div>
         <div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap">${esc(r.answer || '—')}</div>

@@ -16,7 +16,7 @@ from typing import Any
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ..repo import palm as palm_repo
-from . import llm, palm_vision
+from . import llm, palm_landmarks, palm_vision
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MIN_SIDE = 480
@@ -382,6 +382,7 @@ def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
 async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "miniapp") -> dict:
     data_url, meta = _data_url(image)
     precheck = meta["visual_precheck"]
+    hand_geometry = palm_landmarks.analyze(image)
     raw: dict[str, Any] | None = None
     last_error: ValueError | None = None
     hard_capture_issues = {"image_decode_failed", "underexposed", "overexposed", "extreme_crop_or_aspect"}
@@ -389,6 +390,7 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
         precheck["status"] == "invalid_image"
         or precheck["score"] < 0.25
         or bool(hard_capture_issues & set(precheck.get("issues") or []))
+        or hand_geometry.get("status") == "no_hand"
     )
     if preflight_rejected:
         last_error = ValueError("deterministic_precheck")
@@ -405,6 +407,16 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
                 "\n\nDETERMINISTIC CAPTURE PRECHECK (not hand detection): "
                 + json.dumps(precheck, ensure_ascii=False, separators=(",", ":"))
                 + "\nИспользуй эти метрики только для оценки читаемости кадра; не называй их доказательством наличия руки или линий."
+                + "\n\nMEDIAPIPE HAND GEOMETRY (capture evidence only): "
+                + json.dumps({"status": hand_geometry.get("status"),
+                              "hand_count": hand_geometry.get("hand_count"),
+                              "hands": [{"handedness": h.get("handedness"),
+                                         "handedness_score": h.get("handedness_score"),
+                                         "normalized_bbox": h.get("normalized_bbox"),
+                                         "landmark_count": h.get("landmark_count")}
+                                        for h in hand_geometry.get("hands", [])]},
+                             ensure_ascii=False, separators=(",", ":"))
+                + "\nНе называй landmarks доказательством palm lines, здоровья, характера или судьбы."
             )
             text = await llm.complete_vision(
                 PALM_SYSTEM,
@@ -433,6 +445,7 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
     else:
         result = _normalize(raw, raw.get("image_quality") or {})
     result["visual_precheck"] = precheck
+    result["hand_geometry"] = hand_geometry
     result["image_quality"]["precheck_score"] = precheck["score"]
     result["image_quality"]["precheck_issues"] = precheck["issues"]
     if preflight_rejected:

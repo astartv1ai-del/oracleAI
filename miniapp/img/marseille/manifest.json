@@ -1,0 +1,1023 @@
+{
+  "deck_id": "marseille-78-conver-v1",
+  "label": "Tarot de Marseille · historical public-domain reference",
+  "card_count": 78,
+  "source_repo": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille",
+  "license_note": "Each source entry is marked public domain in the repository metadata; preserve source URLs and re-check jurisdiction before redistribution.",
+  "cards": [
+    {
+      "card_id": "m00",
+      "source_file": "00_Le_Mat.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/00_Le_Mat.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/00_Le_Mat.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Fool",
+      "asset": "/static/img/marseille/m00.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m01",
+      "source_file": "01_Le_Bateleur.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/01_Le_Bateleur.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/01_Le_Bateleur.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Magician",
+      "asset": "/static/img/marseille/m01.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m02",
+      "source_file": "02_La_Papesse.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/02_La_Papesse.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/02_La_Papesse.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The High Priestess",
+      "asset": "/static/img/marseille/m02.jpg",
+      "pixel_size": [
+        814,
+        1536
+      ]
+    },
+    {
+      "card_id": "m03",
+      "source_file": "03_L_Imperatrice.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/03_L_Imperatrice.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/03_L_Imperatrice.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Empress",
+      "asset": "/static/img/marseille/m03.jpg",
+      "pixel_size": [
+        814,
+        1536
+      ]
+    },
+    {
+      "card_id": "m04",
+      "source_file": "04_L_Empereur.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/04_L_Empereur.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/04_L_Empereur.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Emperor",
+      "asset": "/static/img/marseille/m04.jpg",
+      "pixel_size": [
+        814,
+        1536
+      ]
+    },
+    {
+      "card_id": "m05",
+      "source_file": "05_Le_Pape.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/05_Le_Pape.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/05_Le_Pape.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Hierophant",
+      "asset": "/static/img/marseille/m05.jpg",
+      "pixel_size": [
+        812,
+        1536
+      ]
+    },
+    {
+      "card_id": "m06",
+      "source_file": "06_L_Amoureux.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/06_L_Amoureux.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/06_L_Amoureux.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Lovers",
+      "asset": "/static/img/marseille/m06.jpg",
+      "pixel_size": [
+        816,
+        1536
+      ]
+    },
+    {
+      "card_id": "m07",
+      "source_file": "07_Le_Chariot.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/07_Le_Chariot.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/07_Le_Chariot.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Chariot",
+      "asset": "/static/img/marseille/m07.jpg",
+      "pixel_size": [
+        816,
+        1536
+      ]
+    },
+    {
+      "card_id": "m08",
+      "source_file": "08_La_Justice.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/08_La_Justice.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/08_La_Justice.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Justice",
+      "asset": "/static/img/marseille/m08.jpg",
+      "pixel_size": [
+        816,
+        1536
+      ]
+    },
+    {
+      "card_id": "m09",
+      "source_file": "09_L_Ermite.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/09_L_Ermite.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/09_L_Ermite.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Hermit",
+      "asset": "/static/img/marseille/m09.jpg",
+      "pixel_size": [
+        821,
+        1536
+      ]
+    },
+    {
+      "card_id": "m10",
+      "source_file": "10_La_Roue_de_Fortune.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/10_La_Roue_de_Fortune.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/10_La_Roue_de_Fortune.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wheel of Fortune",
+      "asset": "/static/img/marseille/m10.jpg",
+      "pixel_size": [
+        812,
+        1536
+      ]
+    },
+    {
+      "card_id": "m11",
+      "source_file": "11_La_Force.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/11_La_Force.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/11_La_Force.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Strength",
+      "asset": "/static/img/marseille/m11.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m12",
+      "source_file": "12_Le_Pendu.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/12_Le_Pendu.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/12_Le_Pendu.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Hanged Man",
+      "asset": "/static/img/marseille/m12.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m13",
+      "source_file": "13_La_Mort.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/13_La_Mort.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/13_La_Mort.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Death",
+      "asset": "/static/img/marseille/m13.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m14",
+      "source_file": "14_Temperance.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/14_Temperance.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/14_Temperance.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Temperance",
+      "asset": "/static/img/marseille/m14.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m15",
+      "source_file": "15_Le_Diable.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/15_Le_Diable.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/15_Le_Diable.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Devil",
+      "asset": "/static/img/marseille/m15.jpg",
+      "pixel_size": [
+        820,
+        1536
+      ]
+    },
+    {
+      "card_id": "m16",
+      "source_file": "16_La_Maison_Dieu.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/16_La_Maison_Dieu.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/16_La_Maison_Dieu.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Tower",
+      "asset": "/static/img/marseille/m16.jpg",
+      "pixel_size": [
+        814,
+        1536
+      ]
+    },
+    {
+      "card_id": "m17",
+      "source_file": "17_L_Etoile.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/17_L_Etoile.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/17_L_Etoile.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Star",
+      "asset": "/static/img/marseille/m17.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m18",
+      "source_file": "18_La_Lune.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/18_La_Lune.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/18_La_Lune.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Moon",
+      "asset": "/static/img/marseille/m18.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m19",
+      "source_file": "19_Le_Soleil.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/19_Le_Soleil.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/19_Le_Soleil.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The Sun",
+      "asset": "/static/img/marseille/m19.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m20",
+      "source_file": "20_Le_Jugement.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/20_Le_Jugement.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/20_Le_Jugement.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Judgement",
+      "asset": "/static/img/marseille/m20.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "m21",
+      "source_file": "21_Le_Monde.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/21_Le_Monde.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/21_Le_Monde.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "The World",
+      "asset": "/static/img/marseille/m21.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups01",
+      "source_file": "Cups01.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups01.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups01.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 1",
+      "asset": "/static/img/marseille/cups01.jpg",
+      "pixel_size": [
+        809,
+        1537
+      ]
+    },
+    {
+      "card_id": "cups02",
+      "source_file": "Cups02.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups02.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups02.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 2",
+      "asset": "/static/img/marseille/cups02.jpg",
+      "pixel_size": [
+        809,
+        1537
+      ]
+    },
+    {
+      "card_id": "cups03",
+      "source_file": "Cups03.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups03.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups03.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 3",
+      "asset": "/static/img/marseille/cups03.jpg",
+      "pixel_size": [
+        805,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups04",
+      "source_file": "Cups04.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups04.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups04.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 4",
+      "asset": "/static/img/marseille/cups04.jpg",
+      "pixel_size": [
+        806,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups05",
+      "source_file": "Cups05.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups05.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups05.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 5",
+      "asset": "/static/img/marseille/cups05.jpg",
+      "pixel_size": [
+        814,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups06",
+      "source_file": "Cups06.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups06.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups06.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 6",
+      "asset": "/static/img/marseille/cups06.jpg",
+      "pixel_size": [
+        805,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups07",
+      "source_file": "Cups07.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups07.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups07.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 7",
+      "asset": "/static/img/marseille/cups07.jpg",
+      "pixel_size": [
+        811,
+        1537
+      ]
+    },
+    {
+      "card_id": "cups08",
+      "source_file": "Cups08.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups08.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups08.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 8",
+      "asset": "/static/img/marseille/cups08.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups09",
+      "source_file": "Cups09.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups09.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups09.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 9",
+      "asset": "/static/img/marseille/cups09.jpg",
+      "pixel_size": [
+        817,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups10",
+      "source_file": "Cups10.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups10.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups10.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 10",
+      "asset": "/static/img/marseille/cups10.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups11",
+      "source_file": "Cups11.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups11.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups11.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 11",
+      "asset": "/static/img/marseille/cups11.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups12",
+      "source_file": "Cups12.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups12.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups12.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 12",
+      "asset": "/static/img/marseille/cups12.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups13",
+      "source_file": "Cups13.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups13.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups13.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 13",
+      "asset": "/static/img/marseille/cups13.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "cups14",
+      "source_file": "Cups14.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Cups14.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Cups14.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Cups 14",
+      "asset": "/static/img/marseille/cups14.jpg",
+      "pixel_size": [
+        812,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents01",
+      "source_file": "Pents01.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents01.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents01.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 1",
+      "asset": "/static/img/marseille/pents01.jpg",
+      "pixel_size": [
+        805,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents02",
+      "source_file": "Pents02.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents02.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents02.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 2",
+      "asset": "/static/img/marseille/pents02.jpg",
+      "pixel_size": [
+        809,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents03",
+      "source_file": "Pents03.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents03.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents03.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 3",
+      "asset": "/static/img/marseille/pents03.jpg",
+      "pixel_size": [
+        812,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents04",
+      "source_file": "Pents04.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents04.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents04.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 4",
+      "asset": "/static/img/marseille/pents04.jpg",
+      "pixel_size": [
+        811,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents05",
+      "source_file": "Pents05.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents05.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents05.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 5",
+      "asset": "/static/img/marseille/pents05.jpg",
+      "pixel_size": [
+        808,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents06",
+      "source_file": "Pents06.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents06.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents06.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 6",
+      "asset": "/static/img/marseille/pents06.jpg",
+      "pixel_size": [
+        810,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents07",
+      "source_file": "Pents07.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents07.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents07.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 7",
+      "asset": "/static/img/marseille/pents07.jpg",
+      "pixel_size": [
+        808,
+        1537
+      ]
+    },
+    {
+      "card_id": "pents08",
+      "source_file": "Pents08.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents08.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents08.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 8",
+      "asset": "/static/img/marseille/pents08.jpg",
+      "pixel_size": [
+        808,
+        1537
+      ]
+    },
+    {
+      "card_id": "pents09",
+      "source_file": "Pents09.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents09.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents09.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 9",
+      "asset": "/static/img/marseille/pents09.jpg",
+      "pixel_size": [
+        809,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents10",
+      "source_file": "Pents10.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents10.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents10.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 10",
+      "asset": "/static/img/marseille/pents10.jpg",
+      "pixel_size": [
+        809,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents11",
+      "source_file": "Pents11.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents11.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents11.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 11",
+      "asset": "/static/img/marseille/pents11.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents12",
+      "source_file": "Pents12.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents12.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents12.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 12",
+      "asset": "/static/img/marseille/pents12.jpg",
+      "pixel_size": [
+        810,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents13",
+      "source_file": "Pents13.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents13.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents13.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 13",
+      "asset": "/static/img/marseille/pents13.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "pents14",
+      "source_file": "Pents14.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Pents14.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Pents14.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Pents 14",
+      "asset": "/static/img/marseille/pents14.jpg",
+      "pixel_size": [
+        805,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords01",
+      "source_file": "Swords01.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords01.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords01.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 1",
+      "asset": "/static/img/marseille/swords01.jpg",
+      "pixel_size": [
+        818,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords02",
+      "source_file": "Swords02.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords02.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords02.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 2",
+      "asset": "/static/img/marseille/swords02.jpg",
+      "pixel_size": [
+        811,
+        1537
+      ]
+    },
+    {
+      "card_id": "swords03",
+      "source_file": "Swords03.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords03.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords03.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 3",
+      "asset": "/static/img/marseille/swords03.jpg",
+      "pixel_size": [
+        805,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords04",
+      "source_file": "Swords04.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords04.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords04.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 4",
+      "asset": "/static/img/marseille/swords04.jpg",
+      "pixel_size": [
+        809,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords05",
+      "source_file": "Swords05.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords05.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords05.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 5",
+      "asset": "/static/img/marseille/swords05.jpg",
+      "pixel_size": [
+        809,
+        1537
+      ]
+    },
+    {
+      "card_id": "swords06",
+      "source_file": "Swords06.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords06.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords06.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 6",
+      "asset": "/static/img/marseille/swords06.jpg",
+      "pixel_size": [
+        817,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords07",
+      "source_file": "Swords07.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords07.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords07.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 7",
+      "asset": "/static/img/marseille/swords07.jpg",
+      "pixel_size": [
+        812,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords08",
+      "source_file": "Swords08.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords08.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords08.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 8",
+      "asset": "/static/img/marseille/swords08.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords09",
+      "source_file": "Swords09.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords09.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords09.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 9",
+      "asset": "/static/img/marseille/swords09.jpg",
+      "pixel_size": [
+        817,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords10",
+      "source_file": "Swords10.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords10.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords10.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 10",
+      "asset": "/static/img/marseille/swords10.jpg",
+      "pixel_size": [
+        812,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords11",
+      "source_file": "Swords11.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords11.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords11.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 11",
+      "asset": "/static/img/marseille/swords11.jpg",
+      "pixel_size": [
+        819,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords12",
+      "source_file": "Swords12.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords12.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords12.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 12",
+      "asset": "/static/img/marseille/swords12.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "swords13",
+      "source_file": "Swords13.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords13.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords13.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 13",
+      "asset": "/static/img/marseille/swords13.jpg",
+      "pixel_size": [
+        817,
+        1537
+      ]
+    },
+    {
+      "card_id": "swords14",
+      "source_file": "Swords14.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Swords14.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Swords14.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Swords 14",
+      "asset": "/static/img/marseille/swords14.jpg",
+      "pixel_size": [
+        817,
+        1537
+      ]
+    },
+    {
+      "card_id": "wands01",
+      "source_file": "Wands01.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands01.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands01.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 1",
+      "asset": "/static/img/marseille/wands01.jpg",
+      "pixel_size": [
+        816,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands02",
+      "source_file": "Wands02.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands02.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands02.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 2",
+      "asset": "/static/img/marseille/wands02.jpg",
+      "pixel_size": [
+        816,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands03",
+      "source_file": "Wands03.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands03.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands03.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 3",
+      "asset": "/static/img/marseille/wands03.jpg",
+      "pixel_size": [
+        816,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands04",
+      "source_file": "Wands04.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands04.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands04.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 4",
+      "asset": "/static/img/marseille/wands04.jpg",
+      "pixel_size": [
+        816,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands05",
+      "source_file": "Wands05.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands05.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands05.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 5",
+      "asset": "/static/img/marseille/wands05.jpg",
+      "pixel_size": [
+        815,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands06",
+      "source_file": "Wands06.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands06.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands06.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 6",
+      "asset": "/static/img/marseille/wands06.jpg",
+      "pixel_size": [
+        815,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands07",
+      "source_file": "Wands07.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands07.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands07.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 7",
+      "asset": "/static/img/marseille/wands07.jpg",
+      "pixel_size": [
+        815,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands08",
+      "source_file": "Wands08.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands08.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands08.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 8",
+      "asset": "/static/img/marseille/wands08.jpg",
+      "pixel_size": [
+        815,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands09",
+      "source_file": "Wands09.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands09.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands09.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 9",
+      "asset": "/static/img/marseille/wands09.jpg",
+      "pixel_size": [
+        814,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands10",
+      "source_file": "Wands10.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands10.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands10.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 10",
+      "asset": "/static/img/marseille/wands10.jpg",
+      "pixel_size": [
+        813,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands11",
+      "source_file": "Wands11.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands11.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands11.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 11",
+      "asset": "/static/img/marseille/wands11.jpg",
+      "pixel_size": [
+        806,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands12",
+      "source_file": "Wands12.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands12.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands12.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 12",
+      "asset": "/static/img/marseille/wands12.jpg",
+      "pixel_size": [
+        817,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands13",
+      "source_file": "Wands13.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands13.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands13.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 13",
+      "asset": "/static/img/marseille/wands13.jpg",
+      "pixel_size": [
+        812,
+        1536
+      ]
+    },
+    {
+      "card_id": "wands14",
+      "source_file": "Wands14.png",
+      "source_url": "https://github.com/mixvlad/TarotCards/tree/main/tarot/marseille/full/Wands14.png",
+      "raw_url": "https://raw.githubusercontent.com/mixvlad/TarotCards/main/tarot/marseille/full/Wands14.png",
+      "license": "Public domain (source metadata in mixvlad/TarotCards)",
+      "label_en": "Wands 14",
+      "asset": "/static/img/marseille/wands14.jpg",
+      "pixel_size": [
+        810,
+        1536
+      ]
+    }
+  ]
+}

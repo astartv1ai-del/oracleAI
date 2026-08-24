@@ -2339,6 +2339,13 @@ html { scroll-behavior: smooth; }
 @media (max-width:640px){.vedic-surface{padding:12px}.vedic-surface__head{gap:8px}.vedic-proof{font-size:9px}.vedic-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.vedic-card{min-height:84px;padding:10px 9px;}}
 
 /* Mira visual evidence map and Lenormand ledger proof. */
+.palm-geometry-visual{position:relative;overflow:hidden;margin:10px 0;border:1px solid rgba(111,214,176,.32);border-radius:16px;background:rgba(18,35,42,.8);aspect-ratio:1.5;box-shadow:0 12px 28px -22px rgba(111,214,176,.55)}
+.palm-geometry-visual img{display:block;width:100%;height:100%;object-fit:cover;opacity:.76;filter:saturate(.88) contrast(1.04)}
+.palm-geometry-visual svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.palm-geometry-visual line{stroke:#b7f5da;stroke-width:1.1;stroke-linecap:round;opacity:.84}
+.palm-geometry-visual circle{fill:#f4d2a0;stroke:#183c3b;stroke-width:.65;opacity:.96}
+.palm-geometry-note{margin:7px 0 10px;color:var(--text-muted);font-size:10px;line-height:1.45}
+.tarot-deck-source{margin:7px 0;color:var(--text-muted);font-size:10px;line-height:1.35}
 .palm-evidence-strip{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;padding:9px;border:1px solid rgba(226,164,94,.18);border-radius:12px;background:rgba(226,164,94,.06);color:var(--text-soft);font-size:10px;line-height:1.35}
 .palm-evidence-strip span{display:inline-flex;align-items:center;gap:4px;min-width:0}
 .palm-details{margin-top:10px;border:1px solid rgba(226,164,94,.16);border-radius:14px;background:rgba(255,255,255,.025)}

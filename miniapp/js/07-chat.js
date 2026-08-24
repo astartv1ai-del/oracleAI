@@ -374,6 +374,11 @@
               <div class="tarot-kicker">ЛИЧНЫЙ РИТУАЛ</div>
               <div class="w-title" style="margin:0">🎴 Выбери схему и задай вопрос</div>
               <div class="w-sub tarot-picker-sub">Карты не дают готовых приказов — они помогают заметить то, что уже просится в твоё внимание.</div>
+              <button class="pick-sel-btn tarot-deck-select" data-act="deck-open" ${p.drawing ? 'disabled' : ''}>
+                <span class="pick-sel-ico">${p.deck && p.deck.tradition === 'Petit Lenormand' ? '◇' : '🎴'}</span>
+                <span class="pick-sel-txt"><span class="pick-sel-t">${esc(tarotDeckLabel(p.deck))}</span><span class="pick-sel-d">${esc((p.deck && p.deck.card_count) || 78)} карт · сменить школу</span></span><span class="pick-sel-go">⚙</span>
+              </button>
+              <div class="tarot-deck-source">${esc((p.deck && p.deck.source_verification) || 'deck catalog')} · правила и визуализация связаны с этой колодой</div>
               <button class="pick-sel-btn" data-act="pick-open" ${p.drawing ? 'disabled' : ''}>
                 <span class="pick-sel-ico">${esc(cur.emoji || '🎴')}</span>
                 <span class="pick-sel-txt">
@@ -415,7 +420,7 @@
                   <button type="button" class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" aria-label="${p.revealed[i] ? esc(c.name) : 'Открыть карту: ' + esc(pos)}" ${p.revealed[i] ? 'aria-pressed="true"' : 'aria-pressed="false"'}>
                     <span class="tcard-inner">
                       <span class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></span>
-                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="${tarotAssetUrl(c, p.ledger || p.deck)}" alt="${esc(c.name)}" loading="lazy">
                         ${c.reversed ? '<span class="t-rev">↺ перевёрнута</span>' : ''}</span>
                     </span>
                   </button>

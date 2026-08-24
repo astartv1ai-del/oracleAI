@@ -61,6 +61,8 @@
     'add-mem': () => call('addMem'),
     'pick-open': () => call('openSpreadPicker'),
     'pick-choose': (el, data) => call('chooseSpread', data.code),
+    'deck-open': () => call('openDeckPicker'),
+    'deck-choose': (el, data) => call('chooseDeck', data.deckId),
     draw: () => call('doDraw'),
     'tarot-question': (el, data) => call('setTarotQuestion', data.value),
     flip: (el, data) => call('flipCard', parseInt(data.i, 10)),

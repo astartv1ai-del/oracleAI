@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ...config import settings
-from ...core import agents
+from ...core import agents, tarot
 from ...core.personas import persona_list
 from ...data.session import healthcheck
 from ...repo import billing, content, dialog, readings, users
@@ -71,6 +71,8 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
     allowance = await limits.allowance(db, user, check_followup=False)
     await chat.track_open(db, user)
     flags = {f["code"]: bool(f["is_on"]) for f in await content.list_flags(db)}
+    profile_deck_id = user["tarot_deck_id"] if "tarot_deck_id" in user.keys() else None
+    profile_deck = tarot.deck_metadata(profile_deck_id)
     return {
         "tg_id": user["tg_id"],
         "name": user["name"],
@@ -105,6 +107,8 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
         "age_confirmed": bool(user["age_confirmed"]),
         "lang": user["lang"] or "ru",
         "gender": user["gender"],
+        "tarot_deck_id": profile_deck["deck_id"],
+        "tarot_deck": profile_deck,
         "entitlements": await billing.list_entitlements(db, user["tg_id"]),
         "reports": await readings.list_reports(db, user["tg_id"]),
         "agents": await agents.agent_list(db, user),
@@ -139,6 +143,7 @@ class ProfileIn(BaseModel):
     gender: Literal["f", "m"] | None = None
     tz: str | None = Field(default=None, max_length=64)
     goal: str | None = Field(default=None, max_length=40)
+    tarot_deck_id: str | None = Field(default=None, max_length=64)
 
 
 @router.post("/profile", dependencies=[Depends(rate_limit("write"))])
@@ -169,6 +174,12 @@ async def update_profile(item: ProfileIn, user=Depends(current_user),
         fields["lang"] = lang
     if "gender" in item.model_fields_set:
         fields["gender"] = item.gender
+    if item.tarot_deck_id is not None:
+        try:
+            selected_deck = tarot.deck_metadata(item.tarot_deck_id)
+        except ValueError:
+            raise HTTPException(400, "неизвестная колода")
+        fields["tarot_deck_id"] = selected_deck["deck_id"]
     if item.tz:
         from zoneinfo import ZoneInfo
         try:

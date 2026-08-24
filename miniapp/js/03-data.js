@@ -124,6 +124,7 @@ function planetGlyph(name) {
 function spreadScheme(code) {
   const map = {
     one: ['active'], three: ['', 'active', ''], love: ['', 'active', '', ''],
+    line5: ['', '', 'active', '', ''], relationship: ['', 'active', '', ''],
     choice: ['', 'active', '', '', ''], money: ['', '', '', ''],
     career: ['', '', '', '', ''], work: ['', '', '', '', '', ''],
     celtic: ['', '', '', '', '', '', '', '', ''],
@@ -133,6 +134,18 @@ function spreadScheme(code) {
   return dots.map(d => `<span class="dot${d === 'active' ? ' active' : ''}"></span>`).join('');
 }
 
+function tarotAssetUrl(card, deck) {
+  const id = String((card && card.img) || 'm00');
+  const deckId = String((card && card.deck_id) || (deck && deck.deck_id) || '');
+  const root = (card && card.asset_root) || (deck && deck.asset_root) ||
+    (deckId === 'lenormand-36-game-of-hope-v1' ? '/static/img/lenormand' :
+      deckId === 'marseille-78-conver-v1' ? '/static/img/marseille' : '/static/img/tarot');
+  return `${root}/${encodeURIComponent(id)}.jpg`;
+}
+
+function tarotDeckLabel(deck, fallback = 'RWS') {
+  return (deck && (deck.label || deck.tradition)) || fallback;
+}
 
 
 /* ── Единые векторные сигилы интерфейса ─────────────────────────────────────

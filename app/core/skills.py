@@ -519,6 +519,20 @@ async def _run_palm_scanner(db, user, args) -> str:
             "confidence": item.get("confidence", 0),
             "summary": item.get("summary", ""),
         })
+    geometry = reading.get("hand_geometry") or {}
+    geometry_summary = {
+        "version": geometry.get("version"),
+        "status": geometry.get("status", "unavailable"),
+        "hand_count": geometry.get("hand_count", 0),
+        "model": geometry.get("model"),
+        "hands": [{
+            "handedness": hand.get("handedness", "unknown"),
+            "handedness_score": hand.get("handedness_score"),
+            "normalized_bbox": hand.get("normalized_bbox"),
+            "landmark_count": hand.get("landmark_count", 0),
+        } for hand in (geometry.get("hands") or [])],
+        "line_segmentation": "not_attempted",
+    }
     payload = {
         "reading_id": reading.get("id"),
         "hand_side": reading.get("hand_side", "unknown"),
@@ -527,6 +541,7 @@ async def _run_palm_scanner(db, user, args) -> str:
                            "precheck_score": quality.get("precheck_score", score),
                            "precheck_issues": quality.get("precheck_issues") or []},
         "visual_precheck": reading.get("visual_precheck") or {},
+        "hand_geometry": geometry_summary,
         "zones": zones,
         "lines": reading.get("lines") or {},
         "mounts": reading.get("mounts") or {},
@@ -597,16 +612,25 @@ async def _run_draw_tarot(db, user, args) -> str:
     except (TypeError, ValueError):
         return "число карт должно быть целым от 1 до 12"
     n = max(1, min(requested, 12))
+    requested_deck = args.get("deck_id")
+    try:
+        selected = tarot.deck_metadata(requested_deck or (
+            user["tarot_deck_id"] if "tarot_deck_id" in user.keys() else None))
+    except ValueError:
+        return "неизвестная колода — выбери её из каталога"
+    selected_id = selected["deck_id"]
     spread_code = str(args.get("spread", "") or "").strip()
-    if spread_code and spread_code not in tarot.SPREADS:
-        return "неизвестная схема расклада — выбери доступную схему из каталога"
-    item = tarot.spread(spread_code) if spread_code else None
-    positions = item["positions"] if item and spread_code in tarot.SPREADS else None
+    available = tarot.spreads_for(selected_id)
+    if spread_code and spread_code not in available:
+        return "неизвестная схема расклада для выбранной колоды — выбери доступную схему из каталога"
+    item = tarot.spread_for(spread_code, selected_id) if spread_code else None
+    positions = item["positions"] if item and spread_code in available else None
     if positions:
         n = len(positions)
-    cards = tarot.draw(n)
+    cards = tarot.draw(n, deck_id=selected_id)
     title = item["title"] if item else "свободный"
-    ledger = tarot.reading_ledger(cards, spread_code or tarot.DEFAULT_SPREAD)
+    ledger = tarot.reading_ledger(cards, spread_code or tarot.DEFAULT_SPREAD,
+                                  positions=positions, deck_id=selected_id)
     return (f"{await guide(db, 'tarot')}\n\nРасклад: {title}\n"
             f"Карты:\n{tarot.cards_text(cards, positions)}\n"
             "\nEvidence ledger:\n" + json.dumps(ledger, ensure_ascii=False, separators=(",", ":")))
@@ -1024,13 +1048,15 @@ SKILLS: dict[str, dict] = {
         "run": _run_draw_tarot,
         "schema": {
             "name": "draw_tarot",
-            "description": ("Вытянуть карты Таро (реальный случайный выбор из 78 карт). "
+            "description": ("Вытянуть карты из выбранной tradition (RWS, Petit Lenormand "
+                            "или Tarot de Marseille) с evidence ledger. "
                             "Зови, когда нужен расклад или клиентка просит «что говорят карты»."),
             "input_schema": {"type": "object", "properties": {
                 "n": {"type": "integer", "description": "Число карт 1-12"},
                 "spread": {"type": "string",
-                           "description": "Код расклада: one, three, love, choice, "
-                                          "money, career, work, celtic, year"},
+                           "description": "Код схемы выбранной tradition: one, three, love, choice, "
+                                          "money, career, work, celtic, year или line5"},
+                "deck_id": {"type": "string", "description": "ID колоды из tarot deck catalog"},
             }, "required": ["n"]},
         },
     },
@@ -1095,7 +1121,8 @@ SKILLS: dict[str, dict] = {
             "name": "palm_scanner",
             "description": ("Сканер ладони Миры: один вызов возвращает полный экспертный разбор "
                             "последнего vision-чтения — качество кадра, ракурс (раскрытая/согнутая "
-                            "ладонь), различимость всех линий (включая линии брака, детей, "
+                                                         "ладонь), MediaPipe hand geometry (если модель доступна), различимость всех линий (включая линии брака, детей, "
+
                             "путешествий), холмов и пальцев, тип руки по стихии, знаки, вопросы "
                             "для клиентки и ограничения. Трактуй только видимое evidence по правилам "
                             "хиромантии; без медицинских выводов и предсказаний. Если чтения нет или "

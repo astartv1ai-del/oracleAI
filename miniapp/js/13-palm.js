@@ -91,6 +91,18 @@
     }).join('');
   }
 
+  function palmGeometryHtml(result, previewUrl) {
+    const geometry = result.hand_geometry || {};
+    const hand = (geometry.hands || [])[0];
+    const points = (hand && hand.landmarks) || [];
+    if (!hand || points.length < 21 || !previewUrl) return '';
+    const edges = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+    const safe = value => Math.max(0, Math.min(100, Number(value || 0) * 100));
+    const lineHtml = edges.map(([a, b]) => `<line x1="${safe(points[a].x)}" y1="${safe(points[a].y)}" x2="${safe(points[b].x)}" y2="${safe(points[b].y)}"></line>`).join('');
+    const dotHtml = points.map(point => `<circle cx="${safe(point.x)}" cy="${safe(point.y)}" r="1.25"></circle>`).join('');
+    return `<div class="palm-geometry-visual"><img src="${esc(previewUrl)}" alt="Фото ладони с контуром hand landmarks" loading="lazy"><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="MediaPipe: 21 точек геометрии руки">${lineHtml}${dotHtml}</svg></div>`;
+  }
+
   app.palmHtml = function (result) {
     const q = result.image_quality || {};
     const pre = result.visual_precheck || {};
@@ -98,12 +110,20 @@
     const limitations = Array.isArray(result.limitations) ? result.limitations : [];
     const prompts = Array.isArray(result.interpretive_prompts) ? result.interpretive_prompts : [];
     const pa = result.photo_assessment || {};
+    const geometry = result.hand_geometry || {};
+    const hand = (geometry.hands || [])[0] || {};
     const detected = result.hand_detected ? 'ладонь распознана' : 'ладонь не подтверждена';
+    const geometryCopy = geometry.status === 'detected'
+      ? `${geometry.hand_count || 0} рука · ${hand.landmark_count || 0} точек · ${hand.handedness || 'сторона не определена'}`
+      : `геометрия руки: ${geometry.status || 'недоступна'}`;
     const preCopy = pre.width ? `${pre.width}×${pre.height} · ${pre.status === 'usable' ? 'свет/резкость пригодны' : 'нужна проверка кадра'}` : 'детерминированная проверка изображения';
+    const geometryVisual = palmGeometryHtml(result, this._palmPreview);
     return `<section class="palm-result" aria-live="polite">
+      ${geometryVisual}
       <div class="w-title">✋ ${needs ? 'Нужен более ясный кадр' : 'Что видно на ладони'}</div>
       <div class="palm-quality" style="--quality:${Math.round(Number(q.score || 0) * 100)}"><b>Качество кадра</b><span>${Math.round(Number(q.score || 0) * 100)}%</span></div>
-      <div class="palm-evidence-strip"><span>◉ ${esc(detected)}</span><span>⌁ ${esc(pa.view_type || 'ракурс не указан')}</span><span>✦ ${esc(preCopy)}</span></div>
+      <div class="palm-evidence-strip"><span>◉ ${esc(detected)}</span><span>⌁ ${esc(pa.view_type || 'ракурс не указан')}</span><span>✋ ${esc(geometryCopy)}</span><span>✦ ${esc(preCopy)}</span></div>
+      <div class="palm-geometry-note">MediaPipe показывает положение кисти для проверки кадра; это не распознавание линий ладони. Line segmentation: <b>not attempted</b>.</div>
       ${textFromResult(result)}
       ${detailRows(result) ? `<details class="palm-details"><summary>Показать карту зон и техник <span>⌄</span></summary><div class="palm-detail-list">${detailRows(result)}</div></details>` : ''}
       ${limitations.length ? `<div class="palm-limitations"><b>Границы чтения</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}

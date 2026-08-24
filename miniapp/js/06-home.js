@@ -115,7 +115,7 @@
         <div class="card-day card-day-big">
           <div class="tarot-card-big" data-act="flip-card" title="Перевернуть карту">
             <div class="tb-inner">
-              <div class="tb-face tb-front" style="background-image:url('/static/img/tarot/${esc(t.card.img || 'm00')}.jpg')">
+              <div class="tb-face tb-front" style="background-image:url('${tarotAssetUrl(t.card, t.card)}')">
                 <span class="tb-arc">${esc(toRoman(t.card.num))}</span>
               </div>
               <div class="tb-face tb-back">

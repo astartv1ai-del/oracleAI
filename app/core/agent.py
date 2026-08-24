@@ -71,7 +71,8 @@ async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
 
 async def interpret_reading(db, user, title: str, cards: list[dict],
                             positions: list[str],
-                            question: str | None = None) -> str:
+                            question: str | None = None,
+                            deck_id: str | None = None) -> str:
     """Трактовка КОНКРЕТНЫХ вытянутых карт (карты выбрал код, не модель).
 
     `question` — формулировка пользователя «что спросить у карт»: карты отвечают на
@@ -79,8 +80,9 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
     «про жизнь вообще».
     """
     cards_block = tarot.cards_text(cards, positions)
-    spread_code = tarot.spread_by_title(title)["code"]
-    ledger = tarot.reading_ledger(cards, spread_code, positions=positions)
+    selected_id = deck_id or next((card.get("deck_id") for card in cards if card.get("deck_id")), tarot.DEFAULT_DECK_ID)
+    spread_code = tarot.spread_by_title(title, selected_id)["code"]
+    ledger = tarot.reading_ledger(cards, spread_code, positions=positions, deck_id=selected_id)
     evidence = interpretation.tarot_evidence(
         cards, positions, title=title, question=question,
         combinations=ledger["adjacent_combinations"])
@@ -107,7 +109,8 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
             text = await llm.complete(system, user_msg, tier="main",
                                       max_tokens=min(1800, 320 * max(3, len(cards))),
                                       purpose="tarot", tg_id=user["tg_id"], db=db)
-            grounding = interpretation.validate_tarot_text(text, cards, tarot.DECK)
+            deck_id = next((card.get("deck_id") for card in cards if card.get("deck_id")), tarot.DEFAULT_DECK_ID)
+            grounding = interpretation.validate_tarot_text(text, cards, tarot.deck_cards(deck_id))
             if len(text.strip()) >= 120 and grounding.ok:
                 return text
             if text.strip() and not grounding.ok:

@@ -48,7 +48,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
           <div class="dc-card${p.flipped ? ' flipped' : ''}" data-act="day-flip" title="Тапни — раскроется смысл">
             <div class="dc-card-inner">
               <div class="dc-face dc-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></div>
-              <div class="dc-face dc-front"><img src="/static/img/tarot/${esc(card.img)}.jpg" alt="${esc(card.name || '')}" loading="lazy"></div>
+              <div class="dc-face dc-front"><img src="${tarotAssetUrl(card, card)}" alt="${esc(card.name || '')}" loading="lazy"></div>
             </div>
           </div>
           <div class="dc-card-txt">

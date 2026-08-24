@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     persona          TEXT DEFAULT 'friend',
     oracle_name      TEXT DEFAULT 'Лилит',
     tz               TEXT DEFAULT 'Europe/Moscow',
+    tarot_deck_id    TEXT DEFAULT 'rws-78-geldard-v1',
 
     birth_date       TEXT,
     birth_time       TEXT,
@@ -139,6 +140,8 @@ CREATE TABLE IF NOT EXISTS tarot_readings (
     spread     TEXT,
     question   TEXT,
     cards_json TEXT,
+    deck_id    TEXT DEFAULT 'rws-78-geldard-v1',
+    ledger_json TEXT,
     answer     TEXT,
     surface    TEXT DEFAULT 'bot',
     paid_with  TEXT,                          -- daily|crystals|stars|entitlement

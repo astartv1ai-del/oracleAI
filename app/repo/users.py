@@ -20,13 +20,19 @@ WRITABLE = {
     "birth_lat", "birth_lon", "chart_json",
     "sub_level", "sub_until", "crystals",
     "onboarded", "morning_push", "memory_enabled", "age_confirmed", "ref_by", "goal", "source", "status",
-    "ltv_stars", "expiry_notified", "last_seen", "deleted_at",
+    "ltv_stars", "expiry_notified", "last_seen", "deleted_at", "tarot_deck_id",
 }
 
 
 async def get(db, tg_id: int):
     cur = await db.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,))
     return await cur.fetchone()
+
+
+async def tarot_deck_id(db, tg_id: int) -> str:
+    cur = await db.execute("SELECT tarot_deck_id FROM users WHERE tg_id=?", (tg_id,))
+    row = await cur.fetchone()
+    return (row["tarot_deck_id"] if row and row["tarot_deck_id"] else "rws-78-geldard-v1")
 
 
 async def by_username(db, username: str):

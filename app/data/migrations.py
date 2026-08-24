@@ -46,6 +46,7 @@ COLUMNS: dict[str, dict[str, str]] = {
         "expiry_notified": "INTEGER DEFAULT 0",
         "last_seen": "TEXT",
         "deleted_at": "TEXT",
+        "tarot_deck_id": "TEXT DEFAULT 'rws-78-geldard-v1'",
     },
     "messages": {
         "thread_id": "INTEGER",
@@ -72,6 +73,8 @@ COLUMNS: dict[str, dict[str, str]] = {
         "paid_with": "TEXT",
         "outcome": "TEXT",
         "outcome_at": "TEXT",
+        "deck_id": "TEXT DEFAULT 'rws-78-geldard-v1'",
+        "ledger_json": "TEXT",
     },
     "promo_codes": {
         "kind": "TEXT DEFAULT 'plan_days'",
