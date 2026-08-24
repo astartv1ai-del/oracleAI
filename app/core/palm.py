@@ -16,7 +16,7 @@ from typing import Any
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ..repo import palm as palm_repo
-from . import llm
+from . import llm, palm_vision
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MIN_SIDE = 480
@@ -214,6 +214,7 @@ def _data_url(image: bytes) -> tuple[str, dict]:
     if not image or len(image) > MAX_IMAGE_BYTES:
         raise ValueError("фото слишком большое или пустое; максимум 8 МБ")
     digest = hashlib.sha256(image).hexdigest()
+    visual_precheck = palm_vision.analyze(image)
     try:
         with Image.open(io.BytesIO(image)) as original:
             original.verify()
@@ -228,6 +229,7 @@ def _data_url(image: bytes) -> tuple[str, dict]:
         raise ValueError("не удалось распознать изображение") from exc
     return "data:image/jpeg;base64," + base64.b64encode(out.getvalue()).decode("ascii"), {
         "sha256": digest, "size": len(image), "width": width, "height": height,
+        "visual_precheck": visual_precheck,
     }
 
 
@@ -379,9 +381,18 @@ def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
 
 async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "miniapp") -> dict:
     data_url, meta = _data_url(image)
+    precheck = meta["visual_precheck"]
     raw: dict[str, Any] | None = None
     last_error: ValueError | None = None
-    for attempt in range(PALM_JSON_ATTEMPTS):
+    hard_capture_issues = {"image_decode_failed", "underexposed", "overexposed", "extreme_crop_or_aspect"}
+    preflight_rejected = (
+        precheck["status"] == "invalid_image"
+        or precheck["score"] < 0.25
+        or bool(hard_capture_issues & set(precheck.get("issues") or []))
+    )
+    if preflight_rejected:
+        last_error = ValueError("deterministic_precheck")
+    for attempt in range(0 if preflight_rejected else PALM_JSON_ATTEMPTS):
         retry_hint = ""
         if attempt:
             retry_hint = (
@@ -390,9 +401,14 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
                 "до/после JSON и без trailing comma. Не сокращай обязательные поля."
             )
         try:
+            precheck_hint = (
+                "\n\nDETERMINISTIC CAPTURE PRECHECK (not hand detection): "
+                + json.dumps(precheck, ensure_ascii=False, separators=(",", ":"))
+                + "\nИспользуй эти метрики только для оценки читаемости кадра; не называй их доказательством наличия руки или линий."
+            )
             text = await llm.complete_vision(
                 PALM_SYSTEM,
-                PALM_USER + retry_hint,
+                PALM_USER + precheck_hint + retry_hint,
                 data_url,
                 tier="main",
                 max_tokens=1600,
@@ -413,9 +429,18 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
             )
 
     if raw is None:
-        result = _needs_photo_result(type(last_error).__name__ if last_error else "invalid_json")
+        result = _needs_photo_result("deterministic_precheck" if preflight_rejected else (type(last_error).__name__ if last_error else "invalid_json"))
     else:
         result = _normalize(raw, raw.get("image_quality") or {})
+    result["visual_precheck"] = precheck
+    result["image_quality"]["precheck_score"] = precheck["score"]
+    result["image_quality"]["precheck_issues"] = precheck["issues"]
+    if preflight_rejected:
+        result["status"] = "needs_photo"
+        result["limitations"].append(
+            "Детерминированная проверка кадра рекомендует пересъёмку: "
+            + ", ".join(precheck["issues"] or ["низкая совокупная читаемость"])
+        )
     reading_id = await palm_repo.save_reading(
         db, user["tg_id"], result, image_sha256=meta["sha256"],
         image_size=meta["size"], hand_side=result["hand_side"],

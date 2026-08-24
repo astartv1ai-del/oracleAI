@@ -26,6 +26,14 @@ def check_docs() -> list[str]:
 def check_static_contract() -> list[str]:
     errors: list[str] = []
     try:
+        from scripts.check_agent_quality import build_report
+
+        quality = build_report()
+        if not quality["ok"]:
+            errors.extend(f"agent quality: {item}" for item in quality["errors"])
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"agent quality check failed: {type(exc).__name__}: {exc}")
+    try:
         from app.core import palm
 
         schema = palm.PALM_RESPONSE_FORMAT["json_schema"]

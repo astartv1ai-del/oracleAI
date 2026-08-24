@@ -197,6 +197,10 @@
                   <div class="agent-role">${esc(a.title || a.code)}</div>
                   <div class="agent-outcome">${esc(outcomes[a.code] || (oracleLang() === 'en' ? 'A gentle next step' : 'Бережный следующий шаг'))}</div>
                   <div class="agent-last">${esc(a.last_text || a.tagline || homeT('listening'))}</div>
+                  <div class="agent-proof-row" aria-label="${homeT('profileQuality')}">
+                    <span class="agent-proof-badge">✦ ${homeT('evidenceFirst')}</span>
+                    ${(a.capabilities && a.capabilities.length) ? `<span class="agent-proof-count">${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
+                  </div>
                   <span class="online-label">${homeT('nearby')}</span>
                 </div>
                 <button class="btn btn-ghost" style="padding:7px 12px;font-size:12px" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">${homeT('start')}</button>
@@ -214,6 +218,16 @@
                     <span class="tool-txt"><span class="tool-t">${esc(f.t)}</span>${f.d ? `<span class="tool-d">${esc(f.d)}</span>` : ''}</span>
                   </button>`).join('')}
               </div>
+              ${a.code === 'astro' ? `<section class="vedic-surface" aria-label="${oracleLang() === 'en' ? 'Vedic capabilities' : 'Ведические возможности'}">
+                <div class="vedic-surface__head"><div><div class="section-kicker">${oracleLang() === 'en' ? 'Vedic / Lahiri' : 'Ведическая · Лахири'}</div><h3>${oracleLang() === 'en' ? 'Calculated, then interpreted' : 'Сначала расчёт, потом смысл'}</h3></div><span class="vedic-proof">29 tools · evidence</span></div>
+                <div class="vedic-grid">
+                  <button class="vedic-card" data-act="chat-fn" data-chat="astro" data-fn="featureVedicChart"><b>☊</b><span>${oracleLang() === 'en' ? 'Kundli' : 'Кундали'}</span><small>${oracleLang() === 'en' ? 'Lahiri sidereal chart' : 'Сидерическая карта Лахири'}</small></button>
+                  <button class="vedic-card" data-act="chat-fn" data-chat="astro" data-fn="featureVedicDasha"><b>◷</b><span>Vimshottari</span><small>${oracleLang() === 'en' ? 'Dasha timeline' : 'Таймлайн даша'}</small></button>
+                  <button class="vedic-card" data-act="chat-fn" data-chat="astro" data-fn="featureVedicPanchang"><b>◐</b><span>Panchang</span><small>${oracleLang() === 'en' ? 'Tithi · Rahu Kaal' : 'Титхи · Раху-кала'}</small></button>
+                  <button class="vedic-card" data-act="chat-fn" data-chat="astro" data-fn="featureVedicGuna"><b>∞</b><span>Guna Milan</span><small>${oracleLang() === 'en' ? 'Ashtakoot breakdown' : 'Разбор аштакуты'}</small></button>
+                </div>
+                <p class="vedic-surface__note">${oracleLang() === 'en' ? 'Tradition, time quality and limitations stay visible in every calculation.' : 'Традиция, точность времени и ограничения видны в каждом расчёте.'}</p>
+              </section>` : ''}
             </div>`).join('')}
         </div>
       </div>`;

@@ -29,6 +29,31 @@ def test_draw_handles_large_spreads():
     assert len({c["name"] for c in cards}) == 12
 
 
+def test_seeded_draw_is_reproducible_for_golden_fixtures():
+    first = tarot.draw(5, seed="oracleai-golden")
+    second = tarot.draw(5, seed="oracleai-golden")
+    assert first == second
+
+
+def test_reading_ledger_has_positions_orientation_and_combinations():
+    cards = tarot.draw(3, seed="ledger-fixture")
+    ledger = tarot.reading_ledger(cards, "three")
+    assert ledger["deck_id"] == "rws-78-v1"
+    assert ledger["version"] == "tarot-ledger-v1"
+    assert [item["position"] for item in ledger["entries"]] == tarot.SPREADS["three"]["positions"]
+    assert all(item["orientation"] in ("upright", "reversed") for item in ledger["entries"])
+    assert len(ledger["adjacent_combinations"]) == 2
+    assert len(ledger["checksum"]) == 16
+    assert "not certainty" in ledger["interpretation_boundary"]
+
+
+def test_reading_ledger_classifies_explicit_symbolic_combination():
+    cards = [dict(next(card for card in tarot.DECK if card["name"] == name), reversed=False)
+             for name in ("Смерть", "Башня")]
+    ledger = tarot.reading_ledger(cards, "three")
+    assert ledger["adjacent_combinations"][0]["rule"] == "transformational_pressure"
+
+
 def test_tarot_spreads_have_positions_and_guide():
     for code, item in tarot.SPREADS.items():
         assert item["positions"], code
@@ -317,3 +342,22 @@ def test_chart_payload_can_clear_stale_birth_time_for_date_only_choice():
     )
     assert payload["birth"]["time"] is None
     assert payload["birth"]["time_known"] is False
+
+
+def test_chart_exposes_explicit_calculation_conventions():
+    chart = astro.compute_chart("1990-06-21", "14:30", "Казань", 55.79, 49.12,
+                                "Europe/Moscow", time_known=True)
+    assert chart["zodiac_type"] == "Tropical"
+    assert chart["house_system"] == "P"
+    assert chart["perspective_type"] == "Apparent Geocentric"
+    assert "Swiss Ephemeris" in chart["engine"]
+
+
+def test_invalid_timezone_is_rejected_explicitly():
+    try:
+        astro.compute_chart("1990-06-21", "14:30", "Казань", 55.79, 49.12,
+                            "Not/A_Timezone", time_known=True)
+    except ValueError as exc:
+        assert "IANA" in str(exc)
+    else:
+        raise AssertionError("invalid timezone must not silently fall back")

@@ -24,7 +24,7 @@ from ..repo import content as content_repo
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import palm as palm_repo
-from . import astro, memory, palm, placements, tarot
+from . import astro, memory, palm, placements, tarot, vedic
 from .matrix import compute_matrix, matrix_brief
 
 log = logging.getLogger("oracle.skills")
@@ -452,7 +452,8 @@ async def _run_get_placement(db, user, args) -> str:
     if not user["birth_date"]:
         return "нет даты рождения — сначала собери натальную карту"
     if code not in _PLACEMENT_CODES:
-        return "неизвестный placement: выбери один из moon_sign, venus_sign, rising_sign, asteroid_sign, chinese_zodiac, chiron_sign, juno_sign, jupiter_sign, life_path, mars_sign, mercury_sign, neptune_sign, north_node_sign, pluto_sign, saturn_sign, south_node_sign, uranus_sign"
+        available = ", ".join(_PLACEMENT_CODES)
+        return f"неизвестный placement: выбери один из {available}"
     if code == "life_path":
         result = placements.life_path(user["birth_date"])
     elif code == "chinese_zodiac":
@@ -522,7 +523,10 @@ async def _run_palm_scanner(db, user, args) -> str:
         "reading_id": reading.get("id"),
         "hand_side": reading.get("hand_side", "unknown"),
         "hand_shape_element": reading.get("hand_shape_element", "unknown"),
-        "image_quality": {"score": round(score, 2), "issues": quality.get("issues") or []},
+        "image_quality": {"score": round(score, 2), "issues": quality.get("issues") or [],
+                           "precheck_score": quality.get("precheck_score", score),
+                           "precheck_issues": quality.get("precheck_issues") or []},
+        "visual_precheck": reading.get("visual_precheck") or {},
         "zones": zones,
         "lines": reading.get("lines") or {},
         "mounts": reading.get("mounts") or {},
@@ -571,8 +575,12 @@ async def _run_palm_photo_guide(db, user, args) -> str:
 
 
 async def _run_palm_history(db, user, args) -> str:
+    try:
+        requested = int(args.get("limit", 10) or 10)
+    except (TypeError, ValueError):
+        requested = 10
     readings = await palm_repo.list_readings(
-        db, user["tg_id"], limit=max(1, min(int(args.get("limit", 10) or 10), 20)))
+        db, user["tg_id"], limit=max(1, min(requested, 20)))
     if not readings:
         return ("чтений ладони ещё нет — попроси фото раскрытой ладони целиком "
                 "(ровный свет, камера сверху)")
@@ -584,16 +592,24 @@ async def _run_palm_history(db, user, args) -> str:
 # ---------------------------------------------------------------- skills
 
 async def _run_draw_tarot(db, user, args) -> str:
-    n = max(1, min(int(args.get("n", 3) or 3), 12))
-    spread_code = str(args.get("spread", "") or "")
+    try:
+        requested = int(args.get("n", 3) or 3)
+    except (TypeError, ValueError):
+        return "число карт должно быть целым от 1 до 12"
+    n = max(1, min(requested, 12))
+    spread_code = str(args.get("spread", "") or "").strip()
+    if spread_code and spread_code not in tarot.SPREADS:
+        return "неизвестная схема расклада — выбери доступную схему из каталога"
     item = tarot.spread(spread_code) if spread_code else None
     positions = item["positions"] if item and spread_code in tarot.SPREADS else None
     if positions:
         n = len(positions)
     cards = tarot.draw(n)
     title = item["title"] if item else "свободный"
+    ledger = tarot.reading_ledger(cards, spread_code or tarot.DEFAULT_SPREAD)
     return (f"{await guide(db, 'tarot')}\n\nРасклад: {title}\n"
-            f"Карты:\n{tarot.cards_text(cards, positions)}")
+            f"Карты:\n{tarot.cards_text(cards, positions)}\n"
+            "\nEvidence ledger:\n" + json.dumps(ledger, ensure_ascii=False, separators=(",", ":")))
 
 
 async def _run_get_chart(db, user, args) -> str:
@@ -668,7 +684,11 @@ _CAREER_WINDOWS = {
 
 async def _run_career_windows(db, user, args) -> str:
     """Деловые окна на две недели: когда действовать, когда молчать."""
-    days = max(7, min(int(args.get("days", 14) or 14), 30))
+    try:
+        requested = int(args.get("days", 14) or 14)
+    except (TypeError, ValueError):
+        return "горизонт должен быть целым числом от 7 до 30 дней"
+    days = max(7, min(requested, 30))
     today = date.today()
     lines = []
     for i in range(days):
@@ -691,10 +711,12 @@ async def _run_get_matrix(db, user, args) -> str:
 
 async def _run_compatibility(db, user, args) -> str:
     partner = str(args.get("partner_birth_date", "") or "").strip()
-    relation = str(args.get("relation", "love") or "love").strip()
+    relation = str(args.get("relation", "love") or "love").strip().lower()
+    if relation not in _RELATION_LABEL:
+        return "тип связи должен быть love, friend, work или family"
     try:
         datetime.strptime(partner, "%Y-%m-%d")
-    except ValueError:
+    except (TypeError, ValueError):
         return "нужна дата партнёра в формате YYYY-MM-DD — уточни её у клиентки"
     if not user["birth_date"]:
         return "нет даты рождения клиентки"
@@ -731,18 +753,22 @@ async def _run_save_memory(db, user, args) -> str:
     # are model-generated and must never be able to override the user's setting.
     if not bool(user["memory_enabled"]):
         return "память выключена — факт не сохранён"
-    fact = str(args.get("fact", "") or "").strip()
+    fact = str(args.get("fact", "") or "").strip()[:1000]
     if not fact:
         return "нечего сохранять"
-    saved = await memory.remember(db, user["tg_id"], fact,
-                                  kind=str(args.get("kind", "fact") or "fact"))
+    kind = str(args.get("kind", "fact") or "fact").strip().lower()
+    if kind not in {"person", "event", "emotion", "goal", "fact"}:
+        kind = "fact"
+    saved = await memory.remember(db, user["tg_id"], fact, kind=kind)
     return "сохранено" if saved else "уже знаю это — усилила важность"
 
 
 async def _run_recall_memory(db, user, args) -> str:
     if not bool(user["memory_enabled"]):
         return "память выключена — сохранённые факты не используются"
-    query = str(args.get("query", "") or "")
+    query = str(args.get("query", "") or "").strip()[:200]
+    if not query:
+        return "укажи короткую тему для поиска в памяти"
     mems = await memory.recall(db, user["tg_id"], query, limit=12)
     return "\n".join(f"- {m}" for m in mems) or "память пуста"
 
@@ -787,7 +813,213 @@ async def _run_suggest_practice(db, user, args) -> str:
     return "\n".join(lines)
 
 
+def _user_field(user, key: str, default=None):
+    try:
+        return user[key]
+    except (KeyError, IndexError, TypeError):
+        return default
+
+
+async def _run_get_vedic_chart(db, user, args) -> str:
+    if not _user_field(user, "birth_date"):
+        return "нет даты рождения — сначала собери натальную карту"
+    try:
+        result = vedic.compute_vedic_chart(
+            user["birth_date"], _user_field(user, "birth_time"), _user_field(user, "birth_city"),
+            _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"),
+            time_known=bool(_user_field(user, "birth_time_known")),
+        )
+    except (TypeError, ValueError) as exc:
+        return f"Vedic chart unavailable: {exc}"
+    return "[Vedic evidence — Lahiri sidereal, do not invent fields]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_nakshatra(db, user, args) -> str:
+    try:
+        longitude = float(args.get("longitude"))
+        result = vedic.get_nakshatra(longitude)
+    except (TypeError, ValueError) as exc:
+        return f"longitude must be between 0 and 360 degrees: {exc}"
+    return "[Vedic evidence — nakshatra/pada]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_vimshottari_dasha(db, user, args) -> str:
+    if not _user_field(user, "birth_date") or not _user_field(user, "birth_time"):
+        return "для точной Vimshottari Dasha нужны дата и подтверждённое время рождения"
+    try:
+        result = vedic.get_vimshottari_dasha(
+            user["birth_date"], user["birth_time"], _user_field(user, "tz"),
+            as_of=args.get("as_of"),
+        )
+    except (TypeError, ValueError) as exc:
+        return f"Vimshottari unavailable: {exc}"
+    return "[Vedic evidence — Vimshottari timeline]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_panchang(db, user, args) -> str:
+    calendar_date = str(args.get("date") or date.today().isoformat())
+    try:
+        result = vedic.get_panchang(calendar_date, _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"))
+    except (TypeError, ValueError) as exc:
+        return f"Panchang unavailable: {exc}"
+    return "[Vedic evidence — Panchang]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_rahu_kaal(db, user, args) -> str:
+    calendar_date = str(args.get("date") or date.today().isoformat())
+    try:
+        result = vedic.get_rahu_kaal(calendar_date, _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"))
+    except (TypeError, ValueError) as exc:
+        return f"Rahu Kaal unavailable: {exc}"
+    return "[Vedic evidence — Rahu Kaal, traditional planning convention]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_varga_chart(db, user, args) -> str:
+    try:
+        chart = vedic.compute_vedic_chart(
+            user["birth_date"], _user_field(user, "birth_time"), _user_field(user, "birth_city"),
+            _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"),
+            time_known=bool(_user_field(user, "birth_time_known")),
+        )
+        result = vedic.get_varga_chart(chart["result"], str(args.get("varga") or "D1"))
+    except (KeyError, TypeError, ValueError) as exc:
+        return f"Varga unavailable: {exc}"
+    return "[Vedic evidence — divisional chart]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_guna_milan(db, user, args) -> str:
+    partner_date = str(args.get("partner_birth_date") or "").strip()
+    if not _user_field(user, "birth_date") or not partner_date:
+        return "для Guna Milan нужны даты рождения обоих людей"
+    try:
+        own = vedic.compute_vedic_chart(
+            user["birth_date"], _user_field(user, "birth_time"), _user_field(user, "birth_city"),
+            _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"),
+            time_known=bool(_user_field(user, "birth_time_known")),
+        )
+        partner_time = str(args.get("partner_birth_time") or "12:00")
+        partner = vedic.compute_vedic_chart(partner_date, partner_time, None,
+                                            _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"),
+                                            time_known=bool(args.get("partner_time_known", False)))
+        result = vedic.get_guna_milan(own["result"], partner["result"])
+    except (KeyError, TypeError, ValueError) as exc:
+        return f"Guna Milan unavailable: {exc}"
+    return "[Vedic evidence — Ashtakoot/Guna Milan]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_vedic_transits(db, user, args) -> str:
+    try:
+        result = vedic.get_vedic_transits(args.get("as_of"))
+    except (TypeError, ValueError) as exc:
+        return f"Vedic transits unavailable: {exc}"
+    return "[Vedic evidence — sidereal transits]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_graha_strengths(db, user, args) -> str:
+    if not _user_field(user, "birth_date"):
+        return "нет даты рождения — сначала собери натальную карту"
+    try:
+        chart = vedic.compute_vedic_chart(
+            user["birth_date"], _user_field(user, "birth_time"), _user_field(user, "birth_city"),
+            _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"),
+            time_known=bool(_user_field(user, "birth_time_known")),
+        )
+        result = vedic.get_graha_strengths(chart["result"])
+    except (KeyError, TypeError, ValueError) as exc:
+        return f"Graha strengths unavailable: {exc}"
+    return "[Vedic evidence — dignity-lite strengths, not full Shadbala]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+async def _run_get_muhurta(db, user, args) -> str:
+    try:
+        result = vedic.get_muhurta(
+            str(args.get("date_a") or ""), str(args.get("date_b") or ""),
+            _user_field(user, "birth_lat"), _user_field(user, "birth_lon"), _user_field(user, "tz"),
+            str(args.get("criteria") or ""),
+        )
+    except (TypeError, ValueError) as exc:
+        return f"Muhurta unavailable: {exc}"
+    return "[Vedic evidence — criteria comparison, no guarantee]\n" + json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
 SKILLS: dict[str, dict] = {
+    "get_vedic_chart": {
+        "run": _run_get_vedic_chart,
+        "schema": {"name": "get_vedic_chart", "description": (
+            "Vedic/Jyotish Kundli по sidereal Lahiri: graha, Rahu/Ketu, nakshatra "
+            "и whole-sign houses только при подтверждённом времени."),
+            "input_schema": {"type": "object", "properties": {}}},
+    },
+    "get_nakshatra": {
+        "run": _run_get_nakshatra,
+        "schema": {"name": "get_nakshatra", "description": (
+            "Детерминированно определить 27 nakshatra, pada и lord по долготе 0-360°."),
+            "input_schema": {"type": "object", "properties": {
+                "longitude": {"type": "number", "description": "Sidereal longitude 0-360"}},
+                "required": ["longitude"]}},
+    },
+    "get_vimshottari_dasha": {
+        "run": _run_get_vimshottari_dasha,
+        "schema": {"name": "get_vimshottari_dasha", "description": (
+            "Vimshottari Mahadasha timeline from Moon nakshatra; requires precise birth time."),
+            "input_schema": {"type": "object", "properties": {
+                "as_of": {"type": "string", "description": "Optional YYYY-MM-DD snapshot"}}}},
+    },
+    "get_panchang": {
+        "run": _run_get_panchang,
+        "schema": {"name": "get_panchang", "description": (
+            "Local Vedic Panchang: vara, tithi, nakshatra, yoga, karana, sunrise/sunset."),
+            "input_schema": {"type": "object", "properties": {
+                "date": {"type": "string", "description": "Local YYYY-MM-DD"}}}},
+    },
+    "get_rahu_kaal": {
+        "run": _run_get_rahu_kaal,
+        "schema": {"name": "get_rahu_kaal", "description": (
+            "Local Rahu Kaal interval from sunrise/sunset; traditional planning convention only."),
+            "input_schema": {"type": "object", "properties": {
+                "date": {"type": "string", "description": "Local YYYY-MM-DD"}}}},
+    },
+    "get_varga_chart": {
+        "run": _run_get_varga_chart,
+        "schema": {"name": "get_varga_chart", "description": (
+            "Vedic divisional chart using documented D1, D9 Navamsa or D10 Dasamsa rule."),
+            "input_schema": {"type": "object", "properties": {
+                "varga": {"type": "string", "enum": ["D1", "D9", "D10"]}},
+                "required": ["varga"]}},
+    },
+    "get_guna_milan": {
+        "run": _run_get_guna_milan,
+        "schema": {"name": "get_guna_milan", "description": (
+            "Ashtakoot/Guna Milan breakdown, maximum 36; score is not a relationship verdict."),
+            "input_schema": {"type": "object", "properties": {
+                "partner_birth_date": {"type": "string", "description": "Partner YYYY-MM-DD"},
+                "partner_birth_time": {"type": "string", "description": "Optional HH:MM"},
+                "partner_time_known": {"type": "boolean"}},
+                "required": ["partner_birth_date"]}},
+    },
+    "get_vedic_transits": {
+        "run": _run_get_vedic_transits,
+        "schema": {"name": "get_vedic_transits", "description": (
+            "Sidereal Lahiri transit positions for an as-of date with explicit tradition marker."),
+            "input_schema": {"type": "object", "properties": {
+                "as_of": {"type": "string", "description": "Optional YYYY-MM-DD"}}}},
+    },
+    "get_graha_strengths": {
+        "run": _run_get_graha_strengths,
+        "schema": {"name": "get_graha_strengths", "description": (
+            "Bounded sign-dignity evidence with formula metadata; not full Shadbala."),
+            "input_schema": {"type": "object", "properties": {}}},
+    },
+    "get_muhurta": {
+        "run": _run_get_muhurta,
+        "schema": {"name": "get_muhurta", "description": (
+            "Compare two local dates using explicit user criteria; never a guaranteed auspiciousness claim."),
+            "input_schema": {"type": "object", "properties": {
+                "date_a": {"type": "string", "description": "Candidate A YYYY-MM-DD"},
+                "date_b": {"type": "string", "description": "Candidate B YYYY-MM-DD"},
+                "criteria": {"type": "string", "description": "User's practical criterion"}},
+                "required": ["date_a", "date_b"]}},
+    },
     "draw_tarot": {
         "run": _run_draw_tarot,
         "schema": {
@@ -824,9 +1056,10 @@ SKILLS: dict[str, dict] = {
                 "placement": {"type": "string", "enum": [
                     "moon_sign", "venus_sign", "rising_sign", "asteroid_sign",
                     "chiron_sign", "juno_sign", "jupiter_sign", "mars_sign",
-                    "mercury_sign", "neptune_sign", "north_node_sign", "pluto_sign",
-                    "saturn_sign", "south_node_sign", "uranus_sign",
-                    "life_path", "chinese_zodiac",
+                    "mercury_sign", "neptune_sign", "north_node_sign", "rahu_sign",
+                    "pluto_sign", "saturn_sign", "south_node_sign", "ketu_sign",
+                    "uranus_sign", "ceres_sign", "vesta_sign", "pallas_sign",
+                    "lilith_sign", "life_path", "chinese_zodiac", "natal_chart",
                 ]}}, "required": ["placement"]},
         },
     },

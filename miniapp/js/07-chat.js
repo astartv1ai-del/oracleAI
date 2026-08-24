@@ -52,6 +52,33 @@
     setTimeout(() => t.remove(), 2400);
   };
 
+  app.proofHtml = function(proof) {
+    if (!proof) return '';
+    const en = oracleLang() === 'en';
+    const mode = proof.mode === 'deterministic'
+      ? (en ? 'Grounded in calculated tools' : 'Проверено по расчётным инструментам')
+      : proof.mode === 'safety'
+        ? (en ? 'Safety-first response' : 'Ответ по safety-протоколу')
+        : (en ? 'Offline reflective mode' : 'Офлайн-рефлексия');
+    const labels = en ? {
+      get_chart: 'Natal chart', get_all_placements: 'All placements', get_placement: 'Single placement',
+      get_matrix: 'Matrix', get_life_path: 'Life path', get_chinese_zodiac: 'Chinese zodiac',
+      get_transits: 'Current sky', get_moon_week: 'Moon week', get_career_windows: 'Career windows',
+      get_compatibility: 'Compatibility', list_partners: 'Saved partners', draw_tarot: 'Tarot draw',
+      palm_scanner: 'Palm evidence', palm_photo_guide: 'Photo guide', palm_history: 'Palm history',
+      suggest_practice: 'Practice catalogue', recall_diary: 'Diary', recall_memory: 'Memory', save_memory: 'Memory'
+    } : {
+      get_chart: 'Натальная карта', get_all_placements: 'Все placements', get_placement: 'Один placement',
+      get_matrix: 'Матрица', get_life_path: 'Число пути', get_chinese_zodiac: 'Китайский зодиак',
+      get_transits: 'Текущее небо', get_moon_week: 'Лунная неделя', get_career_windows: 'Окна решений',
+      get_compatibility: 'Совместимость', list_partners: 'Сохранённые люди', draw_tarot: 'Расклад Таро',
+      palm_scanner: 'Evidence ладони', palm_photo_guide: 'Гид по фото', palm_history: 'История ладони',
+      suggest_practice: 'Каталог практик', recall_diary: 'Дневник', recall_memory: 'Память', save_memory: 'Память'
+    };
+    const used = (proof.tools_used || []).map(name => labels[name] || name).slice(0, 4);
+    return `<div class="message-proof" aria-label="${esc(mode)}"><span class="message-proof__mode">✦ ${esc(mode)}</span>${used.length ? `<span class="message-proof__tools">${used.map(item => esc(item)).join(' · ')}</span>` : ''}</div>`;
+  };
+
   // Ошибки остаются отдельными бережными состояниями, без технического текста.
   app.chatRecoveryHtml = function(kind) {
     const history = kind === 'history';
@@ -209,7 +236,7 @@
     // rich() его экранировал бы, поэтому рендерим как есть в .msg.assistant
     const body = messages.map(m =>
       m.widget ? `<div class="msg assistant">${m.widget}</div>`
-        : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${richMd(m.text)}</div>`).join('');
+        : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${richMd(m.text)}${m.proof ? this.proofHtml(m.proof) : ''}</div>`).join('');
 
     // Первый экран чата — короткая, персональная точка входа вместо универсального hero-текста.
     const introGuides = {
@@ -245,6 +272,9 @@
           <div style="flex:1;min-width:0">
             <div class="cname">${esc(a.name || 'Лилит')}</div>
             <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
+            <div class="chat-proof-strip" aria-label="${homeT('profileQuality')}">
+              <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
+            </div>
           </div>
           <button type="button" class="chat-thread-toggle" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="Открыть мои чаты">
             <span class="chat-thread-toggle__icon">${sigilIcon('monthly')}</span>
@@ -559,7 +589,7 @@
       const r = await this.chatPost(val);
       haptic('success');
       vb([10, 40, 14]);
-      this.chat.messages.push({ role: 'assistant', text: r.answer });
+      this.chat.messages.push({ role: 'assistant', text: r.answer, proof: r.proof || null });
     } catch (e) {
       this.chat.messages.push({ role: 'assistant', widget: this.chatRecoveryHtml('reply') });
     }

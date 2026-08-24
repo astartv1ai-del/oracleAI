@@ -68,11 +68,16 @@ async def recent_readings(db, tg_id: int, limit: int = 20) -> list[dict]:
         "SELECT id, spread, question, cards_json, answer, outcome, created_at "
         "FROM tarot_readings WHERE tg_id=? AND answer<>'' ORDER BY id DESC LIMIT ?",
         (tg_id, limit))
-    return [{"id": r["id"], "spread": r["spread"], "question": r["question"],
-             "answer": r["answer"], "outcome": r["outcome"],
-             "created_at": r["created_at"],
-             "cards": json.loads(r["cards_json"] or "[]")}
-            for r in await cur.fetchall()]
+    from ..core import tarot
+
+    result = []
+    for r in await cur.fetchall():
+        cards = json.loads(r["cards_json"] or "[]")
+        result.append({"id": r["id"], "spread": r["spread"], "question": r["question"],
+                       "answer": r["answer"], "outcome": r["outcome"],
+                       "created_at": r["created_at"], "cards": cards,
+                       "ledger": tarot.reading_ledger(cards, r["spread"] or "three")})
+    return result
 
 
 async def readings_count_since(db, tg_id: int, days: int) -> int:

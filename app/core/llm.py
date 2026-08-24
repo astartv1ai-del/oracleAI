@@ -432,7 +432,9 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
                     execute: ToolExecutor, tier: str = "main",
                     max_tokens: int = 1500, *, purpose: str = "answer",
                     tg_id: int | None = None, db=None,
-                    max_iters: int | None = None) -> str:
+                    max_iters: int | None = None,
+                    timeout_s: float | None = None,
+                    max_tool_calls: int | None = None) -> str:
     """Агентный цикл: модель вызывает скиллы, мы исполняем, модель отвечает.
 
     `max_iters` — потолок глубины. Премиум разбирает «план + разбор + совет»
@@ -441,10 +443,10 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
     """
     if not settings.provider_chain:
         raise RuntimeError("Все LLM-провайдеры недоступны")
-    iters = max_iters or MAX_ITERS
+    iters = max(1, max_iters or MAX_ITERS)
     budget = _WorkflowBudget(
-        timeout=max(1.0, settings.llm_workflow_timeout),
-        max_tool_calls=max(1, settings.llm_max_tool_calls),
+        timeout=max(1.0, timeout_s if timeout_s is not None else settings.llm_workflow_timeout),
+        max_tool_calls=max(1, max_tool_calls if max_tool_calls is not None else settings.llm_max_tool_calls),
         max_cost_usd=max(0.01, settings.llm_max_cost_usd),
     )
     errors = []

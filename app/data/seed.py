@@ -137,7 +137,10 @@ FLAGS = [
 # ─────────────────────────── настройки ────────────────────────────────────────
 SETTINGS = {
     "brand.name": "Оракул",
+    "brand.name_en": "OracleAI",
     "brand.tagline": "Личный AI-астролог, который знает именно тебя",
+    "brand.tagline_en": "A personal AI astrologer that knows you",
+    "brand.project_url": "https://github.com/astartv1ai-del/oracleAI",
     "brand.support": "",
     "push.morning_hour": 9,
     "push.weekly_hour": 19,
@@ -156,6 +159,8 @@ SETTINGS = {
     "push.horoscope_hour": 7,
     "disclaimer": ("Оракул создан для самопознания и вдохновения. "
                    "Он не заменяет врача, психолога и юриста."),
+    "disclaimer_en": ("Oracle is designed for self-reflection and inspiration. "
+                      "It does not replace medical, psychological or legal advice."),
     # Контакты помощи для кризисного протокола (`core/safety.py`). Список
     # правится в панели: у клиенток из разных стран разные службы.
     "safety.helplines": [

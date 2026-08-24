@@ -18,18 +18,39 @@ BIRTH = {
 
 def test_all_requested_placements_are_deterministic():
     codes = [
-        "asteroid_sign", "chiron_sign", "juno_sign", "jupiter_sign", "mars_sign",
-        "mercury_sign", "moon_sign", "neptune_sign", "north_node_sign", "pluto_sign",
+        "asteroid_sign", "ceres_sign", "chiron_sign", "juno_sign", "jupiter_sign",
+        "ketu_sign", "lilith_sign", "mars_sign", "mercury_sign", "moon_sign",
+        "neptune_sign", "north_node_sign", "pallas_sign", "pluto_sign", "rahu_sign",
         "rising_sign", "saturn_sign", "south_node_sign", "uranus_sign", "venus_sign",
+        "vesta_sign",
     ]
     for code in codes:
         result = placements.calculate_placement(code, **BIRTH)
         assert result["source"] == "swiss_ephemeris"
+        assert result["engine"] == "Swiss Ephemeris via Kerykeion"
+        assert result["zodiac_type"] == "Tropical"
+        assert result["house_system"] == "P"
+        assert result["house_system_name"] == "Placidus"
+        assert result["perspective_type"] == "Apparent Geocentric"
+        assert result["node_mode"] == "true"
         assert result["precision"] == "exact"
         if code == "asteroid_sign":
             assert {item["point"] for item in result["points"]} == {"Ceres", "Vesta", "Pallas"}
         else:
             assert result.get("sign")
+            assert result["degree_exact"] is not None
+            assert result["abs_degree_exact"] is not None
+
+
+def test_explicit_node_aliases_are_same_true_node_facts():
+    rahu = placements.calculate_placement("rahu_sign", **BIRTH)
+    north = placements.calculate_placement("north_node_sign", **BIRTH)
+    ketu = placements.calculate_placement("ketu_sign", **BIRTH)
+    south = placements.calculate_placement("south_node_sign", **BIRTH)
+    assert rahu["point"] == north["point"] == "True_North_Lunar_Node"
+    assert ketu["point"] == south["point"] == "True_South_Lunar_Node"
+    assert rahu["abs_degree_exact"] == north["abs_degree_exact"]
+    assert ketu["abs_degree_exact"] == south["abs_degree_exact"]
 
 
 def test_unknown_time_never_exposes_rising_or_houses():

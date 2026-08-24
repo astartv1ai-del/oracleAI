@@ -59,11 +59,12 @@ def _user_lang(user) -> str:
 async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
                      thread_id: int | None = None,
                      allowance_line: str = "",
-                     extra_rules: str = "") -> str:
+                     extra_rules: str = "",
+                     trace: list[str] | None = None) -> str:
     """Свободный вопрос агенту. Совместимая точка входа для бота и API."""
     return await agents.answer(db, user, question, agent=agent,
                                thread_id=thread_id, allowance_line=allowance_line,
-                               extra_rules=extra_rules)
+                               extra_rules=extra_rules, trace=trace)
 
 
 # ---------------------------------------------------------------- таро
@@ -78,7 +79,11 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
     «про жизнь вообще».
     """
     cards_block = tarot.cards_text(cards, positions)
-    evidence = interpretation.tarot_evidence(cards, positions, title=title, question=question)
+    spread_code = tarot.spread_by_title(title)["code"]
+    ledger = tarot.reading_ledger(cards, spread_code, positions=positions)
+    evidence = interpretation.tarot_evidence(
+        cards, positions, title=title, question=question,
+        combinations=ledger["adjacent_combinations"])
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("tarot"),

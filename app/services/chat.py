@@ -60,6 +60,17 @@ async def _refund(db, user, verdict) -> None:
 
 # ────────────────────────────── вопрос агенту ─────────────────────────────────
 
+
+def _proof_payload(spec, user, *, tools_used: list[str], mode: str) -> dict:
+    """Small non-sensitive proof envelope for the bot and Mini App."""
+    return {
+        "mode": mode,
+        "tools_used": list(dict.fromkeys(tools_used)),
+        "tools_available": list(spec.skills),
+        "quality": spec.as_dict(user).get("quality", {}),
+    }
+
+
 async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
               surface: str = "bot", allow_paid: bool = True,
               thread_id: int | None = None) -> dict:
@@ -110,11 +121,13 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
             thread_id=thread["id"], agent=spec.code, surface=surface)
 
     allowance_line = _allowance_line(verdict)
+    tool_trace: list[str] = []
     try:
         answer = await agent_core.ask_oracle(
             db, user, question, agent=spec.code, thread_id=thread["id"],
             allowance_line=allowance_line,
-            extra_rules=safety.soften_rule(category) if level == safety.SOFTEN else "")
+            extra_rules=safety.soften_rule(category) if level == safety.SOFTEN else "",
+            trace=tool_trace)
     except Exception:
         await _refund(db, user, verdict)
         raise
@@ -140,6 +153,9 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     return {
         "answer": answer,
         "agent": spec.code,
+        "agent_profile": spec.as_dict(user),
+        "proof": _proof_payload(spec, user, tools_used=tool_trace,
+                                mode="deterministic" if tool_trace else "offline"),
         "thread_id": thread["id"],
         "charge": verdict.charge,
         "allowance": (await limits.allowance(db, fresh,
@@ -171,6 +187,8 @@ async def _crisis_answer(db, user, question: str, category: str, agent: str,
     return {
         "answer": answer,
         "agent": spec.code,
+        "agent_profile": spec.as_dict(user),
+        "proof": _proof_payload(spec, user, tools_used=[], mode="safety"),
         "thread_id": thread["id"],
         "charge": "none",
         "safety": category,
@@ -233,6 +251,7 @@ async def draw(db, user, spread_code: str, *, surface: str = "bot",
                           surface=surface)
     return {"reading_id": reading_id, "title": title, "positions": positions,
             "cards": cards, "spread": code, "thread_id": thread["id"],
+            "ledger": tarot.reading_ledger(cards, code),
             "charge": verdict.charge}
 
 
