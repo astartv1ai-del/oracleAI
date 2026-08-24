@@ -97,3 +97,16 @@ Desktop live проверки выполнены на workspace shell с sidebar
 
 **Последний commit:** `1be7ff8` — `fix: restore tarot card height and home spacing`  
 **Текущий незакоммиченный QA layer:** v109 Tarot slot/flip corrections; будет зафиксирован отдельным commit после финальной проверки.
+
+
+## 8. Финальное кроссплатформенное тестирование
+
+Финальный mobile runner выполнен на 320×844, 375×812 и 390×844. Проверены Home, Hub, mobile sidebar, Tarot picker, Palm picker, Compatibility form, Placements и Chart. На всех трёх ширинах `document.scrollWidth` и `body.scrollWidth` совпали с viewport width; `horizontalOverflow: false`, scroll containers с горизонтальным overflow не обнаружены.
+
+Отдельный desktop runner выполнен на 1024×768 и 1280×800 с теми же сценариями. На обеих ширинах root и document соответствуют viewport, `horizontalOverflow: false`, sidebar имеет стабильную desktop ширину, tool forms остаются внутри bounded reading canvas. Tarot picker, Palm, Compatibility, Placements и Chart не выходят за desktop canvas.
+
+Desktop anomaly scan обнаружил только два безопасных класса сигналов: `.agent-last` с intentional `line-clamp`/text ellipsis и `.agent-sprite`, который имеет небольшой декоративный halo за пределами avatar box. Ни один из них не создаёт page scroll, не перекрывает соседний контент и не считается layout bug. Реальных остаточных horizontal overflow или Tarot sibling ghost после v109 не найдено.
+
+## 9. Финальный статус
+
+По итогам финального mobile + desktop QA новых исправлений в коде не потребовалось: критические Tarot geometry/flip fixes уже находятся в v109. В этот финальный commit добавлены воспроизводимые desktop metrics и актуализированный audit report.
