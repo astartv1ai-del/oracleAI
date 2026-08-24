@@ -82,6 +82,31 @@ async def list_threads(db, tg_id: int, limit: int = 30) -> list[dict]:
     return [dict(r) for r in await cur.fetchall()]
 
 
+async def search_threads(db, tg_id: int, query: str = "", limit: int = 50) -> list[dict]:
+    """Ищет активные треды пользователя по заголовку, превью и сообщениям.
+
+    Поиск остаётся scoped по tg_id и archived=0. Текст совпадения используется
+    только для локального результата интерфейса и не меняет title или память.
+    """
+    query = " ".join((query or "").split())[:120]
+    if not query:
+        return await list_threads(db, tg_id, limit=limit)
+    like = f"%{query}%"
+    cur = await db.execute(
+        "SELECT t.*, "
+        "CASE WHEN t.title LIKE ? THEN t.title "
+        "WHEN t.last_text LIKE ? THEN t.last_text "
+        "ELSE (SELECT m.text FROM messages m WHERE m.thread_id=t.id "
+        "AND m.text LIKE ? ORDER BY m.id DESC LIMIT 1) END AS match_text "
+        "FROM threads t WHERE t.tg_id=? AND "
+        "(t.title LIKE ? OR t.last_text LIKE ? OR EXISTS "
+        "(SELECT 1 FROM messages m2 WHERE m2.thread_id=t.id AND m2.text LIKE ?)) "
+        "ORDER BY COALESCE(t.last_at, t.created_at) DESC LIMIT ?",
+        (like, like, like, tg_id, like, like, like, max(1, min(limit, 100))),
+    )
+    return [dict(row) for row in await cur.fetchall()]
+
+
 async def archive_thread(db, thread_id: int, tg_id: int) -> None:
     async with transaction(db):
         await db.execute("UPDATE threads SET archived=1 WHERE id=? AND tg_id=?",

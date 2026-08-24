@@ -20,7 +20,7 @@ WRITABLE = {
     "birth_lat", "birth_lon", "chart_json",
     "sub_level", "sub_until", "crystals",
     "onboarded", "morning_push", "memory_enabled", "age_confirmed", "ref_by", "goal", "source", "status",
-    "ltv_stars", "expiry_notified", "last_seen", "deleted_at", "tarot_deck_id",
+    "ltv_stars", "expiry_notified", "last_seen", "last_platform", "last_viewport", "last_client_mode", "last_client_at", "deleted_at", "tarot_deck_id",
 }
 
 

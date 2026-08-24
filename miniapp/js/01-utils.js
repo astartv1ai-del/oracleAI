@@ -39,8 +39,25 @@ function widAlive(key, view, pend) {
 }
 
 /* ── API-клиент ─────────────────────────────────────────────────────────── */
+function clientPlatform() {
+  const raw = String((tg() && tg().platform) || (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '').toLowerCase();
+  if (raw.includes('android')) return 'android';
+  if (raw.includes('ios') || raw.includes('iphone') || raw.includes('ipad')) return 'ios';
+  if (raw.includes('mac')) return 'macos';
+  if (raw.includes('win')) return 'windows';
+  if (raw.includes('linux')) return 'linux';
+  return 'web';
+}
+function clientMode() {
+  return innerWidth < 600 ? 'mobile' : (innerWidth < 900 ? 'tablet' : 'desktop');
+}
 async function api(path, opts = {}) {
-  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  const headers = Object.assign({
+    'Content-Type': 'application/json',
+    'X-Client-Platform': clientPlatform(),
+    'X-Client-Viewport': `${Math.round(innerWidth)}x${Math.round(innerHeight)}`,
+    'X-Client-Mode': clientMode(),
+  }, opts.headers || {});
   const initData = tg() && tg().initData;
   if (initData) headers['X-Init-Data'] = initData;
   let url = path;

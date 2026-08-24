@@ -10,6 +10,7 @@
       this.chat.messages = [];
       this.chat.pending = null;
       this.chat.tid = null;
+      this.chat.sessionArchived = false;
       this.chat.sessions = [];
       this.loadThread(key);
     }
@@ -100,6 +101,7 @@
   // отправка в активную сессию (если есть) — иначе первый вопрос создаёт тред
 
   app.chatPost = async function(text) {
+    if (this.chat.sessionArchived) throw new Error('Архивный чат доступен только для просмотра');
     const a = this.chat.spec;
     if (this.chat.tid) {
       return await api(`/api/chat/${a.code}/sessions/${this.chat.tid}`,
@@ -191,6 +193,7 @@
     }
     const r = await api(`/api/chat/${this.chat.key}/sessions`, { method: 'POST' });
     this.chat.tid = r.thread_id;
+    this.chat.sessionArchived = false;
     this.chat.messages = [];
     this.chat.pending = null;
     await this.refreshSessions();
@@ -204,6 +207,7 @@
       const r = await api(`/api/chat/${this.chat.key}/sessions/${id}`);
       this.chat.spec = this.normalizeAgent(r.agent, this.chat.key);
       this.chat.tid = r.thread_id;
+      this.chat.sessionArchived = !!r.archived;
       this.chat.messages = (r.messages || []).map(m => ({ role: m.role, text: m.text }));
       if (!this.chat.messages.length && r.agent && r.agent.greeting) {
         this.chat.messages = [{ role: 'assistant', text: r.agent.greeting }];
@@ -320,9 +324,9 @@
           ${pendHtml}
           ${busy ? `<div class="msg assistant"><div class="typing"><span></span><span></span><span></span></div></div>` : ''}
         </div>
-        <div class="composer">
+        <div class="composer ${this.chat.sessionArchived ? 'composer--readonly' : ''}">
                       <div class="composer-context">
-            <span class="composer-presence"><i aria-hidden="true"></i>${esc(a.name || 'Проводник')} рядом</span>
+            <span class="composer-presence"><i aria-hidden="true"></i>${this.chat.sessionArchived ? 'Архивный чат · только просмотр' : esc(a.name || 'Проводник') + ' рядом'}</span>
             <div class="composer-context-actions">
               ${a.code === 'chiromant' ? '<button type="button" class="palm-quick-upload" data-act="palm-start" aria-label="Добавить фото ладони"><span aria-hidden="true">✋</span><span>Фото ладони</span></button>' : ''}
               <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть палитру инструментов" aria-expanded="false" aria-controls="tool-expand"><span class="composer-tools-copy__icon">${sigilIcon('spark')}</span><span>Инструменты</span><span class="composer-tools-copy__chevron" aria-hidden="true">↑</span></button>
@@ -330,10 +334,10 @@
           </div>
 
           <div class="composer-top">
-            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
-            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
+            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="${this.chat.sessionArchived ? 'Архивный чат доступен для просмотра' : 'Напиши ' + esc(a.name || 'Лилит') + ' — как есть…'}" autocomplete="off" spellcheck="true" aria-label="${this.chat.sessionArchived ? 'Архивный чат только для просмотра' : 'Сообщение для ' + esc(a.name || 'Лилит')}"${this.chat.sessionArchived ? ' disabled aria-disabled="true"' : ''}>${esc(this.chat.draft || '')}</textarea>
+            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy || this.chat.sessionArchived ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
           </div>
-          ${suggest.length ? `
+          ${suggest.length && !this.chat.sessionArchived ? `
           <div class="suggest-chips" aria-label="Идеи для своего вопроса">
             ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
           </div>` : ''}

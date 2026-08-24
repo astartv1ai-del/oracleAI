@@ -323,3 +323,9 @@ label .input, label select, label textarea { margin-top: 4px; }
   .row-2, .row-3, .row-2.wide-left { grid-template-columns: 1fr; }
   .topbar { flex-wrap: wrap; }
 }
+
+/* Client context is coarse diagnostics, not a raw user-agent dump. */
+.client-context { display:inline-block; max-width:240px; color:var(--muted); white-space:normal; overflow-wrap:anywhere; font-size:.82em; line-height:1.35; }
+@media (max-width:900px) {
+  .client-context { max-width:180px; }
+}

@@ -36,6 +36,9 @@ document.addEventListener('input', function (event) {
   if (event.target && event.target.id === 'chat-input') {
     app.chat.draft = event.target.value;
   }
+  if (event.target && event.target.id === 'workspace-history-q') {
+    app.searchHistory(event.target.value);
+  }
 });
 
 

@@ -7,7 +7,7 @@ app.state = window.OracleRuntime
       me: null, agents: [], today: null, spreads: null, moonWeek: null,
       dailyPulse: null, view: 'home',
       chat: { key: null, spec: null, messages: [], pending: null,
-              busy: false, tid: null, sessions: [], draft: '' }
+              busy: false, tid: null, sessionArchived: false, sessions: [], historyQuery: '', historyResults: [], historyBusy: false, draft: '' }
     };
 if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 
@@ -263,6 +263,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
             <div class="workspace-sidebar__section-title">Проводники</div>
             <div class="workspace-agent-list" id="workspace-agent-list"></div>
             <div class="workspace-sidebar__section-title workspace-sidebar__section-title--chats"><span id="workspace-chats-label">Последние чаты</span><span id="workspace-chats-count"></span></div>
+            <label class="workspace-history-search" for="workspace-history-q"><span aria-hidden="true">⌕</span><input id="workspace-history-q" type="search" autocomplete="off" spellcheck="false" placeholder="Найти в истории…" aria-label="Найти в истории чатов"><button type="button" data-act="history-clear" aria-label="Очистить поиск" title="Очистить поиск">×</button></label>
             <div class="workspace-session-list" id="workspace-session-list"></div>
           </div>
           <button class="workspace-profile" data-act="go" data-goto="profile" type="button">
@@ -329,9 +330,12 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     const sessionList = document.getElementById('workspace-session-list');
     const label = document.getElementById('workspace-chats-label');
     const count = document.getElementById('workspace-chats-count');
+    const search = document.getElementById('workspace-history-q');
     if (!agentList || !sessionList) return;
     const agents = this.agents.length ? this.agents : Object.keys(AGENT_BRAND).map(code => this.normalizeAgent({}, code));
     const active = this.chat && this.chat.key;
+    const query = String(this.chat.historyQuery || '').trim();
+    const agentByCode = Object.fromEntries(agents.map(a => [a.code, a]));
     agentList.innerHTML = agents.slice(0, 4).map(a => `
       <button class="workspace-agent-item ${a.code === active ? 'active' : ''}" data-act="chat" data-chat="${esc(a.code)}" type="button">
         <span class="workspace-agent-item__avatar" style="${this.agentThemeStyle(a, a.code)}"><img src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="" loading="lazy"></span>
@@ -339,16 +343,74 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
         <span class="workspace-agent-item__dot" aria-hidden="true"></span>
       </button>`).join('');
     const sessions = active ? (this.chat.sessions || []) : [];
-    if (label) label.textContent = active ? `Чаты · ${(this.chat.spec && this.chat.spec.name) || 'проводник'}` : 'Последние чаты';
-    if (count) count.textContent = sessions.length ? `${sessions.length}/5` : '';
-    sessionList.innerHTML = sessions.length ? sessions.map(s => `
-      <div class="workspace-session-item ${s.id === this.chat.tid ? 'active' : ''}">
-        <button data-act="open-session" data-tid="${s.id}" type="button"><span class="workspace-session-item__icon">⌁</span><span><b>${esc(s.title || 'Новый разговор')}</b><small>${esc(s.last_text || 'Продолжить разговор')}</small></span></button>
-        <button class="workspace-session-item__delete" data-act="del-session" data-tid="${s.id}" type="button" aria-label="Удалить чат" title="Удалить чат">×</button>
-      </div>`).join('') : `<div class="workspace-session-empty">${active ? 'Новый разговор появится после первого сообщения.' : 'Выбери проводника, чтобы увидеть его чаты.'}</div>`;
+    const rows = query ? (this.chat.historyResults || []).map(item => ({
+      ...item, id: item.thread_id, agentName: agentByCode[item.agent]?.name || item.agent,
+      agentTitle: agentByCode[item.agent]?.title || 'Проводник', searchResult: true,
+    })) : sessions.map(item => ({ ...item, id: item.id, agentName: this.chat.spec?.name || '', agentTitle: this.chat.spec?.title || '', searchResult: false }));
+    if (search && search.value !== query) search.value = query;
+    if (label) label.textContent = query ? 'Результаты поиска' : (active ? `Чаты · ${(this.chat.spec && this.chat.spec.name) || 'проводник'}` : 'Последние чаты');
+    if (count) count.textContent = query ? `${rows.length}` : (sessions.length ? `${sessions.length}/5` : '');
+    sessionList.innerHTML = rows.length ? rows.map(s => `
+      <div class="workspace-session-item ${!s.searchResult && s.id === this.chat.tid ? 'active' : ''}">
+        <button data-act="open-session" data-history="${s.searchResult ? '1' : '0'}" data-tid="${s.id}" data-agent="${esc(s.agent || active || 'oracle')}" type="button"><span class="workspace-session-item__icon">${s.searchResult ? '⌕' : '⌁'}</span><span><b>${esc(s.title || 'Новый разговор')}</b><small>${esc(s.searchResult && s.agentName ? `${s.agentName} · ${s.last_text || 'Продолжить разговор'}` : (s.last_text || 'Продолжить разговор'))}</small></span></button>
+        ${s.searchResult ? '' : `<button class="workspace-session-item__delete" data-act="del-session" data-tid="${s.id}" type="button" aria-label="Удалить чат" title="Удалить чат">×</button>`}
+      </div>`).join('') : `<div class="workspace-session-empty">${query ? 'Ничего не нашлось. Попробуй другое слово.' : (active ? 'Новый разговор появится после первого сообщения.' : 'Выбери проводника, чтобы увидеть его чаты.')}</div>`;
     const profileName = document.querySelector('.workspace-profile__name');
     if (profileName && this.me && this.me.name) profileName.textContent = this.me.name;
     document.querySelectorAll('.workspace-nav-item').forEach(item => item.classList.toggle('active', item.dataset.goto === (this.chat.key ? 'hub' : this.view)));
+  };
+
+  app.searchHistory = async function(value) {
+    const query = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    this.chat.historyQuery = query;
+    clearTimeout(this._historySearchTimer);
+    if (!query || query.length < 2) {
+      this.chat.historyResults = [];
+      this.chat.historyBusy = false;
+      this.renderSidebar();
+      return;
+    }
+    const token = (this._historySearchToken || 0) + 1;
+    this._historySearchToken = token;
+    this.chat.historyBusy = true;
+    this.renderSidebar();
+    this._historySearchTimer = setTimeout(async () => {
+      try {
+        const rows = await api('/api/chat/search?q=' + encodeURIComponent(query) + '&limit=100');
+        if (this._historySearchToken !== token) return;
+        this.chat.historyResults = Array.isArray(rows) ? rows : [];
+      } catch (e) {
+        if (this._historySearchToken !== token) return;
+        this.chat.historyResults = [];
+        this.toast(friendlyError(e, 'Поиск истории временно недоступен.'));
+      } finally {
+        if (this._historySearchToken === token) {
+          this.chat.historyBusy = false;
+          this.renderSidebar();
+        }
+      }
+    }, 240);
+  };
+
+  app.clearHistorySearch = function() {
+    this._historySearchToken = (this._historySearchToken || 0) + 1;
+    clearTimeout(this._historySearchTimer);
+    this.chat.historyQuery = '';
+    this.chat.historyResults = [];
+    this.chat.historyBusy = false;
+    this.renderSidebar();
+    const input = document.getElementById('workspace-history-q');
+    if (input) input.focus();
+  };
+
+  app.openHistorySession = function(agent, threadId) {
+    const key = String(agent || 'oracle');
+    const id = Number(threadId);
+    if (!Number.isInteger(id) || id <= 0) return;
+    this.closeWorkspaceSidebar();
+    const open = () => this.openSession(id);
+    if (this.chat.key === key) open();
+    else this.openChat(key, () => setTimeout(open, 120));
   };
 
   app.navItems = function() {

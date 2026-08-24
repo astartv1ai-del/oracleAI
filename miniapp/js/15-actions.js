@@ -32,6 +32,7 @@
     'tool-toggle': () => { tactile('open'); call('toggleToolbox'); },
     'sidebar-toggle': () => call('toggleWorkspaceSidebar'),
     'sidebar-new': () => call('startNewChat'),
+    'history-clear': () => call('clearHistorySearch'),
     'palm-start': () => { tactile('select'); call('featurePalm'); },
     'today-ask': () => call('todayAsk'),
     'day-flip': () => call('todayFlip'),
@@ -50,7 +51,9 @@
     'moon-day': (el, data) => call('toggleMoonDay', parseInt(data.i, 10)),
     ptab: (el, data) => call('switchPTab', data.tab),
     'new-session': () => call('newSession'),
-    'open-session': (el, data) => call('openSession', parseInt(data.tid, 10)),
+    'open-session': (el, data) => data.history === '1'
+      ? call('openHistorySession', data.agent, parseInt(data.tid, 10))
+      : call('openSession', parseInt(data.tid, 10)),
     'del-session': (el, data) => call('delSession', parseInt(data.tid, 10)),
     send: (el, data) => call('doSend', data.val || undefined),
     'retry-chat': () => call('loadThread', app.chat.key),

@@ -16,7 +16,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 from app.api.deps import get_db  # noqa: E402
 from app.api.main import app  # noqa: E402
 from app.api.security import parse_init_data  # noqa: E402
-from app.repo import users  # noqa: E402
+from app.repo import dialog, users  # noqa: E402
 
 
 @pytest.fixture
@@ -730,3 +730,67 @@ async def test_admin_sees_coupon_activations_and_can_filter_batch(client, db, us
     assert redemption["kind"] == "crystals"
     assert redemption["crystals"] == 10
     assert redemption["name"] == "Тестовая"
+
+
+async def test_chat_search_scoped_to_active_threads(client, db, user):
+    first = await dialog.create_thread(db, user["tg_id"], "tarot", "Работа и решение")
+    await dialog.save_message(db, user["tg_id"], "user", "Хочу понять следующий шаг в работе",
+                              thread_id=first["id"], agent="tarot", surface="miniapp")
+    archived = await dialog.create_thread(db, user["tg_id"], "oracle", "Старый разговор")
+    await dialog.save_message(db, user["tg_id"], "user", "старый разговор о работе",
+                              thread_id=archived["id"], agent="oracle", surface="miniapp")
+    await dialog.archive_thread(db, archived["id"], user["tg_id"])
+    other = await users.ensure(db, 99001, "Другой пользователь")
+    foreign = await dialog.create_thread(db, other["tg_id"], "tarot", "Чужой проект")
+    await dialog.save_message(db, other["tg_id"], "user", "проект и работа",
+                              thread_id=foreign["id"], agent="tarot", surface="miniapp")
+
+    res = await client.get("/api/chat/search", params=as_user(user, {"q": "следующий"}))
+    assert res.status_code == 200
+    rows = res.json()
+    assert [row["thread_id"] for row in rows] == [first["id"]]
+    assert rows[0]["agent"] == "tarot"
+    assert "следующий" in rows[0]["last_text"].lower()
+
+    archived_res = await client.get("/api/chat/search", params=as_user(user, {"q": "старый"}))
+    assert archived_res.status_code == 200
+    archived_rows = archived_res.json()
+    assert [row["thread_id"] for row in archived_rows] == [archived["id"]]
+    assert archived_rows[0]["archived"] is True
+
+    empty = await client.get("/api/chat/search", params=as_user(user, {"q": "чужой проект"}))
+    assert empty.status_code == 200
+    assert empty.json() == []
+
+
+async def test_client_platform_metadata_is_normalized(client, db, user):
+    res = await client.get(
+        "/api/me",
+        params=as_user(user),
+        headers={
+            "X-Client-Platform": "Android",
+            "X-Client-Viewport": "390x844",
+            "X-Client-Mode": "mobile",
+        },
+    )
+    assert res.status_code == 200
+    stored = await users.get(db, user["tg_id"])
+    assert stored["last_platform"] == "android"
+    assert stored["last_viewport"] == "390x844"
+    assert stored["last_client_mode"] == "mobile"
+    assert stored["last_client_at"]
+
+    bad = await client.get(
+        "/api/me",
+        params=as_user(user),
+        headers={
+            "X-Client-Platform": "raw-device-name",
+            "X-Client-Viewport": "1x2",
+            "X-Client-Mode": "landscape",
+        },
+    )
+    assert bad.status_code == 200
+    stored = await users.get(db, user["tg_id"])
+    assert stored["last_platform"] == "unknown"
+    assert stored["last_viewport"] == "390x844"
+    assert stored["last_client_mode"] == "mobile"

@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS users (
     ltv_stars        INTEGER DEFAULT 0,      -- денормализация для CRM
     expiry_notified  INTEGER DEFAULT 0,
     last_seen        TEXT,
+    last_platform    TEXT DEFAULT 'unknown', -- coarse client hint: android|ios|desktop|web
+    last_viewport    TEXT,                   -- width x height, no raw user-agent
+    last_client_mode TEXT,                   -- mobile|tablet|desktop
+    last_client_at   TEXT,
     deleted_at       TEXT,                   -- «удали мои данные»: анонимизация
     created_at       TEXT
 );
