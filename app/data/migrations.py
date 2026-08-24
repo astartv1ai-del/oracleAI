@@ -45,7 +45,12 @@ COLUMNS: dict[str, dict[str, str]] = {
         "ltv_stars": "INTEGER DEFAULT 0",
         "expiry_notified": "INTEGER DEFAULT 0",
         "last_seen": "TEXT",
+        "last_platform": "TEXT DEFAULT 'unknown'",
+        "last_viewport": "TEXT",
+        "last_client_mode": "TEXT",
+        "last_client_at": "TEXT",
         "deleted_at": "TEXT",
+        "tarot_deck_id": "TEXT DEFAULT 'rws-78-geldard-v1'",
     },
     "messages": {
         "thread_id": "INTEGER",
@@ -72,6 +77,8 @@ COLUMNS: dict[str, dict[str, str]] = {
         "paid_with": "TEXT",
         "outcome": "TEXT",
         "outcome_at": "TEXT",
+        "deck_id": "TEXT DEFAULT 'rws-78-geldard-v1'",
+        "ledger_json": "TEXT",
     },
     "promo_codes": {
         "kind": "TEXT DEFAULT 'plan_days'",

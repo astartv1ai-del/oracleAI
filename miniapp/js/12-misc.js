@@ -292,10 +292,11 @@
       const rows = await api('/api/tarot/history');
       const r = rows.find(x => x.id === id) || rows[0];
       const cardStrip = (r.cards || []).map(c => `
-        <div class="rc-strip"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+        <div class="rc-strip"><img src="${tarotAssetUrl(c, r.ledger || { deck_id: r.deck_id })}" alt="${esc(c.name)}" loading="lazy">
           <span>${esc(c.name)}${c.reversed ? ' ↺' : ''}</span></div>`).join('');
       const cards = (r.cards || []).map(c => `${c.emoji} ${c.name}${c.reversed ? ' ↺' : ''} — ${c.meaning}`).join('\n');
       this.showModal(`<h3>🎴 ${esc(r.question || profileT('readingFallback'))}</h3><button class="m-close" data-act="modal-close">✕</button>
+        <div class="tarot-deck-source">${esc(tarotDeckLabel(r.ledger, r.deck_id || 'RWS'))}</div>
         <div class="rc-strip-row">${cardStrip}</div>
         <div style="font-size:12px;color:var(--text-dim);white-space:pre-wrap;margin:8px 0">${esc(cards)}</div>
         <div style="font-size:13.5px;line-height:1.65;white-space:pre-wrap">${esc(r.answer || '—')}</div>
@@ -558,6 +559,7 @@
         </div>` : ''}
         <button class="btn btn-primary" style="margin-top:14px" data-act="chat" data-chat="astro">${esc(profileT('askAstrologer'))}</button>
         <button class="btn btn-primary" style="width:100%;margin-top:8px" data-act="share-chart">${esc(profileT('shareChart'))}</button>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px" data-act="download-chart-pdf">Скачать PDF-отчёт</button>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" data-act="fc-explain">${esc(profileT('simpleReading'))}</button>
         <div id="fc-explain" style="margin-top:12px"></div>`;
     } catch (e) {
@@ -568,6 +570,32 @@
         action: `<button class="btn btn-ghost" data-act="modal-close">${esc(profileT('close'))}</button>`
       });
     }
+  };
+
+  // Структурированный разбор карты: каждый смысловой слой живёт в отдельном accordion.
+  app.chartStructuredHtml = function(data) {
+    const labels = {
+      sun: 'Солнце и ядро личности', moon: 'Луна и эмоциональный ритм',
+      ascendant: 'Асцендент и первое впечатление', mercury: 'Меркурий и мышление',
+      mars: 'Марс и способ действовать', career: 'Карьера и ресурсы',
+      relationships: 'Любовь и партнёрство', nodes: 'Раху и Кету', synthesis: 'Синтез и следующий шаг'
+    };
+    const keys = Object.keys(labels);
+    const blocks = keys.map((key, index) => {
+      const item = data && data[key];
+      if (!item || typeof item !== 'object') return '';
+      const text = [item.fact, item.interpretation, item.question].filter(Boolean);
+      if (!text.length) return '';
+      return `<details class="chart-explain-section"${index === 0 ? ' open' : ''}>
+        <summary><span>${esc(labels[key])}</span><span aria-hidden="true">⌄</span></summary>
+        <div class="chart-explain-section__body">
+          ${item.fact ? `<div class="chart-explain-section__fact"><b>Факт карты</b><span>${esc(item.fact)}</span></div>` : ''}
+          ${item.interpretation ? `<p>${esc(item.interpretation)}</p>` : ''}
+          ${item.question ? `<p class="chart-explain-section__question"><b>Вопрос для себя</b>${esc(item.question)}</p>` : ''}
+        </div>
+      </details>`;
+    }).join('');
+    return `<div class="glass fc-explain fc-explain--structured">${data && data.summary ? `<p class="fc-explain__summary">${esc(data.summary)}</p>` : ''}${blocks}</div>`;
   };
 
   // Разбор карты простыми словами: ИИ-объяснение по разделам (кэш на сервере).
@@ -583,7 +611,7 @@
     try {
       const r = await api('/api/chart/interpret', { method: 'POST' });
       box.dataset.loaded = '1';
-      box.innerHTML = '<div class="glass fc-explain">' + richMd(r.text) + '</div>';
+      box.innerHTML = r.structured ? this.chartStructuredHtml(r.structured) : '<div class="glass fc-explain">' + richMd(r.text) + '</div>';
     } catch (e) {
       box.innerHTML = this.softEmpty({
         icon: '✦', eyebrow: profileT('chartReading'), title: profileT('chartReadingUnavailable'),

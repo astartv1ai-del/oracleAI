@@ -15,30 +15,50 @@ router = APIRouter(prefix="/api/tarot", tags=["tarot"])
 
 
 @router.get("/spreads")
-async def spreads(user=Depends(current_user), db=Depends(get_db)):
-    """Витрина раскладов: что входит в тариф, что куплено, что стоит денег."""
-    return await catalog.spread_list(db, user)
+async def spreads(deck_id: str | None = Query(default=None),
+                  user=Depends(current_user), db=Depends(get_db)):
+    """Витрина раскладов выбранной tradition: доступ, позиции и tier."""
+    requested_id = deck_id or (user["tarot_deck_id"] if "tarot_deck_id" in user.keys() else None)
+    try:
+        selected_id = tarot.deck_metadata(requested_id)["deck_id"]
+    except ValueError as exc:
+        raise HTTPException(400, "неизвестная колода") from exc
+    return await catalog.spread_list(db, user, selected_id)
+
+
+@router.get("/decks")
+async def decks(user=Depends(current_user)):
+    """Selectable traditions/decks with count, image namespace and provenance."""
+    return tarot.available_decks()
 
 
 @router.get("/spreads/full")
-async def spreads_full(user=Depends(current_user)):
+async def spreads_full(deck_id: str | None = Query(default=None),
+                       user=Depends(current_user)):
     """Все встроенные расклады с `guide` — пояснения для страницы выбора.
 
     `/spreads` (витрина) не несёт `guide`, а здесь он нужен фронту, чтобы
     показать клиентке, что именно покажет расклад, до того как она заплатит.
     """
     fields = ("title", "positions", "tier", "emoji", "hint", "guide")
+    requested_id = deck_id or (user["tarot_deck_id"] if "tarot_deck_id" in user.keys() else None)
+    try:
+        selected_id = tarot.deck_metadata(requested_id)["deck_id"]
+    except ValueError as exc:
+        raise HTTPException(400, "неизвестная колода") from exc
     return [{"code": code, **{f: item.get(f) for f in fields}}
-            for code, item in tarot.SPREADS.items()]
+            for code, item in tarot.spreads_for(selected_id).items()]
 
 
 class DrawIn(BaseModel):
     question: str | None = None
+    deck_id: str | None = None
 
 
 @router.post("/draw", dependencies=[Depends(rate_limit("write"))])
 async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
                question: str = Query(default=""),
+               deck_id: str | None = Query(default=None),
                user=Depends(current_user), db=Depends(get_db)):
     """Тянет карты. Трактовка — вторым запросом, после анимации переворота.
 
@@ -47,12 +67,15 @@ async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
     Принимаем и из query, и из тела — фронтенд шлёт в теле, старые вызовы в query.
     """
     q = (item.question if item and item.question else question or "").strip() or None
+    selected_deck = item.deck_id if item and item.deck_id else deck_id
     try:
-        result = await chat_svc.draw(db, user, spread, surface="miniapp", question=q)
+        result = await chat_svc.draw(db, user, spread, surface="miniapp", question=q,
+                                     deck_id=selected_deck)
     except chat_svc.ChatDenied as e:
         raise access_denied(e.verdict) from e
     # короткое описание расклада для страницы выбора / карточки результата
-    result["guide"] = tarot.spread(result["spread"]).get("guide", "")
+    result["guide"] = tarot.spread_for(result["spread"], result["deck_id"]).get("guide", "")
+    result["decks"] = tarot.available_decks()
     return result
 
 

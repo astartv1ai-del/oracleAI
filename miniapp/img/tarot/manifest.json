@@ -1,0 +1,946 @@
+{
+  "deck_id": "rws-78-geldard-v1",
+  "label": "Rider–Waite–Smith · Geldard",
+  "card_count": 78,
+  "requested_source_category": "https://commons.wikimedia.org/wiki/Category:Rider-Waite-Smith_tarot_deck_(Geldard)",
+  "source_verification": "asset_id_complete_individual_provenance_pending",
+  "verification_note": "All 78 canonical OracleAI card IDs have local readable assets and stable hashes. The repository does not yet prove that each local file was downloaded from its corresponding Geldard Commons file; do not represent this as per-file provenance.",
+  "cards": [
+    {
+      "card_id": "m00",
+      "name": "Шут",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m00.jpg",
+      "sha256": "8b9d3ba98179cd3dd8e38165220041e5115a94bb05fea3bd8d75ef9aa0974ef8",
+      "pixel_size": [
+        330,
+        554
+      ]
+    },
+    {
+      "card_id": "m01",
+      "name": "Маг",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m01.jpg",
+      "sha256": "2ed62767cf94e3781947e768df28d95f053d21312f6b9c19b965355c75e70eaf",
+      "pixel_size": [
+        330,
+        572
+      ]
+    },
+    {
+      "card_id": "m02",
+      "name": "Жрица",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m02.jpg",
+      "sha256": "4d1ecd7ee78ac2345faa2d2107a53ec502785851f2c46e6d8ffdbaf5de6388f8",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "m03",
+      "name": "Императрица",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m03.jpg",
+      "sha256": "83af2227baf8a6510c47428dbe418b27b758aafeb35496d9d59184d3a4c60474",
+      "pixel_size": [
+        330,
+        564
+      ]
+    },
+    {
+      "card_id": "m04",
+      "name": "Император",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m04.jpg",
+      "sha256": "f064a95b2228f5c5be8374f8d0232131ea6ddb340fb1dd606acd8911b08059e2",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "m05",
+      "name": "Иерофант",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m05.jpg",
+      "sha256": "412d9a86f4ded1adf65776c44b3e45106ece78a25e3acf8ffd31f82186095ff8",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "m06",
+      "name": "Влюблённые",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m06.jpg",
+      "sha256": "4b50997b65534db65185602f71f34d1f9ab32425a8dc19953aaf777cc3eb88bf",
+      "pixel_size": [
+        330,
+        565
+      ]
+    },
+    {
+      "card_id": "m07",
+      "name": "Колесница",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m07.jpg",
+      "sha256": "f3670ab4fcd10533f4c767f290b5ab420f58be7a32f2076795b6a9b4d77c5aa2",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "m08",
+      "name": "Сила",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m08.jpg",
+      "sha256": "523267165a05aa6aa3bb358d53d4688d9686e2fb79e28676703920e1125d90b1",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "m09",
+      "name": "Отшельник",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m09.jpg",
+      "sha256": "a7b670cb62aa254b8e4480d4db50ba19e1c3efef1f9154346dbcc6954e82744b",
+      "pixel_size": [
+        330,
+        564
+      ]
+    },
+    {
+      "card_id": "m10",
+      "name": "Колесо Фортуны",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m10.jpg",
+      "sha256": "273dd6de6ae58260de1f4c8dbc42a931928775ca18869bdc43bfb018b938b762",
+      "pixel_size": [
+        330,
+        574
+      ]
+    },
+    {
+      "card_id": "m11",
+      "name": "Справедливость",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m11.jpg",
+      "sha256": "f3c2843a8d3e0b20715994f0e25c9a7585064e4513e675a704c1eda5d26a4910",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "m12",
+      "name": "Повешенный",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m12.jpg",
+      "sha256": "7cea43a6fa7c61c746ed6f263965e6153624318dbf9838fe67844d09d8cb315f",
+      "pixel_size": [
+        330,
+        580
+      ]
+    },
+    {
+      "card_id": "m13",
+      "name": "Смерть",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m13.jpg",
+      "sha256": "d0ce4a5773e0170cf0c6dedbebf29585323963fd14e6b1a5e9a2e19acb659168",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "m14",
+      "name": "Умеренность",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m14.jpg",
+      "sha256": "c404293c636328b3992775341604ed9a573ebff295acc8299087b3bf0760ed32",
+      "pixel_size": [
+        330,
+        573
+      ]
+    },
+    {
+      "card_id": "m15",
+      "name": "Дьявол",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m15.jpg",
+      "sha256": "54cd03966a96dd458d1652329856402539342f2659b0eab1a1b751e2f848ef65",
+      "pixel_size": [
+        330,
+        581
+      ]
+    },
+    {
+      "card_id": "m16",
+      "name": "Башня",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m16.jpg",
+      "sha256": "946038855ef3c8df84c849c8a5f38ce501055d7a6d67e08f18001113d85661e9",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "m17",
+      "name": "Звезда",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m17.jpg",
+      "sha256": "1225005f0fa17c5c41b351cdfc99c3a78e5dbc6396aad0fdbf0555938cb896cc",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "m18",
+      "name": "Луна",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m18.jpg",
+      "sha256": "1907641ee8c88951fca2397820289f47980cb929435381d187d23893b674a974",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "m19",
+      "name": "Солнце",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m19.jpg",
+      "sha256": "61b8775f84f5fc9dbc02025f4873c116caace5322303cf0656140566d24818ee",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "m20",
+      "name": "Суд",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m20.jpg",
+      "sha256": "359966e9f11abaeb7caab1eba89188e94957ee813330802e023a30248a6bdbc7",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "m21",
+      "name": "Мир",
+      "arcana": "major",
+      "suit": null,
+      "asset": "/static/img/tarot/m21.jpg",
+      "sha256": "74d1a53d33a805125224d2afcb5489159c91e96df9104b18b6916318c219e0a7",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "cups01",
+      "name": "Туз Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups01.jpg",
+      "sha256": "c1350d8b3fe93e4bc5c319c51e92466c4ee1d45af56e6d8032a1cafe5e6dd9d0",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "cups02",
+      "name": "Двойка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups02.jpg",
+      "sha256": "8f8c0dbb0adb3af8931b36b896d38939b521c4c5e189b843d930685772bd3af9",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "cups03",
+      "name": "Тройка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups03.jpg",
+      "sha256": "1a5d688a821da0744115c718a83b198f8364a2445177d85fcf1d6a3a3ed07004",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "cups04",
+      "name": "Четвёрка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups04.jpg",
+      "sha256": "8e9fb5a57f6d6b48ddca775c8df3909469681ce6d8ef2dd8994dc1956c835ff3",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "cups05",
+      "name": "Пятёрка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups05.jpg",
+      "sha256": "4c6d5afa1995b774de56d813ac608c4464f5009bbe4b625153c9c0fecef6f473",
+      "pixel_size": [
+        330,
+        565
+      ]
+    },
+    {
+      "card_id": "cups06",
+      "name": "Шестёрка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups06.jpg",
+      "sha256": "3f5af119f25451f2b0c50e75cc473ab52d9b96dcf818aba14dd6a954dcf242fb",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "cups07",
+      "name": "Семёрка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups07.jpg",
+      "sha256": "8d4c13d1bf2adf80035819b03031e0c8b680dd174a171c0ce885b7c45fd83f0e",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "cups08",
+      "name": "Восьмёрка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups08.jpg",
+      "sha256": "b8133e85fccf4a18c610a900d0082a34aa58b0f2d9bb17058616e6cefd17a50f",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "cups09",
+      "name": "Девятка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups09.jpg",
+      "sha256": "3010ec3349e3ae3bd7d17f2185e00902f85604bd165330c393bd713ec145b646",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "cups10",
+      "name": "Десятка Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups10.jpg",
+      "sha256": "bbf64f3e6a64085c2177cc068a037a96b398fe31bbea5f2f0aab124da9d4cf33",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "cups11",
+      "name": "Паж Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups11.jpg",
+      "sha256": "185819d05f39dfd829a49b99fdd0baa0c5c41f87e0ebd8b1194534b564b225bd",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "cups12",
+      "name": "Рыцарь Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups12.jpg",
+      "sha256": "7fe3223918f10b18440d87ab6fe391c11b27d15012c6cb76b2a0932b230e2c9c",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "cups13",
+      "name": "Королева Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups13.jpg",
+      "sha256": "956201321278d2449c10ba823ae5ae4dd5669de81b39364b8ec9a4c0b4e41634",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "cups14",
+      "name": "Король Кубков",
+      "arcana": "minor",
+      "suit": "Кубков",
+      "asset": "/static/img/tarot/cups14.jpg",
+      "sha256": "ed8a69ff02deb61e217d7a676b67265c36984e0b98e9c7a28f8e13c86511a045",
+      "pixel_size": [
+        330,
+        565
+      ]
+    },
+    {
+      "card_id": "pents01",
+      "name": "Туз Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents01.jpg",
+      "sha256": "5ec55e995e628e26c0fab33fd0fa773297d4a96ab85c1d424f7cf833963f7824",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "pents02",
+      "name": "Двойка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents02.jpg",
+      "sha256": "8c71fbc7f559acdf65342d3fc30f633528180200b9231ef7a2ce3df3617f9109",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "pents03",
+      "name": "Тройка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents03.jpg",
+      "sha256": "2b6be41ef504a098dc2ec6a6ff3331b79a6907c6ac11b51c28e3afe58d3af84d",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "pents04",
+      "name": "Четвёрка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents04.jpg",
+      "sha256": "69986f7a42216da55318c060a93150fa2dcc34d20165804b2cb96e4f0fcc441c",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "pents05",
+      "name": "Пятёрка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents05.jpg",
+      "sha256": "f9a8582bbec45faf7ad184fc88344ce3d14b0a927d61e14255f24cc76089efee",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "pents06",
+      "name": "Шестёрка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents06.jpg",
+      "sha256": "1e1b9618d474fcea29df65616f759800a2ab5cfc5926ccfa8632d9086f2f24c1",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "pents07",
+      "name": "Семёрка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents07.jpg",
+      "sha256": "daaafa86991156036b20ba2ab3c5acd554733518635590a77b3e87ed5d952df4",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "pents08",
+      "name": "Восьмёрка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents08.jpg",
+      "sha256": "75ec8014238dcabead1700c5f0cb657055a246dedf69b632025a1ee620e80777",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "pents09",
+      "name": "Девятка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents09.jpg",
+      "sha256": "2f7c3bebaef528d5b9391b791770355b39e845a6f57363b5eea090e1b579d9b2",
+      "pixel_size": [
+        330,
+        572
+      ]
+    },
+    {
+      "card_id": "pents10",
+      "name": "Десятка Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents10.jpg",
+      "sha256": "6552597e64cf0a82053a743989fa1d294a7ef503d422f361a1cd5434849c0275",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "pents11",
+      "name": "Паж Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents11.jpg",
+      "sha256": "e5c57f6d81605db4b681010fdb727e241f4bcd1797fb6f90be8f5ca674a570b7",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "pents12",
+      "name": "Рыцарь Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents12.jpg",
+      "sha256": "5b124b41b9d9723cfef7fae39c2a9b62e8a9d67af975dc5eaef339d69eb34c46",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "pents13",
+      "name": "Королева Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents13.jpg",
+      "sha256": "8da38282a337cfb0ed98b0d5f60e9effdd59aeb1f37eac99f104add4138c1405",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "pents14",
+      "name": "Король Пентаклей",
+      "arcana": "minor",
+      "suit": "Пентаклей",
+      "asset": "/static/img/tarot/pents14.jpg",
+      "sha256": "c48daf3cab1db46315d49bc7440e7ff0ef7210a445010553dc9bd0303153d12d",
+      "pixel_size": [
+        330,
+        572
+      ]
+    },
+    {
+      "card_id": "swords01",
+      "name": "Туз Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords01.jpg",
+      "sha256": "cdb686a90961b1d269130c19c2d26370c9e165deb6faf1edce99ff6714b86828",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "swords02",
+      "name": "Двойка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords02.jpg",
+      "sha256": "50292c55772b54cb1acf81bc6336bd083917e189bbe5bbef7933b39d1fcbe161",
+      "pixel_size": [
+        330,
+        565
+      ]
+    },
+    {
+      "card_id": "swords03",
+      "name": "Тройка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords03.jpg",
+      "sha256": "300519fc99dcebf93a6b70046a27d23e8f5d7dc46d3cc6652ad23fc473ef3c5a",
+      "pixel_size": [
+        330,
+        574
+      ]
+    },
+    {
+      "card_id": "swords04",
+      "name": "Четвёрка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords04.jpg",
+      "sha256": "af240970b74e70110581287b30fc183577a3fdb772c27f99e8fd09c6371a178f",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "swords05",
+      "name": "Пятёрка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords05.jpg",
+      "sha256": "f7303a022e1c4e73e9fdcad480bd3e15219c05c434893937ca40634e1bcddfba",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "swords06",
+      "name": "Шестёрка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords06.jpg",
+      "sha256": "6bdf16964e0e4fdf3e7a71a33138597a4820a6dab0cef9ffe907bc76ebaa0de1",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "swords07",
+      "name": "Семёрка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords07.jpg",
+      "sha256": "83deec8762989ece29c6689ff4b37a1b704b70cd5d90fd788d60cc575d06edd7",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "swords08",
+      "name": "Восьмёрка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords08.jpg",
+      "sha256": "a0b61257d11f2c0408fe2b6170485c7c5f474aed5d6942e0037152feeaa8da42",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "swords09",
+      "name": "Девятка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords09.jpg",
+      "sha256": "573d2a4a6fbefd1086cd71dee0267e5eadc13c230099f2acb8f116942676e76e",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "swords10",
+      "name": "Десятка Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords10.jpg",
+      "sha256": "24352a102520f19122541073b160c959dcbcaa5253e0a8e734d19dfbff597030",
+      "pixel_size": [
+        330,
+        572
+      ]
+    },
+    {
+      "card_id": "swords11",
+      "name": "Паж Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords11.jpg",
+      "sha256": "64c61c8d2fa119a284559a3a1508d71e4f3908a86793437e6e15a850ac744d3e",
+      "pixel_size": [
+        330,
+        572
+      ]
+    },
+    {
+      "card_id": "swords12",
+      "name": "Рыцарь Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords12.jpg",
+      "sha256": "8decf686120d67efe0a3d3418af5a5a90341bb24cd24df6cbc8a8ef6e547f084",
+      "pixel_size": [
+        330,
+        570
+      ]
+    },
+    {
+      "card_id": "swords13",
+      "name": "Королева Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords13.jpg",
+      "sha256": "79987e4a3b1c11cb20ad1957778b66cf740fce0d4ed0cdfa3a177dcb01f369ac",
+      "pixel_size": [
+        330,
+        574
+      ]
+    },
+    {
+      "card_id": "swords14",
+      "name": "Король Мечей",
+      "arcana": "minor",
+      "suit": "Мечей",
+      "asset": "/static/img/tarot/swords14.jpg",
+      "sha256": "d7911bb170a789a155bb037bc4f56c846adeefa497dea5f54d883235b8ea2dda",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "wands01",
+      "name": "Туз Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands01.jpg",
+      "sha256": "6a8f13d29669fb654899c04eb53a8a10af10d038f4cfc7a17c1fd7dbdbb592ad",
+      "pixel_size": [
+        330,
+        573
+      ]
+    },
+    {
+      "card_id": "wands02",
+      "name": "Двойка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands02.jpg",
+      "sha256": "6d47d647b47f30c464217967613c4de2465eaccc2fb8d92c76c7ac9568f32b48",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "wands03",
+      "name": "Тройка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands03.jpg",
+      "sha256": "3205db5bef90298166c65bd42d1134a355849092ca14f106f68ef649414489f1",
+      "pixel_size": [
+        330,
+        574
+      ]
+    },
+    {
+      "card_id": "wands04",
+      "name": "Четвёрка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands04.jpg",
+      "sha256": "b1faa55dee8281334a93d8bd28ef3235a1a211ebfa7278bec1c6c4a21f28f814",
+      "pixel_size": [
+        330,
+        572
+      ]
+    },
+    {
+      "card_id": "wands05",
+      "name": "Пятёрка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands05.jpg",
+      "sha256": "71913c67f5dd658c7125142f6f4f55220c755cd88db82bc97ec1fa191c62ac45",
+      "pixel_size": [
+        330,
+        572
+      ]
+    },
+    {
+      "card_id": "wands06",
+      "name": "Шестёрка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands06.jpg",
+      "sha256": "d0a86e023757d4409d36773853dcd7eb89faa38b155179f3066933a2124f6e7c",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "wands07",
+      "name": "Семёрка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands07.jpg",
+      "sha256": "891b679635bdfdf5aa1941f40e99923bb0296bd5c03afbf2707e02a72f53031e",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "wands08",
+      "name": "Восьмёрка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands08.jpg",
+      "sha256": "375cf9f760743ba87ba289d938f452e10f7f80a826facec38d0c642966a5bea1",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "wands09",
+      "name": "Девятка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands09.jpg",
+      "sha256": "5a065a8b379fb361cbf9bf12aa84a88b21655d407355e28a633cd039083cb445",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "wands10",
+      "name": "Десятка Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands10.jpg",
+      "sha256": "3dd0209b307ba5304680d359dcf109031b7d87bf6392b7e32cea3ba2d5ed7c67",
+      "pixel_size": [
+        330,
+        575
+      ]
+    },
+    {
+      "card_id": "wands11",
+      "name": "Паж Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands11.jpg",
+      "sha256": "c108d123d0d25e176b4e5153bad967e0e3f988b93709242710ee58db7fc2594f",
+      "pixel_size": [
+        330,
+        571
+      ]
+    },
+    {
+      "card_id": "wands12",
+      "name": "Рыцарь Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands12.jpg",
+      "sha256": "0a502629913f77343477608631b4cce9b64ec18d8e0362a9ebe551644d55cee9",
+      "pixel_size": [
+        330,
+        568
+      ]
+    },
+    {
+      "card_id": "wands13",
+      "name": "Королева Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands13.jpg",
+      "sha256": "73c125106f4736ca3b13523a674c157ccbeba555847ea92143867e85db3cc1f6",
+      "pixel_size": [
+        330,
+        567
+      ]
+    },
+    {
+      "card_id": "wands14",
+      "name": "Король Жезлов",
+      "arcana": "minor",
+      "suit": "Жезлов",
+      "asset": "/static/img/tarot/wands14.jpg",
+      "sha256": "5b2377b90da096ff1cd6e9dd660ae7c0ff0026eacbe882d5387803fae1d43af4",
+      "pixel_size": [
+        330,
+        574
+      ]
+    }
+  ]
+}

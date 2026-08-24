@@ -6,14 +6,16 @@ import logging
 import re
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from ...core import agent as agent_core
 from ...core import astro, geo, memory
 from ...core.matrix import compute_matrix
+from ...pdfgen import builder as pdf_builder
+from ...pdfgen import render as pdf_render
 from ...core.observability import log_event
-from ...repo import billing, readings, users
+from ...repo import billing, content, readings, users
 from ...services import analytics, compatibility as compatibility_svc
 from ..common.validation import parse_birth_date
 from ..contracts.compatibility import CompatIn
@@ -214,6 +216,7 @@ async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
                    status="missing", user_state="no_saved_chart")
         raise HTTPException(400, "карта ещё не построена")
     text = chart.get("interpretation")
+    structured = chart.get("interpretation_structured")
     if text:
         _log_astro(logging.INFO, "astro_interpret_cached", "разбор карты отдан из кэша", started,
                    chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
@@ -222,6 +225,10 @@ async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
     else:
         try:
             text, live = await agent_core.interpret_chart(db, user, chart)
+            # interpret_chart stores the validated object on the chart during the
+            # same request; read it now so the first response is not one request
+            # behind the cache.
+            structured = chart.get("interpretation_structured")
         except Exception as exc:  # noqa: BLE001
             _log_astro(logging.ERROR, "astro_interpret_failed", "LLM-разбор карты завершился ошибкой", started,
                        chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
@@ -237,7 +244,37 @@ async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
                    chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
                    time_known=bool(user["birth_time_known"]), cache_hit=False, live=bool(live),
                    status="ok", user_state="live_interpretation")
-    return {"text": text}
+    return {"text": text, "structured": structured if isinstance(structured, dict) else None}
+
+
+@router.get("/chart/pdf", dependencies=[Depends(rate_limit("llm"))])
+async def chart_pdf(user=Depends(current_user), db=Depends(get_db)):
+    """Возвращает отдельный A4 PDF-отчёт по сохранённой карте."""
+    if not user["birth_date"]:
+        raise HTTPException(400, "нет даты рождения")
+    if not users.chart_of(user):
+        raise HTTPException(400, "карта ещё не построена")
+    if not pdf_render.available():
+        raise HTTPException(503, "PDF-экспорт временно недоступен на сервере")
+    name = (user["name"] or user["username"] or "Oracle user")[:60]
+    order = pdf_builder.Order(
+        name=name,
+        birth_date=user["birth_date"],
+        birth_time=user["birth_time"] if user["birth_time_known"] else None,
+        birth_city=user["birth_city"],
+        lang=user["lang"] or "ru",
+    )
+    bot_username = await content.get_setting(db, "brand.bot_username", "") or ""
+    html = await pdf_builder.generate(db, order, bot_username=bot_username)
+    try:
+        pdf = pdf_render.to_pdf_bytes(html)
+    except pdf_render.PdfUnavailable as exc:
+        raise HTTPException(503, "PDF-экспорт временно недоступен на сервере") from exc
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="oracle-natal-report.pdf"'},
+    )
 
 
 @router.get("/matrix")

@@ -89,9 +89,9 @@
     const planets = c.planets || [];
     const anglesAvailable = c.precision === 'exact';
     const precisionNotice = c.note ? `
-      <div role="status" style="margin:9px 0 10px;padding:9px 10px;border:1px solid rgba(201,160,255,.26);border-radius:12px;color:var(--text-dim);font-size:11.5px;line-height:1.45">
-        <b style="color:var(--gold-bright)">Точность карты</b> · ${esc(c.note)}
-        ${!c.birth?.time_known ? '<br><span style="color:var(--text-faint)">Укажи время рождения в профиле, чтобы открыть ASC, MC и дома.</span>' : ''}
+      <div class="chart-precision-note" role="status">
+        <b>Точность карты</b><span>${esc(c.note)}</span>
+        ${!c.birth?.time_known ? '<small>Укажи время рождения в профиле, чтобы открыть ASC, MC и дома.</small>' : ''}
       </div>` : '';
     const aspects = c.aspects || [];
     const glyph = p => planetGlyph(p.name) || (p.sign ? SIGNS[p.sign] : '');
@@ -113,8 +113,8 @@
       </div>`;
     // «акценты карты» от бэкенда — если придут, покажем мягкими чипами; нет — тихо скроем
     const accents = Array.isArray(c.accents) ? c.accents : [];
-    const accentChips = accents.length ? `<div class="asp-legend" style="margin:6px 0 8px">
-        ${accents.map(a => `<span class="asp-chip" style="color:var(--violet)">${esc(a)}</span>`).join('')}
+    const accentChips = accents.length ? `<div class="asp-legend chart-accent-legend">
+        ${accents.map(a => `<span class="asp-chip chart-accent-chip">${esc(a)}</span>`).join('')}
       </div>` : '';
     const takeaway = anglesAvailable
       ? `Солнце в ${esc(sun.sign || '—')} встречается с Асцендентом в ${esc(asc.sign || '—')}. Начни с этого дуэта: он помогает бережно связать внутреннее ощущение себя с тем, как ты проявляешься в мире.`
@@ -143,13 +143,14 @@
         <summary>Планеты, аспекты и детали карты</summary>
         <div class="chart-details__body">
           ${legend}
-          <div>${lines || '<div style="color:var(--text-faint);font-size:12.5px">Планеты ещё не рассчитаны</div>'}</div>
+          <div>${lines || '<div class="chart-empty">Планеты ещё не рассчитаны</div>'}</div>
         </div>
       </details>
-      <div style="color:var(--text-faint);font-size:11.5px;margin:10px 0">✓ Сохранена в твоём профиле — всегда под рукой.</div>
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <button class="btn btn-primary" style="flex:1" data-act="ask-chart">Спросить про карту</button>
-        <button class="btn btn-ghost" data-act="share-chart" title="Сохранить картинку для сторис">📸</button>
+      <div class="chart-saved-state">✓ Сохранена в твоём профиле — всегда под рукой.</div>
+      <div class="chart-action-row">
+        <button class="btn btn-primary chart-action-row__ask" data-act="ask-chart">Спросить про карту</button>
+        <button class="btn btn-ghost chart-action-icon" data-act="share-chart" title="Сохранить картинку для сторис" aria-label="Сохранить картинку для сторис">▣</button>
+        <button class="btn btn-ghost chart-action-icon" data-act="download-chart-pdf" title="Скачать PDF-отчёт" aria-label="Скачать PDF-отчёт">PDF</button>
         <button class="btn btn-ghost" data-act="go" data-goto="profile">В профиль</button>
       </div>`;
   };
@@ -266,6 +267,28 @@
     document.body.appendChild(a); a.click(); a.remove();
     this.toast('Картинка сохранена — добавь её в сторис ✨');
   };
+  app.downloadChartPdf = async function() {
+    if (this._chartPdfBusy) return;
+    this._chartPdfBusy = true;
+    this.toast('Готовлю PDF-отчёт…');
+    try {
+      const blob = await apiBlob('/api/chart/pdf');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'oracle-natal-report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this.toast('PDF сохранён');
+    } catch (e) {
+      this.toast(friendlyError(e, 'PDF временно недоступен. Попробуй ещё раз позже.'));
+    } finally {
+      this._chartPdfBusy = false;
+    }
+  };
+
   // G004 рефералка: скопировать ссылку приглашения
 
   app.shareChart = function() {

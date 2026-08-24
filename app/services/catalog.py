@@ -33,10 +33,15 @@ def _from_content(item: dict) -> dict | None:
     }
 
 
-async def spreads(db) -> dict[str, dict]:
-    """Все доступные расклады: код → описание."""
+async def spreads(db, deck_id: str | None = None) -> dict[str, dict]:
+    """Все доступные расклады выбранной deck tradition: код → описание."""
+    builtins = tarot.spreads_for(deck_id)
     out = {code: {**item, "code": code, "custom": False}
-           for code, item in tarot.SPREADS.items()}
+           for code, item in builtins.items()}
+    # Custom CMS spreads predate adapter selection and are authored for RWS.
+    # Never expose them to Lenormand/Marseille until they carry explicit tradition metadata.
+    if tarot.deck_metadata(deck_id)["deck_id"] != tarot.DEFAULT_DECK_ID:
+        return out
     try:
         for item in await content.list_content(db, "spread", active_only=True):
             parsed = _from_content(item)
@@ -47,13 +52,13 @@ async def spreads(db) -> dict[str, dict]:
     return out
 
 
-async def get_spread(db, code: str) -> dict:
-    return (await spreads(db)).get(code) or tarot.spread(code)
+async def get_spread(db, code: str, deck_id: str | None = None) -> dict:
+    return (await spreads(db, deck_id)).get(code) or tarot.spread_for(code, deck_id)
 
 
-async def spread_list(db, user=None) -> list[dict]:
-    """Витрина раскладов с ценой и признаком «уже куплен»."""
-    all_spreads = await spreads(db)
+async def spread_list(db, user=None, deck_id: str | None = None) -> list[dict]:
+    """Витрина раскладов выбранной колоды с ценой и признаком «уже куплен»."""
+    all_spreads = await spreads(db, deck_id)
     products = {p["grant_code"]: p for p in await billing.list_products(db, "spread")}
     out = []
     for code, item in all_spreads.items():
@@ -79,9 +84,9 @@ async def spread_list(db, user=None) -> list[dict]:
     return out
 
 
-async def is_available(db, user, code: str) -> bool:
+async def is_available(db, user, code: str, deck_id: str | None = None) -> bool:
     """Доступен ли расклад без покупки: входит в тариф или уже куплен."""
-    item = await get_spread(db, code)
+    item = await get_spread(db, code, deck_id)
     if item["tier"] == "included":
         return True
     return bool(await billing.available_entitlements(

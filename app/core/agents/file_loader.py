@@ -224,6 +224,8 @@ _TOKEN_ALIASES = {
     "хирон": "chiron", "лилит": "lilith", "джуно": "juno", "церер": "ceres",
     "веста": "vesta", "паллад": "pallas", "ретроград": "retrograde",
     "отношен": "relationship", "любов": "relationship", "партн": "relationship",
+    "ленорман": "lenormand", "lenormand": "lenormand", "petit": "lenormand", "geldard": "geldard", "марсел": "marseille", "marseille": "marseille", "колод": "deck", "школ": "school",
+    "беремен": "pregnancy", "рак": "cancer", "диагноз": "diagnosis", "депресс": "depression", "depression": "depression", "умира": "death", "die": "death", "смерт": "death", "судеб": "legal", "court": "legal", "lawsuit": "legal", "гарантир": "guarantee", "definitely": "guarantee", "инвест": "investment", "invest": "investment", "прибыл": "profit", "profit": "profit", "вылеч": "cure", "cure": "cure",
     "масть": "suit", "аркан": "arcana", "перевёрнут": "reversed", "перевернут": "reversed",
     "холм": "mount", "пальц": "finger",
 }
@@ -330,6 +332,8 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             score += 36
         if skill.name == "photo-comparison" and {"compare", "old", "new", "changes", "сравни"} & query:
             score += 34
+        if skill.name == "relationship-lines" and query & {"relationship", "marriage", "children", "ребёнок", "детей", "ребра", "edge"}:
+            score += 38
         tarot_combo = query & {"adjacent", "pair", "combination", "combinations", "связка", "связки", "pattern", "suit", "orientation", "reversed", "counter-reading"}
         tarot_proof = query & {"checksum", "ledger", "proof", "доказывает", "legal", "investment", "инвестиции", "суд", "решить"}
         tarot_question = query & {"question", "what", "happen", "spread", "journal", "daily", "быть", "спросить", "выбрать"}
@@ -342,6 +346,13 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             score += 25
         if skill.name == "card-ledger-evidence" and tarot_ledger:
             score += 27
+        deck_markers = query & {"deck", "school", "lenormand", "geldard", "marseille", "36", "upright", "game", "hope"}
+        if skill.name == "deck-selection-provenance" and deck_markers:
+            score += 42
+        if skill.name == "petit-lenormand-reading" and {"lenormand", "36"} & query:
+            score += 44
+        if skill.name == "lenormand-combinations" and "lenormand" in query and (tarot_combo or query & {"chain", "center", "pivot", "line"}):
+            score += 50
         lower_question = question.lower()
         vedic_markers = query & {
             "vedic", "jyotish", "kundli", "sidereal", "lahiri", "nakshatra",
@@ -353,11 +364,11 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             score -= 18
         date_only_markers = (
             "no birth time", "unknown birth time", "approximate birth time",
-            "date-only", "date only", "без времени", "время рождения неизвестно",
-            "примерное время",
+            "date-only", "date only", "без времени", "без точного времени", "время рождения неизвестно",
+            "точного времени нет", "примерное время",
         )
         if skill.name == "date-only-mode" and any(marker in lower_question for marker in date_only_markers):
-            score += 45
+            score += 104
         if skill.name == "three-card-spread" and "spread" in query and not specialized:
             score += 5
         if skill.name == "three-card-spread" and {"расклад", "таро"} <= query:
@@ -366,6 +377,28 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             {"выбрать", "уточнить", "question", "what", "select"} & query
         ):
             score -= 16
+        tarot_safety = query & {"legal", "investment", "pregnancy", "cancer", "diagnosis", "depression", "death", "guarantee", "profit", "cure"}
+        if skill.name in {"tarot-safety", "tarot-proof-safety"} and tarot_safety:
+            score += 52 if skill.name == "tarot-safety" and tarot_safety & {"pregnancy", "cancer", "diagnosis", "depression", "death", "cure"} else 42
+        if skill.name == "tarot-proof-safety" and tarot_safety & {"legal", "investment", "guarantee", "profit"}:
+            score += 28
+        astro_safety = query & {"diagnosis", "depression", "death", "investment", "profit", "guarantee", "cure", "cancer"}
+        if skill.name == "astrology-safety" and astro_safety:
+            score += 58
+        if skill.name == "lunar-nodes" and query & {"lunar_node", "vedic", "sidereal", "lahiri", "rahu", "ketu"}:
+            score += 44
+        if skill.name == "compatibility-synastry" and query & {"synastry", "compatibility", "relationship"}:
+            score += 42
+        if skill.name == "synastry-boundaries" and query & {"synastry", "compatibility", "relationship"}:
+            score += 52
+        if skill.name == "lunar-phases" and (query & {"moon", "cycle", "phase"} or "лун" in lower_question) and not query & {"electional", "muhurta"}:
+            score += 48
+        if skill.name == "grief-reflection" and query & {"grief", "loss", "горе", "потер"}:
+            score += 48
+        if skill.name == "relationship-reflection" and query & {"relationship", "partner", "secretly", "thinking", "return"}:
+            score += 45
+        if skill.name == "oracle-safety" and query & {"cancer", "diagnosis", "pregnancy", "death", "cure", "depression"}:
+            score += 58
         scored.append((score, -index, skill))
     scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
     selected = [item[2] for item in scored[:limit] if item[0] > 0]

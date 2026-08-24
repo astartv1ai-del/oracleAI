@@ -22,7 +22,12 @@ FIXTURE = Path(__file__).parent / "fixtures" / "palm" / "palm_hand.jpg"
 
 
 @pytest.fixture
-async def client(db, user):
+async def client(db, user, monkeypatch):
+    monkeypatch.setattr(palm_core.palm_landmarks, "analyze", lambda image: {
+        "version": "mediapipe-hand-landmarker-v1", "status": "model_missing",
+        "hands": [], "hand_count": 0, "issues": ["mediapipe_model_missing"],
+        "model": "hand_landmarker_full_float16",
+    })
     app.dependency_overrides[get_db] = lambda: db
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http:
@@ -135,6 +140,8 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     assert '"score":0.93' in evidence
     assert '"label":"линия сердца"' in evidence
     assert "hand_shape_element" in evidence
+    assert "hand_geometry" in evidence
+    assert '"line_segmentation":"not_attempted"' in evidence
     assert "continuous" in evidence
 
     empty_args = await skills.execute(db, user, "palm_scanner", {})
@@ -181,6 +188,29 @@ async def test_palm_reading_is_private_and_deleted_from_other_user(client, db, u
 
     owner_get = await client.get(f"/api/palm/{reading_id}", params={"dev_user": user["tg_id"]})
     assert owner_get.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_no_hand_geometry_blocks_vision_call(client, user, monkeypatch):
+    image = FIXTURE.read_bytes()
+    monkeypatch.setattr(palm_core.palm_landmarks, "analyze", lambda _: {
+        "version": "mediapipe-hand-landmarker-v1", "status": "no_hand",
+        "hands": [], "hand_count": 0, "issues": ["hand_not_detected"],
+    })
+    called = False
+
+    async def fail_if_called(*args, **kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("vision must not run when no hand is detected")
+
+    monkeypatch.setattr(palm_core.llm, "complete_vision", fail_if_called)
+    response = await client.post("/api/palm", params={"dev_user": user["tg_id"]},
+                                 headers={"content-type": "image/jpeg"}, content=image)
+    assert response.status_code == 200
+    assert response.json()["status"] == "needs_photo"
+    assert response.json()["hand_geometry"]["status"] == "no_hand"
+    assert called is False
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,7 @@
 /* chat: чат-агент, сессии, лунная неделя, тулбокс, отправка */
   app.openChat = function(key, after) {
     haptic('soft');
+    if (typeof this.closeWorkspaceSidebar === 'function') this.closeWorkspaceSidebar();
     // Панель инструментов не должна оставаться поверх нового диалога.
     if (typeof this.setToolbox === 'function') this.setToolbox(false);
     if (this.chat.key !== key) {
@@ -9,14 +10,22 @@
       this.chat.messages = [];
       this.chat.pending = null;
       this.chat.tid = null;
+      this.chat.sessionArchived = false;
       this.chat.sessions = [];
       this.loadThread(key);
     }
     this.view = 'hub';
     this.renderNav();
     this.renderChat(document.getElementById('app-main'));
-    if (after) setTimeout(after, 60);
-    this.maybeChatGuide();
+    if (after) {
+      setTimeout(() => {
+        after();
+        // Tool flows explain themselves; the generic guide must not cover them.
+        if (!this.chat.pending) this.maybeChatGuide();
+      }, 60);
+    } else {
+      this.maybeChatGuide();
+    }
   };
 
   // список чатов-сессий агента (до 5)
@@ -92,6 +101,7 @@
   // отправка в активную сессию (если есть) — иначе первый вопрос создаёт тред
 
   app.chatPost = async function(text) {
+    if (this.chat.sessionArchived) throw new Error('Архивный чат доступен только для просмотра');
     const a = this.chat.spec;
     if (this.chat.tid) {
       return await api(`/api/chat/${a.code}/sessions/${this.chat.tid}`,
@@ -183,6 +193,7 @@
     }
     const r = await api(`/api/chat/${this.chat.key}/sessions`, { method: 'POST' });
     this.chat.tid = r.thread_id;
+    this.chat.sessionArchived = false;
     this.chat.messages = [];
     this.chat.pending = null;
     await this.refreshSessions();
@@ -191,10 +202,12 @@
 
 
   app.openSession = async function(id) {
+    if (typeof this.closeWorkspaceSidebar === 'function') this.closeWorkspaceSidebar();
     try {
       const r = await api(`/api/chat/${this.chat.key}/sessions/${id}`);
       this.chat.spec = this.normalizeAgent(r.agent, this.chat.key);
       this.chat.tid = r.thread_id;
+      this.chat.sessionArchived = !!r.archived;
       this.chat.messages = (r.messages || []).map(m => ({ role: m.role, text: m.text }));
       if (!this.chat.messages.length && r.agent && r.agent.greeting) {
         this.chat.messages = [{ role: 'assistant', text: r.agent.greeting }];
@@ -273,7 +286,7 @@
             <div class="cname">${esc(a.name || 'Лилит')}</div>
             <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
             <div class="chat-proof-strip" aria-label="${homeT('profileQuality')}">
-              <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
+              <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeCount(a.capabilities.length, 'tool', 'tools', 'инструмент', 'инструмента', 'инструментов')}</span>` : ''}
             </div>
           </div>
           <button type="button" class="chat-thread-toggle" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="Открыть мои чаты">
@@ -311,9 +324,9 @@
           ${pendHtml}
           ${busy ? `<div class="msg assistant"><div class="typing"><span></span><span></span><span></span></div></div>` : ''}
         </div>
-        <div class="composer">
+        <div class="composer ${this.chat.sessionArchived ? 'composer--readonly' : ''}">
                       <div class="composer-context">
-            <span class="composer-presence"><i aria-hidden="true"></i>${esc(a.name || 'Проводник')} рядом</span>
+            <span class="composer-presence"><i aria-hidden="true"></i>${this.chat.sessionArchived ? 'Архивный чат · только просмотр' : esc(a.name || 'Проводник') + ' рядом'}</span>
             <div class="composer-context-actions">
               ${a.code === 'chiromant' ? '<button type="button" class="palm-quick-upload" data-act="palm-start" aria-label="Добавить фото ладони"><span aria-hidden="true">✋</span><span>Фото ладони</span></button>' : ''}
               <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть палитру инструментов" aria-expanded="false" aria-controls="tool-expand"><span class="composer-tools-copy__icon">${sigilIcon('spark')}</span><span>Инструменты</span><span class="composer-tools-copy__chevron" aria-hidden="true">↑</span></button>
@@ -321,10 +334,10 @@
           </div>
 
           <div class="composer-top">
-            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
-            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
+            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="${this.chat.sessionArchived ? 'Архивный чат доступен для просмотра' : 'Напиши ' + esc(a.name || 'Лилит') + ' — как есть…'}" autocomplete="off" spellcheck="true" aria-label="${this.chat.sessionArchived ? 'Архивный чат только для просмотра' : 'Сообщение для ' + esc(a.name || 'Лилит')}"${this.chat.sessionArchived ? ' disabled aria-disabled="true"' : ''}>${esc(this.chat.draft || '')}</textarea>
+            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy || this.chat.sessionArchived ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
           </div>
-          ${suggest.length ? `
+          ${suggest.length && !this.chat.sessionArchived ? `
           <div class="suggest-chips" aria-label="Идеи для своего вопроса">
             ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
           </div>` : ''}
@@ -354,6 +367,7 @@
           </section>
         </div>
       </div>`;
+    if (typeof this.renderSidebar === 'function') this.renderSidebar();
     this.scrollToBottom();
   };
 
@@ -372,8 +386,13 @@
           return `<div class="msg assistant">
             <div class="chat-widget tarot-picker-widget ${p.drawing ? 'is-drawing' : ''}">
               <div class="tarot-kicker">ЛИЧНЫЙ РИТУАЛ</div>
-              <div class="w-title" style="margin:0">🎴 Выбери схему и задай вопрос</div>
-              <div class="w-sub tarot-picker-sub">Карты не дают готовых приказов — они помогают заметить то, что уже просится в твоё внимание.</div>
+              <div class="w-title" style="margin:0">🎴 Выбери схему и вопрос</div>
+              <div class="w-sub tarot-picker-sub">Символический взгляд на ситуацию — без готовых приказов.</div>
+              <button class="pick-sel-btn tarot-deck-select" data-act="deck-open" ${p.drawing ? 'disabled' : ''}>
+                <span class="pick-sel-ico">${p.deck && p.deck.tradition === 'Petit Lenormand' ? '◇' : '🎴'}</span>
+                <span class="pick-sel-txt"><span class="pick-sel-t">${esc(tarotDeckLabel(p.deck))}</span><span class="pick-sel-d">${esc((p.deck && p.deck.card_count) || 78)} карт · сменить школу</span></span><span class="pick-sel-go">⚙</span>
+              </button>
+              <div class="tarot-deck-source"><span aria-hidden="true">●</span>${esc(tarotDeckStatus(p.deck))}</div>
               <button class="pick-sel-btn" data-act="pick-open" ${p.drawing ? 'disabled' : ''}>
                 <span class="pick-sel-ico">${esc(cur.emoji || '🎴')}</span>
                 <span class="pick-sel-txt">
@@ -382,9 +401,9 @@
                 </span>
                 <span class="pick-sel-go">›</span>
               </button>
-              <div class="swipe-hint">Тапни — откроется весь список раскладов</div>
-              <div class="tarot-question-label">О чём хочешь спросить?</div>
-              <div class="tarot-question-prompts">${prompts.map(value => `<button class="tarot-question-prompt${p.q === value ? ' is-active' : ''}" data-act="tarot-question" data-value="${q(value)}" ${p.drawing ? 'disabled' : ''}>${esc(value)}</button>`).join('')}</div>
+              <div class="swipe-hint">Нажми на строку, чтобы изменить выбор</div>
+              <div class="tarot-question-label">О чём спросить?</div>
+              <div class="tarot-question-prompts">${prompts.slice(0, 2).map(value => `<button class="tarot-question-prompt${p.q === value ? ' is-active' : ''}" data-act="tarot-question" data-value="${q(value)}" ${p.drawing ? 'disabled' : ''}>${esc(value)}</button>`).join('')}</div>
               ${p.err ? `<div class="s-err">${esc(p.err)}</div>` : ''}
               <textarea class="ipt" id="tarot-q" rows="2" placeholder="Твой вопрос к картам…" ${p.drawing ? 'disabled' : ''}
                 style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
@@ -415,13 +434,13 @@
                   <button type="button" class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" aria-label="${p.revealed[i] ? esc(c.name) : 'Открыть карту: ' + esc(pos)}" ${p.revealed[i] ? 'aria-pressed="true"' : 'aria-pressed="false"'}>
                     <span class="tcard-inner">
                       <span class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></span>
-                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="${tarotAssetUrl(c, p.ledger || p.deck)}" alt="${p.revealed[i] ? esc(c.name) : 'Закрытая карта'}" loading="lazy">
                         ${c.reversed ? '<span class="t-rev">↺ перевёрнута</span>' : ''}</span>
                     </span>
                   </button>
                   <div class="tpos-pos">${esc(pos)}</div>
-                  <div class="tpos-mean">${esc(c.name)}${c.reversed ? ' ↺' : ''}</div>
-                  <div class="tpos-desc">${esc(c.meaning)}</div>
+                  <div class="tpos-mean">${p.revealed[i] ? `${esc(c.name)}${c.reversed ? ' ↺' : ''}` : 'Нажми, чтобы открыть'}</div>
+                  ${p.revealed[i] ? `<div class="tpos-desc">${esc(c.meaning)}</div>` : ''}
                 </div>`;
               }).join('')}
             </div>

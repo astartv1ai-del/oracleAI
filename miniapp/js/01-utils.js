@@ -39,8 +39,25 @@ function widAlive(key, view, pend) {
 }
 
 /* ── API-клиент ─────────────────────────────────────────────────────────── */
+function clientPlatform() {
+  const raw = String((tg() && tg().platform) || (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '').toLowerCase();
+  if (raw.includes('android')) return 'android';
+  if (raw.includes('ios') || raw.includes('iphone') || raw.includes('ipad')) return 'ios';
+  if (raw.includes('mac')) return 'macos';
+  if (raw.includes('win')) return 'windows';
+  if (raw.includes('linux')) return 'linux';
+  return 'web';
+}
+function clientMode() {
+  return innerWidth < 600 ? 'mobile' : (innerWidth < 900 ? 'tablet' : 'desktop');
+}
 async function api(path, opts = {}) {
-  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  const headers = Object.assign({
+    'Content-Type': 'application/json',
+    'X-Client-Platform': clientPlatform(),
+    'X-Client-Viewport': `${Math.round(innerWidth)}x${Math.round(innerHeight)}`,
+    'X-Client-Mode': clientMode(),
+  }, opts.headers || {});
   const initData = tg() && tg().initData;
   if (initData) headers['X-Init-Data'] = initData;
   let url = path;
@@ -76,6 +93,28 @@ async function api(path, opts = {}) {
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function apiBlob(path, opts = {}) {
+  const headers = Object.assign({
+    'X-Client-Platform': clientPlatform(),
+    'X-Client-Viewport': `${Math.round(innerWidth)}x${Math.round(innerHeight)}`,
+    'X-Client-Mode': clientMode(),
+  }, opts.headers || {});
+  const initData = tg() && tg().initData;
+  if (initData) headers['X-Init-Data'] = initData;
+  let url = path;
+  const dev = new URLSearchParams(location.search).get('dev_user');
+  if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + dev;
+  const res = await fetch(url, Object.assign({ headers }, opts));
+  if (!res.ok) {
+    let detail = '';
+    try { const body = await res.json(); detail = body && body.detail || ''; } catch (e) { /* binary error */ }
+    const err = new Error(detail || 'Не удалось скачать файл');
+    err.status = res.status;
+    throw err;
+  }
+  return res.blob();
+}
 
 /* User-facing errors must never expose Telegram auth, provider, HTML or JSON details. */
 function friendlyError(err, fallback) {
@@ -245,6 +284,12 @@ const HOME_I18N = {
 const homeT = (key, fallback = '') => (HOME_I18N[oracleLang()] || HOME_I18N.ru)[key] || fallback || key;
 const homeFormat = (key, values = {}) => Object.entries(values).reduce(
   (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), homeT(key));
+const homeCount = (count, enOne, enMany, ruOne, ruFew, ruMany) => {
+  const n = Math.abs(Number(count)) % 100;
+  const last = n % 10;
+  const ru = n >= 11 && n <= 14 ? ruMany : last === 1 ? ruOne : last >= 2 && last <= 4 ? ruFew : ruMany;
+  return `${count} ${oracleLang() === 'en' ? (Number(count) === 1 ? enOne : enMany) : ru}`;
+};
 
 // P3: детерминированный вариант без сторонних трекеров. В событие уходят только
 // имя эксперимента и вариант; вопрос, дневник и другие личные данные не передаются.

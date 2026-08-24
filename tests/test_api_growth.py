@@ -36,8 +36,9 @@ async def test_practices_catalog_has_categories(client, user):
     assert res.status_code == 200
     data = res.json()
     assert data["categories"], "нет разделов практик"
-    assert len(data["items"]) >= 10, "каталог практик почти пуст"
+    assert len(data["items"]) >= 8, "каталог практик почти пуст"
     assert all(p["steps"] and p["today_step"] for p in data["items"])
+    assert "mantra" not in {p["category"] for p in data["items"]}
 
 
 async def test_practices_filter_by_category(client, user):
@@ -73,11 +74,16 @@ async def test_unknown_practice_is_404(client, user):
 
 
 async def test_practice_card_endpoint(client, user):
-    res = await client.get("/api/practices/mantra_lakshmi", params=as_user(user))
+    res = await client.get("/api/practices/money_mirror", params=as_user(user))
     assert res.status_code == 200
     item = res.json()
-    assert item["text"], "у мантры нет текста"
+    assert item["goal"], "у практики нет цели"
     assert item["signs"], "нет знаков продвижения"
+
+
+async def test_removed_mantra_code_is_404(client, user):
+    res = await client.get("/api/practices/mantra_lakshmi", params=as_user(user))
+    assert res.status_code == 404
 
 
 # ────────────────────────────── гороскопы ─────────────────────────────────────

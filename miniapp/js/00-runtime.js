@@ -23,7 +23,11 @@
         pending: null,
         busy: false,
         tid: null,
+        sessionArchived: false,
         sessions: [],
+        historyQuery: '',
+        historyResults: [],
+        historyBusy: false,
         draft: ''
       }
     };

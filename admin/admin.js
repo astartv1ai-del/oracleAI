@@ -313,6 +313,19 @@ async function loadDashboard() {
 }
 
 /* ══════ клиентки ══════ */
+function platformLabel(value) {
+  const map = { android: 'Android', ios: 'iOS', macos: 'macOS', windows: 'Windows', linux: 'Linux', tdesktop: 'Telegram Desktop', web: 'Web', unknown: 'Не определено' };
+  return map[value] || map.unknown;
+}
+
+function clientContext(row) {
+  const platform = platformLabel(row.last_platform);
+  const mode = row.last_client_mode ? ` · ${row.last_client_mode}` : '';
+  const viewport = row.last_viewport ? ` · ${row.last_viewport}` : '';
+  const seen = row.last_client_at ? ` · ${date(row.last_client_at, true)}` : '';
+  return `${platform}${mode}${viewport}${seen}`;
+}
+
 function segmentLabel(code) {
   const map = {
     all: 'Все', active_sub: 'С подпиской', expired: 'Без подписки',
@@ -360,6 +373,7 @@ async function loadUsers() {
     { title: '✦', num: true, render: (r) => num(r.crystals) },
     { title: 'Stars', num: true, render: (r) => num(r.ltv_stars) },
     { title: 'Была', render: (r) => date(r.last_seen, true) },
+    { title: 'Клиент', render: (r) => `<span class="client-context">${esc(clientContext(r))}</span>` },
     { title: 'Пришла', render: (r) => date(r.created_at) },
   ], data.items, { onRow: true, empty: 'Никого не нашлось' });
   bindRows(el, data.items, (row) => openUser(row.tg_id));
@@ -448,6 +462,7 @@ async function openUser(tgId) {
         <tr><th>Рождение</th><td>${esc(u.birth_date || '—')} ${esc(u.birth_time || '')}
           ${u.birth_time_known ? '' : '<span class="badge">время неточное</span>'}</td></tr>
         <tr><th>Город</th><td>${esc(u.birth_city || '—')} · ${esc(u.tz || '')}</td></tr>
+        <tr><th>Последний клиент</th><td>${esc(clientContext(u))}</td></tr>
         <tr><th>Солнце</th><td>${sun ? esc(`${sun.sign} (${sun.element})`) : '—'}
           · режим карты: ${esc(c.chart?.mode || '—')}</td></tr>
         <tr><th>Оракул</th><td>${esc(u.oracle_name || '—')} · образ ${esc(u.persona || '—')}</td></tr>

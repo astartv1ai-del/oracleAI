@@ -24,6 +24,9 @@ lunardate==0.2.2
 geopy==2.5.0
 timezonefinder==8.2.5
 
+# Computer vision for Mira: hand geometry/landmarks only; palm-line interpretation stays in the evidence harness.
+mediapipe==0.10.35
+
 # Картинки-карточки для сторис. Без Pillow шеринг остаётся текстовым.
 pillow==12.3.0
 

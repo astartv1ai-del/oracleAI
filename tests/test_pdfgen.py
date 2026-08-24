@@ -6,6 +6,9 @@
 """
 from __future__ import annotations
 
+import math
+import xml.etree.ElementTree as ET
+
 import pytest
 
 from app.pdfgen import render
@@ -49,6 +52,43 @@ async def test_full_natal_report_contains_extended_chart_and_mobile_viewport(mon
     assert "Куспиды домов" in html and "Ключевые аспекты" in html
     assert "Placidus" in html and "Tropical" in html
     assert "https://github.com/astartv1ai-del/oracleAI" in html
+    assert 'class="cover-wheel"' in html
+    assert html.count('<svg viewBox="0 0 300 300"') >= 2
+    assert "Анна" in html and "21.06.1990 · 14:30 · Казань" in html
+    assert 'content: "OracleAI · " counter(page)' in html
+
+
+
+def test_pdf_wheel_separates_extreme_close_degree_cluster():
+    from app.pdfgen import layout
+
+    names = ["Солнце", "Луна", "Меркурий", "Венера", "Марс", "Юпитер",
+             "Сатурн", "Уран", "Нептун", "Плутон"]
+    chart = {
+        "sun": {"symbol": "☉", "sign": "Овен"},
+        "planets": [
+            {"name": name, "sign": "Овен", "abs_deg": 12 + i * .55}
+            for i, name in enumerate(names)
+        ],
+        "nodes": [
+            {"name": "Раху (Северный узел)", "sign": "Овен", "abs_deg": 12.2},
+            {"name": "Кету (Южный узел)", "sign": "Овен", "abs_deg": 12.7},
+        ],
+        "houses": [], "aspects": [],
+    }
+    root = ET.fromstring(layout.wheel_svg(chart, size=260))
+    marker_circles = [
+        (float(node.attrib["cx"]), float(node.attrib["cy"]), float(node.attrib["r"]))
+        for node in root.iter()
+        if node.tag.endswith("circle") and float(node.attrib.get("r", 0)) in {10.9, 8.8}
+    ]
+    assert len(marker_circles) == 12
+    minimum_clearance = min(
+        math.hypot(a[0] - b[0], a[1] - b[1]) - a[2] - b[2]
+        for i, a in enumerate(marker_circles)
+        for b in marker_circles[i + 1:]
+    )
+    assert minimum_clearance > 0
 
 
 @pytest.mark.asyncio
@@ -75,5 +115,8 @@ async def test_english_natal_report_is_localized(monkeypatch):
     assert "Chiron" in html and "Juno" in html
     assert "Destiny Matrix" in html
     assert "https://github.com/astartv1ai-del/oracleAI" in html
+    assert 'class="cover-wheel"' in html
+    assert "Anna" in html and "21.06.1990 · 14:30 · Kazan" in html
+    assert 'content: "OracleAI · " counter(page)' in html
     assert "Натальная карта: полный расчёт" not in html
     assert "Кто ты по своей карте" not in html

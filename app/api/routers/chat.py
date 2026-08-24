@@ -1,7 +1,7 @@
 """Чаты с агентами: список, история, вопрос."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from ...core import agents
 from ...repo import dialog
 from ...services import chat as chat_svc
@@ -15,6 +15,24 @@ router = APIRouter(prefix="/api", tags=["chat"])
 async def agent_list(user=Depends(current_user), db=Depends(get_db)):
     """Список чатов: агент, превью последнего сообщения, подсказки."""
     return await chat_svc.threads_view(db, user)
+
+
+@router.get("/chat/search")
+async def chat_search(q: str = Query(default="", max_length=120),
+                      limit: int = Query(default=50, ge=1, le=100),
+                      user=Depends(current_user), db=Depends(get_db)):
+    """Поиск активных чатов текущей пользовательницы по истории."""
+    rows = await dialog.search_threads(db, user["tg_id"], q, limit=limit)
+    return [{
+        "thread_id": row["id"],
+        "agent": row["agent"],
+        "title": row["title"] or "Новый разговор",
+        "last_text": row.get("match_text") or row["last_text"] or "Продолжить разговор",
+        "last_at": row["last_at"] or row["created_at"],
+        "msg_count": row["msg_count"] or 0,
+        "archived": bool(row["archived"]),
+        "match_text": row.get("match_text"),
+    } for row in rows]
 
 
 @router.get("/chat")
@@ -107,11 +125,11 @@ async def session_history(agent: str, thread_id: int, user=Depends(current_user)
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
     thread = await dialog.get_thread(db, thread_id, user["tg_id"])
-    if not thread or thread["agent"] != agent or thread["archived"]:
+    if not thread or thread["agent"] != agent:
         raise HTTPException(404, "нет такого чата")
     messages = await dialog.thread_messages(db, thread_id, limit=60)
     return {"agent": agents.get(agent).as_dict(user), "thread_id": thread_id,
-            "messages": messages}
+            "archived": bool(thread["archived"]), "messages": messages}
 
 
 @router.post("/chat/{agent}/sessions/{thread_id}",
@@ -120,9 +138,13 @@ async def ask_session(agent: str, thread_id: int, item: AskIn,
                       user=Depends(current_user), db=Depends(get_db)):
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
+    thread = await dialog.get_thread(db, thread_id, user["tg_id"])
+    if not thread or thread["agent"] != agent:
+        raise HTTPException(404, "нет такого чата")
+    if thread["archived"]:
+        raise HTTPException(409, "архивный чат доступен только для чтения")
     try:
-        return await chat_svc.ask(db, user, item.text, agent=agent,
-                                  surface="miniapp", allow_paid=item.allow_paid,
+        return await chat_svc.ask(db, user, item.text, agent=agent, surface="miniapp", allow_paid=item.allow_paid,
                                   thread_id=thread_id)
     except chat_svc.ChatDenied as e:
         raise access_denied(e.verdict) from e
