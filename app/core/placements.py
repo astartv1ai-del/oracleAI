@@ -9,7 +9,16 @@ import json
 from datetime import date, datetime
 from functools import lru_cache
 
-from .astro import SIGN_EN2RU, SIGNS
+from .astro import (
+    EPHEMERIS_ENGINE,
+    HOUSE_SYSTEM_IDENTIFIER,
+    HOUSE_SYSTEM_NAME,
+    NODE_MODE,
+    PERSPECTIVE_TYPE,
+    SIGN_EN2RU,
+    SIGNS,
+    ZODIAC_TYPE,
+)
 
 SIGN_SYMBOL = {name: symbol for name, symbol, _ in SIGNS}
 SIGN_ELEMENT = {name: element for name, _, element in SIGNS}
@@ -24,12 +33,18 @@ PLACEMENT_META = {
     "mars_sign": {"label": "Знак Марса", "point": "Mars", "scope": "drive, action, boundaries"},
     "mercury_sign": {"label": "Знак Меркурия", "point": "Mercury", "scope": "communication, learning, decisions"},
     "neptune_sign": {"label": "Знак Нептуна", "point": "Neptune", "scope": "imagination, ideals, boundaries"},
-    "north_node_sign": {"label": "Северный узел", "point": "True_North_Lunar_Node", "scope": "growth direction, unfamiliar development"},
+    "north_node_sign": {"label": "Северный узел / Rahu", "point": "True_North_Lunar_Node", "scope": "growth direction, unfamiliar development"},
+    "rahu_sign": {"label": "Раху (Северный узел)", "point": "True_North_Lunar_Node", "scope": "growth direction, unfamiliar development"},
     "pluto_sign": {"label": "Знак Плутона", "point": "Pluto", "scope": "transformation, power, renewal"},
     "saturn_sign": {"label": "Знак Сатурна", "point": "Saturn", "scope": "discipline, limits, mature skill"},
-    "south_node_sign": {"label": "Южный узел", "point": "True_South_Lunar_Node", "scope": "familiar strategies, inherited patterns"},
+    "south_node_sign": {"label": "Южный узел / Ketu", "point": "True_South_Lunar_Node", "scope": "familiar strategies, inherited patterns"},
+    "ketu_sign": {"label": "Кету (Южный узел)", "point": "True_South_Lunar_Node", "scope": "familiar strategies, inherited patterns"},
     "uranus_sign": {"label": "Знак Урана", "point": "Uranus", "scope": "freedom, innovation, change"},
     "asteroid_sign": {"label": "Знаки астероидов", "points": ("Ceres", "Vesta", "Pallas"), "scope": "care, devotion, problem-solving"},
+    "ceres_sign": {"label": "Знак Цереры", "point": "Ceres", "scope": "care, nourishment, practical support"},
+    "vesta_sign": {"label": "Знак Весты", "point": "Vesta", "scope": "devotion, focus, protected inner space"},
+    "pallas_sign": {"label": "Знак Паллады", "point": "Pallas", "scope": "pattern recognition, strategy, creative intelligence"},
+    "lilith_sign": {"label": "Лилит (Чёрная Луна)", "point": "True_Lilith", "scope": "shadow themes, autonomy, boundaries"},
 }
 
 WESTERN_PLACEMENTS = tuple(PLACEMENT_META)
@@ -37,7 +52,7 @@ ALL_CALCULATORS = WESTERN_PLACEMENTS + ("life_path", "chinese_zodiac", "natal_ch
 
 _ACTIVE_POINTS = [
     "Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus",
-    "Neptune", "Pluto", "True_North_Lunar_Node", "True_South_Lunar_Node",
+    "Neptune", "Pluto", "True_North_Lunar_Node", "True_South_Lunar_Node", "True_Lilith",
     "Chiron", "Ceres", "Pallas", "Juno", "Vesta",
     "Ascendant", "Medium_Coeli", "Descendant", "Imum_Coeli",
 ]
@@ -45,6 +60,7 @@ _ACTIVE_POINTS = [
 _POINT_ALIASES = {
     "True_North_Lunar_Node": "true_north_lunar_node",
     "True_South_Lunar_Node": "true_south_lunar_node",
+    "True_Lilith": "true_lilith",
     "Ascendant": "ascendant",
 }
 
@@ -90,9 +106,25 @@ def _point_payload(point_name: str, model, *, exact: bool) -> dict:
         "symbol": SIGN_SYMBOL.get(sign, ""),
         "element": SIGN_ELEMENT.get(sign, ""),
         "degree": round(float(getattr(point, "position", 0.0)), 1),
+        "degree_exact": float(getattr(point, "position", 0.0)),
         "abs_degree": round(float(getattr(point, "abs_pos", 0.0)), 1),
+        "abs_degree_exact": float(getattr(point, "abs_pos", 0.0)),
         "house": house_text,
         "retrograde": bool(getattr(point, "retrograde", False)),
+    }
+
+
+def _western_meta(precision: str, note: str = "") -> dict:
+    return {
+        "precision": precision,
+        "source": "swiss_ephemeris",
+        "engine": EPHEMERIS_ENGINE,
+        "zodiac_type": ZODIAC_TYPE,
+        "house_system": HOUSE_SYSTEM_IDENTIFIER,
+        "house_system_name": HOUSE_SYSTEM_NAME,
+        "perspective_type": PERSPECTIVE_TYPE,
+        "node_mode": NODE_MODE,
+        "note": note,
     }
 
 
@@ -106,6 +138,8 @@ def _model(birth_date: str, birth_time: str, city: str, lat: float, lon: float, 
         name="oracle-placement", year=d.year, month=d.month, day=d.day,
         hour=hour, minute=minute, city=city or "Moscow", lat=float(lat), lng=float(lon),
         tz_str=tz or "Europe/Moscow", online=False, active_points=_ACTIVE_POINTS,
+        zodiac_type=ZODIAC_TYPE, houses_system_identifier=HOUSE_SYSTEM_IDENTIFIER,
+        perspective_type=PERSPECTIVE_TYPE,
     )
 
 
@@ -174,8 +208,9 @@ def calculate_placement(code: str, birth_date: str, birth_time: str | None = Non
         return chinese_zodiac(birth_date)
     if code == "natal_chart":
         model, exact = _western_points(birth_date, birth_time, city, lat, lon, tz, time_known)
-        return {"code": code, "label": "Натальная карта", "precision": "exact" if exact else "date_only",
-                "source": "swiss_ephemeris", "points": all_western(model, exact=exact)}
+        return {"code": code, "label": "Натальная карта",
+                **_western_meta("exact" if exact else "date_only"),
+                "points": all_western(model, exact=exact)}
     if code not in PLACEMENT_META:
         raise ValueError("неизвестный placement-калькулятор")
     meta = PLACEMENT_META[code]
@@ -183,16 +218,17 @@ def calculate_placement(code: str, birth_date: str, birth_time: str | None = Non
     precision = "exact" if exact else "date_only"
     note = "" if exact else "Время/координаты не подтверждены; дома и углы скрыты."
     if code == "rising_sign" and not exact:
-        return {"code": code, "label": meta["label"], "error": "Для Асцендента нужны точные дата, время, город и таймзона.",
-                "precision": "insufficient", "source": "swiss_ephemeris"}
+        return {"code": code, "label": meta["label"],
+                **_western_meta("insufficient"),
+                "error": "Для Асцендента нужны точные дата, время, город и таймзона."}
     if "points" in meta:
         points = [_point_payload(point, model, exact=exact) for point in meta["points"]]
         return {"code": code, "label": meta["label"], "points": points,
-                "precision": precision, "source": "swiss_ephemeris", "note": note,
+                **_western_meta(precision, note),
                 "interpretation_scope": meta["scope"]}
     point = _point_payload(meta["point"], model, exact=exact)
-    return {"code": code, "label": meta["label"], **point, "precision": precision,
-            "source": "swiss_ephemeris", "note": note,
+    return {"code": code, "label": meta["label"], **point,
+            **_western_meta(precision, note),
             "interpretation_scope": meta["scope"]}
 
 

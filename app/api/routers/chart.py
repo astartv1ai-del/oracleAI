@@ -46,6 +46,20 @@ def _log_astro(level: int, event: str, message: str, started: float,
 _UNSET = object()
 
 
+def _canonical_lunar_nodes(data: dict) -> dict:
+    """Return the stable Rahu/Ketu contract, including legacy cached charts."""
+    nodes = data.get("nodes") or []
+    current = data.get("lunar_nodes")
+    if isinstance(current, dict):
+        return current
+    return {
+        "mode": "true",
+        "mode_label": "True Node",
+        "rahu": next((node for node in nodes if node.get("name", "").startswith("Раху")), None),
+        "ketu": next((node for node in nodes if node.get("name", "").startswith("Кету")), None),
+    }
+
+
 def _chart_payload(data: dict, user, *, birth_date=_UNSET,
                    birth_time=_UNSET,
                    birth_city=_UNSET,
@@ -57,8 +71,14 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
     """
     known = bool(user["birth_time_known"]) if time_known is None else bool(time_known)
     payload = {
+        "natal_schema_version": 2,
         "mode": data.get("mode", "lite"),
         "precision": data.get("precision", "sun_only"),
+        "engine": data.get("engine", astro.EPHEMERIS_ENGINE),
+        "zodiac_type": data.get("zodiac_type", astro.ZODIAC_TYPE),
+        "house_system": data.get("house_system", astro.HOUSE_SYSTEM_IDENTIFIER),
+        "house_system_name": data.get("house_system_name", astro.HOUSE_SYSTEM_NAME),
+        "perspective_type": data.get("perspective_type", astro.PERSPECTIVE_TYPE),
         "sun": data.get("sun"),
         "ascendant": data.get("ascendant"),
         "mc": data.get("mc"),
@@ -66,6 +86,8 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
         "houses": data.get("houses", []),
         "aspects": data.get("aspects", []),
         "nodes": data.get("nodes", []),
+        "lunar_nodes": _canonical_lunar_nodes(data),
+        "additional_points": data.get("additional_points", []),
         "note": data.get("note"),
         "sections": astro.chart_sections(data, time_known=known),
         "birth": {

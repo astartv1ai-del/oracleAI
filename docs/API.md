@@ -116,6 +116,32 @@ POST /api/profile
 | `GET` | `/api/reports/{kind}` | Получить отчёт заданного типа. |
 | `POST` | `/api/reports/{kind}` | Создать AI-отчёт. |
 
+### Натальный контракт v2
+
+`GET /api/chart` и `POST /api/chart` сохраняют legacy-поля `nodes`, `planets`, `houses` и `aspects`, но дополнительно возвращают `natal_schema_version: 2`, вычислительные conventions (`engine`, `zodiac_type`, `house_system`, `house_system_name`, `perspective_type`), canonical `lunar_nodes` и `additional_points`. В `lunar_nodes` северный узел называется **Rahu / Раху**, южный — **Ketu / Кету**; текущая продуктовая настройка `mode: "true"` означает True Node. `nodes` остаётся для совместимости и также содержит Лилит.
+
+| Поле | Смысл | Пример |
+|---|---|---|
+| `engine` | Источник эфемерид. | `Swiss Ephemeris via Kerykeion` |
+| `zodiac_type` | Зодиакальная система. | `Tropical` |
+| `house_system` / `house_system_name` | Идентификатор и имя домов. | `P` / `Placidus` |
+| `perspective_type` | Геометрическая перспектива. | `Apparent Geocentric` |
+| `lunar_nodes.rahu` / `.ketu` | Канонические положения Rahu/Ketu. | точка, знак, градус, дом, exact-поля |
+| `additional_points` | Расширенные точки. | Хирон, Джуно, Церера, Веста, Паллада |
+
+Если время рождения неизвестно, `precision` сообщает `date_only`, а дома, ASC и MC скрываются; положения планет, True Node Rahu/Ketu и дополнительные точки остаются эфемеридными фактами без притворной точности домов.
+
+### Полный PDF natal report
+
+Для ручной или batch-сборки используется `python -m scripts.gen_pdf`. Один заказ можно собрать так:
+
+```bash
+python -m scripts.gen_pdf --name Анна --date 21.06.1990 --time 14:30 \\
+  --city Казань --out data/pdf
+```
+
+Команда создаёт PDF через WeasyPrint, а при его отсутствии сохраняет HTML, который можно открыть на телефоне или ПК и распечатать в PDF браузером. `--html` принудительно сохраняет responsive HTML preview; `--csv` запускает batch-режим. Полный отчёт включает summary, wheel с Rahu/Ketu, conventions, планеты, лунные узлы, Lilith, expanded points, дома, аспекты, интерпретационные разделы, Матрицу и safety disclaimer. PDF использует читаемую A4-верстку; HTML preview применяет screen CSS для узких и широких viewport.
+
 Дата, время и место рождения — чувствительные профильные данные. Клиент должен запрашивать их только при ясной задаче, объяснять назначение и не включать в share URL или analytics properties.
 
 ## Практики, sharing и магазин

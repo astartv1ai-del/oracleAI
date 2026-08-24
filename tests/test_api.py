@@ -186,7 +186,20 @@ async def test_today_returns_forecast_and_card(client, user):
 async def test_chart_and_matrix(client, user):
     chart = await client.get("/api/chart", params=as_user(user))
     assert chart.status_code == 200
-    assert chart.json()["sun"]["sign"]
+    data = chart.json()
+    assert data["sun"]["sign"]
+    assert data["natal_schema_version"] == 2
+    assert data["engine"] == "Swiss Ephemeris via Kerykeion"
+    assert data["zodiac_type"] == "Tropical"
+    assert data["house_system"] == "P"
+    assert data["house_system_name"] == "Placidus"
+    assert data["perspective_type"] == "Apparent Geocentric"
+    assert data["lunar_nodes"]["mode"] == "true"
+    assert data["lunar_nodes"]["rahu"]["name"].startswith("Раху")
+    assert data["lunar_nodes"]["ketu"]["name"].startswith("Кету")
+    assert {point["name"] for point in data["additional_points"]} >= {
+        "Хирон", "Джуно", "Церера", "Веста", "Паллада",
+    }
 
     matrix = await client.get("/api/matrix", params=as_user(user))
     assert matrix.status_code == 200

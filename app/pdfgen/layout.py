@@ -32,6 +32,7 @@ body {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 11pt;
   line-height: 1.62;
+  overflow-wrap: anywhere;
 }
 h1, h2, h3 { font-weight: normal; color: #e8c56b; }
 h1 { font-size: 30pt; line-height: 1.15; margin: 0 0 8mm; }
@@ -72,9 +73,31 @@ p { margin: 0 0 3.5mm; }
 .kv:last-child { border-bottom: none; }
 .kv b { color: #e8c56b; font-weight: normal; }
 
-table { width: 100%; border-collapse: collapse; }
-td { padding: 1.6mm 0; vertical-align: top; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+td, th { padding: 1.6mm 1.4mm; vertical-align: top; overflow-wrap: anywhere; }
+th { color: #e8c56b; text-align: left; font-weight: normal; border-bottom: 1px solid rgba(232,197,107,.35); }
 td.label { color: #a99fc9; width: 42%; }
+table.data-table { font-size: 9.5pt; line-height: 1.35; }
+table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,255,255,.12); }
+.card, .section, .ticket { break-inside: avoid; }
+
+@media screen {
+  body { font-size: 12pt; line-height: 1.55; padding: 12px; }
+  .section { margin: 0 auto 28px; max-width: 760px; }
+  .cover { padding-top: 28px; }
+  h1 { font-size: 27pt; }
+  h2 { font-size: 19pt; }
+  .card { padding: 16px; border-radius: 14px; }
+  td, th { padding: 7px 5px; }
+  table.data-table { font-size: 10.5pt; }
+  .wheel svg { max-width: 100%; height: auto; }
+}
+
+@media print {
+  body { overflow-wrap: normal; }
+  .section { page-break-before: always; }
+  .section:first-of-type { page-break-before: avoid; }
+}
 
 .wheel { text-align: center; margin: 4mm 0 6mm; }
 .ticket {
@@ -99,6 +122,8 @@ SIGN_GLYPHS = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "�
 PLANET_GLYPHS = {
     "Солнце": "☉", "Луна": "☽", "Меркурий": "☿", "Венера": "♀", "Марс": "♂",
     "Юпитер": "♃", "Сатурн": "♄", "Уран": "♅", "Нептун": "♆", "Плутон": "♇",
+    "Раху (Северный узел)": "☊", "Кету (Южный узел)": "☋", "Лилит (Чёрная Луна)": "⚸",
+    "Хирон": "⚷", "Джуно": "⚵", "Церера": "⚳", "Веста": "⚶", "Паллада": "⚴",
 }
 
 
@@ -167,8 +192,13 @@ def wheel_svg(chart: dict, size: int = 330) -> str:
             f'fill="#a99fc9" font-size="8" text-anchor="middle">{house.get("n")}</text>')
 
     used: list[tuple[float, float]] = []
-    for planet in (chart.get("planets") or []):
-        deg = planet.get("abs_deg") or 0
+    wheel_points = list(chart.get("planets") or [])
+    wheel_points.extend(
+        node for node in (chart.get("nodes") or [])
+        if node.get("name", "").startswith(("Раху", "Кету"))
+    )
+    for planet in wheel_points:
+        deg = planet.get("abs_deg_exact", planet.get("abs_deg")) or 0
         radius = size * 0.28
         while any(abs(d - deg) < 9 and abs(r - radius) < 9 for d, r in used):
             radius -= size * 0.05
@@ -240,5 +270,6 @@ def document(title: str, blocks: list[str]) -> str:
     """Собирает готовую HTML-страницу разбора."""
     body = "\n".join(blocks)
     return (f'<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">'
+            f'<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
             f'<title>{esc(title)}</title><style>{PAGE_CSS}</style></head>'
             f'<body>{body}</body></html>')

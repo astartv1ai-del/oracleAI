@@ -56,6 +56,18 @@ HOUSE_SYSTEM_IDENTIFIER = "P"  # Placidus
 HOUSE_SYSTEM_NAME = "Placidus"
 PERSPECTIVE_TYPE = "Apparent Geocentric"
 EPHEMERIS_ENGINE = "Swiss Ephemeris via Kerykeion"
+NODE_MODE = "true"
+ACTIVE_POINTS = [
+    "Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn",
+    "Uranus", "Neptune", "Pluto", "Chiron", "Juno", "Ceres", "Vesta", "Pallas",
+    "True_North_Lunar_Node", "True_South_Lunar_Node", "True_Lilith",
+    "Ascendant", "Medium_Coeli", "Descendant", "Imum_Coeli",
+]
+ADDITIONAL_POINT_RU = {
+    "Chiron": "Хирон", "Juno": "Джуно", "Ceres": "Церера",
+    "Vesta": "Веста", "Pallas": "Паллада",
+}
+EXPANDED_POINT_NAMES = tuple(ADDITIONAL_POINT_RU)
 
 
 def sun_sign(d: date) -> tuple[str, str, str]:
@@ -83,14 +95,15 @@ def _light_sky(d: date) -> dict:
     if cached:
         return cached
     try:
-        from kerykeion import AstrologicalSubject
-        subj = AstrologicalSubject(name="sky", year=d.year, month=d.month,
-                                   day=d.day, hour=12, minute=0, city="-",
-                                   lat=52.5, lng=13.4, tz_str="UTC", online=False,
-                                   zodiac_type=ZODIAC_TYPE,
-                                   houses_system_identifier=HOUSE_SYSTEM_IDENTIFIER,
-                                   perspective_type=PERSPECTIVE_TYPE)
-        m = subj.model()
+        from kerykeion import AstrologicalSubjectFactory
+        subj = AstrologicalSubjectFactory.from_birth_data(
+            name="sky", year=d.year, month=d.month, day=d.day,
+            hour=12, minute=0, city="-", lat=52.5, lng=13.4, tz_str="UTC", online=False,
+            zodiac_type=ZODIAC_TYPE,
+            houses_system_identifier=HOUSE_SYSTEM_IDENTIFIER,
+            perspective_type=PERSPECTIVE_TYPE,
+            active_points=ACTIVE_POINTS)
+        m = subj
 
         def sign_of(p) -> tuple[str, str]:
             s = SIGN_EN2RU.get(p.sign, p.sign)
@@ -288,7 +301,7 @@ def _aspects(subject) -> list[dict]:
 
 def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
                 *, coordinates_known: bool, time_confirmed: bool) -> dict:
-    from kerykeion import AstrologicalSubject  # type: ignore
+    from kerykeion import AstrologicalSubjectFactory  # type: ignore
 
     hour, minute = birth_time or (12, 0)
     # Использовать углы и дома корректно можно только при локальном времени,
@@ -300,18 +313,20 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
                   hour=hour, minute=minute, city=city or "-",
                   zodiac_type=ZODIAC_TYPE,
                   houses_system_identifier=HOUSE_SYSTEM_IDENTIFIER,
-                  perspective_type=PERSPECTIVE_TYPE)
+                  perspective_type=PERSPECTIVE_TYPE,
+                  active_points=ACTIVE_POINTS)
     if coordinates_known:
-        subject = AstrologicalSubject(**kwargs, lat=float(lat), lng=float(lon),
-                                      tz_str=tz or "Europe/Moscow", online=False)
+        subject = AstrologicalSubjectFactory.from_birth_data(
+            **kwargs, lat=float(lat), lng=float(lon),
+            tz_str=tz or "Europe/Moscow", online=False)
     else:
         # без координат считаем по Москве — это честнее, чем поход в интернет,
         # который в офлайне уронит расчёт целиком
-        subject = AstrologicalSubject(**{**kwargs, "city": "Moscow"},
-                                      lat=55.75, lng=37.62,
-                                      tz_str=tz or "Europe/Moscow", online=False)
+        subject = AstrologicalSubjectFactory.from_birth_data(
+            **{**kwargs, "city": "Moscow"}, lat=55.75, lng=37.62,
+            tz_str=tz or "Europe/Moscow", online=False)
 
-    m = subject.model()
+    m = subject
 
     planets = []
     for attr in ["sun", "moon", "mercury", "venus", "mars", "jupiter",
@@ -364,6 +379,25 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
                      if angular_data_available else None,
             "retro": bool(getattr(n, "retrograde", False)),
         })
+    additional_points = []
+    for attr in EXPANDED_POINT_NAMES:
+        point = getattr(m, attr.lower(), None)
+        if point is None or getattr(point, "sign", None) is None:
+            continue
+        additional_points.append({
+            "name": ADDITIONAL_POINT_RU[attr],
+            "point": attr,
+            "sign": SIGN_EN2RU.get(point.sign, point.sign),
+            "deg": round(point.position, 1),
+            "deg_exact": float(point.position),
+            "abs_deg": round(point.abs_pos, 1),
+            "abs_deg_exact": float(point.abs_pos),
+            "house": HOUSE_NUM.get(str(getattr(point, "house", "")), None)
+                     if angular_data_available else None,
+            "retro": bool(getattr(point, "retrograde", False)),
+        })
+    rahu = next((point for point in nodes if point["name"].startswith("Раху")), None)
+    ketu = next((point for point in nodes if point["name"].startswith("Кету")), None)
     precision = "exact" if angular_data_available else (
         "time_without_location" if time_confirmed else "date_only"
     )
@@ -399,6 +433,13 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
         "houses": houses,
         "aspects": aspects,
         "nodes": nodes,
+        "lunar_nodes": {
+            "mode": NODE_MODE,
+            "mode_label": "True Node",
+            "rahu": rahu,
+            "ketu": ketu,
+        },
+        "additional_points": additional_points,
         "note": note,
     }
 
@@ -733,6 +774,10 @@ def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
         if nodes:
             brief += ". Узлы и Лилит: " + "; ".join(
                 f"{n['name']} в {n['sign']}" for n in nodes if n.get("sign"))
+        additional = chart.get("additional_points") or []
+        if additional:
+            brief += ". Дополнительные точки: " + "; ".join(
+                f"{p['name']} в {p['sign']}" for p in additional if p.get("sign"))
         accents = _chart_accents(chart, angular_data_available)
         if accents:
             brief += ". АКЦЕНТЫ КАРТЫ: " + accents
