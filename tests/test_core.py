@@ -317,3 +317,22 @@ def test_chart_payload_can_clear_stale_birth_time_for_date_only_choice():
     )
     assert payload["birth"]["time"] is None
     assert payload["birth"]["time_known"] is False
+
+
+def test_chart_exposes_explicit_calculation_conventions():
+    chart = astro.compute_chart("1990-06-21", "14:30", "Казань", 55.79, 49.12,
+                                "Europe/Moscow", time_known=True)
+    assert chart["zodiac_type"] == "Tropical"
+    assert chart["house_system"] == "P"
+    assert chart["perspective_type"] == "Apparent Geocentric"
+    assert "Swiss Ephemeris" in chart["engine"]
+
+
+def test_invalid_timezone_is_rejected_explicitly():
+    try:
+        astro.compute_chart("1990-06-21", "14:30", "Казань", 55.79, 49.12,
+                            "Not/A_Timezone", time_known=True)
+    except ValueError as exc:
+        assert "IANA" in str(exc)
+    else:
+        raise AssertionError("invalid timezone must not silently fall back")
