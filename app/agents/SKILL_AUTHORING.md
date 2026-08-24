@@ -23,7 +23,9 @@ metadata:
 ---
 ```
 
-The body should contain `Purpose`, `Evidence contract`, `Workflow`, `Failure modes`, `Anti-Barnum gate` and `Output contract`. A skill must say what evidence it may use, how to handle missing data, what it must never claim and what observable next step it returns.
+The body should contain `Purpose`, `Evidence contract`, `Workflow`, `Failure modes`, `Anti-Barnum gate` and `Output contract`. A skill must say what evidence it may use, how to handle missing data, what it must never claim and what observable next step it returns. Domain-critical skills should also include a method-specific ledger, precision/confidence rules, a counter-hypothesis step and at least one concrete example of a quality failure.
+
+Use `tags` for high-signal concepts in both Russian and English where useful; the progressive selector reads names, descriptions, tags and metadata but still keeps the final active set bounded. Use `requires_tools` to declare the smallest deterministic evidence source. A required tool must exist in the agent's allow-list and have a closed input schema. The UI/API may expose proof of tools actually used, but a skill must never request hidden reasoning or expose private raw provider output.
 
 ## Dependency rules
 
@@ -39,9 +41,10 @@ Large theory belongs in `knowledge/`, not in every skill. `DOMAIN_PLAYBOOK.md` c
 
 ## Quality gate
 
-A skill is ready only when its name and directory match, version is valid semver, its description explains activation, dependencies resolve, tools are allow-listed, and at least one normal and one adversarial eval case covers it. Run:
+A skill is ready only when its name and directory match, version is valid semver, its description explains activation, dependencies resolve, tools are allow-listed, and the relevant normal and adversarial eval coverage exists. The four flagship specialist skills (`matrix-reading`, `lunar-nodes`, `reversed-cards`, `palm-photo-quality`) are reference implementations for domain depth. Run:
 
 ```bash
 PYTHONPATH=. python3 scripts/validate_skill_library.py
 PYTHONPATH=. python3 scripts/check_domain_evals.py
+PYTHONPATH=. python3 scripts/check_agent_quality.py
 ```

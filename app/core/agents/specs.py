@@ -203,6 +203,7 @@ def _with_file_profile(spec: AgentSpec) -> AgentSpec:
     if profile is None:
         return spec
     data = profile.data
+    limits = data.get("limits") if isinstance(data.get("limits"), dict) else {}
     return replace(
         spec,
         name=str(data.get("name", spec.name)),
@@ -216,6 +217,14 @@ def _with_file_profile(spec: AgentSpec) -> AgentSpec:
         max_tokens=int(data.get("max_tokens", spec.max_tokens)),
         history_limit=int(data.get("history_limit", spec.history_limit)),
         skills=tuple(data.get("tools", spec.skills)),
+        uses_persona=bool(data.get("uses_persona", spec.uses_persona)),
+        skills_max_active=max(1, int(data.get("skills_max_active", spec.skills_max_active))),
+        max_turns=max(1, int(limits.get("max_turns", spec.max_turns))),
+        max_tool_calls=max(1, int(limits.get("max_tool_calls", spec.max_tool_calls))),
+        timeout_s=max(1.0, float(limits.get("timeout_s", spec.timeout_s))),
+        memory_mode=str(data.get("memory", spec.memory_mode)),
+        risk_level=str(data.get("risk_level", spec.risk_level)),
+        output_contract=str(data.get("output_contract", spec.output_contract)),
         style="",
         rules=profile.system,
     )

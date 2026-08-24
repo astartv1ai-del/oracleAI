@@ -197,6 +197,10 @@
                   <div class="agent-role">${esc(a.title || a.code)}</div>
                   <div class="agent-outcome">${esc(outcomes[a.code] || (oracleLang() === 'en' ? 'A gentle next step' : 'Бережный следующий шаг'))}</div>
                   <div class="agent-last">${esc(a.last_text || a.tagline || homeT('listening'))}</div>
+                  <div class="agent-proof-row" aria-label="${homeT('profileQuality')}">
+                    <span class="agent-proof-badge">✦ ${homeT('evidenceFirst')}</span>
+                    ${(a.capabilities && a.capabilities.length) ? `<span class="agent-proof-count">${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
+                  </div>
                   <span class="online-label">${homeT('nearby')}</span>
                 </div>
                 <button class="btn btn-ghost" style="padding:7px 12px;font-size:12px" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">${homeT('start')}</button>

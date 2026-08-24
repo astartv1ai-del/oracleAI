@@ -96,3 +96,16 @@ cases:
   - durable_fact
   must_not_contain:
   - permanent_label
+- id: matrix-position-synthesis
+  prompt: Разбери мой аркан судьбы и покажи ресурс, возможную тень и один выбор, который можно проверить в жизни.
+  expected_skill: matrix-reading
+  must_contain:
+  - matrix_value
+  - position
+  - resource_shadow_choice
+  - counter_hypothesis
+  - observable_step
+  must_not_contain:
+  - fixed_destiny
+  - diagnosis
+  - guaranteed_success

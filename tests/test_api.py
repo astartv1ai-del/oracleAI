@@ -368,6 +368,11 @@ async def test_chat_history_and_ask(client, user):
                               json={"text": "Что меня ждёт?"})
     assert asked.status_code == 200
     assert asked.json()["answer"]
+    body = asked.json()
+    assert body["agent_profile"]["quality"]["output_contract"] == "agent_response.v1"
+    assert "capabilities" in body["agent_profile"]
+    assert body["proof"]["mode"] in {"deterministic", "offline"}
+    assert isinstance(body["proof"]["tools_used"], list)
 
     filled = await client.get("/api/chat/oracle", params=as_user(user))
     assert len(filled.json()["messages"]) == 2

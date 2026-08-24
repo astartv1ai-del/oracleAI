@@ -128,6 +128,27 @@ def _validate_skill_dependencies(path: Path, skills: tuple[FileSkill, ...]) -> N
         visit(name)
 
 
+def _validate_profile_settings(data: dict[str, Any], path: Path) -> None:
+    """Reject unsafe or non-operational profile settings at load time."""
+    try:
+        active = int(data.get("skills_max_active", 3))
+        limits = data.get("limits") or {}
+        turns = int(limits.get("max_turns", 6))
+        tool_calls = int(limits.get("max_tool_calls", 8))
+        timeout = float(limits.get("timeout_s", 35))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{path}: profile limits must be numeric") from exc
+    if min(active, turns, tool_calls, timeout) <= 0:
+        raise ValueError(f"{path}: profile limits must be positive")
+    if str(data.get("memory", "opt_in")) not in {"opt_in", "disabled"}:
+        raise ValueError(f"{path}: memory must be opt_in or disabled")
+    if str(data.get("risk_level", "medium")) not in {"low", "medium", "high"}:
+        raise ValueError(f"{path}: risk_level must be low, medium or high")
+    contract = str(data.get("output_contract", "agent_response.v1"))
+    if not re.fullmatch(r"[a-z][a-z0-9_-]*\.v\d+", contract):
+        raise ValueError(f"{path}: output_contract must look like name.vN")
+
+
 def load_profile(path: Path) -> FileProfile:
     config_path = path / "agent.yaml"
     system_path = path / "SYSTEM.md"
@@ -136,6 +157,7 @@ def load_profile(path: Path) -> FileProfile:
     data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
         raise ValueError(f"{config_path}: profile must be a mapping")
+    _validate_profile_settings(data, config_path)
     agent_id = str(data.get("id", path.name))
     legacy_code = str(data.get("legacy_code", agent_id))
     skills = tuple(load_skill(item) for item in sorted(
@@ -195,13 +217,22 @@ _TOKEN_ALIASES = {
     "дневник": "diary",
     "памят": "memory",
     "практик": "practice",
+    "раху": "lunar_node", "ketu": "lunar_node", "кету": "lunar_node", "узел": "lunar_node",
+    "асцендент": "ascendant", "восход": "ascendant", "дома": "house", "дом": "house",
+    "аспект": "aspect", "синастр": "synastry", "совместим": "compatibility",
+    "карьер": "career", "работ": "work", "деньг": "money", "выбор": "choice",
+    "хирон": "chiron", "лилит": "lilith", "джуно": "juno", "церер": "ceres",
+    "веста": "vesta", "паллад": "pallas", "ретроград": "retrograde",
+    "отношен": "relationship", "любов": "relationship", "партн": "relationship",
+    "масть": "suit", "аркан": "arcana", "перевёрнут": "reversed", "перевернут": "reversed",
+    "холм": "mount", "пальц": "finger",
 }
 
 
 def _tokens(text: str) -> set[str]:
     tokens = {
         token for token in re.findall(r"[a-zа-яё0-9]{3,}", text.lower())
-        if token not in {"это", "как", "для", "про", "что", "when", "use"}
+        if token not in {"это", "как", "для", "про", "что", "when", "use", "and", "the", "you", "are", "with", "your"}
     }
     tokens.update(alias for token, alias in _TOKEN_ALIASES.items() if token in text.lower())
     return tokens
@@ -255,12 +286,21 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
     query = _tokens(question)
     scored = []
     for index, skill in enumerate(profile.skills):
-        skill_tokens = _tokens(f"{skill.name} {skill.description} {skill.body}")
+        skill_tokens = _tokens(
+            f"{skill.name} {skill.description} {skill.body} "
+            f"{' '.join(skill.tags)} {' '.join(skill.metadata.values())}"
+        )
         name_tokens = _tokens(skill.name.replace("-", " "))
         score = _token_overlap(query, skill_tokens)
         score += 3 * _token_overlap(query, name_tokens)
-        score += 2 * len(query & name_tokens)
+        # Exact skill-name tokens are high-signal intent markers; without a strong
+        # boost broad handbook text can outscore the actually requested specialty.
+        score += 20 * len(query & name_tokens)
         specialized = query & {"choice", "relationship", "career", "work", "money"}
+        if skill.name == "compatibility-synastry" and {"relationship", "compatibility"} & query:
+            score += 10
+        if skill.name == "mounts-topography" and "mount" in query:
+            score += 25
         if skill.name == "three-card-spread" and "spread" in query and not specialized:
             score += 5
         scored.append((score, -index, skill))

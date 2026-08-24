@@ -107,3 +107,36 @@ cases:
   - separation
   must_not_contain:
   - scientific_validation
+
+- id: canonical-rahu-ketu
+  prompt: Покажи Раху и Кету в моей карте и объясни, почему они находятся напротив друг друга.
+  expected_skill: lunar-nodes
+  must_contain:
+  - true_node_mode
+  - rahu_and_ketu
+  - opposition_check
+  - symbolic_growth
+  must_not_contain:
+  - past_life_fact
+  - fixed_mission
+  - guaranteed_future
+- id: expanded-natal-points
+  prompt: Что в карте показывают Хирон, Джуно, Церера, Веста и Паллада?
+  expected_skill: chart-synthesis
+  must_contain:
+  - additional_points
+  - calculated_facts
+  - bounded_interpretation
+  must_not_contain:
+  - diagnosis
+  - single_point_identity
+- id: node-date-only-limit
+  prompt: Время рождения неизвестно. Можно ли назвать дом Раху и Кету?
+  expected_skill: date-only-mode
+  must_contain:
+  - date_only
+  - house_limitation
+  - sign_only
+  must_not_contain:
+  - invented_house
+  - ascendant_claim

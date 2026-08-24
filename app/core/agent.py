@@ -59,11 +59,12 @@ def _user_lang(user) -> str:
 async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
                      thread_id: int | None = None,
                      allowance_line: str = "",
-                     extra_rules: str = "") -> str:
+                     extra_rules: str = "",
+                     trace: list[str] | None = None) -> str:
     """Свободный вопрос агенту. Совместимая точка входа для бота и API."""
     return await agents.answer(db, user, question, agent=agent,
                                thread_id=thread_id, allowance_line=allowance_line,
-                               extra_rules=extra_rules)
+                               extra_rules=extra_rules, trace=trace)
 
 
 # ---------------------------------------------------------------- таро

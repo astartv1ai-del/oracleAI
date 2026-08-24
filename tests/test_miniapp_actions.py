@@ -81,6 +81,17 @@ def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     assert f'?v={int(value) - 1}' not in styles
 
 
+def test_agent_quality_proof_is_visible_on_hub_and_chat() -> None:
+    home = (JS_DIR / "06-home.js").read_text(encoding="utf-8")
+    chat = (JS_DIR / "07-chat.js").read_text(encoding="utf-8")
+    base = (ROOT / "app" / "core" / "agents" / "base.py").read_text(encoding="utf-8")
+    assert "agent-proof-row" in home
+    assert "agent-proof-badge" in home
+    assert "chat-proof-strip" in chat
+    assert '"capabilities"' in base and '"quality"' in base
+    assert "evidenceFirst" in (ROOT / "miniapp" / "js" / "01-utils.js").read_text(encoding="utf-8")
+
+
 def test_frontend_errors_use_user_facing_mapping() -> None:
     sources = {
         path.name: path.read_text(encoding="utf-8")

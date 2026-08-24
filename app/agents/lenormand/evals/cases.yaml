@@ -101,3 +101,15 @@ cases:
   - alternative
   must_not_contain:
   - vague_match
+- id: reversal-position-evidence
+  prompt: В раскладе карта перевёрнута в позиции препятствия. Что это может означать?
+  expected_skill: reversed-cards
+  must_contain:
+  - explicit_orientation
+  - position_first
+  - alternative
+  - observable_step
+  must_not_contain:
+  - automatic_bad_omen
+  - death_literal
+  - guaranteed_event

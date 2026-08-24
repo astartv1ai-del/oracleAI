@@ -30,7 +30,7 @@ def main() -> None:
             assert context.count("ACTIVE_SKILL:") <= 3
             total += 1
         print(eval_path.parent.parent.name, "cases=", len(cases), "ok")
-    assert total == 48, total
+    assert total == 54, total
     print("domain_evals=PASS", "cases=", total)
 
 

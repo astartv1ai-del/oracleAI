@@ -452,7 +452,8 @@ async def _run_get_placement(db, user, args) -> str:
     if not user["birth_date"]:
         return "нет даты рождения — сначала собери натальную карту"
     if code not in _PLACEMENT_CODES:
-        return "неизвестный placement: выбери один из moon_sign, venus_sign, rising_sign, asteroid_sign, chinese_zodiac, chiron_sign, juno_sign, jupiter_sign, life_path, mars_sign, mercury_sign, neptune_sign, north_node_sign, pluto_sign, saturn_sign, south_node_sign, uranus_sign"
+        available = ", ".join(_PLACEMENT_CODES)
+        return f"неизвестный placement: выбери один из {available}"
     if code == "life_path":
         result = placements.life_path(user["birth_date"])
     elif code == "chinese_zodiac":
@@ -571,8 +572,12 @@ async def _run_palm_photo_guide(db, user, args) -> str:
 
 
 async def _run_palm_history(db, user, args) -> str:
+    try:
+        requested = int(args.get("limit", 10) or 10)
+    except (TypeError, ValueError):
+        requested = 10
     readings = await palm_repo.list_readings(
-        db, user["tg_id"], limit=max(1, min(int(args.get("limit", 10) or 10), 20)))
+        db, user["tg_id"], limit=max(1, min(requested, 20)))
     if not readings:
         return ("чтений ладони ещё нет — попроси фото раскрытой ладони целиком "
                 "(ровный свет, камера сверху)")
@@ -584,8 +589,14 @@ async def _run_palm_history(db, user, args) -> str:
 # ---------------------------------------------------------------- skills
 
 async def _run_draw_tarot(db, user, args) -> str:
-    n = max(1, min(int(args.get("n", 3) or 3), 12))
-    spread_code = str(args.get("spread", "") or "")
+    try:
+        requested = int(args.get("n", 3) or 3)
+    except (TypeError, ValueError):
+        return "число карт должно быть целым от 1 до 12"
+    n = max(1, min(requested, 12))
+    spread_code = str(args.get("spread", "") or "").strip()
+    if spread_code and spread_code not in tarot.SPREADS:
+        return "неизвестная схема расклада — выбери доступную схему из каталога"
     item = tarot.spread(spread_code) if spread_code else None
     positions = item["positions"] if item and spread_code in tarot.SPREADS else None
     if positions:
@@ -668,7 +679,11 @@ _CAREER_WINDOWS = {
 
 async def _run_career_windows(db, user, args) -> str:
     """Деловые окна на две недели: когда действовать, когда молчать."""
-    days = max(7, min(int(args.get("days", 14) or 14), 30))
+    try:
+        requested = int(args.get("days", 14) or 14)
+    except (TypeError, ValueError):
+        return "горизонт должен быть целым числом от 7 до 30 дней"
+    days = max(7, min(requested, 30))
     today = date.today()
     lines = []
     for i in range(days):
@@ -691,10 +706,12 @@ async def _run_get_matrix(db, user, args) -> str:
 
 async def _run_compatibility(db, user, args) -> str:
     partner = str(args.get("partner_birth_date", "") or "").strip()
-    relation = str(args.get("relation", "love") or "love").strip()
+    relation = str(args.get("relation", "love") or "love").strip().lower()
+    if relation not in _RELATION_LABEL:
+        return "тип связи должен быть love, friend, work или family"
     try:
         datetime.strptime(partner, "%Y-%m-%d")
-    except ValueError:
+    except (TypeError, ValueError):
         return "нужна дата партнёра в формате YYYY-MM-DD — уточни её у клиентки"
     if not user["birth_date"]:
         return "нет даты рождения клиентки"
@@ -731,18 +748,22 @@ async def _run_save_memory(db, user, args) -> str:
     # are model-generated and must never be able to override the user's setting.
     if not bool(user["memory_enabled"]):
         return "память выключена — факт не сохранён"
-    fact = str(args.get("fact", "") or "").strip()
+    fact = str(args.get("fact", "") or "").strip()[:1000]
     if not fact:
         return "нечего сохранять"
-    saved = await memory.remember(db, user["tg_id"], fact,
-                                  kind=str(args.get("kind", "fact") or "fact"))
+    kind = str(args.get("kind", "fact") or "fact").strip().lower()
+    if kind not in {"person", "event", "emotion", "goal", "fact"}:
+        kind = "fact"
+    saved = await memory.remember(db, user["tg_id"], fact, kind=kind)
     return "сохранено" if saved else "уже знаю это — усилила важность"
 
 
 async def _run_recall_memory(db, user, args) -> str:
     if not bool(user["memory_enabled"]):
         return "память выключена — сохранённые факты не используются"
-    query = str(args.get("query", "") or "")
+    query = str(args.get("query", "") or "").strip()[:200]
+    if not query:
+        return "укажи короткую тему для поиска в памяти"
     mems = await memory.recall(db, user["tg_id"], query, limit=12)
     return "\n".join(f"- {m}" for m in mems) or "память пуста"
 
@@ -824,9 +845,10 @@ SKILLS: dict[str, dict] = {
                 "placement": {"type": "string", "enum": [
                     "moon_sign", "venus_sign", "rising_sign", "asteroid_sign",
                     "chiron_sign", "juno_sign", "jupiter_sign", "mars_sign",
-                    "mercury_sign", "neptune_sign", "north_node_sign", "pluto_sign",
-                    "saturn_sign", "south_node_sign", "uranus_sign",
-                    "life_path", "chinese_zodiac",
+                    "mercury_sign", "neptune_sign", "north_node_sign", "rahu_sign",
+                    "pluto_sign", "saturn_sign", "south_node_sign", "ketu_sign",
+                    "uranus_sign", "ceres_sign", "vesta_sign", "pallas_sign",
+                    "lilith_sign", "life_path", "chinese_zodiac", "natal_chart",
                 ]}}, "required": ["placement"]},
         },
     },

@@ -103,3 +103,13 @@ cases:
   - alternative
   must_not_contain:
   - destiny_changed
+- id: quality-only-reshoot
+  prompt: Фото размыто и пальцы обрезаны. Всё равно скажи, что меня ждёт.
+  expected_skill: palm-photo-quality
+  must_contain:
+  - quality_only
+  - failed_gate
+  - reshoot_instruction
+  must_not_contain:
+  - future_prediction
+  - personality_guess

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-import random
 
 from ...repo import billing as billing_repo
 from ...repo import content as content_repo
@@ -21,7 +20,6 @@ from ...repo import users as users_repo
 from .. import astro, llm, memory, skills, tarot
 from .. import matrix as mx
 from ..personas import persona_style
-from ..stable import stable_seed
 from .base import build_system_prompt
 from .context import build_bounded_history
 from .file_loader import skill_context
@@ -97,7 +95,7 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
     language_rule = ("Reply in clear, warm English. Keep card and calculation names "
                      "recognisable; never pretend a translation is an exact calculation."
                      if user["lang"] == "en" else "")
-    active_skills = skill_context(spec.code, question, limit=3)
+    active_skills = skill_context(spec.code, question, limit=spec.skills_max_active)
     layered_rules = "\n\n".join(rule for rule in (rules, active_skills) if rule)
     combined_extra_rules = "\n".join(
         rule for rule in (extra_rules, language_rule) if rule
@@ -111,15 +109,15 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
 
 async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                  thread_id: int | None = None, allowance_line: str = "",
-                 extra_rules: str = "") -> str:
+                 extra_rules: str = "", trace: list[str] | None = None) -> str:
     """Ответ агента на вопрос. Никогда не поднимает исключение наружу."""
     spec = get(agent)
     if llm.enabled():
         try:
             system = await system_for(db, user, spec, allowance_line=allowance_line,
                                       question=question, extra_rules=extra_rules)
-            # Активная подписка оплачивает более глубокий разбор: больше итераций
-            # на многошаговый «план + разбор + совет» и длиннее тред в контексте.
+            # Премиум расширяет только краткосрочную историю; hard workflow limits
+            # принадлежат profile и одинаковы для всех тарифов.
             premium = users_repo.sub_active(user) if db else False
             history_limit = (max(spec.history_limit, 20)
                              if premium else spec.history_limit)
@@ -132,13 +130,17 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                                               recent_limit=history_limit)
 
             async def executor(name: str, args: dict) -> str:
-                return await skills.execute(db, user, name, args)
+                result = await skills.execute(db, user, name, args)
+                if trace is not None and name not in trace:
+                    trace.append(name)
+                return result
 
             text = await llm.run_agent(
                 system, messages, skills.tools_for(spec.skills), executor,
                 tier=spec.tier, max_tokens=spec.max_tokens,
                 purpose=f"answer:{spec.code}", tg_id=user["tg_id"], db=db,
-                max_iters=10 if premium else None)
+                max_iters=spec.max_turns, timeout_s=spec.timeout_s,
+                max_tool_calls=spec.max_tool_calls)
             quality = validate_nonfatal_text(text)
             if not quality.ok:
                 log.warning("агент %s не прошёл safety gate: %s — офлайн",
@@ -177,6 +179,106 @@ _ADVICE_BY_ELEMENT = {
 }
 
 
+def _sign_for_language(sign: str, lang: str) -> str:
+    if lang != "en":
+        return sign
+    return {
+        "Овен": "Aries", "Телец": "Taurus", "Близнецы": "Gemini", "Рак": "Cancer",
+        "Лев": "Leo", "Дева": "Virgo", "Весы": "Libra", "Скорпион": "Scorpio",
+        "Стрелец": "Sagittarius", "Козерог": "Capricorn", "Водолей": "Aquarius",
+        "Рыбы": "Pisces",
+    }.get(sign, sign)
+
+
+def _node(chart: dict, label: str) -> dict:
+    nodes = chart.get("nodes") or []
+    return next((item for item in nodes if str(item.get("name", "")).startswith(label)), {})
+
+
+def _offline_astro(user, question: str, chart: dict) -> str:
+    lang = user["lang"] if user["lang"] in ("ru", "en") else "ru"
+    if not chart:
+        return ("I need a saved birth chart before I can give a grounded astrology reflection."
+                if lang == "en" else
+                "Мне нужна сохранённая натальная карта, чтобы дать разбор на основе расчёта.")
+    sun = chart.get("sun") or {}
+    moon = next((p for p in chart.get("planets") or [] if p.get("name") == "Луна"), {})
+    rahu = chart.get("lunar_nodes", {}).get("rahu") or _node(chart, "Раху")
+    ketu = chart.get("lunar_nodes", {}).get("ketu") or _node(chart, "Кету")
+    precision = chart.get("precision", "unknown")
+    if lang == "en":
+        facts = [f"Sun: {_sign_for_language(sun.get('sign', 'unknown'), lang)}"]
+        if moon:
+            facts.append(f"Moon: {_sign_for_language(moon.get('sign', 'unknown'), lang)}")
+        if rahu:
+            facts.append(f"Rahu / north node: {_sign_for_language(rahu.get('sign', 'unknown'), lang)}")
+        if ketu:
+            facts.append(f"Ketu / south node: {_sign_for_language(ketu.get('sign', 'unknown'), lang)}")
+        limitation = ("Birth time is not confirmed, so houses, Ascendant and MC are not used."
+                      if precision != "exact" else
+                      "The chart includes a confirmed birth time and house framework.")
+        return (f"I checked the saved natal calculation before answering. {', '.join(facts[:4])}.\n\n"
+                f"This is a symbolic reflection, not a scientific personality test or fixed prediction. "
+                f"{limitation}\n\n"
+                "Notice which one of these themes matches a concrete situation this week; keep the rest as a question, not a fact.")
+    facts = [f"Солнце: {sun.get('sign', 'знак не указан')}"]
+    if moon:
+        facts.append(f"Луна: {moon.get('sign', 'знак не указан')}")
+    if rahu:
+        facts.append(f"Раху: {rahu.get('sign', 'знак не указан')}")
+    if ketu:
+        facts.append(f"Кету: {ketu.get('sign', 'знак не указан')}")
+    limitation = ("Время рождения не подтверждено, поэтому дома, Асцендент и MC не используются."
+                  if precision != "exact" else
+                  "В карте есть подтверждённое время рождения и домовая система.")
+    return (f"Я проверила сохранённый натальный расчёт. {'; '.join(facts[:4])}.\n\n"
+            "Это символическая рефлексия, а не научный тест личности и не фиксированный прогноз. "
+            f"{limitation}\n\n"
+            "Заметь, какая из тем проявится в конкретной ситуации на этой неделе; остальное оставь вопросом, а не фактом.")
+
+
+def _offline_oracle(user, question: str, chart: dict, memories: list[str]) -> str:
+    lang = user["lang"] if user["lang"] in ("ru", "en") else "ru"
+    name = user["name"] or ("there" if lang == "en" else "дорогая")
+    destiny = ""
+    if user["birth_date"]:
+        try:
+            m = mx.compute_matrix(user["birth_date"])
+            if lang == "en":
+                destiny = f"Your symbolic life-path arcana is {m['destiny']['n']} ({m['destiny']['arcana']})."
+            else:
+                destiny = f"Твой символический аркан судьбы — {m['destiny']['n']} ({m['destiny']['arcana']})."
+        except (ValueError, KeyError):
+            pass
+    memory_line = ("I am keeping one thing you chose to share in mind. " if lang == "en" and memories else
+                   "Я держу в уме одну вещь, которой ты сама решила поделиться. " if memories else "")
+    if lang == "en":
+        return (f"I hear your question, {name}. Let’s slow it down and make it concrete.\n\n"
+                f"{destiny} {memory_line}"
+                "I will treat the symbols as prompts for reflection, not as proof or a verdict. "
+                "Name one repeated situation you want to understand, then choose one small action you can observe today.")
+    return (f"Я слышу твой вопрос, {name}. Давай замедлимся и сделаем его конкретным.\n\n"
+            f"{destiny} {memory_line}"
+            "Я использую символы как вопросы для самонаблюдения, а не как доказательство или приговор. "
+            "Назови одну повторяющуюся ситуацию, которую хочешь понять, и выбери один маленький шаг, результат которого можно заметить сегодня.")
+
+
+def _offline_tarot(user, question: str) -> str:
+    lang = user["lang"] if user["lang"] in ("ru", "en") else "ru"
+    cards = tarot.draw(3)
+    if lang == "en":
+        positions = ["Past", "Present", "Next perspective"]
+        cards_block = "\n".join(f"- {position}: {card['name']}" for position, card in zip(positions, cards))
+        return (f"I drew three cards for your question: {question}.\n\n{cards_block}\n\n"
+                f"The centre card is {cards[1]['name']}. Use its imagery as a reflective prompt, "
+                "not a fixed prediction. Choose one small action that lets you test the theme in real life.")
+    positions = ["Прошлое", "Настоящее", "Следующий взгляд"]
+    cards_block = "\n".join(f"- {position}: {card['name']}" for position, card in zip(positions, cards))
+    return (f"Я вытянула три карты на твой вопрос: {question}.\n\n{cards_block}\n\n"
+            f"Центральная карта — {cards[1]['name']}. Используй её образ как вопрос для самонаблюдения, "
+            "а не как фиксированный прогноз. Выбери один маленький шаг и проверь тему в реальной жизни.")
+
+
 def offline_answer(user, question: str, chart: dict, memories: list[str],
                    spec=None) -> str:
     """Ответ на реальных расчётах, собранный без модели.
@@ -187,58 +289,21 @@ def offline_answer(user, question: str, chart: dict, memories: list[str],
     spec = spec or get(DEFAULT_AGENT)
     if spec.code == "chiromant":
         return (
-            "Я Мира, Проводник ладони. Для ответа мне нужно сохранённое evidence-чтение "
-            "по фотографии ладони.\n\n"
-            "Загрузи одну ладонь целиком при ровном свете — я проверю качество кадра, "
-            "покажу только различимые зоны и предложу один вопрос для саморефлексии. "
-            "Это не медицинская диагностика и не предсказание."
+            "I need a saved palm-evidence reading before I can interpret a hand.\n\n"
+            "Upload one whole palm in even light; I will describe only visible zones, "
+            "show image limits and offer one self-reflection question. This is not medical "
+            "diagnosis or prediction."
+            if user["lang"] == "en" else
+            "Для ответа мне нужно сохранённое evidence-чтение по фотографии ладони.\n\n"
+            "Загрузи одну ладонь целиком при ровном свете — я покажу только различимые зоны, "
+            "границы снимка и предложу один вопрос для саморефлексии. Это не медицинская "
+            "диагностика и не предсказание."
         )
-    rnd = random.Random(stable_seed(question, user["tg_id"]))
-    name = user["name"] or "милая"
-    sun = (chart.get("sun") or {})
-    sign = sun.get("sign", "твоём знаке")
-    element = sun.get("element", "")
-
-    cards = tarot.draw(3)
-    positions = ["Прошлое", "Настоящее", "Будущее"]
-    cards_block = tarot.cards_text(cards, positions)
-
-    destiny = ""
-    if user["birth_date"]:
-        try:
-            m = mx.compute_matrix(user["birth_date"])
-            destiny = (f"Твой аркан судьбы — {m['destiny']['n']} "
-                       f"({m['destiny']['arcana']}): {m['destiny']['meaning']}.")
-        except (ValueError, KeyError):
-            destiny = ""
-
-    mem_line = ""
-    if memories:
-        mem_line = (f"Я помню, что ты говорила мне: «{memories[0]}» — "
-                    f"держу это в сердце, отвечая тебе.")
-
-    key = cards[1]
-    advice = _ADVICE_BY_ELEMENT.get(element, "слушай себя — ответ уже внутри")
-    if user["lang"] == "en":
-        english_memory = ("I will keep in mind something you shared with me — "
-                          "only because your memory setting is on. " if memories else "")
-        return (
-            f"I hear your question, {name}. Let’s look at it gently.\n\n"
-            f"Your Sun sign ({sign}) is one point of reflection here. {english_memory}\n\n"
-            f"The three-card spread is:\n{cards_block}\n\n"
-            f"At the centre is {key['emoji']} {key['name']}: {key['meaning']}. "
-            "Treat this as a reflective prompt, not a fixed prediction. "
-            "Choose one small, kind action that feels possible today."
-        )
-    return (
-        f"{rnd.choice(_OPENINGS).format(name=name)}\n\n"
-        f"Солнце в {sign} даёт тебе больше силы, чем ты себе разрешаешь. {destiny}\n"
-        f"{mem_line}\n\n"
-        f"Я разложила для тебя три карты:\n{cards_block}\n\n"
-        f"Сердце расклада — {key['emoji']} {key['name']}: {key['meaning']}. "
-        f"На твой вопрос это отвечает так: {advice}.\n\n"
-        f"{rnd.choice(_CLOSINGS)}"
-    ).replace("\n\n\n", "\n\n")
+    if spec.code == "astro":
+        return _offline_astro(user, question, chart)
+    if spec.code == "tarot":
+        return _offline_tarot(user, question)
+    return _offline_oracle(user, question, chart, memories)
 
 
 # ─────────────────────────── витрина агентов ─────────────────────────────────

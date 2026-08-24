@@ -32,6 +32,13 @@ class AgentSpec:
     uses_persona: bool = False     # берёт образ и имя, выбранные клиенткой
     history_limit: int = 14
     suggestions: tuple[str, ...] = field(default_factory=tuple)
+    skills_max_active: int = 3
+    max_turns: int = 6
+    max_tool_calls: int = 8
+    timeout_s: float = 35.0
+    memory_mode: str = "opt_in"
+    risk_level: str = "medium"
+    output_contract: str = "agent_response.v1"
 
     def display_name(self, user=None) -> str:
         if self.uses_persona and user is not None and user["oracle_name"]:
@@ -49,6 +56,13 @@ class AgentSpec:
             "avatar": f"/static/img/agents/{self.code}.jpg",
             "greeting": self.greeting,
             "suggestions": list(self.suggestions),
+            "capabilities": list(self.skills),
+            "quality": {
+                "risk_level": self.risk_level,
+                "memory": self.memory_mode,
+                "output_contract": self.output_contract,
+                "skills_max_active": self.skills_max_active,
+            },
         }
 
 
