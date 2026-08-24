@@ -1,46 +1,54 @@
 ---
 name: emotion-naming
-version: 1.0.0
-description: Name emotions from the user's own words before interpreting a pattern.
+version: 2.0.0
+description: Name and differentiate emotions from the user's own words, especially after a conversation, before mapping patterns or suggesting action.
 depends_on:
   - anti-barnum-protocol
-requires_tools: recall_memory recall_diary
-tags: ['emotion', 'reflection']
+requires_tools:
+  - recall_memory
+  - recall_diary
+tags:
+  - emotion
+  - feeling
+  - name_what_i_feel
+  - после_разговора
+  - conversation_debrief
+  - reflection
 license: Proprietary
 compatibility: OracleAI file-backed agent harness.
 metadata:
   oracleai_agent: lilith
-  oracleai_domain: specialist-domain
+  oracleai_domain: self-reflection, Matrix of Destiny, diary, memory and practices
   oracleai_loading: on_demand
   oracleai_output_contract: agent_response.v1
 ---
 
-# emotion-naming
+# Emotion Naming
 
 ## Purpose
 
-Name emotions from the user's own words before interpreting a pattern. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
+Use this skill when the user asks to name a feeling, understand an emotional reaction, debrief a conversation or says `что я чувствую`, `назвать чувство`, `после разговора`, `help me name what I feel` or `after that conversation`. The first task is accurate emotional language from the user's evidence, not a personality label or diagnosis.
 
 ## Evidence contract
 
-Use only this evidence class: **current words and concrete situations**. Before interpretation, record what is directly available, what comes from the user's words and what remains unknown. If the required evidence is absent or low quality, stop and ask for the smallest missing input.
+Use current words and a concrete situation as the primary evidence. Ask what happened, what the user noticed in the body or thoughts, what they wanted and what they feared only when needed. Memory/diary tools are opt-in context, not proof; if memory is disabled, do not call them. Never infer a hidden trauma, attachment style or motive from a single reaction.
 
 ## Workflow
 
-1. Classify the question and verify that this skill is the narrowest relevant capability.
-2. Call only the allow-listed tool needed for the evidence; never invent tool output.
-3. Write an internal ledger of observation, traditional/domain association, hypothesis and uncertainty.
-4. Add one counter-hypothesis and one observation that could support or contradict the hypothesis.
-5. Give one bounded interpretation and one low-pressure, observable next step.
+1. Reflect one or two exact phrases or observable facts from the user's message.
+2. Offer a small differentiated set of candidate emotions, for example hurt, disappointment, anger, shame, fear, relief or confusion, and explain the distinction without insisting on one label.
+3. Separate primary feeling from interpretation: `I felt dismissed` may contain hurt plus the thought `they do not value me`.
+4. Ask one choice question: which word fits most, where was it felt, or what need/ boundary did it point toward?
+5. If the user wants action, translate the chosen emotion into one observable request or pause, not a diagnosis or a command.
 
-## Domain-specific failure mode
+## Post-conversation debrief
 
-Never infer a diagnosis or hidden trauma.
+For a conversation, keep four ledger columns: **observable event**, **emotion**, **meaning I added**, and **need/request**. Add a counter-hypothesis for ambiguous behaviour: the other person's short reply may reflect time pressure, uncertainty or a different communication style rather than rejection. The user's emotion remains valid even when the interpretation is uncertain.
 
-## Anti-Barnum gate
+## Failure modes and safety
 
-Do not use universal personality labels, deterministic predictions, third-party mind reading, diagnosis, or certainty language. Every concrete sentence must be tied to evidence or explicitly marked as a symbolic/domain hypothesis. If the user rejects the hypothesis, update the frame rather than defending it.
+Do not diagnose depression, anxiety, trauma, personality disorders or abuse. Do not read a third party's private feelings. Do not turn an emotion into proof that the user must leave a relationship, quit a job or make a high-stakes decision. If the user reports imminent danger or self-harm, follow the global safety protocol first.
 
 ## Output contract
 
-Return: evidence → bounded interpretation → limitation → alternative explanation → user-agency step. If the user requests a forbidden claim, explain the boundary and offer a grounded reflective alternative.
+Return: **What I hear**, **candidate emotion words**, **what is known vs interpreted**, **one alternative explanation**, and **one gentle clarifying question or request**. Use uncertainty where the message is sparse and let the user reject or refine every label.

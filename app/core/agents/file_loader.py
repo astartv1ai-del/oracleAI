@@ -301,6 +301,14 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             score += 10
         if skill.name == "mounts-topography" and "mount" in query:
             score += 25
+        lower_question = question.lower()
+        date_only_markers = (
+            "no birth time", "unknown birth time", "approximate birth time",
+            "date-only", "date only", "без времени", "время рождения неизвестно",
+            "примерное время",
+        )
+        if skill.name == "date-only-mode" and any(marker in lower_question for marker in date_only_markers):
+            score += 45
         if skill.name == "three-card-spread" and "spread" in query and not specialized:
             score += 5
         scored.append((score, -index, skill))

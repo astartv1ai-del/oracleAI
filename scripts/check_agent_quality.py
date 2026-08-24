@@ -9,14 +9,16 @@ import yaml
 from app.core import skills
 from app.core.agents.file_loader import (
     load_profiles,
+    profile_for_legacy,
     resolve_skill_dependencies,
     select_skills,
 )
 from app.core.agents.specs import get
+from scripts.benchmark_skill_routing import CASES as ROUTING_CASES
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {"oracle", "astro", "tarot", "chiromant"}
-ROUTING_CASES = {
+SMOKE_ROUTING_CASES = {
     "chiromant": "фото ладони и линия сердца",
     "astro": "Раху Кету и аспекты натальной карты",
     "tarot": "расклад на выбор между двумя вариантами",
@@ -53,7 +55,7 @@ def build_report() -> dict:
                 resolve_skill_dependencies(profile, [skill])
             except ValueError as exc:
                 errors.append(str(exc))
-        selected = select_skills(profile, ROUTING_CASES[profile.legacy_code], spec.skills_max_active)
+        selected = select_skills(profile, SMOKE_ROUTING_CASES[profile.legacy_code], spec.skills_max_active)
         if not selected:
             errors.append(f"{profile.agent_id}: routing selected no skills")
         eval_path = ROOT / "app" / "agents" / profile.agent_id / "evals" / "cases.yaml"
@@ -77,13 +79,33 @@ def build_report() -> dict:
                 errors.append(f"{name}: schema missing {key}")
         if schema.get("name") != name:
             errors.append(f"{name}: schema name mismatch")
+    routing_failures = []
+    for code, query, expected in ROUTING_CASES:
+        profile = profile_for_legacy(code)
+        if profile is None:
+            routing_failures.append((code, "missing_profile"))
+            continue
+        selected_names = [skill.name for skill in select_skills(profile, query, 3)]
+        if expected not in selected_names:
+            routing_failures.append((code, query, expected, selected_names))
+    errors.extend(f"multilingual routing failure: {item}" for item in routing_failures)
+
     frontend = "\n".join(
         (ROOT / "miniapp" / "js" / name).read_text(encoding="utf-8")
         for name in ("01-utils.js", "06-home.js", "07-chat.js")
     )
     if "agent-proof-row" not in frontend or "message-proof" not in frontend:
         errors.append("Mini App proof surfaces are not wired")
-    return {"ok": not errors, "tool_count": len(tool_names), "eval_cases": total_cases, "agents": rows, "errors": errors}
+    return {
+        "ok": not errors,
+        "tool_count": len(tool_names),
+        "eval_cases": total_cases,
+        "routing_cases": len(ROUTING_CASES),
+        "routing_passed": len(ROUTING_CASES) - len(routing_failures),
+        "routing_accuracy": round((len(ROUTING_CASES) - len(routing_failures)) / len(ROUTING_CASES), 3),
+        "agents": rows,
+        "errors": errors,
+    }
 
 
 def main() -> int:

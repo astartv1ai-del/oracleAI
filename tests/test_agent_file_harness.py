@@ -114,3 +114,16 @@ def test_composable_skill_dependencies_and_tool_allowlist():
     resolved = resolve_skill_dependencies(profile, [target])
     assert [skill.name for skill in resolved] == ["anti-barnum-protocol", "aspect-patterns"]
     assert set(target.requires_tools).issubset(set(profile.data["tools"]))
+
+
+def test_complex_multilingual_routing_benchmark_is_top_three_stable():
+    from scripts.benchmark_skill_routing import CASES
+
+    failures = []
+    for code, query, expected in CASES:
+        profile = profile_for_legacy(code)
+        assert profile is not None
+        selected = [skill.name for skill in select_skills(profile, query, 3)]
+        if expected not in selected:
+            failures.append((code, query, expected, selected))
+    assert not failures, failures
