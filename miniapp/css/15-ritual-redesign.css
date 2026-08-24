@@ -4,30 +4,30 @@
    ============================================================================= */
 
 :root {
-  --ink-950: #0a0920;
-  --ink-900: #100e29;
-  --ink-800: #19153a;
-  --ink-700: #27204d;
-  --champagne-500: #eabf68;
-  --champagne-400: #f5d48b;
-  --champagne-300: #ffe9b4;
-  --lilac-500: #917df0;
-  --lilac-400: #b9a6ff;
-  --blush-400: #f5a9c7;
-  --mint-400: #7be0c5;
-  --text-main: #faf8ff;
-  --text-soft: #d4cee7;
-  --text-muted: #a39bbd;
-  --surface-soft: rgba(255, 255, 255, 0.055);
-  --surface-raised: rgba(29, 24, 61, 0.78);
-  --line-soft: rgba(230, 219, 255, 0.14);
-  --line-bright: rgba(245, 212, 139, 0.38);
-  --r-xl: 30px;
-  --r-lg: 24px;
-  --r-md: 18px;
-  --r-sm: 14px;
-  --shadow-ritual: 0 22px 54px -28px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.09);
-  --shadow-lift: 0 18px 34px -22px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 235, 184, 0.08);
+  --ink-950: #080a12;
+  --ink-900: #0f121c;
+  --ink-800: #161b27;
+  --ink-700: #202839;
+  --champagne-500: #d6b779;
+  --champagne-400: #ebd6a1;
+  --champagne-300: #f7e8c5;
+  --lilac-500: #8d83b3;
+  --lilac-400: #b7b0cf;
+  --blush-400: #d49bb0;
+  --mint-400: #8ccfc0;
+  --text-main: #f1efe9;
+  --text-soft: #d4d0c7;
+  --text-muted: #9e9aa4;
+  --surface-soft: rgba(255, 255, 255, 0.045);
+  --surface-raised: rgba(24, 30, 45, 0.84);
+  --line-soft: rgba(224, 216, 200, 0.12);
+  --line-bright: rgba(235, 214, 161, 0.34);
+  --r-xl: 22px;
+  --r-lg: 18px;
+  --r-md: 14px;
+  --r-sm: 10px;
+  --shadow-ritual: 0 20px 44px -28px rgba(0, 0, 0, 0.88), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --shadow-lift: 0 16px 30px -22px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(235, 214, 161, 0.07);
   --ease-ritual: var(--motion-ritual, cubic-bezier(.22, .9, .24, 1));
   --font-display: var(--font-serif, Georgia, serif);
 }
@@ -2599,3 +2599,199 @@ html { scroll-behavior: smooth; }
 .composer--readonly .composer-presence { color:var(--text-muted); }
 .composer--readonly .ipt { cursor:not-allowed; opacity:.58; }
 .composer--readonly .send-btn { opacity:.42; cursor:not-allowed; }
+
+
+/* v103 · Premium foundation and cross-platform composition.
+   One source of truth for spacing, surfaces, focus, and desktop alignment. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --surface-0: var(--ink-950);
+  --surface-1: rgba(18, 22, 33, .92);
+  --surface-2: rgba(25, 31, 44, .88);
+  --surface-3: rgba(35, 42, 57, .84);
+  --line: var(--line-soft);
+  --line-focus: rgba(235, 214, 161, .68);
+  --copy-strong: var(--text-main);
+  --copy-muted: var(--text-muted);
+  --accent: var(--champagne-400);
+  --accent-soft: rgba(235, 214, 161, .12);
+  --danger: #e2a6b3;
+  --success: var(--mint-400);
+  --r-control: var(--r-sm);
+  --r-card: var(--r-lg);
+  --r-panel: var(--r-xl);
+  --elevation-1: 0 8px 24px -18px rgba(0, 0, 0, .84);
+  --elevation-2: var(--shadow-lift);
+  --elevation-3: 0 28px 70px -38px rgba(0, 0, 0, .96);
+  --ease-out-premium: cubic-bezier(.23, 1, .32, 1);
+  --gold: var(--champagne-500);
+  --gold-bright: var(--champagne-300);
+  --gold-light: var(--champagne-400);
+  --text: var(--text-main);
+  --text-dim: var(--text-soft);
+  --text-faint: var(--text-muted);
+  --border: var(--line-soft);
+  --r-s: var(--r-sm);
+  --r-m: var(--r-md);
+  --r-l: var(--r-lg);
+}
+
+body { background: var(--surface-0); color: var(--copy-strong); }
+button, input, textarea, select { font-family: var(--font-sans); }
+button, [data-act], .tool, .chip, .ask-chip, .daily-step, .dock-item, .agent-card {
+  transition: transform var(--motion-quick) var(--ease-out-premium),
+              border-color var(--motion-quick) var(--ease-out-premium),
+              background-color var(--motion-quick) var(--ease-out-premium),
+              color var(--motion-quick) var(--ease-out-premium),
+              box-shadow var(--motion-quick) var(--ease-out-premium);
+}
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible,
+[data-act]:focus-visible {
+  outline: 2px solid var(--line-focus);
+  outline-offset: 3px;
+}
+
+/* Desktop brand is anchored to the content start; mobile keeps the compact centered lockup. */
+@media (min-width: 900px) {
+  .workspace-main > .app-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: var(--space-4);
+    min-height: 68px;
+    padding: 12px 32px;
+    background: rgba(9, 11, 18, .88);
+    border-bottom: 1px solid var(--line);
+  }
+  .workspace-main > .app-header .brand-lockup {
+    grid-column: 1;
+    justify-self: start;
+    margin-inline: 0;
+  }
+  .workspace-main > .app-header .bell {
+    grid-column: 3;
+    justify-self: end;
+    margin-left: 0;
+    background: transparent;
+    border-color: var(--line);
+  }
+  .workspace-sidebar {
+    background: rgba(12, 15, 23, .96);
+    border-right-color: var(--line);
+  }
+  .workspace-sidebar__top { padding: 24px 18px 16px; }
+  .workspace-brand .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--r-control);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .workspace-new { margin-top: 24px; border-radius: var(--r-control); }
+  .workspace-sidebar__nav { padding: 6px 12px 16px; }
+  .workspace-nav-item { min-height: 42px; border-radius: var(--r-control); }
+  .workspace-sidebar__body { padding: 20px 12px 14px; }
+  .workspace-main { background: linear-gradient(180deg, rgba(18, 22, 33, .52), rgba(8, 10, 15, .16)); }
+  #app-main { max-width: 1320px; }
+  #app-main > .screen { width: min(1240px, 100%); padding: 36px 48px 54px; }
+  .screen-home .home-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr);
+    align-items: start;
+    gap: var(--space-8);
+  }
+  .screen-home .home-primary,
+  .screen-home .home-secondary { min-width: 0; display: grid; align-content: start; }
+  .screen-home .home-primary { gap: 0; }
+  .screen-home .home-secondary { gap: 0; }
+  .screen-home .hero-orb { min-height: 330px; height: 330px; border-radius: var(--r-panel); }
+  .screen-home .hero-body { padding: 34px 32px; }
+  .screen-home .hero-title { max-width: 420px; font-size: clamp(34px, 3vw, 48px); }
+  .screen-home .hero-moon-txt { max-width: 310px; font-size: 13px; }
+  .screen-home .daily-ritual { margin-top: 20px; padding: 20px 18px 16px; border-radius: var(--r-card); }
+  .screen-home .daily-ritual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .screen-home .daily-step { min-height: 86px; }
+  .screen-home .home-secondary > .spacer { height: 0; }
+  .screen-home .moon-section { margin-top: 0; }
+  .screen-home .forecast-flow { margin-top: 0; }
+  .screen-home .card-day-big { align-items: center; }
+  .screen-home .dock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .screen-home .home-agent-note { text-align: left; margin-inline: 0; }
+  .screen-hub .hub-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .72fr);
+    align-items: end;
+    gap: var(--space-8);
+    padding: 6px 4px 28px;
+  }
+  .screen-hub .hub-head p { max-width: 440px; margin: 0 0 2px; }
+  .screen-hub .agent-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+  .screen-hub .agent-card { min-height: 248px; padding: 20px; border-radius: var(--r-card); }
+  .screen-hub .agent-card__more { margin-top: 18px; }
+  .profile-hero { max-width: 760px; padding: 26px; border-radius: var(--r-panel); }
+  .profile-copy { max-width: 560px; }
+  .ptab-bar, .profile-grid, .profile-section { max-width: 980px; }
+  .workspace-history-search { border-radius: var(--r-control); }
+}
+
+/* Notifications are never centered over desktop reading content. */
+.toast {
+  z-index: 10060;
+  left: auto;
+  right: 28px;
+  top: 84px;
+  bottom: auto;
+  transform: none;
+  width: min(360px, calc(100vw - 56px));
+  min-height: 44px;
+  border-radius: var(--r-control);
+  border-color: rgba(140, 207, 192, .36);
+  background: rgba(25, 31, 44, .96);
+  box-shadow: var(--elevation-2);
+}
+
+/* Surfaces share one quiet language. */
+.glass, .tight-card, .more-row, .mc-day, .tool, .ask-chip, .language-row,
+.language-choice, .workspace-history-search, .composer-top {
+  border-color: var(--line);
+  box-shadow: var(--elevation-1);
+}
+.btn, .nav-btn, .chip, .ask-chip, .tool, .language-choice, .workspace-nav-item {
+  border-radius: var(--r-control);
+}
+.btn-primary, .ritual-cta, .ptab.active {
+  background: var(--champagne-300);
+  color: #1a1c20;
+  box-shadow: var(--elevation-1);
+}
+.btn-primary:hover, .ritual-cta:hover, .ptab.active:hover { background: var(--champagne-400); }
+.btn-ghost:hover, .tool:hover, .ask-chip:hover, .language-choice:hover { border-color: rgba(235, 214, 161, .42); background: rgba(255, 255, 255, .075); }
+
+@media (max-width: 899px) {
+  .workspace-main > .app-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 64px;
+    padding-inline: 14px;
+  }
+  .workspace-main > .app-header .brand-lockup { justify-self: center; margin-inline: 0; }
+  .screen-home .home-layout { display: block; }
+  .screen-home .home-primary, .screen-home .home-secondary { display: block; }
+  .toast {
+    left: 50%; right: auto; top: auto;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    width: min(360px, calc(100vw - 32px));
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button, input, textarea, select, [data-act], .tool, .chip, .ask-chip, .daily-step, .dock-item, .agent-card {
+    transition: none !important;
+  }
+}

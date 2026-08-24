@@ -758,6 +758,15 @@ async def test_chat_search_scoped_to_active_threads(client, db, user):
     assert [row["thread_id"] for row in archived_rows] == [archived["id"]]
     assert archived_rows[0]["archived"] is True
 
+    history = await client.get(
+        f"/api/chat/oracle/sessions/{archived['id']}", params=as_user(user))
+    assert history.status_code == 200
+    assert history.json()["archived"] is True
+    blocked = await client.post(
+        f"/api/chat/oracle/sessions/{archived['id']}",
+        params=as_user(user), json={"text": "новое сообщение"})
+    assert blocked.status_code == 409
+
     empty = await client.get("/api/chat/search", params=as_user(user, {"q": "чужой проект"}))
     assert empty.status_code == 200
     assert empty.json() == []

@@ -138,9 +138,13 @@ async def ask_session(agent: str, thread_id: int, item: AskIn,
                       user=Depends(current_user), db=Depends(get_db)):
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
+    thread = await dialog.get_thread(db, thread_id, user["tg_id"])
+    if not thread or thread["agent"] != agent:
+        raise HTTPException(404, "нет такого чата")
+    if thread["archived"]:
+        raise HTTPException(409, "архивный чат доступен только для чтения")
     try:
-        return await chat_svc.ask(db, user, item.text, agent=agent,
-                                  surface="miniapp", allow_paid=item.allow_paid,
+        return await chat_svc.ask(db, user, item.text, agent=agent, surface="miniapp", allow_paid=item.allow_paid,
                                   thread_id=thread_id)
     except chat_svc.ChatDenied as e:
         raise access_denied(e.verdict) from e

@@ -27,7 +27,8 @@
     const seasonalMoments = homeT('seasonal').map(([title, copy]) => ({ title, copy }));
     const seasonal = seasonalMoments[seasonIndex];
     main.innerHTML = `
-      <div class="screen">
+      <div class="screen screen-home">
+        <div class="home-layout"><div class="home-primary">
         <div class="hero-orb">
           <div class="orb"></div>
           <div class="hero-moon-orb" aria-hidden="true">${t && t.moon ? moonSvg(t.moon.emoji) : moonSvg('🌙')}</div>
@@ -55,6 +56,7 @@
           </div>
           <p class="daily-ritual-note">${homeT('ritualNote')}</p>
         </section>
+        </div><div class="home-secondary">
 
         ${this.moonWeek && this.moonWeek[0] ? (() => {
           const wd = oracleLang() === 'en' ? WD_SHORT_EN : WD_SHORT;
@@ -160,6 +162,7 @@
             </button>`).join('')}
         </div>
         <div class="home-agent-note">${oracleLang() === 'en' ? 'Each guide sees your story in a different way. Begin with the voice that resonates today.' : 'Каждый проводник смотрит на твою историю по-своему. Начни с того, чей голос откликается сегодня.'}</div>
+        </div></div>
       </div>`;
   };
 
@@ -180,7 +183,7 @@
       { code: 'chiromant', name: 'Мира', title: 'Проводник ладони', emoji: '✋', accent: '#e2a45e', avatar: '/static/img/agents/chiromant.jpg' },
     ]).map(a => this.normalizeAgent(a, a.code));
     main.innerHTML = `
-      <div class="screen">
+      <div class="screen screen-hub">
         <div class="hub-head">
           <h1>${homeT('guidesTitle')}</h1>
           <p>${homeT('guidesCopy')}</p>

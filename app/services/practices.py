@@ -1,4 +1,4 @@
-"""Практики и мантры: витрина, программа дня, отметка, напоминания.
+"""Практики: витрина, программа дня, отметка и напоминания.
 
 Каталог собирается так же, как расклады: встроенный набор из `core/practices.py`
 перекрывается записями админки (`content_items(kind='practice')`). Прогресс
@@ -21,7 +21,12 @@ log = logging.getLogger("oracle.practices")
 
 
 def _from_content(item: dict) -> dict | None:
+    """Parse one admin override while excluding removed legacy records."""
+    code = str(item.get("code") or "")
     meta = content.content_meta(item)
+    if code.startswith("mantra_") or meta.get("category") == "mantra":
+        log.warning("игнорирую удалённую legacy practice %s", code)
+        return None
     steps = meta.get("steps")
     if not isinstance(steps, list) or not steps:
         log.warning("практика %s без шагов — пропускаю", item.get("code"))
