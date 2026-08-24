@@ -98,7 +98,7 @@ skills:
   tags: []
   path: app/agents/lilith/skills/diary-dynamics/SKILL.md
 - name: emotion-naming
-  version: 1.0.0
+  version: 2.0.0
   depends_on:
   - anti-barnum-protocol
   requires_tools:
@@ -106,6 +106,10 @@ skills:
   - recall_diary
   tags:
   - emotion
+  - feeling
+  - name_what_i_feel
+  - после_разговора
+  - conversation_debrief
   - reflection
   path: app/agents/lilith/skills/emotion-naming/SKILL.md
 - name: emotional-reflection
@@ -149,10 +153,17 @@ skills:
   tags: []
   path: app/agents/lilith/skills/matrix-lines/SKILL.md
 - name: matrix-reading
-  version: 1.0.0
+  version: 2.0.0
   depends_on: []
-  requires_tools: []
-  tags: []
+  requires_tools:
+  - get_matrix
+  - suggest_practice
+  tags:
+  - matrix
+  - arcana
+  - destiny
+  - position
+  - reflective_choice
   path: app/agents/lilith/skills/matrix-reading/SKILL.md
 - name: memory-recall
   version: 1.0.0
@@ -233,7 +244,7 @@ skills:
   - reflection
   path: app/agents/lilith/skills/self-compassion/SKILL.md
 - name: values-conflict
-  version: 1.0.0
+  version: 2.0.0
   depends_on:
   - anti-barnum-protocol
   requires_tools:
@@ -242,4 +253,10 @@ skills:
   tags:
   - values
   - decision
+  - choice
+  - stability
+  - exciting_project
+  - trade_off
+  - option_a_vs_b
+  - выбор
   path: app/agents/lilith/skills/values-conflict/SKILL.md

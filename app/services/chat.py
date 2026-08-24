@@ -251,6 +251,7 @@ async def draw(db, user, spread_code: str, *, surface: str = "bot",
                           surface=surface)
     return {"reading_id": reading_id, "title": title, "positions": positions,
             "cards": cards, "spread": code, "thread_id": thread["id"],
+            "ledger": tarot.reading_ledger(cards, code),
             "charge": verdict.charge}
 
 

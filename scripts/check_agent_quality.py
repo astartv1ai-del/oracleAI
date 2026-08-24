@@ -16,6 +16,7 @@ from app.core.agents.file_loader import (
 from app.core.agents.specs import get
 from scripts.benchmark_skill_routing import CASES as ROUTING_CASES
 from scripts.benchmark_vedic_routing import CASES as VEDIC_ROUTING_CASES
+from scripts.benchmark_mira_lenormand import CASES as MIRA_LENORMAND_ROUTING_CASES
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {"oracle", "astro", "tarot", "chiromant"}
@@ -101,6 +102,17 @@ def build_report() -> dict:
         else:
             vedic_routing_failures.append((query, expected, selected_names))
     errors.extend(f"Vedic routing failure: {item}" for item in vedic_routing_failures)
+    mira_lenormand_failures = []
+    mira_lenormand_top1_passed = 0
+    for code, query, expected in MIRA_LENORMAND_ROUTING_CASES:
+        profile = profile_for_legacy(code)
+        selected_names = [skill.name for skill in select_skills(profile, query, 3)]
+        if expected in selected_names:
+            if selected_names[0] == expected:
+                mira_lenormand_top1_passed += 1
+        else:
+            mira_lenormand_failures.append((code, query, expected, selected_names))
+    errors.extend(f"Mira/Lenormand routing failure: {item}" for item in mira_lenormand_failures)
 
     frontend = "\n".join(
         (ROOT / "miniapp" / "js" / name).read_text(encoding="utf-8")
@@ -119,6 +131,10 @@ def build_report() -> dict:
         "vedic_routing_top1_passed": vedic_top1_passed,
         "vedic_routing_top1_accuracy": round(vedic_top1_passed / len(VEDIC_ROUTING_CASES), 3),
         "vedic_routing_top3_passed": len(VEDIC_ROUTING_CASES) - len(vedic_routing_failures),
+        "mira_lenormand_routing_cases": len(MIRA_LENORMAND_ROUTING_CASES),
+        "mira_lenormand_routing_top1_passed": mira_lenormand_top1_passed,
+        "mira_lenormand_routing_top1_accuracy": round(mira_lenormand_top1_passed / len(MIRA_LENORMAND_ROUTING_CASES), 3),
+        "mira_lenormand_routing_top3_passed": len(MIRA_LENORMAND_ROUTING_CASES) - len(mira_lenormand_failures),
         "agents": rows,
         "errors": errors,
     }

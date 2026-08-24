@@ -8,10 +8,10 @@ The four public specialists remain backward-compatible under their existing API 
 
 | File-backed profile | Public code | Scope | Skills | Deterministic tools | Eval cases |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Lilith | `oracle` | reflective guidance, Matrix, diary and practices | 31 | 11 | 12 |
-| Urania | `astro` | natal chart, placements, nodes, transits and compatibility | 30 | 12 | 12 |
-| Madame Lenormand | `tarot` | Tarot spreads, card evidence, choice and relationship readings | 31 | 3 | 12 |
-| Mira | `chiromant` | palm-photo quality, visible zones and comparison | 30 | 3 | 12 |
+| Lilith | `oracle` | reflective guidance, Matrix, diary and practices | 31 | 11 | 13 |
+| Urania | `astro` | natal chart, placements, nodes, transits and compatibility | 39 | 22 | 15 |
+| Madame Lenormand | `tarot` | RWS Tarot spreads, card evidence, choice and relationship readings | 35 | 3 | 13 |
+| Mira | `chiromant` | palm-photo quality, visual evidence, visible zones and comparison | 34 | 3 | 13 |
 
 ## Runtime contract
 
@@ -40,7 +40,7 @@ ruff check app tests scripts
 find miniapp/js admin -name '*.js' -print0 | xargs -0 -n1 node --check
 ```
 
-The deterministic gate currently checks **19 tools, 122 skills and 54 evaluation cases**, verifies all four profile-to-legacy mappings, resolves skill dependencies, exercises multilingual routing, validates tool schemas and checks that user-visible proof surfaces are wired into the Mini App.
+The deterministic gate currently checks **29 registered tools, 139 file-backed skills and 54 evaluation cases**, verifies all four profile-to-legacy mappings, resolves skill dependencies, exercises the original 20-case Urania/Lilith routing set, the 10-case Vedic/adversarial set and the 20-case Mira/Lenormand routing set, validates tool schemas and checks that user-visible proof surfaces are wired into the Mini App.
 
 ## Safety boundary
 

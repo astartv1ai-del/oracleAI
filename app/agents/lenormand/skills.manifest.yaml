@@ -1,7 +1,7 @@
 agent: lenormand
 legacy_code: tarot
 manifest_version: 1.0.0
-skills_count: 31
+skills_count: 35
 skills:
 - name: anti-barnum
   version: 1.0.0
@@ -22,6 +22,13 @@ skills:
   requires_tools: []
   tags: []
   path: app/agents/lenormand/skills/card-combinations/SKILL.md
+- name: card-ledger-evidence
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - draw_tarot
+  tags: []
+  path: app/agents/lenormand/skills/card-ledger-evidence/SKILL.md
 - name: card-position-semantics
   version: 1.0.0
   depends_on: []
@@ -40,6 +47,13 @@ skills:
   requires_tools: []
   tags: []
   path: app/agents/lenormand/skills/choice-spread/SKILL.md
+- name: combination-synthesis
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - draw_tarot
+  tags: []
+  path: app/agents/lenormand/skills/combination-synthesis/SKILL.md
 - name: court-cards
   version: 1.0.0
   depends_on: []
@@ -140,6 +154,12 @@ skills:
   requires_tools: []
   tags: []
   path: app/agents/lenormand/skills/question-clarity/SKILL.md
+- name: question-to-spread
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/lenormand/skills/question-to-spread/SKILL.md
 - name: reading-review
   version: 1.0.0
   depends_on:
@@ -157,10 +177,15 @@ skills:
   tags: []
   path: app/agents/lenormand/skills/relationship-spread/SKILL.md
 - name: reversed-cards
-  version: 1.0.0
+  version: 2.0.0
   depends_on: []
-  requires_tools: []
-  tags: []
+  requires_tools:
+  - draw_tarot
+  tags:
+  - reversed
+  - orientation
+  - card_evidence
+  - uncertainty
   path: app/agents/lenormand/skills/reversed-cards/SKILL.md
 - name: rws-deck-structure
   version: 1.0.0
@@ -206,6 +231,13 @@ skills:
   requires_tools: []
   tags: []
   path: app/agents/lenormand/skills/tarot-journaling/SKILL.md
+- name: tarot-proof-safety
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - draw_tarot
+  tags: []
+  path: app/agents/lenormand/skills/tarot-proof-safety/SKILL.md
 - name: tarot-safety
   version: 1.0.0
   depends_on: []

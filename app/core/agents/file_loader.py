@@ -313,6 +313,35 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             score += 22
         if skill.name == "mounts-topography" and "mount" in query:
             score += 25
+        palm_visual = query & {"photo", "image", "снимок", "фото", "visible", "видно", "evidence", "наблюдение", "уверенность"}
+        palm_capture = query & {"blurry", "blurred", "glare", "обрезаны", "бликует", "ракурс", "angle", "view", "photo", "снимок"}
+        palm_topology = query & {"topology", "continuity", "breaks", "branches", "path", "дуга", "глубина", "разрывы"}
+        palm_schools = query & {"western", "indian", "chinese", "schools", "школ", "техники", "techniques", "hasta"}
+        palm_safety = query & {"disease", "pregnancy", "death", "диагноз", "болезнь", "беремен", "смерть"}
+        if skill.name == "visual-evidence-protocol" and palm_visual:
+            score += 28
+        if skill.name == "capture-rectification" and palm_capture:
+            score += 32
+        if skill.name == "palm-line-topology" and palm_topology:
+            score += 30
+        if skill.name == "palm-technique-triangulation" and palm_schools:
+            score += 34
+        if skill.name == "palm-safety" and palm_safety:
+            score += 36
+        if skill.name == "photo-comparison" and {"compare", "old", "new", "changes", "сравни"} & query:
+            score += 34
+        tarot_combo = query & {"adjacent", "pair", "combination", "combinations", "связка", "связки", "pattern", "suit", "orientation", "reversed", "counter-reading"}
+        tarot_proof = query & {"checksum", "ledger", "proof", "доказывает", "legal", "investment", "инвестиции", "суд", "решить"}
+        tarot_question = query & {"question", "what", "happen", "spread", "journal", "daily", "быть", "спросить", "выбрать"}
+        tarot_ledger = query & {"stored", "actual", "позиции", "positions", "card", "cards", "карты", "draw", "расклад"}
+        if skill.name == "combination-synthesis" and tarot_combo:
+            score += 34
+        if skill.name == "tarot-proof-safety" and tarot_proof:
+            score += 38
+        if skill.name == "question-to-spread" and tarot_question:
+            score += 25
+        if skill.name == "card-ledger-evidence" and tarot_ledger:
+            score += 27
         lower_question = question.lower()
         vedic_markers = query & {
             "vedic", "jyotish", "kundli", "sidereal", "lahiri", "nakshatra",
@@ -331,6 +360,12 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             score += 45
         if skill.name == "three-card-spread" and "spread" in query and not specialized:
             score += 5
+        if skill.name == "three-card-spread" and {"расклад", "таро"} <= query:
+            score += 28
+        if skill.name == "question-to-spread" and "расклад" in query and not (
+            {"выбрать", "уточнить", "question", "what", "select"} & query
+        ):
+            score -= 16
         scored.append((score, -index, skill))
     scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
     selected = [item[2] for item in scored[:limit] if item[0] > 0]

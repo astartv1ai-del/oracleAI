@@ -108,7 +108,8 @@
       this.chat.messages.push({ role: 'user', text: 'Мой вопрос к картам: ' + qv });
       this.chat.pending = {
         kind: 'tarot-cards', question: qv, cards: r.cards, spread,
-        positions: r.positions, revealed: r.cards.map(() => false), nextReveal: 0,
+        positions: r.positions, ledger: r.ledger || null,
+        revealed: r.cards.map(() => false), nextReveal: 0,
         turning: false, allRevealed: false, reading_id: r.reading_id,
       };
       haptic('soft');
@@ -174,12 +175,16 @@
     const thread = document.createElement('section');
     thread.className = 'tarot-thread tarot-thread--revealed';
     thread.setAttribute('aria-label', 'Нить расклада');
+    const ledger = p.ledger || {};
+    const pairs = Array.isArray(ledger.adjacent_combinations) ? ledger.adjacent_combinations : [];
     thread.innerHTML = `<div class="tarot-thread-kicker">НИТЬ РАСКЛАДА</div>
       <p>Карты раскрылись. Сначала почувствуй, как роли откликаются вместе, а затем соберём личный смысл без поспешных выводов.</p>
       <div class="tarot-thread-map">${p.positions.map((pos, i) => {
         const c = p.cards[i] || {};
-        return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}</span>`;
-      }).join('')}</div>`;
+        const orientation = c.reversed ? ' · перевёрнутая' : ' · прямая';
+        return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}${esc(orientation)}</span>`;
+      }).join('')}</div>
+      <div class="tarot-proof"><b>Доказательная карточка</b><span>Колода: ${esc(ledger.deck_id || 'RWS')}</span><span>Ledger: ${esc(ledger.version || 'не указан')} · checksum ${esc(ledger.checksum || '—')}</span>${pairs.length ? `<div class="tarot-proof__pairs">${pairs.map(pair => `<span>${esc(pair.left)} + ${esc(pair.right)} · ${esc(pair.rule)}</span>`).join('')}</div>` : ''}<small>Это подтверждает состав и порядок расклада, но не делает символическое толкование фактом.</small></div>`;
     w.appendChild(thread);
     const b = document.createElement('button');
     b.className = 'btn btn-primary tarot-interpret-btn';

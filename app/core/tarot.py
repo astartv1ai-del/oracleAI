@@ -4,6 +4,9 @@
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import random
 import secrets
 
 # Старшие арканы. meaning — архетип с ресурсом и тенью (живая формулировка,
@@ -339,20 +342,78 @@ def spread_by_title(title: str) -> dict:
 _RNG = secrets.SystemRandom()
 
 
-def draw(n: int = 3) -> list[dict]:
-    """n разных карт в случайном порядке.
+def draw(n: int = 3, *, seed: str | None = None) -> list[dict]:
+    """n разных карт в случайном порядке; optional seed is for reproducible tests.
 
     Порядок важен: карты ложатся на позиции расклада (Прошлое/Настоящее/Будущее),
     поэтому берём sample, а не set — у множества порядок обхода определяется
     слотом хеша, и первая карта оказывалась привязана к её месту в колоде.
     """
     cards = []
-    for card in _RNG.sample(DECK, min(n, len(DECK))):
+    rng = random.Random(seed) if seed is not None else _RNG
+    for card in rng.sample(DECK, min(n, len(DECK))):
         card = dict(card)
         # честная тасовка: каждая карта ложится прямо или перевёрнуто ~50/50
-        card["reversed"] = bool(_RNG.getrandbits(1))
+        card["reversed"] = bool(rng.getrandbits(1))
         cards.append(card)
     return cards
+
+
+def _combination_rule(left: dict, right: dict) -> str:
+    """Return a bounded symbolic cue, never a prediction or factual claim."""
+    names = {str(left.get("name", "")), str(right.get("name", ""))}
+    if {"Смерть", "Башня"} <= names:
+        return "transformational_pressure"
+    if {"Влюблённые", "Двойка Кубков"} <= names:
+        return "relationship_choice"
+    if {"Звезда", "Солнце"} <= names:
+        return "hope_and_clarity"
+    if {"Дьявол", "Луна"} <= names:
+        return "attachment_and_ambiguity"
+    if left.get("suit") and left.get("suit") == right.get("suit"):
+        return "same_suit_cluster"
+    if bool(left.get("reversed")) != bool(right.get("reversed")):
+        return "orientation_tension"
+    return "adjacent_cards_read_together"
+
+
+def reading_ledger(cards: list[dict], spread_code: str = "three",
+                   positions: list[str] | None = None) -> dict:
+    """Create user-safe deterministic evidence for a draw and its interpretation."""
+    item = spread(spread_code)
+    positions = (positions or item["positions"])[:len(cards)]
+    entries = []
+    for index, card in enumerate(cards):
+        entries.append({
+            "index": index,
+            "position": positions[index] if index < len(positions) else f"Карта {index + 1}",
+            "card_id": card.get("img") or card.get("name"),
+            "name": card.get("name"),
+            "arcana": card.get("arcana"),
+            "suit": card.get("suit"),
+            "reversed": bool(card.get("reversed")),
+            "orientation": "reversed" if card.get("reversed") else "upright",
+        })
+    combinations = []
+    for left, right in zip(cards, cards[1:]):
+        combinations.append({
+            "left": left.get("name"), "right": right.get("name"),
+            "rule": _combination_rule(left, right),
+            "type": "adjacent_pair",
+        })
+    canonical = json.dumps({"deck_id": "rws-78-v1", "spread": spread_code,
+                            "entries": entries}, ensure_ascii=False,
+                           sort_keys=True, separators=(",", ":"))
+    return {
+        "version": "tarot-ledger-v1",
+        "deck_id": "rws-78-v1",
+        "tradition": "Rider-Waite-Smith",
+        "spread": spread_code if spread_code in SPREADS else DEFAULT_SPREAD,
+        "entries": entries,
+        "adjacent_combinations": combinations,
+        "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16],
+        "interpretation_boundary": "Cards and positions are calculated evidence; meanings remain symbolic reflection, not certainty.",
+    }
 
 
 def cards_text(cards: list[dict], positions: list[str] | None = None) -> str:

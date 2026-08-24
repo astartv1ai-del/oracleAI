@@ -29,6 +29,31 @@ def test_draw_handles_large_spreads():
     assert len({c["name"] for c in cards}) == 12
 
 
+def test_seeded_draw_is_reproducible_for_golden_fixtures():
+    first = tarot.draw(5, seed="oracleai-golden")
+    second = tarot.draw(5, seed="oracleai-golden")
+    assert first == second
+
+
+def test_reading_ledger_has_positions_orientation_and_combinations():
+    cards = tarot.draw(3, seed="ledger-fixture")
+    ledger = tarot.reading_ledger(cards, "three")
+    assert ledger["deck_id"] == "rws-78-v1"
+    assert ledger["version"] == "tarot-ledger-v1"
+    assert [item["position"] for item in ledger["entries"]] == tarot.SPREADS["three"]["positions"]
+    assert all(item["orientation"] in ("upright", "reversed") for item in ledger["entries"])
+    assert len(ledger["adjacent_combinations"]) == 2
+    assert len(ledger["checksum"]) == 16
+    assert "not certainty" in ledger["interpretation_boundary"]
+
+
+def test_reading_ledger_classifies_explicit_symbolic_combination():
+    cards = [dict(next(card for card in tarot.DECK if card["name"] == name), reversed=False)
+             for name in ("Смерть", "Башня")]
+    ledger = tarot.reading_ledger(cards, "three")
+    assert ledger["adjacent_combinations"][0]["rule"] == "transformational_pressure"
+
+
 def test_tarot_spreads_have_positions_and_guide():
     for code, item in tarot.SPREADS.items():
         assert item["positions"], code

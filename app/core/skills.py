@@ -523,7 +523,10 @@ async def _run_palm_scanner(db, user, args) -> str:
         "reading_id": reading.get("id"),
         "hand_side": reading.get("hand_side", "unknown"),
         "hand_shape_element": reading.get("hand_shape_element", "unknown"),
-        "image_quality": {"score": round(score, 2), "issues": quality.get("issues") or []},
+        "image_quality": {"score": round(score, 2), "issues": quality.get("issues") or [],
+                           "precheck_score": quality.get("precheck_score", score),
+                           "precheck_issues": quality.get("precheck_issues") or []},
+        "visual_precheck": reading.get("visual_precheck") or {},
         "zones": zones,
         "lines": reading.get("lines") or {},
         "mounts": reading.get("mounts") or {},
@@ -603,8 +606,10 @@ async def _run_draw_tarot(db, user, args) -> str:
         n = len(positions)
     cards = tarot.draw(n)
     title = item["title"] if item else "свободный"
+    ledger = tarot.reading_ledger(cards, spread_code or tarot.DEFAULT_SPREAD)
     return (f"{await guide(db, 'tarot')}\n\nРасклад: {title}\n"
-            f"Карты:\n{tarot.cards_text(cards, positions)}")
+            f"Карты:\n{tarot.cards_text(cards, positions)}\n"
+            "\nEvidence ledger:\n" + json.dumps(ledger, ensure_ascii=False, separators=(",", ":")))
 
 
 async def _run_get_chart(db, user, args) -> str:

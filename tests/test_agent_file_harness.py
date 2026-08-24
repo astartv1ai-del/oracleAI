@@ -140,3 +140,16 @@ def test_vedic_adversarial_routing_benchmark_is_top_three_stable():
         if expected not in selected:
             failures.append((query, expected, selected))
     assert not failures, failures
+
+
+def test_mira_lenormand_routing_benchmark_is_top_three_stable():
+    from scripts.benchmark_mira_lenormand import CASES
+
+    failures = []
+    for code, query, expected in CASES:
+        profile = profile_for_legacy(code)
+        assert profile is not None
+        selected = [skill.name for skill in select_skills(profile, query, 3)]
+        if expected not in selected:
+            failures.append((code, query, expected, selected))
+    assert not failures, failures

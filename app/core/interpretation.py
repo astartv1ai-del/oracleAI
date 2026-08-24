@@ -148,7 +148,8 @@ def chart_evidence(chart: dict, *, time_known: bool) -> Evidence:
 
 
 def tarot_evidence(cards: list[dict], positions: list[str], *, title: str,
-                   question: str | None = None) -> Evidence:
+                   question: str | None = None,
+                   combinations: Iterable[dict] | None = None) -> Evidence:
     """Строит evidence block расклада с позицией и ориентацией каждой карты."""
     facts = [f"Расклад: {title}"]
     if question:
@@ -159,6 +160,12 @@ def tarot_evidence(cards: list[dict], positions: list[str], *, title: str,
         facts.append(
             f"{position}: {card.get('name', '?')} ({orientation}) — {card.get('meaning', '')}"
         )
+    for combo in combinations or ():
+        left = _value(combo.get("left"))
+        right = _value(combo.get("right"))
+        rule = _value(combo.get("rule"))
+        if left and right and rule:
+            facts.append(f"Соседняя комбинация: {left} + {right} ({rule})")
     return Evidence(
         kind="tarot",
         facts=tuple(facts),

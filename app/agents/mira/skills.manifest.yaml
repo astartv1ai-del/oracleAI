@@ -1,7 +1,7 @@
 agent: mira
 legacy_code: chiromant
 manifest_version: 1.0.0
-skills_count: 30
+skills_count: 34
 skills:
 - name: anti-barnum-protocol
   version: 1.0.0
@@ -17,6 +17,14 @@ skills:
   requires_tools: []
   tags: []
   path: app/agents/mira/skills/bracelets-and-wrist/SKILL.md
+- name: capture-rectification
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - palm_scanner
+  - palm_photo_guide
+  tags: []
+  path: app/agents/mira/skills/capture-rectification/SKILL.md
 - name: comparative-reading
   version: 1.0.0
   depends_on: []
@@ -168,11 +176,26 @@ skills:
   - palm_scanner
   tags: []
   path: app/agents/mira/skills/palm-evidence-reading/SKILL.md
-- name: palm-photo-quality
+- name: palm-line-topology
   version: 1.0.0
   depends_on: []
-  requires_tools: []
+  requires_tools:
+  - palm_scanner
   tags: []
+  path: app/agents/mira/skills/palm-line-topology/SKILL.md
+- name: palm-photo-quality
+  version: 2.0.0
+  depends_on: []
+  requires_tools:
+  - palm_scanner
+  - palm_photo_guide
+  tags:
+  - photo_quality
+  - focus
+  - lighting
+  - framing
+  - confidence
+  - reshoot
   path: app/agents/mira/skills/palm-photo-quality/SKILL.md
 - name: palm-safety
   version: 1.0.0
@@ -180,6 +203,13 @@ skills:
   requires_tools: []
   tags: []
   path: app/agents/mira/skills/palm-safety/SKILL.md
+- name: palm-technique-triangulation
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - palm_scanner
+  tags: []
+  path: app/agents/mira/skills/palm-technique-triangulation/SKILL.md
 - name: photo-comparison
   version: 1.0.0
   depends_on:
@@ -226,3 +256,11 @@ skills:
   requires_tools: []
   tags: []
   path: app/agents/mira/skills/travel-lines/SKILL.md
+- name: visual-evidence-protocol
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - palm_scanner
+  - palm_photo_guide
+  tags: []
+  path: app/agents/mira/skills/visual-evidence-protocol/SKILL.md

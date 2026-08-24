@@ -79,7 +79,11 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
     «про жизнь вообще».
     """
     cards_block = tarot.cards_text(cards, positions)
-    evidence = interpretation.tarot_evidence(cards, positions, title=title, question=question)
+    spread_code = tarot.spread_by_title(title)["code"]
+    ledger = tarot.reading_ledger(cards, spread_code, positions=positions)
+    evidence = interpretation.tarot_evidence(
+        cards, positions, title=title, question=question,
+        combinations=ledger["adjacent_combinations"])
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("tarot"),

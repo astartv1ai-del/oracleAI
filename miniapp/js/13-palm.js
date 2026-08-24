@@ -72,15 +72,40 @@
     }).join('');
   }
 
+  function detailRows(result) {
+    const labels = { life: 'Линия жизни', head: 'Линия головы', heart: 'Линия сердца', fate: 'Линия судьбы', sun: 'Линия Солнца', relationship: 'Линии отношений', children: 'Линии детей', travel: 'Линии путешествий', mercury: 'Линия Меркурия', venus: 'Холм Венеры', jupiter: 'Холм Юпитера', saturn: 'Холм Сатурна', apollo: 'Холм Аполлона', moon: 'Холм Луны', mars: 'Холм Марса', thumb: 'Большой палец', index: 'Указательный палец', middle: 'Средний палец', ring: 'Безымянный палец', little: 'Мизинец' };
+    const items = [];
+    ['lines', 'mounts', 'fingers'].forEach(group => {
+      Object.entries(result[group] || {}).forEach(([key, value]) => {
+        const values = Array.isArray(value) ? value : [value];
+        values.forEach((detail, index) => {
+          if (!detail || typeof detail !== 'object') return;
+          items.push({ label: `${labels[key] || key}${values.length > 1 ? ` · ${index + 1}` : ''}`, detail });
+        });
+      });
+    });
+    return items.slice(0, 12).map(({ label, detail }) => {
+      const visibility = VISIBILITY[detail.visibility] || 'неясно';
+      const confidence = Math.round(Number(detail.confidence || 0) * 100);
+      return `<div class="palm-detail-row"><div><b>${esc(label)}</b><span>${esc(visibility)} · ${confidence}%</span></div><div class="palm-confidence"><i style="width:${confidence}%"></i></div><p>${esc(detail.summary || detail.shape || 'Отдельное описание не передано')}</p></div>`;
+    }).join('');
+  }
+
   app.palmHtml = function (result) {
     const q = result.image_quality || {};
+    const pre = result.visual_precheck || {};
     const needs = result.status === 'needs_photo';
     const limitations = Array.isArray(result.limitations) ? result.limitations : [];
     const prompts = Array.isArray(result.interpretive_prompts) ? result.interpretive_prompts : [];
+    const pa = result.photo_assessment || {};
+    const detected = result.hand_detected ? 'ладонь распознана' : 'ладонь не подтверждена';
+    const preCopy = pre.width ? `${pre.width}×${pre.height} · ${pre.status === 'usable' ? 'свет/резкость пригодны' : 'нужна проверка кадра'}` : 'детерминированная проверка изображения';
     return `<section class="palm-result" aria-live="polite">
       <div class="w-title">✋ ${needs ? 'Нужен более ясный кадр' : 'Что видно на ладони'}</div>
       <div class="palm-quality" style="--quality:${Math.round(Number(q.score || 0) * 100)}"><b>Качество кадра</b><span>${Math.round(Number(q.score || 0) * 100)}%</span></div>
+      <div class="palm-evidence-strip"><span>◉ ${esc(detected)}</span><span>⌁ ${esc(pa.view_type || 'ракурс не указан')}</span><span>✦ ${esc(preCopy)}</span></div>
       ${textFromResult(result)}
+      ${detailRows(result) ? `<details class="palm-details"><summary>Показать карту зон и техник <span>⌄</span></summary><div class="palm-detail-list">${detailRows(result)}</div></details>` : ''}
       ${limitations.length ? `<div class="palm-limitations"><b>Границы чтения</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}
       ${prompts.length ? `<div class="palm-prompts"><b>Вопросы к себе</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
       <p class="palm-disclaimer">Линия жизни не показывает продолжительность жизни. Это символическая рефлексия, а не диагноз и не гарантия событий.</p>
