@@ -2795,3 +2795,29 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     transition: none !important;
   }
 }
+
+/* v104 · moon visual primitive and image-stage polish */
+.moon-symbol { display:block; width:100%; height:100%; overflow:visible; }
+.moon-symbol__halo { opacity:.72; }
+.moon-symbol__shadow { filter:drop-shadow(0 7px 12px rgba(0,0,0,.24)); }
+.moon-symbol__rim { opacity:.75; }
+.hero-moon-orb { display:grid; place-items:center; width:94px; height:94px; background:transparent; border:0; box-shadow:0 12px 30px -20px rgba(231,202,145,.9); }
+.hero-moon-orb .moon-symbol { width:100%; height:100%; }
+.mc-ico, .dc-moon-orb, .mini-moon { display:grid; place-items:center; }
+.mc-ico .moon-symbol, .dc-moon-orb .moon-symbol, .mini-moon .moon-symbol { width:100%; height:100%; }
+.tcard-face, .dc-face, .rc-strip img, .tarot-card-big .tb-face { background:#111723; }
+.tcard-face, .dc-face { box-shadow:0 10px 26px -16px rgba(0,0,0,.95), inset 0 0 0 1px rgba(231,202,145,.08); }
+.tarot-card-big .tb-face { background-color:#111723; background-blend-mode:normal; }
+.rc-strip img { box-shadow:0 6px 16px -11px rgba(0,0,0,.92); }
+@media (prefers-reduced-motion: reduce) {
+  .moon-symbol__shadow { filter:none; }
+}
+
+
+/* v105 · clearer hero hierarchy */
+.screen-home .hero-title { max-width: min(420px, calc(100% - 98px)); font-family: var(--font-display); font-size: clamp(28px, 4vw, 42px); line-height: 1.02; letter-spacing: -.025em; }
+.screen-home .hero-welcome { margin-top: 10px; color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.screen-home .hero-welcome em { color: var(--text-main); font-style: normal; }
+@media (max-width: 560px) {
+  .screen-home .hero-title { max-width: calc(100% - 74px); font-size: clamp(26px, 8vw, 34px); }
+}

@@ -21,6 +21,9 @@
       : (this.me && this.me.name
         ? `${gendered(this.me, 'Рада видеть тебя', 'Рад видеть тебя', 'Рады видеть тебя')}, <em>${esc(this.me.name.split(' ')[0])}</em>.`
         : gendered(this.me, 'Рада, что ты здесь.', 'Рад, что ты здесь.', 'Рады, что ты здесь.'));
+    const heroTitle = oracleLang() === 'en'
+      ? 'A clear point of support for today'
+      : 'Твоя точка опоры на сегодня';
     const seasonalVariant = experimentVariant('home_ritual_entry', ['control', 'seasonal']);
     trackExperiment('home_ritual_entry', seasonalVariant);
     const seasonIndex = Math.floor(((new Date().getMonth() + 1) % 12) / 3);
@@ -35,7 +38,8 @@
           <div class="hero-body" style="position:relative;z-index:2">
             <div class="hero-date">${fmtDate()}</div>
             <div class="hero-ritual-label">${homeT('ritualLabel')}</div>
-            <div class="hero-title">${welcome}</div>
+            <div class="hero-title">${heroTitle}</div>
+            <div class="hero-welcome">${welcome}</div>
             ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : '<div class="hero-moon-txt">Сегодня можно не искать идеальный ответ.<br><em>Выбери один бережный шаг для себя.</em></div>'}
           </div>
           <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="${homeT('ritualCta')}"><span>${homeT('ritualCta')}</span><span aria-hidden="true">→</span></button>
