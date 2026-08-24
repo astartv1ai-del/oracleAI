@@ -22,8 +22,8 @@
         ? `${gendered(this.me, 'Рада видеть тебя', 'Рад видеть тебя', 'Рады видеть тебя')}, <em>${esc(this.me.name.split(' ')[0])}</em>.`
         : gendered(this.me, 'Рада, что ты здесь.', 'Рад, что ты здесь.', 'Рады, что ты здесь.'));
     const heroTitle = oracleLang() === 'en'
-      ? 'A clear point of support for today'
-      : 'Твоя точка опоры на сегодня';
+      ? 'Your support for a clearer next step'
+      : 'Твоя опора для ясного шага';
     const seasonalVariant = experimentVariant('home_ritual_entry', ['control', 'seasonal']);
     trackExperiment('home_ritual_entry', seasonalVariant);
     const seasonIndex = Math.floor(((new Date().getMonth() + 1) % 12) / 3);

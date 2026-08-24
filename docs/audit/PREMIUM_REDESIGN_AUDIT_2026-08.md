@@ -86,3 +86,12 @@ Admin stylesheet получил тот же ink/champagne/muted foundation, бо
 ## Remaining product-quality caveat
 
 Некоторые старые component modules всё ещё содержат emoji как content-level symbols (например, lunar phase or Tarot metadata); они не используются как role/navigation icons и не нарушают новую alignment system. Meaningful agent avatars сохранены. Final scope утверждается как completed only for the audited surfaces above; backend/API behavior, Tarot assets, palm/photo capture, chart/placements, compatibility and history remain covered by automated or mobile QA, while any future visual iteration should use this report as the baseline.
+
+
+## v107 regression repair
+
+После пользовательской проверки обнаружена реальная регрессия: `.tcard-face img` и `.dc-face img` использовали `object-fit: cover`, из-за чего вертикальные Tarot scans обрезались сверху и снизу. Исправление перевело spread/day-card/thumbnail image stages на `object-fit: contain` с тёмным neutral background, сохранив flip transforms и aspect-ratio контейнера. Live Tarot flow проверен: карта `Прошлое` открывается в полном росте и показывает весь artwork.
+
+Вторая причина «грязной» главной находилась в позднем cascade: desktop home columns имели `gap: 0`, mobile override переводил primary/secondary в block flow, а ряд `.spacer` дополнительно создавал непредсказуемый ритм. В v107 spacing переведён на явную editorial rhythm: hero → daily ritual, moon → forecast, forecast → card, card → next action с controlled 20/24/28/32px margins и отдельным mobile stack. Заголовок hero сокращён до пяти русских слов: «Твоя опора для ясного шага».
+
+Live screenshot v107 подтверждает: home hero, daily rhythm, lunar panel, forecast, daily card and next-action blocks имеют визуально отделённые границы; карточка дня показывает полное изображение. Mobile overflow runner после изменений остаётся без document horizontal overflow на 320/375/390 px.

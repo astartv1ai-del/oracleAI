@@ -2821,3 +2821,43 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (max-width: 560px) {
   .screen-home .hero-title { max-width: calc(100% - 74px); font-size: clamp(26px, 8vw, 34px); }
 }
+
+
+/* v106 · regression repair: preserve full card artwork and restore home rhythm */
+.tcard-face img, .dc-face img, .rc-strip img { object-fit: contain !important; background: #111723; }
+.tb-face, .tb-front { background-size: contain !important; background-repeat: no-repeat; background-position: center; }
+.tarot-card-big .tb-front { background-color: #111723; }
+.screen-home .home-layout { column-gap: 24px; }
+.screen-home .home-primary, .screen-home .home-secondary { gap: 24px !important; }
+.screen-home .home-secondary > .spacer { height: 0 !important; margin: 0 !important; }
+.screen-home .home-primary > .daily-ritual { margin-top: 0; }
+.screen-home .hero-orb, .screen-home .daily-ritual, .screen-home .moon-section, .screen-home .forecast-flow, .screen-home .card-day-big, .screen-home .na-card, .screen-home .dock-grid { margin-bottom: 0; }
+@media (max-width: 899px) {
+  .screen-home .home-layout { display: block; }
+  .screen-home .home-primary, .screen-home .home-secondary { display: grid; gap: 20px !important; }
+  .screen-home .home-secondary { margin-top: 20px; }
+}
+
+
+/* v107 · explicit home section rhythm, no accidental sibling gaps */
+.screen-home .home-primary, .screen-home .home-secondary { display:flex !important; flex-direction:column; gap:0 !important; }
+.screen-home .home-primary > .hero-orb { margin-bottom:24px; }
+.screen-home .home-primary > .seasonal-moment { margin-bottom:24px; }
+.screen-home .home-primary > .daily-ritual { margin-bottom:0; }
+.screen-home .home-secondary > .spacer { display:none; }
+.screen-home .home-secondary > .moon-section { margin-bottom:32px; }
+.screen-home .home-secondary > .section-kicker { margin-bottom:8px; }
+.screen-home .home-secondary > .section-title { margin-bottom:12px; }
+.screen-home .home-secondary > .forecast-flow { margin-bottom:32px; }
+.screen-home .home-secondary > .card-day-big { margin-bottom:32px; }
+.screen-home .home-secondary > .na-card { margin-bottom:32px; }
+.screen-home .home-secondary > .dock-grid { margin-bottom:12px; }
+.screen-home .home-secondary > .home-agent-note { margin-bottom:0; }
+@media (max-width:899px) {
+  .screen-home .home-primary > .hero-orb { margin-bottom:20px; }
+  .screen-home .home-secondary { margin-top:28px; }
+  .screen-home .home-secondary > .moon-section { margin-bottom:28px; }
+  .screen-home .home-secondary > .forecast-flow { margin-bottom:28px; }
+  .screen-home .home-secondary > .card-day-big { margin-bottom:28px; }
+  .screen-home .home-secondary > .na-card { margin-bottom:28px; }
+}
