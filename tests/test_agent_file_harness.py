@@ -23,6 +23,7 @@ def test_skill_frontmatter_is_portable_and_unique():
             assert skill.description
             assert skill.metadata["oracleai_agent"] == profile.agent_id
             assert skill.metadata.get("oracleai_loading", "on_demand") == "on_demand"
+        assert profile.handbook
 
 
 def test_russian_queries_select_relevant_specialist_skill():
@@ -39,10 +40,31 @@ def test_russian_queries_select_relevant_specialist_skill():
 def test_skill_context_is_bounded_and_legacy_registry_is_unchanged():
     context = skill_context("chiromant", "фото ладони и линия сердца", limit=3)
     assert context.count("ACTIVE_SKILL:") <= 3
-    assert len(context) < 18000
+    assert "DOMAIN_PLAYBOOK" in context
+    assert len(context) < 24000
     assert codes() == ("oracle", "astro", "tarot", "chiromant")
     assert get("chiromant").skills == (
         "palm_scanner",
         "palm_photo_guide",
         "palm_history",
     )
+
+
+async def test_runtime_places_active_skills_before_safety_tail(monkeypatch):
+    from app.core.agents import runtime
+
+    spec = get("astro")
+    user = {"lang": "ru", "name": "Тест", "gender": None, "memory_enabled": False}
+    user["oracle_name"] = None
+
+    async def fake_resolve(db, code):
+        return spec, spec.style, spec.rules
+
+    async def fake_context(db, current_user, current_spec, question=""):
+        return "chart", "matrix", [], ""
+
+    monkeypatch.setattr(runtime, "resolve", fake_resolve)
+    monkeypatch.setattr(runtime, "_context", fake_context)
+    prompt = await runtime.system_for(None, user, spec, question="транзиты планет")
+    assert "ACTIVE_SKILL: anti-barnum-protocol" in prompt
+    assert prompt.index("ACTIVE_SKILL:") < prompt.index("Правила безопасности")

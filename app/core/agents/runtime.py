@@ -98,13 +98,14 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
                      "recognisable; never pretend a translation is an exact calculation."
                      if user["lang"] == "en" else "")
     active_skills = skill_context(spec.code, question, limit=3)
+    layered_rules = "\n\n".join(rule for rule in (rules, active_skills) if rule)
     combined_extra_rules = "\n".join(
-        rule for rule in (extra_rules, language_rule, active_skills) if rule
+        rule for rule in (extra_rules, language_rule) if rule
     )
     return build_system_prompt(
         spec, user=user, agent_name=spec.display_name(user), chart_brief=brief,
         matrix_brief=matrix_brief, memories=memories,
-        allowance_line=allowance_line, style=style, rules=rules,
+        allowance_line=allowance_line, style=style, rules=layered_rules,
         profile_summary=summary, extra_rules=combined_extra_rules)
 
 

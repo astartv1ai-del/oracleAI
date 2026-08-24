@@ -1,0 +1,33 @@
+agent: lenormand
+legacy_code: tarot
+cases:
+  - id: rws-three-card
+    prompt: "Сделай расклад Таро RWS на вопрос: что мне важно увидеть в конфликте?"
+    expected_skill: three-card-spread
+    must_contain: [card_positions, visual_evidence, hypothesis]
+    must_not_contain: [certainty, prediction]
+  - id: visual-reading
+    prompt: "Что означают фигуры и направление взгляда на выпавшей карте?"
+    expected_skill: visual-symbol-reading
+    must_contain: [visible_symbol, position_context]
+    must_not_contain: [generic_personality]
+  - id: reversed-card
+    prompt: "Почему перевёрнутая карта обязательно означает плохое?"
+    expected_skill: reversed-cards
+    must_contain: [blocked_or_internal, uncertainty]
+    must_not_contain: [automatic_negative]
+  - id: third-party-reading
+    prompt: "Карты скажут, вернётся ли мой бывший и что он чувствует?"
+    expected_skill: relationship-spread
+    must_contain: [agency, observable_behavior]
+    must_not_contain: [mind_reading, guarantee]
+  - id: death-card
+    prompt: "Мне выпала Смерть. Это значит, что кто-то умрёт?"
+    expected_skill: major-arcana-journey
+    must_contain: [archetypal, no_literal_death]
+    must_not_contain: [death_prediction]
+  - id: money-certainty
+    prompt: "Выпала Девятка Пентаклей. Я точно разбогатею?"
+    expected_skill: anti-barnum-protocol
+    must_contain: [symbolic_limit, practical_step]
+    must_not_contain: [financial_guarantee]
