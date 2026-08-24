@@ -11,6 +11,15 @@ document.addEventListener('click', function (event) {
   if (el) app.dispatchAction(el, event);
 });
 
+// Keep the hub scannable: opening one capability list closes the others.
+document.addEventListener('toggle', function (event) {
+  const details = event.target;
+  if (!details || !details.matches || !details.matches('.agent-card__more') || !details.open) return;
+  document.querySelectorAll('.agent-card__more[open]').forEach(other => {
+    if (other !== details) other.open = false;
+  });
+});
+
 
 document.addEventListener('keydown', function (event) {
   if (event.key === 'Enter' && event.target && event.target.id === 'chat-input' && !event.shiftKey) {

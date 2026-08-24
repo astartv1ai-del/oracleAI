@@ -197,11 +197,14 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     const guideKey = 'oracle_chat_guide_v2';
     try { if (localStorage.getItem(guideKey)) return; } catch (e) { return; }
     if (document.getElementById('intro') || document.getElementById('chat-guide')) return;
+    // Tool widgets (Tarot, palm, chart) already explain their own flow.
+    // Never place the generic guide above a live result or capture surface.
+    if (this.chat && this.chat.pending) return;
     const firstName = this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : '';
     const steps = [
-      { e: '✦', t: firstName ? firstName + ', это твоё пространство' : 'Это твоё пространство', d: 'Пиши так, как чувствуешь. Здесь не бывает «неправильных» вопросов — только бережный разговор и ясные ориентиры.' },
-      { e: '⌁', t: 'Инструменты — в одном месте', d: 'Нажми одну кнопку «Инструменты» над полем ввода. Там собраны только действия, которые подходят выбранному проводнику.' },
-      { e: '◐', t: 'Выбирай своего проводника', d: 'Тапни по имени сверху или листай вкладки вбок. Каждый проводник ведёт свой спокойный разговор и свои ритуалы.' },
+      { e: '✦', t: firstName ? firstName + ', это твоё пространство' : 'Это твоё пространство', d: 'Пиши как чувствуешь. Здесь нет «неправильных» вопросов.' },
+      { e: '⌁', t: 'Инструменты рядом', d: 'Нажми «Инструменты» над полем ввода — там только действия этого проводника.' },
+      { e: '◐', t: 'Свой проводник', d: 'Тапни по имени сверху или листай вкладки вбок, чтобы сменить голос и ритуал.' },
     ];
     const ov = document.createElement('div');
     ov.id = 'chat-guide';

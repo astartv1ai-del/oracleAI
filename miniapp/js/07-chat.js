@@ -15,8 +15,15 @@
     this.view = 'hub';
     this.renderNav();
     this.renderChat(document.getElementById('app-main'));
-    if (after) setTimeout(after, 60);
-    this.maybeChatGuide();
+    if (after) {
+      setTimeout(() => {
+        after();
+        // Tool flows explain themselves; the generic guide must not cover them.
+        if (!this.chat.pending) this.maybeChatGuide();
+      }, 60);
+    } else {
+      this.maybeChatGuide();
+    }
   };
 
   // список чатов-сессий агента (до 5)
@@ -372,13 +379,13 @@
           return `<div class="msg assistant">
             <div class="chat-widget tarot-picker-widget ${p.drawing ? 'is-drawing' : ''}">
               <div class="tarot-kicker">ЛИЧНЫЙ РИТУАЛ</div>
-              <div class="w-title" style="margin:0">🎴 Выбери схему и задай вопрос</div>
-              <div class="w-sub tarot-picker-sub">Карты не дают готовых приказов — они помогают заметить то, что уже просится в твоё внимание.</div>
+              <div class="w-title" style="margin:0">🎴 Выбери схему и вопрос</div>
+              <div class="w-sub tarot-picker-sub">Символический взгляд на ситуацию — без готовых приказов.</div>
               <button class="pick-sel-btn tarot-deck-select" data-act="deck-open" ${p.drawing ? 'disabled' : ''}>
                 <span class="pick-sel-ico">${p.deck && p.deck.tradition === 'Petit Lenormand' ? '◇' : '🎴'}</span>
                 <span class="pick-sel-txt"><span class="pick-sel-t">${esc(tarotDeckLabel(p.deck))}</span><span class="pick-sel-d">${esc((p.deck && p.deck.card_count) || 78)} карт · сменить школу</span></span><span class="pick-sel-go">⚙</span>
               </button>
-              <div class="tarot-deck-source">${esc((p.deck && p.deck.source_verification) || 'deck catalog')} · правила и визуализация связаны с этой колодой</div>
+              <div class="tarot-deck-source"><span aria-hidden="true">●</span>${esc(tarotDeckStatus(p.deck))}</div>
               <button class="pick-sel-btn" data-act="pick-open" ${p.drawing ? 'disabled' : ''}>
                 <span class="pick-sel-ico">${esc(cur.emoji || '🎴')}</span>
                 <span class="pick-sel-txt">
@@ -387,9 +394,9 @@
                 </span>
                 <span class="pick-sel-go">›</span>
               </button>
-              <div class="swipe-hint">Тапни — откроется весь список раскладов</div>
-              <div class="tarot-question-label">О чём хочешь спросить?</div>
-              <div class="tarot-question-prompts">${prompts.map(value => `<button class="tarot-question-prompt${p.q === value ? ' is-active' : ''}" data-act="tarot-question" data-value="${q(value)}" ${p.drawing ? 'disabled' : ''}>${esc(value)}</button>`).join('')}</div>
+              <div class="swipe-hint">Нажми на строку, чтобы изменить выбор</div>
+              <div class="tarot-question-label">О чём спросить?</div>
+              <div class="tarot-question-prompts">${prompts.slice(0, 2).map(value => `<button class="tarot-question-prompt${p.q === value ? ' is-active' : ''}" data-act="tarot-question" data-value="${q(value)}" ${p.drawing ? 'disabled' : ''}>${esc(value)}</button>`).join('')}</div>
               ${p.err ? `<div class="s-err">${esc(p.err)}</div>` : ''}
               <textarea class="ipt" id="tarot-q" rows="2" placeholder="Твой вопрос к картам…" ${p.drawing ? 'disabled' : ''}
                 style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
@@ -420,13 +427,13 @@
                   <button type="button" class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" aria-label="${p.revealed[i] ? esc(c.name) : 'Открыть карту: ' + esc(pos)}" ${p.revealed[i] ? 'aria-pressed="true"' : 'aria-pressed="false"'}>
                     <span class="tcard-inner">
                       <span class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></span>
-                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="${tarotAssetUrl(c, p.ledger || p.deck)}" alt="${esc(c.name)}" loading="lazy">
+                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="${tarotAssetUrl(c, p.ledger || p.deck)}" alt="${p.revealed[i] ? esc(c.name) : 'Закрытая карта'}" loading="lazy">
                         ${c.reversed ? '<span class="t-rev">↺ перевёрнута</span>' : ''}</span>
                     </span>
                   </button>
                   <div class="tpos-pos">${esc(pos)}</div>
-                  <div class="tpos-mean">${esc(c.name)}${c.reversed ? ' ↺' : ''}</div>
-                  <div class="tpos-desc">${esc(c.meaning)}</div>
+                  <div class="tpos-mean">${p.revealed[i] ? `${esc(c.name)}${c.reversed ? ' ↺' : ''}` : 'Нажми, чтобы открыть'}</div>
+                  ${p.revealed[i] ? `<div class="tpos-desc">${esc(c.meaning)}</div>` : ''}
                 </div>`;
               }).join('')}
             </div>

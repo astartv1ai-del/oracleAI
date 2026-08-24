@@ -147,6 +147,14 @@ function tarotDeckLabel(deck, fallback = 'RWS') {
   return (deck && (deck.label || deck.tradition)) || fallback;
 }
 
+function tarotDeckStatus(deck) {
+  const status = String((deck && deck.source_verification) || '').toLowerCase();
+  if (status.includes('pending')) return 'Визуальная карта проверена · источник уточняется';
+  if (status.includes('public_domain')) return 'Источник Commons · public domain';
+  if (status.includes('metadata')) return 'Источник указан в manifest';
+  return 'Каталог и правила связаны с этой колодой';
+}
+
 
 /* ── Единые векторные сигилы интерфейса ─────────────────────────────────────
    В функциональной навигации не используем случайные emoji: SVG сохраняет
