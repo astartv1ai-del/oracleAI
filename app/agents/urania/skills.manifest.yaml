@@ -1,0 +1,234 @@
+agent: urania
+legacy_code: astro
+manifest_version: 1.0.0
+skills_count: 30
+skills:
+- name: anti-barnum-protocol
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags: []
+  path: app/agents/urania/skills/anti-barnum-protocol/SKILL.md
+- name: aspect-patterns
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - aspects
+  - synthesis
+  path: app/agents/urania/skills/aspect-patterns/SKILL.md
+- name: aspects
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/aspects/SKILL.md
+- name: astro-journaling
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - journaling
+  - transits
+  path: app/agents/urania/skills/astro-journaling/SKILL.md
+- name: astrology-history
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/astrology-history/SKILL.md
+- name: astrology-safety
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/astrology-safety/SKILL.md
+- name: career-symbolism
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/career-symbolism/SKILL.md
+- name: chart-data-quality
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/chart-data-quality/SKILL.md
+- name: chart-synthesis
+  version: 1.0.0
+  depends_on: []
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags: []
+  path: app/agents/urania/skills/chart-synthesis/SKILL.md
+- name: compatibility-synastry
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/compatibility-synastry/SKILL.md
+- name: date-only-mode
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/date-only-mode/SKILL.md
+- name: dignities-traditions
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - tradition
+  - technique
+  path: app/agents/urania/skills/dignities-traditions/SKILL.md
+- name: electional-framework
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/electional-framework/SKILL.md
+- name: electional-reflection
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - timing
+  - choice
+  path: app/agents/urania/skills/electional-reflection/SKILL.md
+- name: houses-and-angles
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/houses-and-angles/SKILL.md
+- name: luminaries
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/luminaries/SKILL.md
+- name: lunar-nodes
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/lunar-nodes/SKILL.md
+- name: lunar-phases
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - moon
+  - cycles
+  path: app/agents/urania/skills/lunar-phases/SKILL.md
+- name: mercury-and-mars
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/mercury-and-mars/SKILL.md
+- name: moon-cycles
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/moon-cycles/SKILL.md
+- name: natal-chart-foundations
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/natal-chart-foundations/SKILL.md
+- name: outer-planets
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/outer-planets/SKILL.md
+- name: planets-in-signs
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/planets-in-signs/SKILL.md
+- name: retrogrades
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - retrograde
+  - reflection
+  path: app/agents/urania/skills/retrogrades/SKILL.md
+- name: saturn-and-boundaries
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/saturn-and-boundaries/SKILL.md
+- name: solar-return
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - solar-return
+  - annual
+  path: app/agents/urania/skills/solar-return/SKILL.md
+- name: synastry-boundaries
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - synastry
+  - consent
+  path: app/agents/urania/skills/synastry-boundaries/SKILL.md
+- name: traditional-modern-bridge
+  version: 1.0.0
+  depends_on:
+  - anti-barnum-protocol
+  requires_tools:
+  - get_chart
+  - get_all_placements
+  tags:
+  - history
+  - interpretation
+  path: app/agents/urania/skills/traditional-modern-bridge/SKILL.md
+- name: transits
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/transits/SKILL.md
+- name: venus-and-relationships
+  version: 1.0.0
+  depends_on: []
+  requires_tools: []
+  tags: []
+  path: app/agents/urania/skills/venus-and-relationships/SKILL.md

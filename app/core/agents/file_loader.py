@@ -17,6 +17,7 @@ LEGACY_TO_FILE = {
 }
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n(.*)\Z", re.S)
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,10 @@ class FileSkill:
     description: str
     body: str
     path: str
+    version: str
+    dependencies: tuple[str, ...]
+    requires_tools: tuple[str, ...]
+    tags: tuple[str, ...]
     metadata: dict[str, str]
 
 
@@ -56,6 +61,16 @@ def _string_map(value: Any, path: Path) -> dict[str, str]:
     return {str(key): str(item) for key, item in value.items()}
 
 
+def _string_tuple(value: Any, path: Path) -> tuple[str, ...]:
+    if value is None or value == "":
+        return ()
+    if isinstance(value, str):
+        return tuple(value.replace(",", " ").split())
+    if isinstance(value, list | tuple):
+        return tuple(str(item).strip() for item in value if str(item).strip())
+    raise ValueError(f"{path}: expected a string or list")
+
+
 def load_skill(path: Path) -> FileSkill:
     data, body = _frontmatter(path.read_text(encoding="utf-8"), path)
     name = str(data.get("name", ""))
@@ -64,13 +79,53 @@ def load_skill(path: Path) -> FileSkill:
         raise ValueError(f"{path}: invalid name or directory mismatch: {name!r}")
     if not 1 <= len(description) <= 1024:
         raise ValueError(f"{path}: description must contain 1..1024 characters")
+    metadata = _string_map(data.get("metadata"), path)
+    version = str(data.get("version", metadata.get("oracleai_version", "1.0.0")))
+    if not VERSION_RE.fullmatch(version):
+        raise ValueError(f"{path}: invalid semver version: {version!r}")
+    dependencies = _string_tuple(data.get("depends_on", metadata.get("oracleai_depends_on")), path)
+    requires_tools = _string_tuple(data.get("requires_tools", metadata.get("oracleai_required_tools")), path)
+    tags = _string_tuple(data.get("tags", metadata.get("oracleai_tags")), path)
     return FileSkill(
         name=name,
         description=description,
         body=body,
         path=str(path),
-        metadata=_string_map(data.get("metadata"), path),
+        version=version,
+        dependencies=dependencies,
+        requires_tools=requires_tools,
+        tags=tags,
+        metadata=metadata,
     )
+
+
+def _validate_skill_dependencies(path: Path, skills: tuple[FileSkill, ...]) -> None:
+    names = {skill.name for skill in skills}
+    graph = {skill.name: skill.dependencies for skill in skills}
+    missing = {
+        dependency
+        for dependencies in graph.values()
+        for dependency in dependencies
+        if dependency not in names
+    }
+    if missing:
+        raise ValueError(f"{path}: missing skill dependencies: {sorted(missing)}")
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(name: str) -> None:
+        if name in visiting:
+            raise ValueError(f"{path}: cyclic skill dependency at {name}")
+        if name in visited:
+            return
+        visiting.add(name)
+        for dependency in graph[name]:
+            visit(dependency)
+        visiting.remove(name)
+        visited.add(name)
+
+    for name in graph:
+        visit(name)
 
 
 def load_profile(path: Path) -> FileProfile:
@@ -88,6 +143,7 @@ def load_profile(path: Path) -> FileProfile:
     names = [skill.name for skill in skills]
     if len(names) != len(set(names)):
         raise ValueError(f"{path}: duplicate skill names")
+    _validate_skill_dependencies(path, skills)
     handbook_path = path / "knowledge" / "DOMAIN_PLAYBOOK.md"
     handbook = handbook_path.read_text(encoding="utf-8").strip() if handbook_path.is_file() else ""
     return FileProfile(
@@ -160,6 +216,39 @@ def _token_overlap(left: set[str], right: set[str]) -> int:
     )
 
 
+def resolve_skill_dependencies(
+    profile: FileProfile,
+    skills: tuple[FileSkill, ...] | list[FileSkill],
+) -> tuple[FileSkill, ...]:
+    """Return selected skills plus dependencies in deterministic topological order."""
+    by_name = {skill.name: skill for skill in profile.skills}
+    allowed_tools = set(profile.data.get("tools") or ())
+    resolved: list[FileSkill] = []
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(skill: FileSkill) -> None:
+        if skill.name in visited:
+            return
+        if skill.name in visiting:
+            raise ValueError(f"{profile.agent_id}: cyclic active skill dependency at {skill.name}")
+        missing_tools = set(skill.requires_tools) - allowed_tools
+        if missing_tools:
+            raise ValueError(
+                f"{profile.agent_id}/{skill.name}: tools not allow-listed: {sorted(missing_tools)}"
+            )
+        visiting.add(skill.name)
+        for dependency in skill.dependencies:
+            visit(by_name[dependency])
+        visiting.remove(skill.name)
+        visited.add(skill.name)
+        resolved.append(skill)
+
+    for skill in skills:
+        visit(skill)
+    return tuple(resolved)
+
+
 def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[FileSkill, ...]:
     if limit < 1 or not profile.skills:
         return ()
@@ -195,6 +284,7 @@ def skill_context(code: str, question: str, limit: int = 3) -> str:
     selected = [skill for skill in selected if skill.name != "anti-barnum-protocol"]
     if anti:
         selected.insert(0, anti)
+    selected = list(resolve_skill_dependencies(profile, selected))
     if not selected:
         return ""
     blocks = [

@@ -68,3 +68,14 @@ async def test_runtime_places_active_skills_before_safety_tail(monkeypatch):
     prompt = await runtime.system_for(None, user, spec, question="транзиты планет")
     assert "ACTIVE_SKILL: anti-barnum-protocol" in prompt
     assert prompt.index("ACTIVE_SKILL:") < prompt.index("Правила безопасности")
+
+
+def test_composable_skill_dependencies_and_tool_allowlist():
+    from app.core.agents.file_loader import profile_for_legacy, resolve_skill_dependencies
+
+    profile = profile_for_legacy("astro")
+    assert profile is not None
+    target = next(skill for skill in profile.skills if skill.name == "aspect-patterns")
+    resolved = resolve_skill_dependencies(profile, [target])
+    assert [skill.name for skill in resolved] == ["anti-barnum-protocol", "aspect-patterns"]
+    assert set(target.requires_tools).issubset(set(profile.data["tools"]))
