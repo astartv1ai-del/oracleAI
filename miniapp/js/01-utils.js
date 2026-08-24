@@ -94,6 +94,28 @@ async function api(path, opts = {}) {
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+async function apiBlob(path, opts = {}) {
+  const headers = Object.assign({
+    'X-Client-Platform': clientPlatform(),
+    'X-Client-Viewport': `${Math.round(innerWidth)}x${Math.round(innerHeight)}`,
+    'X-Client-Mode': clientMode(),
+  }, opts.headers || {});
+  const initData = tg() && tg().initData;
+  if (initData) headers['X-Init-Data'] = initData;
+  let url = path;
+  const dev = new URLSearchParams(location.search).get('dev_user');
+  if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + dev;
+  const res = await fetch(url, Object.assign({ headers }, opts));
+  if (!res.ok) {
+    let detail = '';
+    try { const body = await res.json(); detail = body && body.detail || ''; } catch (e) { /* binary error */ }
+    const err = new Error(detail || 'Не удалось скачать файл');
+    err.status = res.status;
+    throw err;
+  }
+  return res.blob();
+}
+
 /* User-facing errors must never expose Telegram auth, provider, HTML or JSON details. */
 function friendlyError(err, fallback) {
   const raw = String(err && err.message || '').trim();

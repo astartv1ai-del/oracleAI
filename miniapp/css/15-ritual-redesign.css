@@ -3020,3 +3020,214 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .screen-home .home-panel--next,
   .screen-home .home-panel--dock { padding-top: 18px; }
 }
+
+
+/* Natal chart premium wheel contract: graphics stay in their own stage. */
+.chart-result {
+  min-width: 0;
+  overflow: visible;
+}
+.chart-result .nw {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  width: min(100%, 392px);
+  margin: 16px auto 10px;
+  padding: clamp(12px, 3vw, 22px);
+  overflow: visible;
+  border: 1px solid rgba(230, 219, 255, .14);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(185,166,255,.10), transparent 48%),
+    linear-gradient(145deg, rgba(255,255,255,.045), rgba(17,14,34,.58));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 22px 44px -34px rgba(0,0,0,.95);
+}
+.chart-result .nw svg {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  overflow: visible;
+  isolation: isolate;
+}
+.chart-result .nw .n-wheel-ring {
+  vector-effect: non-scaling-stroke;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.chart-result .nw .n-sign-sector { pointer-events: none; }
+.chart-result .nw .n-zodiac-tick,
+.chart-result .nw .n-house-line,
+.chart-result .nw .n-aspect-line {
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.chart-result .nw .n-sign-glyph,
+.chart-result .nw .n-house-label,
+.chart-result .nw .n-asc-label { user-select: none; pointer-events: none; }
+.chart-result .nw .n-planet,
+.chart-result .nw .n-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 180ms var(--ease-ritual), filter 180ms var(--ease-ritual);
+}
+.chart-result .nw .n-planet:hover,
+.chart-result .nw .n-planet:focus-visible,
+.chart-result .nw .n-planet.active {
+  filter: drop-shadow(0 0 7px rgba(230,193,120,.62));
+}
+.chart-result .nw .n-planet.active circle { stroke-width: 2.1; }
+.chart-result .nw .n-planet.el-off { opacity: .14; }
+.chart-result .nw .n-core { transform-box: fill-box; transform-origin: center; }
+.chart-result .nw-plaque {
+  left: 50%;
+  bottom: 10px;
+  width: min(90%, 300px);
+  max-width: calc(100% - 20px);
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(230,193,120,.24);
+  border-radius: 12px;
+  background: rgba(10,8,23,.90);
+  box-shadow: 0 14px 26px -18px rgba(0,0,0,.95);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 420px) {
+  .chart-result .nw { width: min(100%, 352px); padding: 10px; border-radius: 18px; }
+  .chart-result .nw-plaque { bottom: 7px; width: calc(100% - 14px); font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-result .nw .n-planet,
+  .chart-result .nw .n-node,
+  .chart-result .nw .n-core { transition: none; animation: none !important; }
+}
+
+
+/* Structured natal interpretation: bounded, scannable, and separate from the wheel. */
+.fc-explain--structured {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(230,219,255,.13);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(17,14,34,.55));
+}
+.fc-explain__summary {
+  margin: 0 2px 2px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.52;
+  overflow-wrap: anywhere;
+}
+.chart-explain-section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(230,219,255,.10);
+  border-radius: 13px;
+  background: rgba(10,8,23,.25);
+}
+.chart-explain-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding: 10px 11px;
+  cursor: pointer;
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  list-style: none;
+}
+.chart-explain-section summary::-webkit-details-marker { display: none; }
+.chart-explain-section summary span:last-child {
+  flex: none;
+  color: var(--champagne-300);
+  font-size: 17px;
+  transition: transform 180ms var(--ease-ritual);
+}
+.chart-explain-section[open] summary span:last-child { transform: rotate(180deg); }
+.chart-explain-section__body {
+  display: grid;
+  gap: 9px;
+  padding: 0 11px 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.52;
+  overflow-wrap: anywhere;
+}
+.chart-explain-section__body p { margin: 0; }
+.chart-explain-section__fact,
+.chart-explain-section__question {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 8px 9px;
+  border-left: 2px solid rgba(230,193,120,.48);
+  border-radius: 0 9px 9px 0;
+  background: rgba(230,193,120,.055);
+}
+.chart-explain-section__fact b,
+.chart-explain-section__question b {
+  color: var(--champagne-300);
+  font-size: 9px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+.chart-explain-section__fact span { color: var(--text-main); }
+.chart-explain-section__question {
+  border-left-color: rgba(185,166,255,.48);
+  background: rgba(185,166,255,.055);
+}
+.chart-explain-section__question b { color: #c8b6ff; }
+@media (max-width: 380px) {
+  .fc-explain--structured { padding: 9px; }
+  .chart-explain-section summary { padding-inline: 9px; font-size: 12px; }
+  .chart-explain-section__body { padding-inline: 9px; font-size: 11.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-explain-section summary span:last-child { transition: none; }
+}
+
+
+/* Final chart stage correction: never constrain the responsive square SVG to legacy 210px. */
+.chart-result .nw {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+
+/* Natal result controls: one reusable responsive row instead of inline layout styles. */
+.chart-saved-state {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.chart-action-row {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 6px;
+  align-items: stretch;
+}
+.chart-action-row .btn {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.chart-action-row__ask { flex: 1 1 auto; }
+.chart-action-icon { flex: 0 0 auto; min-width: 42px; }
+.chart-accent-legend { margin: 6px 0 8px; }
+.chart-accent-chip { color: var(--violet); }
+.chart-empty { color: var(--text-faint); font-size: 12.5px; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .chart-action-row { gap: 6px; }
+  .chart-action-row__ask { min-width: 0; }
+  .chart-action-icon { min-width: 38px; padding-inline: 9px; }
+}

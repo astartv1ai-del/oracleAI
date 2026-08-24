@@ -16,6 +16,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 from app.api.deps import get_db  # noqa: E402
 from app.api.main import app  # noqa: E402
 from app.api.security import parse_init_data  # noqa: E402
+from app.core import agent as agent_core  # noqa: E402
 from app.repo import dialog, users  # noqa: E402
 
 
@@ -803,3 +804,30 @@ async def test_client_platform_metadata_is_normalized(client, db, user):
     assert stored["last_platform"] == "unknown"
     assert stored["last_viewport"] == "390x844"
     assert stored["last_client_mode"] == "mobile"
+
+
+async def test_chart_pdf_endpoint_returns_real_pdf(client, user):
+    response = await client.get("/api/chart/pdf", params=as_user(user))
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.headers["content-disposition"].startswith("attachment;")
+    assert response.content.startswith(b"%PDF-")
+    assert len(response.content) > 10_000
+
+
+async def test_chart_interpret_returns_structured_on_first_live_response(
+    client, user, monkeypatch
+):
+    structured = {
+        "summary": "Короткий проверяемый ориентир.",
+        "sun": {"fact": "Солнце в Близнецах.", "interpretation": "Наблюдай за способом выбирать слова.", "question": "Что важно назвать точнее?"},
+    }
+
+    async def fake_interpret(db, current_user, chart):
+        chart["interpretation_structured"] = structured
+        return "Солнце в Близнецах помогает наблюдать способ выбирать слова." * 20, True
+
+    monkeypatch.setattr(agent_core, "interpret_chart", fake_interpret)
+    response = await client.post("/api/chart/interpret", params=as_user(user))
+    assert response.status_code == 200
+    assert response.json()["structured"] == structured

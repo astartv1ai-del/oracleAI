@@ -94,6 +94,7 @@
     'set-lang': (el, data) => call('setLanguage', data.lang),
     'ask-chart': () => call('askChart'),
     'share-chart': () => call('shareChart'),
+    'download-chart-pdf': () => call('downloadChartPdf'),
     'share-compat': (el, data) => call('shareCompat', data.pdate, data.pname, data.rel),
     'modal-close': () => call('closeModal')
   };
