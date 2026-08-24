@@ -101,6 +101,7 @@ def order_from(row: dict) -> builder.Order:
         birth_city=pick("birth_city", "city", "город") or None,
         email=pick("email", "почта"),
         listing=pick("listing", "листинг", "sku"),
+        lang=pick("lang", "language", "язык") or "ru",
     )
 
 
@@ -111,6 +112,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--date", help="дата рождения ДД.ММ.ГГГГ")
     ap.add_argument("--time", help="время рождения ЧЧ:ММ (можно не указывать)")
     ap.add_argument("--city", help="город рождения")
+    ap.add_argument("--lang", choices=("ru", "en"), default="ru",
+                    help="язык отчёта: ru или en")
     ap.add_argument("--out", type=Path, default=ROOT / "data" / "pdf",
                     help="куда складывать файлы")
     ap.add_argument("--batch", default="pdf", help="партия промокодов = листинг")
@@ -154,6 +157,7 @@ async def main() -> None:
             birth_date=parse_date(args.date),
             birth_time=parse_time(args.time),
             birth_city=(args.city or "").strip() or None,
+            lang=args.lang,
         )]
 
     if not args.html and not render.available():

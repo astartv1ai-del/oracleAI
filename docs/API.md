@@ -137,8 +137,17 @@ POST /api/profile
 
 ```bash
 python -m scripts.gen_pdf --name Анна --date 21.06.1990 --time 14:30 \\
-  --city Казань --out data/pdf
+  --city Казань --lang ru --out data/pdf
 ```
+
+Для English-версии используется тот же pipeline с `--lang en`. В batch CSV допускается поле `lang` или `language`; без него выбирается `ru`.
+
+```bash
+python -m scripts.gen_pdf --name Anna --date 21.06.1990 --time 14:30 \\
+  --city Kazan --lang en --out data/pdf
+```
+
+В приложении язык берётся из пользовательской настройки профиля `lang` (`ru` или `en`) и передаётся в `Order.lang`. Редактируемые project settings для обложки и footer: `brand.name`, `brand.name_en`, `brand.tagline`, `brand.tagline_en`, `brand.project_url`, `disclaimer` и `disclaimer_en`. Если URL не задан в БД, используется `PUBLIC_URL`/`WEBAPP_URL`, а затем ссылка репозитория OracleAI как безопасный fallback.
 
 Команда создаёт PDF через WeasyPrint, а при его отсутствии сохраняет HTML, который можно открыть на телефоне или ПК и распечатать в PDF браузером. `--html` принудительно сохраняет responsive HTML preview; `--csv` запускает batch-режим. Полный отчёт включает summary, wheel с Rahu/Ketu, conventions, планеты, лунные узлы, Lilith, expanded points, дома, аспекты, интерпретационные разделы, Матрицу и safety disclaimer. PDF использует читаемую A4-верстку; HTML preview применяет screen CSS для узких и широких viewport.
 

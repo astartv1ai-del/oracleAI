@@ -15,7 +15,7 @@ import math
 PAGE_CSS = """
 @page {
   size: A4;
-  margin: 18mm 16mm 20mm 16mm;
+  margin: 14mm 15mm 16mm 15mm;
   background: #0b0722;
   @bottom-center {
     content: counter(page);
@@ -30,42 +30,59 @@ body {
   background: #0b0722;
   color: #f4efff;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 11pt;
-  line-height: 1.62;
+  font-size: 10.5pt;
+  line-height: 1.46;
   overflow-wrap: anywhere;
 }
 h1, h2, h3 { font-weight: normal; color: #e8c56b; }
-h1 { font-size: 30pt; line-height: 1.15; margin: 0 0 8mm; }
+h1 { font-size: 30pt; line-height: 1.08; margin: 0 0 7mm; }
 h2 {
-  font-size: 17pt;
-  margin: 0 0 5mm;
+  font-size: 16pt;
+  margin: 0 0 4mm;
   padding-bottom: 2mm;
   border-bottom: 1px solid rgba(232, 197, 107, .35);
 }
-h3 { font-size: 12.5pt; margin: 6mm 0 2mm; color: #f3dc9a; }
-p { margin: 0 0 3.5mm; }
+h3 { font-size: 11.5pt; margin: 4mm 0 1.5mm; color: #f3dc9a; }
+p { margin: 0 0 2.5mm; }
 .muted { color: #a99fc9; }
 .small { font-size: 9.5pt; }
 .center { text-align: center; }
 
-/* Разделы начинаются с новой страницы: разбор читают по частям, а не подряд */
-.section { page-break-before: always; }
-.section:first-of-type { page-break-before: avoid; }
-
-.cover { text-align: center; padding-top: 22mm; }
-.cover .sub { color: #a99fc9; font-size: 12pt; margin-top: 4mm; }
-.cover .who {
-  margin-top: 14mm;
-  font-size: 15pt;
-  color: #f4efff;
+/* Разделы текут непрерывно; отдельный page break используется только для cover. */
+.section { margin: 0 0 8mm; break-inside: auto; }
+.section h2 { break-after: avoid; }
+.cover {
+  min-height: 245mm;
+  text-align: center;
+  padding: 20mm 10mm 12mm;
+  page-break-after: always;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
-.cover .born { color: #a99fc9; font-size: 11pt; margin-top: 2mm; }
+.cover .brand { color: #e8c56b; font-size: 12pt; letter-spacing: 2px; text-transform: uppercase; }
+.cover .eyebrow { color: #a99fc9; font-size: 9pt; letter-spacing: 1.5px; text-transform: uppercase; margin: 6mm 0; }
+.cover .sub { color: #a99fc9; font-size: 12pt; margin-top: 3mm; max-width: 125mm; }
+.cover .who { margin-top: 13mm; font-size: 17pt; color: #f4efff; }
+.cover .born { color: #a99fc9; font-size: 10.5pt; margin-top: 2mm; }
+.cover .project-link { color: #e8c56b; font-size: 9.5pt; margin-top: 12mm; overflow-wrap: anywhere; }
+.brand-mark { margin: 0 auto 6mm; }
+.brand-mark svg { width: 43mm; height: 43mm; }
+
+.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
+.overview-visuals { display: grid; gap: 3mm; justify-items: center; }
+.overview-visuals .wheel { margin: 0; width: 100%; }
+.overview-visuals svg { max-width: 100%; height: auto; }
+.closing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 5mm; }
+.closing-grid .card { margin-bottom: 0; }
+.closing-grid h3 { margin-top: 0; }
 
 .card {
   border: 1px solid rgba(232, 197, 107, .30);
   border-radius: 4mm;
-  padding: 5mm 6mm;
-  margin: 0 0 5mm;
+  padding: 4mm 5mm;
+  margin: 0 0 4mm;
   background: rgba(255, 255, 255, .04);
 }
 .kv { display: flex; justify-content: space-between; gap: 6mm;
@@ -74,29 +91,32 @@ p { margin: 0 0 3.5mm; }
 .kv b { color: #e8c56b; font-weight: normal; }
 
 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-td, th { padding: 1.6mm 1.4mm; vertical-align: top; overflow-wrap: anywhere; }
+td, th { padding: 1.15mm 1.1mm; vertical-align: top; overflow-wrap: anywhere; }
 th { color: #e8c56b; text-align: left; font-weight: normal; border-bottom: 1px solid rgba(232,197,107,.35); }
 td.label { color: #a99fc9; width: 42%; }
-table.data-table { font-size: 9.5pt; line-height: 1.35; }
+table.data-table { font-size: 8.6pt; line-height: 1.22; }
 table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,255,255,.12); }
-.card, .section, .ticket { break-inside: avoid; }
+.card, .ticket { break-inside: avoid; }
 
 @media screen {
   body { font-size: 12pt; line-height: 1.55; padding: 12px; }
   .section { margin: 0 auto 28px; max-width: 760px; }
-  .cover { padding-top: 28px; }
+  .cover { padding-top: 28px; min-height: 0; }
   h1 { font-size: 27pt; }
   h2 { font-size: 19pt; }
   .card { padding: 16px; border-radius: 14px; }
   td, th { padding: 7px 5px; }
-  table.data-table { font-size: 10.5pt; }
+  table.data-table { font-size: 10.5pt; line-height: 1.35; }
+  .overview-grid { grid-template-columns: 1fr; }
+  .closing-grid { grid-template-columns: 1fr; }
   .wheel svg { max-width: 100%; height: auto; }
 }
 
 @media print {
   body { overflow-wrap: normal; }
-  .section { page-break-before: always; }
-  .section:first-of-type { page-break-before: avoid; }
+  .cover { page-break-after: always; }
+  .overview-grid, .card, table, .ticket { break-inside: avoid; }
+  tr { break-inside: avoid; }
 }
 
 .wheel { text-align: center; margin: 4mm 0 6mm; }
@@ -227,7 +247,7 @@ def wheel_svg(chart: dict, size: int = 330) -> str:
             f'xmlns="http://www.w3.org/2000/svg">{"".join(parts)}</svg>')
 
 
-def matrix_svg(matrix: dict, size: int = 300) -> str:
+def matrix_svg(matrix: dict, size: int = 300, labels: dict[str, str] | None = None) -> str:
     """Октаграмма Матрицы Судьбы: два наложенных квадрата и арканы по вершинам."""
     cx = cy = size / 2
     R = size * 0.38
@@ -245,7 +265,9 @@ def matrix_svg(matrix: dict, size: int = 300) -> str:
     for i, item in enumerate(items):
         a = math.radians(i * 60 - 90)
         x, y = cx + R * math.cos(a), cy + R * math.sin(a)
-        label = item["title"].replace("Аркан ", "").replace("Линия ", "")
+        label = (labels or {}).get(item.get("title"), item["title"])
+        label = label.replace("Arcana ", "").replace("Line ", "")
+        label = label.replace("Аркан ", "").replace("Линия ", "")
         parts.append(
             f'<circle cx="{x:.1f}" cy="{y:.1f}" r="20" fill="#140c30" '
             f'stroke="rgba(232,197,107,.55)"/>'
@@ -266,10 +288,25 @@ def matrix_svg(matrix: dict, size: int = 300) -> str:
             f'xmlns="http://www.w3.org/2000/svg">{"".join(parts)}</svg>')
 
 
-def document(title: str, blocks: list[str]) -> str:
-    """Собирает готовую HTML-страницу разбора."""
+def brand_mark_svg(size: int = 180) -> str:
+    """Минималистичный векторный знак OracleAI для cover без внешних assets."""
+    center = size / 2
+    return (f'<svg viewBox="0 0 {size} {size}" xmlns="http://www.w3.org/2000/svg" '
+            f'role="img" aria-label="OracleAI">'
+            f'<circle cx="{center}" cy="{center}" r="65" fill="none" stroke="#e8c56b" stroke-width="2"/>'
+            f'<circle cx="{center}" cy="{center}" r="48" fill="#140c30" stroke="#a99fc9" stroke-width="1"/>'
+            f'<path d="M{center-18} {center+30} A38 38 0 1 1 {center+18} {center-30} A28 28 0 1 0 {center-18} {center+30}" fill="#e8c56b"/>'
+            f'<circle cx="{center+55}" cy="{center-47}" r="4" fill="#e8c56b"/>'
+            f'<circle cx="{center-63}" cy="{center+18}" r="2.5" fill="#a99fc9"/>'
+            f'</svg>')
+
+
+def document(title: str, blocks: list[str], *, lang: str = "ru") -> str:
+    """Собирает готовую responsive HTML-страницу разбора."""
     body = "\n".join(blocks)
-    return (f'<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">'
+    html_lang = "en" if (lang or "").lower().startswith("en") else "ru"
+    return (f'<!DOCTYPE html><html lang="{html_lang}"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+            f'<meta name="theme-color" content="#0b0722">'
             f'<title>{esc(title)}</title><style>{PAGE_CSS}</style></head>'
             f'<body>{body}</body></html>')
