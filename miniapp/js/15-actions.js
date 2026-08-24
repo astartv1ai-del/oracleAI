@@ -30,6 +30,8 @@
       call(data.fn);
     },
     'tool-toggle': () => { tactile('open'); call('toggleToolbox'); },
+    'sidebar-toggle': () => call('toggleWorkspaceSidebar'),
+    'sidebar-new': () => call('startNewChat'),
     'palm-start': () => { tactile('select'); call('featurePalm'); },
     'today-ask': () => call('todayAsk'),
     'day-flip': () => call('todayFlip'),

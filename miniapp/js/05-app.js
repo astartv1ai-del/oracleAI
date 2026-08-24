@@ -245,24 +245,111 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     const name = this.me && this.me.name ? this.me.name : 'Мой профиль';
     const initial = this.me && this.me.name ? esc(this.me.name[0].toUpperCase()) : 'О';
     root.innerHTML = `
-      <header class="app-header">
-        <button class="user-pill" data-act="go" data-goto="profile" aria-label="Открыть профиль: ${esc(name)}">
-          <span class="avatar" aria-hidden="true">${initial}</span>
-          <span class="user-name">${esc(name)}</span>
-        </button>
-        <div class="brand-lockup" aria-label="OracleAI — личное пространство ритуалов">
-          <span class="brand-mark" aria-hidden="true">${sigilIcon('brand')}</span>
-          <span class="brand-title">ORACLE<small>AI</small></span>
+      <div class="workspace-shell">
+        <aside class="workspace-sidebar" id="workspace-sidebar" aria-label="Навигация OracleAI">
+          <div class="workspace-sidebar__top">
+            <div class="workspace-brand" aria-label="OracleAI">
+              <span class="brand-mark" aria-hidden="true">${sigilIcon('brand')}</span>
+              <span class="brand-title">ORACLE<small>AI</small></span>
+            </div>
+            <button class="workspace-new" data-act="sidebar-new" type="button"><span aria-hidden="true">＋</span><b>Новый чат</b></button>
+          </div>
+          <nav class="workspace-sidebar__nav" aria-label="Разделы">
+            <button class="workspace-nav-item" data-act="go" data-goto="home"><span>${sigilIcon('home')}</span><b>Сегодня</b></button>
+            <button class="workspace-nav-item" data-act="go" data-goto="hub"><span>${sigilIcon('hub')}</span><b>Проводники</b></button>
+            <button class="workspace-nav-item" data-act="go" data-goto="profile"><span>${sigilIcon('profile')}</span><b>Моё пространство</b></button>
+          </nav>
+          <div class="workspace-sidebar__body">
+            <div class="workspace-sidebar__section-title">Проводники</div>
+            <div class="workspace-agent-list" id="workspace-agent-list"></div>
+            <div class="workspace-sidebar__section-title workspace-sidebar__section-title--chats"><span id="workspace-chats-label">Последние чаты</span><span id="workspace-chats-count"></span></div>
+            <div class="workspace-session-list" id="workspace-session-list"></div>
+          </div>
+          <button class="workspace-profile" data-act="go" data-goto="profile" type="button">
+            <span class="avatar" aria-hidden="true">${initial}</span><span><b class="workspace-profile__name">${esc(name)}</b><small>Моё пространство</small></span><span aria-hidden="true">›</span>
+          </button>
+        </aside>
+        <div class="workspace-scrim" data-act="sidebar-toggle" aria-hidden="true"></div>
+        <div class="workspace-main">
+          <header class="app-header">
+            <button class="workspace-mobile-toggle" data-act="sidebar-toggle" type="button" aria-label="Открыть меню и чаты" aria-expanded="false" title="Меню и чаты">${sigilIcon('menu')}</button>
+            <button class="user-pill" data-act="go" data-goto="profile" aria-label="Открыть профиль: ${esc(name)}">
+              <span class="avatar" aria-hidden="true">${initial}</span>
+              <span class="user-name">${esc(name)}</span>
+            </button>
+            <div class="brand-lockup" aria-label="OracleAI — личное пространство ритуалов">
+              <span class="brand-mark" aria-hidden="true">${sigilIcon('brand')}</span>
+              <span class="brand-title">ORACLE<small>AI</small></span>
+            </div>
+            <button class="bell" data-act="bell" aria-label="Открыть уведомления" title="Уведомления">
+              ${sigilIcon('bell')}<span class="bell-dot" aria-hidden="true"></span>
+            </button>
+          </header>
+          <div id="app-main"></div>
+          <nav class="app-nav" aria-label="Основная навигация"><div class="main-nav" id="main-nav"></div></nav>
         </div>
-        <button class="bell" data-act="bell" aria-label="Открыть уведомления" title="Уведомления">
-          ${sigilIcon('bell')}<span class="bell-dot" aria-hidden="true"></span>
-        </button>
-      </header>
-      <div id="app-main"></div>
-      <nav class="app-nav" aria-label="Основная навигация"><div class="main-nav" id="main-nav"></div></nav>`;
+      </div>`;
     this.renderNav();
+    this.renderSidebar();
   };
 
+
+  app.closeWorkspaceSidebar = function() {
+    const root = document.getElementById('app-root');
+    if (root) root.classList.remove('workspace-sidebar-open');
+    const sidebar = document.getElementById('workspace-sidebar');
+    const trigger = document.querySelector('.workspace-mobile-toggle');
+    const scrim = document.querySelector('.workspace-scrim');
+    if (sidebar) sidebar.setAttribute('aria-hidden', 'false');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    if (scrim) scrim.setAttribute('aria-hidden', 'true');
+  };
+
+  app.toggleWorkspaceSidebar = function() {
+    const root = document.getElementById('app-root');
+    if (!root) return;
+    const open = root.classList.toggle('workspace-sidebar-open');
+    const trigger = document.querySelector('.workspace-mobile-toggle');
+    const scrim = document.querySelector('.workspace-scrim');
+    if (trigger) trigger.setAttribute('aria-expanded', String(open));
+    if (scrim) scrim.setAttribute('aria-hidden', String(!open));
+  };
+
+  app.startNewChat = function() {
+    if (this.chat && this.chat.key) {
+      this.closeWorkspaceSidebar();
+      this.newSession();
+      return;
+    }
+    this.openChat('oracle', () => setTimeout(() => this.newSession(), 90));
+  };
+
+  app.renderSidebar = function() {
+    const agentList = document.getElementById('workspace-agent-list');
+    const sessionList = document.getElementById('workspace-session-list');
+    const label = document.getElementById('workspace-chats-label');
+    const count = document.getElementById('workspace-chats-count');
+    if (!agentList || !sessionList) return;
+    const agents = this.agents.length ? this.agents : Object.keys(AGENT_BRAND).map(code => this.normalizeAgent({}, code));
+    const active = this.chat && this.chat.key;
+    agentList.innerHTML = agents.slice(0, 4).map(a => `
+      <button class="workspace-agent-item ${a.code === active ? 'active' : ''}" data-act="chat" data-chat="${esc(a.code)}" type="button">
+        <span class="workspace-agent-item__avatar" style="${this.agentThemeStyle(a, a.code)}"><img src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="" loading="lazy"></span>
+        <span class="workspace-agent-item__copy"><b>${esc(a.name)}</b><small>${esc(a.title || a.role || '')}</small></span>
+        <span class="workspace-agent-item__dot" aria-hidden="true"></span>
+      </button>`).join('');
+    const sessions = active ? (this.chat.sessions || []) : [];
+    if (label) label.textContent = active ? `Чаты · ${(this.chat.spec && this.chat.spec.name) || 'проводник'}` : 'Последние чаты';
+    if (count) count.textContent = sessions.length ? `${sessions.length}/5` : '';
+    sessionList.innerHTML = sessions.length ? sessions.map(s => `
+      <div class="workspace-session-item ${s.id === this.chat.tid ? 'active' : ''}">
+        <button data-act="open-session" data-tid="${s.id}" type="button"><span class="workspace-session-item__icon">⌁</span><span><b>${esc(s.title || 'Новый разговор')}</b><small>${esc(s.last_text || 'Продолжить разговор')}</small></span></button>
+        <button class="workspace-session-item__delete" data-act="del-session" data-tid="${s.id}" type="button" aria-label="Удалить чат" title="Удалить чат">×</button>
+      </div>`).join('') : `<div class="workspace-session-empty">${active ? 'Новый разговор появится после первого сообщения.' : 'Выбери проводника, чтобы увидеть его чаты.'}</div>`;
+    const profileName = document.querySelector('.workspace-profile__name');
+    if (profileName && this.me && this.me.name) profileName.textContent = this.me.name;
+    document.querySelectorAll('.workspace-nav-item').forEach(item => item.classList.toggle('active', item.dataset.goto === (this.chat.key ? 'hub' : this.view)));
+  };
 
   app.navItems = function() {
     return [
@@ -274,18 +361,24 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 
   app.renderNav = function() {
     const active = this.chat.key ? 'hub' : this.view;
-    document.getElementById('main-nav').innerHTML = this.navItems().map(n => `
+    const nav = document.getElementById('main-nav');
+    if (!nav) return;
+    nav.innerHTML = this.navItems().map(n => `
       <button class="nav-btn ${active === n.k ? 'active' : ''}" data-act="go" data-goto="${n.k}" aria-current="${active === n.k ? 'page' : 'false'}" aria-label="${esc(n.t)}: ${esc(n.hint)}">
         <span class="nav-ico">${sigilIcon(n.ico)}</span>
         <span class="nav-copy"><b>${esc(n.t)}</b><small>${esc(n.hint)}</small></span>
-      </button>`).join('');
+            </button>`).join('');
+    this.renderSidebar();
   };
+
 
   app.go = function(v) {
     if (v === 'chat') v = 'hub';
+    this.closeWorkspaceSidebar();
     if (v !== 'hub') this.chat.key = null;
     this.view = v;
     this.renderNav();
+    this.renderSidebar();
     const main = document.getElementById('app-main');
     if (v === 'home') this.renderHome(main);
     else if (v === 'hub') this.renderHub(main);
@@ -310,6 +403,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 
   app.loadAgents = async function() {
     try { this.agents = await api('/api/agents'); } catch (e) { this.agents = []; }
+    this.renderSidebar();
     if (this.view === 'hub') this.renderHub(document.getElementById('app-main'));
     if (this.view === 'home') this.renderHome(document.getElementById('app-main'));
   };

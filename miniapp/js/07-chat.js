@@ -1,6 +1,7 @@
 /* chat: чат-агент, сессии, лунная неделя, тулбокс, отправка */
   app.openChat = function(key, after) {
     haptic('soft');
+    if (typeof this.closeWorkspaceSidebar === 'function') this.closeWorkspaceSidebar();
     // Панель инструментов не должна оставаться поверх нового диалога.
     if (typeof this.setToolbox === 'function') this.setToolbox(false);
     if (this.chat.key !== key) {
@@ -198,6 +199,7 @@
 
 
   app.openSession = async function(id) {
+    if (typeof this.closeWorkspaceSidebar === 'function') this.closeWorkspaceSidebar();
     try {
       const r = await api(`/api/chat/${this.chat.key}/sessions/${id}`);
       this.chat.spec = this.normalizeAgent(r.agent, this.chat.key);
@@ -361,6 +363,7 @@
           </section>
         </div>
       </div>`;
+    if (typeof this.renderSidebar === 'function') this.renderSidebar();
     this.scrollToBottom();
   };
 

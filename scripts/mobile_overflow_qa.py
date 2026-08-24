@@ -73,6 +73,9 @@ def metrics(ws, stage, width, height):
       document.querySelectorAll('.agent-card *, .tarot-picker-widget *').forEach((el, i) => {{
         if (el.scrollWidth > el.clientWidth + 1) inspect(el, 'descendant-overflow', i);
       }});
+      const sidebar = document.querySelector('.workspace-sidebar');
+      const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
+      const sidebarMetrics = sidebar ? {{visible: sidebarStyle?.transform === 'none' || sidebar.getBoundingClientRect().right > 0, transform: sidebarStyle?.transform || '', rectWidth: Math.round(sidebar.getBoundingClientRect().width * 100) / 100, rectLeft: Math.round(sidebar.getBoundingClientRect().left * 100) / 100}} : null;
       const palm = document.querySelector('.palm-result');
       const palmChildren = palm ? Array.from(palm.children).map((el, i) => ({{i, tag: el.tagName.toLowerCase(), className: typeof el.className === 'string' ? el.className : '', height: Math.round(el.getBoundingClientRect().height * 100) / 100, text: (el.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 90)}})) : [];
       return {{
@@ -81,6 +84,8 @@ def metrics(ws, stage, width, height):
         document: {{clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, bodyScrollWidth: document.body.scrollWidth}},
         rows,
         palmChildren,
+        sidebar: sidebarMetrics,
+        sidebarOpen: document.querySelector('#app-root')?.classList.contains('workspace-sidebar-open') || false,
         scrollContainers: rows.filter(r => r.isScrollContainer),
         horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 || document.body.scrollWidth > document.documentElement.clientWidth + 1 || rows.some(r => r.isScrollContainer)
       }};
@@ -122,6 +127,10 @@ def main():
             evaluate(ws, "window.app.go('hub')")
             time.sleep(0.4)
             results.append(metrics(ws, "hub", width, height))
+            evaluate(ws, "window.app.toggleWorkspaceSidebar()")
+            time.sleep(0.2)
+            results.append(metrics(ws, "mobile-sidebar-open", width, height))
+            evaluate(ws, "window.app.toggleWorkspaceSidebar()")
             evaluate(ws, "window.app.openChat('tarot', () => window.app.featureTarot())")
             time.sleep(1.2)
             results.append(metrics(ws, "tarot-picker", width, height))
