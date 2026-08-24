@@ -2946,3 +2946,77 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .dc-card-inner,
   .tarot-card-big .tb-inner { transition: none !important; }
 }
+
+
+/* v110 · dashboard panels are explicit layout units */
+.screen-home .home-secondary > .home-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.screen-home .home-secondary > .home-panel:first-of-type { padding-top: 0; border-top: 0; }
+.screen-home .home-panel > .section-kicker { margin: 0 0 7px; }
+.screen-home .home-panel > .section-title { margin: 0 0 12px; }
+.screen-home .home-panel > .forecast-flow,
+.screen-home .home-panel > .card-day-big,
+.screen-home .home-panel > .na-card,
+.screen-home .home-panel > .dock-grid { margin-top: 0; }
+.screen-home .home-panel--day .card-day-big { align-items: center; }
+.screen-home .home-panel--dock .home-agent-note { margin-top: 10px; }
+@media (min-width: 900px) {
+  .screen-home .home-layout { align-items: start; }
+  .screen-home .home-primary { min-width: 0; }
+  .screen-home .home-secondary { min-width: 0; }
+  .screen-home .home-secondary > .moon-section { margin-bottom: 8px; }
+}
+@media (max-width: 899px) {
+  .screen-home .home-secondary > .home-panel { padding-top: 18px; }
+  .screen-home .home-secondary > .home-panel:first-of-type { padding-top: 0; }
+  .screen-home .home-panel > .section-title { margin-bottom: 10px; }
+}
+
+
+/* v111 · true editorial dashboard grid */
+@media (min-width: 900px) {
+  .screen-home .home-layout {
+    grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr);
+    grid-template-areas:
+      "hero moon"
+      "ritual forecast"
+      "day next"
+      "dock dock";
+    align-items: start;
+    row-gap: 28px;
+  }
+  .screen-home .home-primary,
+  .screen-home .home-secondary { display: contents !important; }
+  .screen-home .hero-orb { grid-area: hero; margin: 0; }
+  .screen-home .moon-section { grid-area: moon; margin: 0 0 0; }
+  .screen-home .daily-ritual { grid-area: ritual; margin: 0; }
+  .screen-home .home-panel--forecast { grid-area: forecast; }
+  .screen-home .home-panel--day { grid-area: day; }
+  .screen-home .home-panel--next { grid-area: next; }
+  .screen-home .home-panel--dock { grid-area: dock; }
+  .screen-home .home-agent-note { grid-area: dock; align-self: end; }
+  .screen-home .home-panel { min-width: 0; }
+  .screen-home .home-panel--forecast,
+  .screen-home .home-panel--day,
+  .screen-home .home-panel--next { padding-top: 0; border-top: 0; }
+  .screen-home .home-panel--forecast,
+  .screen-home .home-panel--day { border-top: 1px solid var(--line); padding-top: 18px; }
+  .screen-home .home-panel--dock { border-top: 1px solid var(--line); padding-top: 18px; }
+  .screen-home .home-panel--dock .home-agent-note { margin-top: 12px; }
+}
+@media (max-width: 899px) {
+  .screen-home .home-primary,
+  .screen-home .home-secondary { display: flex !important; }
+  .screen-home .home-layout { display: block; }
+  .screen-home .home-panel { display: flex; }
+  .screen-home .home-panel--forecast,
+  .screen-home .home-panel--day,
+  .screen-home .home-panel--next,
+  .screen-home .home-panel--dock { padding-top: 18px; }
+}

@@ -30,7 +30,7 @@
     const seasonalMoments = homeT('seasonal').map(([title, copy]) => ({ title, copy }));
     const seasonal = seasonalMoments[seasonIndex];
     main.innerHTML = `
-      <div class="screen screen-home">
+      <div class="screen screen-home${seasonalVariant === 'seasonal' ? ' screen-home--with-seasonal' : ''}">
         <div class="home-layout"><div class="home-primary">
         <div class="hero-orb">
           <div class="orb"></div>
@@ -89,8 +89,7 @@
             ? { 'New moon': 'A good time to begin and set an intention.', 'Full moon': 'Energy is rising — strengthen what you have begun.' }
             : { 'Новолуние': 'Хорошее время начинать и загадывать.', 'Полнолуние': 'Энергия на подъёме — закрепляй начатое.' };
           const note = key ? `<div class="moon-note">${atEmoji(key.emoji)} — <b>${key.day_num} ${mon[Number(key.date.slice(5, 7), 10) - 1]}</b>. ${noteCopy[atEmoji(key.emoji)]}</div>` : '';
-          return `<div class="spacer"></div>
-            <div class="moon-section">
+          return `<div class="moon-section">
               <div class="moon-head">
                 <div class="section-title" style="margin:0">${homeT('moonTitle')}</div>
                 <button class="moon-toggle" data-act="moon-week"><span class="mt-lbl">${homeT('week')}</span><span class="mo-chev">▾</span></button>
@@ -107,18 +106,19 @@
             </div>`;
         })() : ''}
 
-        <div class="spacer"></div>
-        <div class="section-kicker">${homeT('personal')}</div>
-        <div class="section-title">${homeT('todaySign')}</div>
-        <div class="forecast-flow">
-          ${t ? esc(t.forecast) : `<div class="forecast-fallback"><b>${homeT('forecastFallbackTitle')}</b><span>${homeT('forecastFallbackCopy')}</span></div>`}
-        </div>
+        <section class="home-panel home-panel--forecast">
+          <div class="section-kicker">${homeT('personal')}</div>
+          <div class="section-title">${homeT('todaySign')}</div>
+          <div class="forecast-flow">
+            ${t ? esc(t.forecast) : `<div class="forecast-fallback"><b>${homeT('forecastFallbackTitle')}</b><span>${homeT('forecastFallbackCopy')}</span></div>`}
+          </div>
+        </section>
 
         ${t && t.card ? `
-        <div class="spacer"></div>
-        <div class="section-kicker">${homeT('daySymbol')}</div>
-        <div class="section-title">${homeT('cardNearby')}</div>
-        <div class="card-day card-day-big">
+        <section class="home-panel home-panel--day">
+          <div class="section-kicker">${homeT('daySymbol')}</div>
+          <div class="section-title">${homeT('cardNearby')}</div>
+          <div class="card-day card-day-big">
           <div class="tarot-card-big" data-act="flip-card" title="Перевернуть карту">
             <div class="tb-inner">
               <div class="tb-face tb-front" style="background-image:url('${tarotAssetUrl(t.card, t.card)}')">
@@ -136,13 +136,14 @@
             <div class="cd-note">${homeT('cardCopy')}</div>
             <div class="cd-hint">${homeT('cardHint')}</div>
           </div>
-        </div>` : ''}
+          </div>
+        </section>` : ''}
 
         ${t && t.next_action && t.next_action.kind ? `
-        <div class="spacer"></div>
-        <div class="section-kicker">${homeT('nextKicker')}</div>
-        <div class="section-title">${homeT('nextTitle')}</div>
-        <div class="glass na-card">
+        <section class="home-panel home-panel--next">
+          <div class="section-kicker">${homeT('nextKicker')}</div>
+          <div class="section-title">${homeT('nextTitle')}</div>
+          <div class="glass na-card">
           <span class="na-ico">${esc(t.next_action.emoji || '✨')}</span>
           <div class="na-body">
             <div class="na-title">${esc(t.next_action.title)}</div>
@@ -151,12 +152,13 @@
           ${t.next_action.fn
             ? `<button class="btn btn-primary na-btn" data-act="chat-fn" data-chat="${esc(t.next_action.chat || 'oracle')}" data-fn="${esc(t.next_action.fn)}">${esc(t.next_action.cta)}</button>`
             : `<span class="na-empty">${esc(t.next_action.cta)}</span>`}
-        </div>` : ''}
+          </div>
+        </section>` : ''}
 
-        <div class="spacer"></div>
-        <div class="section-kicker">${homeT('chooseMood')}</div>
-        <div class="section-title">${homeT('talkTo')}</div>
-        <div class="dock-grid">
+        <section class="home-panel home-panel--dock">
+          <div class="section-kicker">${homeT('chooseMood')}</div>
+          <div class="section-title">${homeT('talkTo')}</div>
+          <div class="dock-grid">
           ${homeAgents.map(a => `
                           <button class="dock-item dock-item--${esc(a.code)}" type="button" style="${this.agentThemeStyle(a, a.code)}" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">
 
@@ -164,8 +166,9 @@
               <span class="dock-name">${esc(a.name.split(' ')[0])}</span>
               ${a.title ? `<span class="dock-role">${esc(a.title)}</span>` : ''}
             </button>`).join('')}
-        </div>
-        <div class="home-agent-note">${oracleLang() === 'en' ? 'Each guide sees your story in a different way. Begin with the voice that resonates today.' : 'Каждый проводник смотрит на твою историю по-своему. Начни с того, чей голос откликается сегодня.'}</div>
+          </div>
+          <div class="home-agent-note">${oracleLang() === 'en' ? 'Each guide sees your story in a different way. Begin with the voice that resonates today.' : 'Каждый проводник смотрит на твою историю по-своему. Начни с того, чей голос откликается сегодня.'}</div>
+        </section>
         </div></div>
       </div>`;
   };
