@@ -1,4 +1,4 @@
-"""Разделы, добавленные из исходной идеи: практики, карьера, гороскоп.
+"""Разделы, добавленные из исходной идеи: практики и мантры, карьера, гороскоп.
 
 Логика целиком в сервисах (`services.practices`, `services.horoscopes`,
 `core.skills`) — здесь только Telegram: как показать, что нажать и что ответить.
@@ -29,7 +29,7 @@ async def _menu(db, tg_id: int):
     return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)))
 
 
-# ─────────────────────────── практики ────────────────────────────────
+# ─────────────────────────── практики и мантры ────────────────────────────────
 
 def _practice_card(item: dict) -> str:
     """Карточка практики: зачем, когда, что делать сегодня и как понять эффект."""
@@ -77,7 +77,7 @@ async def _show_practices(target: Message, db, tg_id: int,
     items = await practices_svc.list_for_user(db, user, category=category)
     categories = await practices_svc.categories()
     running = [p for p in items if p["started"] and not p["finished"]]
-    head = ["<b>Практики</b>", ""]
+    head = ["🕉 <b>Практики и мантры</b>", ""]
     if running:
         head.append("Ты сейчас проходишь:")
         head += [f"• {p['emoji']} {p['title']} — день {p['day_index']} "
@@ -85,7 +85,7 @@ async def _show_practices(target: Message, db, tg_id: int,
                                       if p["streak"] >= 2 else "")
                  for p in running]
         head.append("")
-    head.append("<i>Денежные, любовные и телесно-ориентированные практики. "
+    head.append("<i>Мантры, денежные и любовные практики, работа с энергией. "
                 "У каждой — программа по дням и знаки, по которым видно, "
                 "что она работает.</i>")
     await target.answer("\n".join(head),

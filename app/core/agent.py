@@ -71,8 +71,7 @@ async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
 
 async def interpret_reading(db, user, title: str, cards: list[dict],
                             positions: list[str],
-                            question: str | None = None,
-                            deck_id: str | None = None) -> str:
+                            question: str | None = None) -> str:
     """Трактовка КОНКРЕТНЫХ вытянутых карт (карты выбрал код, не модель).
 
     `question` — формулировка пользователя «что спросить у карт»: карты отвечают на
@@ -80,9 +79,8 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
     «про жизнь вообще».
     """
     cards_block = tarot.cards_text(cards, positions)
-    selected_id = deck_id or next((card.get("deck_id") for card in cards if card.get("deck_id")), tarot.DEFAULT_DECK_ID)
-    spread_code = tarot.spread_by_title(title, selected_id)["code"]
-    ledger = tarot.reading_ledger(cards, spread_code, positions=positions, deck_id=selected_id)
+    spread_code = tarot.spread_by_title(title)["code"]
+    ledger = tarot.reading_ledger(cards, spread_code, positions=positions)
     evidence = interpretation.tarot_evidence(
         cards, positions, title=title, question=question,
         combinations=ledger["adjacent_combinations"])
@@ -109,8 +107,7 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
             text = await llm.complete(system, user_msg, tier="main",
                                       max_tokens=min(1800, 320 * max(3, len(cards))),
                                       purpose="tarot", tg_id=user["tg_id"], db=db)
-            deck_id = next((card.get("deck_id") for card in cards if card.get("deck_id")), tarot.DEFAULT_DECK_ID)
-            grounding = interpretation.validate_tarot_text(text, cards, tarot.deck_cards(deck_id))
+            grounding = interpretation.validate_tarot_text(text, cards, tarot.DECK)
             if len(text.strip()) >= 120 and grounding.ok:
                 return text
             if text.strip() and not grounding.ok:
@@ -451,94 +448,6 @@ def _chart_brief(chart: dict) -> str:
 
 
 _CHART_INTERPRET_ATTEMPTS = 3
-_CHART_STRUCTURED_KEYS = (
-    "sun", "moon", "ascendant", "mercury", "mars", "career",
-    "relationships", "nodes", "synthesis",
-)
-
-
-def _clip_chart_field(value, limit: int = 400) -> str:
-    """Normalize model fields so UI/PDF receive bounded, single-purpose text."""
-    text = " ".join(str(value or "").split())
-    return text[:limit].rstrip()
-
-
-def _parse_chart_json(raw: str) -> dict | None:
-    """Parse strict chart JSON, tolerating only a surrounding code fence/comment."""
-    raw = (raw or "").strip()
-    start, end = raw.find("{"), raw.rfind("}")
-    if start < 0 or end <= start:
-        return None
-    try:
-        data = json.loads(raw[start:end + 1])
-    except (TypeError, ValueError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
-    result = {"summary": _clip_chart_field(data.get("summary"), 600)}
-    for key in _CHART_STRUCTURED_KEYS:
-        value = data.get(key)
-        if not isinstance(value, dict):
-            return None
-        result[key] = {
-            "fact": _clip_chart_field(value.get("fact"), 220),
-            "interpretation": _clip_chart_field(value.get("interpretation"), 400),
-            "question": _clip_chart_field(value.get("question"), 220),
-        }
-        if key != "synthesis" and not (result[key]["interpretation"] or result[key]["fact"]):
-            return None
-    return result
-
-
-def _structured_chart_text(structured: dict, chart: dict, *, time_known: bool) -> str:
-    """Render structured model fields into a stable readable text for legacy clients."""
-    sun = chart.get("sun") or {}
-    moon = _chart_planet(chart, "Луна")
-    mercury = _chart_planet(chart, "Меркурий")
-    mars = _chart_planet(chart, "Марс")
-    venus = _chart_planet(chart, "Венера")
-    asc = chart.get("ascendant") or {}
-    mc = chart.get("mc") or {}
-    house2 = _chart_house(chart, 2)
-    house6 = _chart_house(chart, 6)
-    house7 = _chart_house(chart, 7)
-    house10 = _chart_house(chart, 10)
-    rahu = _chart_node(chart, "Раху")
-    ketu = _chart_node(chart, "Кету")
-
-    def block(number: int, title: str, key: str, fact: str) -> str:
-        item = structured.get(key) or {}
-        parts = [f"**{number}. {title}**", f"Факт карты: {fact}"]
-        if item.get("fact"):
-            parts.append(f"Наблюдение: {item['fact']}")
-        if item.get("interpretation"):
-            parts.append(item["interpretation"])
-        if item.get("question"):
-            parts.append(f"Вопрос для самонаблюдения: {item['question']}")
-        return "\n".join(parts)
-
-    asc_fact = (_placement_line("Асцендент", asc)
-                if time_known and asc else "Асцендент: данные недоступны без подтверждённого времени")
-    career_fact = "; ".join([
-        _placement_line("MC", mc) if mc else "MC: данные недоступны",
-        _placement_line("2-й дом", house2) if house2 else "2-й дом: данные недоступен",
-        _placement_line("6-й дом", house6) if house6 else "6-й дом: данные недоступен",
-        _placement_line("10-й дом", house10) if house10 else "10-й дом: данные недоступен",
-    ])
-    relationship_fact = "; ".join([
-        _placement_line("Венера", venus),
-        _placement_line("7-й дом", house7) if time_known and house7 else "7-й дом: данные недоступны",
-    ])
-    node_fact = "; ".join([_placement_line("Раху", rahu), _placement_line("Кету", ketu)])
-    return "\n\n".join([
-        block(1, "Ядро личности", "sun", "; ".join([_placement_line("Солнце", sun), _placement_line("Луна", moon), asc_fact])),
-        block(2, "Интеллект и общение", "mercury", _placement_line("Меркурий", mercury)),
-        block(3, "Действие и конфликт", "mars", _placement_line("Марс", mars)),
-        block(4, "Карьера и финансы", "career", career_fact),
-        block(5, "Любовь и близость", "relationships", relationship_fact),
-        block(6, "Кармические узлы как символическая рефлексия", "nodes", node_fact),
-        block(7, "Синтез", "synthesis", structured.get("summary") or "Сопоставь факты карты с наблюдаемым опытом, а не с готовым ярлыком."),
-    ])
 
 
 def _chart_planet(chart: dict, name: str) -> dict:
@@ -649,51 +558,55 @@ def _full_chart_fallback(chart: dict, *, time_known: bool) -> str:
 
 
 async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
-    """Генерирует bounded structured chart content with a readable legacy fallback."""
+    """Генерирует полный разбор карты с semantic retry и coverage gate."""
     time_known = bool(user and user["birth_time_known"])
     evidence = interpretation.chart_evidence(chart, time_known=time_known)
     text = ""
     live = False
-    chart.pop("interpretation_structured", None)
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("astro"))
             base_prompt = (
-                f"{await skills.guide(db, 'natal')}\n\n{evidence.as_prompt_block()}\n\n"
+                f"{await skills.guide(db, 'natal')}\n\n"
+                f"{evidence.as_prompt_block()}\n\n"
                 f"{interpretation.generation_rules('chart')}\n\n"
-                "Верни ТОЛЬКО валидный JSON без Markdown и без пояснений вокруг него. "
-                "Схема строго фиксирована: summary (строка до 600 символов) и объекты sun, moon, "
-                "ascendant, mercury, mars, career, relationships, nodes, synthesis. Каждый объект "
-                "содержит только fact (до 220 символов), interpretation (до 400 символов) и question "
-                "(до 220 символов). В fact называй только placement из evidence; interpretation объясняет "
-                "его простым, глубоким языком; question — конкретный вопрос для самонаблюдения. "
-                "Для недоступного времени явно напиши в ascendant/career/relationships, что дома, ASC или MC "
-                "недоступны. Не назначай диагнозов, не обещай финансовую удачу, идеального партнёра или событие; "
-                "не называй фатальную судьбу. Раху и Кету — только символическая ось, не доказательство прошлой жизни."
+                "Сделай полный детальный разбор на русском языке, на «ты», а не короткий портрет. "
+                "Сохрани ровно 8 нумерованных разделов: "
+                "1) ядро личности — Солнце, Луна, Асцендент; "
+                "2) интеллект и общение — Меркурий; "
+                "3) действие и конфликты — Марс; "
+                "4) карьера и финансы — MC, 10-й, 6-й и 2-й дома; "
+                "5) любовь — Венера; 6) партнёрство — 7-й дом; "
+                "7) узлы — Кету как символический привычный багаж и Раху как направление роста; "
+                "8) синтез и практический следующий шаг. "
+                "В каждом разделе сначала назови placement-факт из evidence, затем объясни его простыми словами "
+                "и добавь конкретный вопрос для самонаблюдения. Не назначай диагнозов, не обещай финансовую удачу, "
+                "идеального партнёра или события, не называй фатальную судьбу. Узлы не являются доказательством "
+                "буквальной прошлой жизни или обязательной миссии. Если времени рождения нет, честно назови ASC, "
+                "MC и дома недоступными и не выдумывай их."
             )
             feedback = ""
             for attempt in range(_CHART_INTERPRET_ATTEMPTS):
                 candidate = await llm.complete(
-                    system, base_prompt + feedback, tier="main", max_tokens=2600,
-                    purpose="chart_interpret", tg_id=user["tg_id"], db=db,
+                    system,
+                    base_prompt + feedback,
+                    tier="main", max_tokens=2600, purpose="chart_interpret",
+                    tg_id=user["tg_id"], db=db,
                 )
-                structured = _parse_chart_json(candidate)
-                candidate_text = (_structured_chart_text(structured, chart, time_known=time_known)
-                                  if structured else candidate)
-                grounding = interpretation.validate_chart_text(candidate_text, evidence)
-                missing = _chart_required_coverage(candidate_text, chart, time_known=time_known)
-                if len(candidate_text.strip()) >= 900 and grounding.ok and not missing:
-                    text = candidate_text.strip()
-                    if structured:
-                        chart["interpretation_structured"] = structured
+                grounding = interpretation.validate_chart_text(candidate, evidence)
+                missing = _chart_required_coverage(candidate, chart, time_known=time_known)
+                if len(candidate.strip()) >= 900 and grounding.ok and not missing:
+                    text = candidate.strip()
                     live = True
                     break
                 issues = list(grounding.issues) + (["не раскрыты темы: " + ", ".join(missing)] if missing else [])
                 log.info("chart interpretation quality gate rejected attempt=%d issues=%s",
                          attempt + 1, "; ".join(issues[:8]))
                 feedback = (
-                    "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: верни только JSON по указанной схеме. "
-                    "Заполни каждый объект и не добавляй фактов вне evidence; не сокращай доступные темы."
+                    "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий текст не прошёл quality gate. "
+                    "Не сокращай ответ. Обязательно раскрой каждую доступную тему: "
+                    + ", ".join(missing or ("все обязательные секции",))
+                    + ". Верни полный текст из 8 нумерованных разделов и не добавляй фактов вне evidence."
                 )
         except Exception as e:  # noqa: BLE001
             log.warning("разбор карты ушёл в offline quality fallback: %s", type(e).__name__)

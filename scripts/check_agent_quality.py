@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from app.core import skills, tarot_assets
+from app.core import skills
 from app.core.agents.file_loader import (
     load_profiles,
     profile_for_legacy,
@@ -17,7 +17,6 @@ from app.core.agents.specs import get
 from scripts.benchmark_skill_routing import CASES as ROUTING_CASES
 from scripts.benchmark_vedic_routing import CASES as VEDIC_ROUTING_CASES
 from scripts.benchmark_mira_lenormand import CASES as MIRA_LENORMAND_ROUTING_CASES
-from scripts.stress_test_agent_routing import run as run_stress_routing
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {"oracle", "astro", "tarot", "chiromant"}
@@ -115,15 +114,6 @@ def build_report() -> dict:
             mira_lenormand_failures.append((code, query, expected, selected_names))
     errors.extend(f"Mira/Lenormand routing failure: {item}" for item in mira_lenormand_failures)
 
-    asset_report = tarot_assets.validate_assets(ROOT)
-    errors.extend(f"tarot assets: {item}" for item in asset_report["errors"])
-    stress_report = run_stress_routing()
-    if not stress_report["passed"]:
-        errors.append("agent routing stress test failed")
-    errors.extend(
-        f"safety-critical routing miss: {item}" for item in stress_report["safety_critical_failures"]
-    )
-
     frontend = "\n".join(
         (ROOT / "miniapp" / "js" / name).read_text(encoding="utf-8")
         for name in ("01-utils.js", "06-home.js", "07-chat.js")
@@ -145,14 +135,6 @@ def build_report() -> dict:
         "mira_lenormand_routing_top1_passed": mira_lenormand_top1_passed,
         "mira_lenormand_routing_top1_accuracy": round(mira_lenormand_top1_passed / len(MIRA_LENORMAND_ROUTING_CASES), 3),
         "mira_lenormand_routing_top3_passed": len(MIRA_LENORMAND_ROUTING_CASES) - len(mira_lenormand_failures),
-        "tarot_assets": asset_report,
-        "stress_routing": {
-            "total": stress_report["total"],
-            "overall": stress_report["overall"],
-            "safety_critical_total": stress_report["safety_critical_total"],
-            "safety_critical_failures": len(stress_report["safety_critical_failures"]),
-            "passed": stress_report["passed"],
-        },
         "agents": rows,
         "errors": errors,
     }

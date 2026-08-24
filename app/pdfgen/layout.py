@@ -18,9 +18,9 @@ PAGE_CSS = """
   margin: 14mm 15mm 16mm 15mm;
   background: #0b0722;
   @bottom-center {
-    content: "OracleAI · " counter(page);
+    content: counter(page);
     color: #6f6494;
-    font-size: 8.5pt;
+    font-size: 9pt;
     font-family: Georgia, serif;
   }
 }
@@ -66,10 +66,8 @@ p { margin: 0 0 2.5mm; }
 .cover .sub { color: #a99fc9; font-size: 12pt; margin-top: 3mm; max-width: 125mm; }
 .cover .who { margin-top: 13mm; font-size: 17pt; color: #f4efff; }
 .cover .born { color: #a99fc9; font-size: 10.5pt; margin-top: 2mm; }
-.cover .project-link { color: #e8c56b; font-size: 9.5pt; margin-top: 9mm; overflow-wrap: anywhere; }
-.cover-wheel { width: 76mm; max-width: 100%; margin: 3mm auto 1mm; }
-.cover-wheel svg { display: block; width: 100%; height: auto; max-width: 76mm; margin: 0 auto; }
-.brand-mark { margin: 0 auto 4mm; }
+.cover .project-link { color: #e8c56b; font-size: 9.5pt; margin-top: 12mm; overflow-wrap: anywhere; }
+.brand-mark { margin: 0 auto 6mm; }
 .brand-mark svg { width: 43mm; height: 43mm; }
 
 .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
@@ -104,7 +102,6 @@ table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,25
   body { font-size: 12pt; line-height: 1.55; padding: 12px; }
   .section { margin: 0 auto 28px; max-width: 760px; }
   .cover { padding-top: 28px; min-height: 0; }
-  .cover-wheel { width: min(76mm, 100%); }
   h1 { font-size: 27pt; }
   h2 { font-size: 19pt; }
   .card { padding: 16px; border-radius: 14px; }
@@ -172,138 +169,81 @@ def paragraphs(text: str) -> str:
 
 
 def wheel_svg(chart: dict, size: int = 330) -> str:
-    """Premium natal wheel with shared geometry, aspect lines and label lanes."""
+    """Натальное колесо: знаки, куспиды домов, планеты по долготе.
+
+    Планеты, стоящие рядом, разводим по радиусу — иначе символы наезжают и
+    колесо выглядит браком печати.
+    """
     cx = cy = size / 2
-    outer = size * .455
-    zodiac = size * .385
-    house_ring = size * .315
-    aspect_ring = size * .255
-    marker_base = size * .285
-    lane_step = max(size * .035, 7)
-    sign_colors = ["#e9b27e", "#c8b58a", "#b9b9d8", "#9cc7d8"]
-
-    def norm(value) -> float:
-        return (float(value or 0) % 360 + 360) % 360
-
-    def polar(deg: float, radius: float) -> tuple[float, float]:
-        angle = math.radians(norm(deg) - 90)
-        return cx + math.cos(angle) * radius, cy + math.sin(angle) * radius
-
-    def arc_path(start: float, end: float, r0: float, r1: float) -> str:
-        sweep = (norm(end) - norm(start)) % 360 or 30
-        large = 1 if sweep > 180 else 0
-        a0 = polar(start, r1)
-        b0 = polar(start + sweep, r1)
-        a1 = polar(start, r0)
-        b1 = polar(start + sweep, r0)
-        return (f"M {a0[0]:.1f} {a0[1]:.1f} A {r1:.1f} {r1:.1f} 0 {large} 1 {b0[0]:.1f} {b0[1]:.1f} "
-                f"L {b1[0]:.1f} {b1[1]:.1f} A {r0:.1f} {r0:.1f} 0 {large} 0 {a1[0]:.1f} {a1[1]:.1f} Z")
-
+    R = size * 0.47
+    Rin = size * 0.36
     parts = [
-        f'<circle cx="{cx}" cy="{cy}" r="{outer:.1f}" fill="none" stroke="rgba(232,197,107,.55)" stroke-width=".8"/>',
-        f'<circle cx="{cx}" cy="{cy}" r="{zodiac:.1f}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width=".7"/>',
-        f'<circle cx="{cx}" cy="{cy}" r="{size * .16:.1f}" fill="rgba(20,12,48,.18)" stroke="rgba(255,255,255,.14)" stroke-width=".7"/>',
+        f'<circle cx="{cx}" cy="{cy}" r="{R:.1f}" fill="none" '
+        f'stroke="rgba(232,197,107,.55)" stroke-width="1"/>',
+        f'<circle cx="{cx}" cy="{cy}" r="{Rin:.1f}" fill="none" '
+        f'stroke="rgba(255,255,255,.22)" stroke-width="1"/>',
+        f'<circle cx="{cx}" cy="{cy}" r="{size * 0.17:.1f}" fill="none" '
+        f'stroke="rgba(255,255,255,.14)" stroke-width="1"/>',
     ]
+
     for i in range(12):
-        start = i * 30
-        parts.append(f'<path d="{arc_path(start, start + 30, zodiac, outer - size * .022)}" fill="{sign_colors[i % 4]}" opacity=".055"/>')
-        tick_a = polar(start, zodiac)
-        tick_b = polar(start, outer - size * .025)
-        parts.append(f'<line x1="{tick_a[0]:.1f}" y1="{tick_a[1]:.1f}" x2="{tick_b[0]:.1f}" y2="{tick_b[1]:.1f}" stroke="rgba(255,255,255,.22)" stroke-width=".65"/>')
-        label = polar(start + 15, outer - size * .045)
-        parts.append(f'<text x="{label[0]:.1f}" y="{label[1] + size * .014:.1f}" fill="{sign_colors[i % 4]}" font-size="{max(10, size * .052):.1f}" text-anchor="middle">{SIGN_GLYPHS[i]}</text>')
+        a = math.radians(i * 30 - 90)
+        parts.append(
+            f'<line x1="{cx + Rin * math.cos(a):.1f}" y1="{cy + Rin * math.sin(a):.1f}" '
+            f'x2="{cx + R * math.cos(a):.1f}" y2="{cy + R * math.sin(a):.1f}" '
+            f'stroke="rgba(255,255,255,.22)" stroke-width="0.8"/>')
+        am = math.radians(i * 30 + 15 - 90)
+        parts.append(
+            f'<text x="{cx + (R - 15) * math.cos(am):.1f}" '
+            f'y="{cy + (R - 15) * math.sin(am) + 4:.1f}" fill="#e8c56b" '
+            f'font-size="13" text-anchor="middle">{SIGN_GLYPHS[i]}</text>')
 
-    houses = chart.get("houses") or []
-    house_points = houses or [{"n": i + 1, "abs_deg": i * 30} for i in range(12)]
-    for i, house in enumerate(house_points):
-        deg = house.get("abs_deg") if house.get("abs_deg") is not None else i * 30
-        p0 = polar(deg, size * .16)
-        p1 = polar(deg, house_ring)
-        dash = "2 2" if houses else "1 3"
-        parts.append(f'<line x1="{p0[0]:.1f}" y1="{p0[1]:.1f}" x2="{p1[0]:.1f}" y2="{p1[1]:.1f}" stroke="rgba(255,255,255,.16)" stroke-width=".6" stroke-dasharray="{dash}"/>')
-        if houses:
-            label = polar(float(deg) + 13, size * .205)
-            parts.append(f'<text x="{label[0]:.1f}" y="{label[1] + size * .01:.1f}" fill="#a99fc9" font-size="{max(7, size * .031):.1f}" text-anchor="middle">{esc(house.get("n", i + 1))}</text>')
+    for house in (chart.get("houses") or []):
+        a = math.radians((house.get("abs_deg") or 0) - 90)
+        r0 = size * 0.17
+        parts.append(
+            f'<line x1="{cx + r0 * math.cos(a):.1f}" y1="{cy + r0 * math.sin(a):.1f}" '
+            f'x2="{cx + Rin * math.cos(a):.1f}" y2="{cy + Rin * math.sin(a):.1f}" '
+            f'stroke="rgba(255,255,255,.16)" stroke-width="0.7" '
+            f'stroke-dasharray="3 3"/>')
+        rl = size * 0.21
+        parts.append(
+            f'<text x="{cx + rl * math.cos(a):.1f}" y="{cy + rl * math.sin(a) + 3:.1f}" '
+            f'fill="#a99fc9" font-size="8" text-anchor="middle">{house.get("n")}</text>')
 
-    planets = list(chart.get("planets") or [])
-    nodes = [node for node in chart.get("nodes") or []
-             if str(node.get("name", "")).startswith(("Раху", "Кету"))]
-    entries = ([{"point": point, "index": index, "is_node": False}
-                for index, point in enumerate(planets)]
-               + [{"point": point, "index": index, "is_node": True}
-                  for index, point in enumerate(nodes)])
-    placed: list[dict] = []
-    radial_lanes = [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5]
-    angle_offsets = [0]
-    for step in range(8, 177, 8):
-        angle_offsets.extend((-step, step))
-
-    def marker_radius(entry: dict) -> float:
-        return max(6, size * .034) if entry["is_node"] else max(7, size * .042)
-
-    def base_radius(entry: dict) -> float:
-        return size * .335 if entry["is_node"] else marker_base
-
-    for entry in sorted(entries, key=lambda item: norm(item["point"].get("abs_deg_exact", item["point"].get("abs_deg")))):
-        point = entry["point"]
-        deg = norm(point.get("abs_deg_exact", point.get("abs_deg")))
-        candidates: list[dict] = []
-        for offset in angle_offsets:
-            for lane in radial_lanes:
-                radius = max(size * .17, min(size * .39, base_radius(entry) + lane * lane_step))
-                display_deg = norm(deg + offset)
-                x, y = polar(display_deg, radius)
-                clearance = marker_radius(entry) + size * .012
-                collision = any(
-                    math.hypot(item["x"] - x, item["y"] - y)
-                    < marker_radius(item) + clearance for item in placed
-                )
-                candidate = {**entry, "deg": deg, "display_deg": display_deg,
-                             "radius": radius, "x": x, "y": y, "collision": collision}
-                candidates.append(candidate)
-                if not collision:
-                    break
-            if candidates and not candidates[-1]["collision"]:
+    used: list[tuple[float, float]] = []
+    wheel_points = list(chart.get("planets") or [])
+    wheel_points.extend(
+        node for node in (chart.get("nodes") or [])
+        if node.get("name", "").startswith(("Раху", "Кету"))
+    )
+    for planet in wheel_points:
+        deg = planet.get("abs_deg_exact", planet.get("abs_deg")) or 0
+        radius = size * 0.28
+        while any(abs(d - deg) < 9 and abs(r - radius) < 9 for d, r in used):
+            radius -= size * 0.05
+            if radius < size * 0.19:
+                radius = size * 0.28
                 break
-        selected = next((candidate for candidate in candidates if not candidate["collision"]), None)
-        if selected is None:
-            selected = max(
-                candidates,
-                key=lambda candidate: min(
-                    (math.hypot(item["x"] - candidate["x"], item["y"] - candidate["y"])
-                     for item in placed), default=float("inf")))
-        placed.append(selected)
+        used.append((deg, radius))
+        a = math.radians(deg - 90)
+        px, py = cx + radius * math.cos(a), cy + radius * math.sin(a)
+        glyph = PLANET_GLYPHS.get(planet.get("name", ""), "•")
+        parts.append(
+            f'<circle cx="{px:.1f}" cy="{py:.1f}" r="9" '
+            f'fill="rgba(232,197,107,.14)"/>'
+            f'<text x="{px:.1f}" y="{py + 4:.1f}" fill="#f4efff" font-size="12" '
+            f'text-anchor="middle">{glyph}</text>')
+        if planet.get("retro"):
+            parts.append(f'<text x="{px + 8:.1f}" y="{py - 6:.1f}" fill="#e88f8f" '
+                         f'font-size="7">R</text>')
 
-    positions: dict[str, tuple[float, float]] = {}
-    for item in placed:
-        point = item["point"]
-        x, y = item["x"], item["y"]
-        positions[point.get("name", "")] = (x, y)
-        glyph = PLANET_GLYPHS.get(point.get("name", ""), "•")
-        stroke = "#a78bfa" if item["is_node"] else "#e6c178"
-        fill = "#c7b1ff" if item["is_node"] else "#ffd98f"
-        parts.append(f'<g><circle cx="{x:.1f}" cy="{y:.1f}" r="{marker_radius(item):.1f}" fill="rgba(20,16,39,.94)" stroke="{stroke}" stroke-width=".8"/><text x="{x:.1f}" y="{y + size * .015:.1f}" fill="{fill}" font-size="{max(8, size * .05):.1f}" text-anchor="middle">{esc(glyph)}</text>')
-        if point.get("retro"):
-            parts.append(f'<text x="{x + size * .027:.1f}" y="{y - size * .025:.1f}" fill="#e88f8f" font-size="{max(6, size * .027):.1f}">R</text>')
-        parts.append('</g>')
+    if not (chart.get("planets") or []) and chart.get("sun"):
+        parts.append(
+            f'<text x="{cx}" y="{cy + 14}" fill="#e8c56b" font-size="40" '
+            f'text-anchor="middle">{esc(chart["sun"].get("symbol", "☉"))}</text>')
 
-    for aspect in (chart.get("aspects") or [])[:10]:
-        first = positions.get(aspect.get("p1"))
-        second = positions.get(aspect.get("p2"))
-        if not first or not second:
-            continue
-        x1 = cx + (first[0] - cx) * aspect_ring / marker_base
-        y1 = cy + (first[1] - cy) * aspect_ring / marker_base
-        x2 = cx + (second[0] - cx) * aspect_ring / marker_base
-        y2 = cy + (second[1] - cy) * aspect_ring / marker_base
-        color = {"△": "#e6c178", "□": "#a78bfa", "☍": "#e99b96"}.get(aspect.get("glyph"), "#b8b1c9")
-        dash = "" if aspect.get("glyph") in {"△", "⚹"} else "3 3"
-        parts.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width=".65" stroke-dasharray="{dash}" opacity=".55"/>')
-
-    sun = chart.get("sun") or {}
-    if sun:
-        parts.append(f'<text x="{cx}" y="{cy + size * .018:.1f}" fill="#e8c56b" font-size="{max(20, size * .085):.1f}" text-anchor="middle">{esc(sun.get("symbol", "☉"))}</text>')
-    return (f'<svg viewBox="0 0 {size} {size}" width="{size}" height="{size}" preserveAspectRatio="xMidYMid meet" '
+    return (f'<svg viewBox="0 0 {size} {size}" width="{size}" height="{size}" '
             f'xmlns="http://www.w3.org/2000/svg">{"".join(parts)}</svg>')
 
 

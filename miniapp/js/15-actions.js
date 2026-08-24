@@ -30,9 +30,6 @@
       call(data.fn);
     },
     'tool-toggle': () => { tactile('open'); call('toggleToolbox'); },
-    'sidebar-toggle': () => call('toggleWorkspaceSidebar'),
-    'sidebar-new': () => call('startNewChat'),
-    'history-clear': () => call('clearHistorySearch'),
     'palm-start': () => { tactile('select'); call('featurePalm'); },
     'today-ask': () => call('todayAsk'),
     'day-flip': () => call('todayFlip'),
@@ -51,9 +48,7 @@
     'moon-day': (el, data) => call('toggleMoonDay', parseInt(data.i, 10)),
     ptab: (el, data) => call('switchPTab', data.tab),
     'new-session': () => call('newSession'),
-    'open-session': (el, data) => data.history === '1'
-      ? call('openHistorySession', data.agent, parseInt(data.tid, 10))
-      : call('openSession', parseInt(data.tid, 10)),
+    'open-session': (el, data) => call('openSession', parseInt(data.tid, 10)),
     'del-session': (el, data) => call('delSession', parseInt(data.tid, 10)),
     send: (el, data) => call('doSend', data.val || undefined),
     'retry-chat': () => call('loadThread', app.chat.key),
@@ -66,8 +61,6 @@
     'add-mem': () => call('addMem'),
     'pick-open': () => call('openSpreadPicker'),
     'pick-choose': (el, data) => call('chooseSpread', data.code),
-    'deck-open': () => call('openDeckPicker'),
-    'deck-choose': (el, data) => call('chooseDeck', data.deckId),
     draw: () => call('doDraw'),
     'tarot-question': (el, data) => call('setTarotQuestion', data.value),
     flip: (el, data) => call('flipCard', parseInt(data.i, 10)),
@@ -94,7 +87,6 @@
     'set-lang': (el, data) => call('setLanguage', data.lang),
     'ask-chart': () => call('askChart'),
     'share-chart': () => call('shareChart'),
-    'download-chart-pdf': () => call('downloadChartPdf'),
     'share-compat': (el, data) => call('shareCompat', data.pdate, data.pname, data.rel),
     'modal-close': () => call('closeModal')
   };

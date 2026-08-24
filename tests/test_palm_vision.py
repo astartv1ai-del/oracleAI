@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from app.core import palm_landmarks, palm_vision
+from app.core import palm_vision
 
 
 def _image_bytes(kind: str) -> bytes:
@@ -19,21 +18,6 @@ def _image_bytes(kind: str) -> bytes:
     output = io.BytesIO()
     image.save(output, format="PNG")
     return output.getvalue()
-
-
-def test_mediapipe_adapter_reports_missing_model_without_fabrication(tmp_path):
-    result = palm_landmarks.analyze(_image_bytes("checker"), model_path=str(tmp_path / "missing.task"))
-    assert result["status"] == "model_missing"
-    assert result["hand_count"] == 0
-    assert result["hands"] == []
-
-
-def test_mediapipe_adapter_reports_no_hand_for_texture_macro():
-    fixture = Path(__file__).parent / "fixtures" / "palm" / "palm_hand.jpg"
-    result = palm_landmarks.analyze(fixture.read_bytes())
-    assert result["status"] == "no_hand"
-    assert result["hand_count"] == 0
-    assert result["issues"] == ["hand_not_detected"]
 
 
 def test_precheck_rejects_invalid_image_without_guessing():

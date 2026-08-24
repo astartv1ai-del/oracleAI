@@ -1,4 +1,4 @@
-"""Практики: каталог, старт, отметка дня и прогресс."""
+"""Практики и мантры: каталог, старт, отметка дня, прогресс."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query

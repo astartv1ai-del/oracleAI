@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import logging
-import re
 import time
 from collections import defaultdict, deque
 
 from fastapi import Depends, Header, HTTPException, Query, Request
 
 from ..config import settings
-from ..data.session import connect, utcnow
+from ..data.session import connect
 from ..repo import admin as admin_repo
 from ..repo import users as users_repo
 from .security import parse_init_data
@@ -82,26 +81,7 @@ def rate_limit(bucket: str = "read"):
 
 # ──────────────────────────────── клиентка ────────────────────────────────────
 
-_PLATFORM_VALUES = {"android", "ios", "macos", "windows", "linux", "tdesktop", "web", "unknown"}
-_VIEWPORT_RE = re.compile(r"^(?:[3-9]\d{2}|1\d{3})x(?:[4-9]\d{2}|[1-2]\d{3})$")
-
-
-def _client_metadata(request: Request) -> dict[str, str]:
-    """Нормализует только coarse client hints для админского UX-аудита."""
-    platform = (request.headers.get("x-client-platform") or "unknown").strip().lower()
-    if platform not in _PLATFORM_VALUES:
-        platform = "unknown"
-    viewport = (request.headers.get("x-client-viewport") or "").strip()
-    if not _VIEWPORT_RE.fullmatch(viewport):
-        viewport = ""
-    mode = (request.headers.get("x-client-mode") or "").strip().lower()
-    if mode not in {"mobile", "desktop", "tablet"}:
-        mode = ""
-    return {"last_platform": platform, "last_viewport": viewport,
-            "last_client_mode": mode, "last_client_at": utcnow()}
-
-
-async def current_user(request: Request, db=Depends(get_db),
+async def current_user(db=Depends(get_db),
                        x_init_data: str | None = Header(default=None),
                        dev_user: int | None = Query(default=None)):
     """Клиентка по подписи Telegram. В DEV_MODE — по `?dev_user=<id>`."""
@@ -117,17 +97,8 @@ async def current_user(request: Request, db=Depends(get_db),
         raise HTTPException(404, "открой бота и нажми /start — я ещё не знаю тебя ✨")
     if user["status"] == "blocked":
         raise HTTPException(403, "доступ приостановлен")
-    changes = {}
     if data and data["username"] and user["username"] != data["username"]:
-        changes["username"] = data["username"]
-    metadata = _client_metadata(request)
-    client_keys = ("last_platform", "last_viewport", "last_client_mode")
-    if any(metadata[key] and metadata[key] != user[key] for key in client_keys):
-        changes.update({key: metadata[key] for key in client_keys if metadata[key]})
-        changes["last_client_at"] = metadata["last_client_at"]
-    if changes:
-        await users_repo.update(db, tg_id, **changes)
-        user = await users_repo.get(db, tg_id)
+        await users_repo.update(db, tg_id, username=data["username"])
     return user
 
 

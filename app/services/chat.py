@@ -210,17 +210,13 @@ def _allowance_line(verdict) -> str:
 # ──────────────────────────────── расклады ────────────────────────────────────
 
 async def draw(db, user, spread_code: str, *, surface: str = "bot",
-               question: str | None = None,
-               deck_id: str | None = None) -> dict:
+               question: str | None = None) -> dict:
     """Тянет карты: проверяет доступ, списывает и сохраняет расклад без трактовки.
 
     Трактовка — вторым шагом (`interpret`), чтобы интерфейс успел показать
     анимацию переворота. Карты уже лежат в БД, подменить их нельзя.
     """
-    preferred_deck = user["tarot_deck_id"] if "tarot_deck_id" in user.keys() else None
-    selected_deck = tarot.deck_metadata(deck_id or preferred_deck)
-    selected_id = selected_deck["deck_id"]
-    item = await catalog.get_spread(db, spread_code, selected_id)
+    item = await catalog.get_spread(db, spread_code)
     code = item["code"] if "code" in item else spread_code
 
     # Тот же пользовательский замок бюджета, что и в `ask`: расклад и вопрос
@@ -236,10 +232,9 @@ async def draw(db, user, spread_code: str, *, surface: str = "bot",
             raise ChatDenied(verdict)
 
         positions = item["positions"]
-        cards = tarot.draw(len(positions), deck_id=selected_id)
+        cards = tarot.draw(len(positions))
         title = item["title"]
         label = question or f"Расклад «{title}»"
-        ledger = tarot.reading_ledger(cards, code, positions=positions, deck_id=selected_id)
 
         thread = await dialog.ensure_thread(db, user["tg_id"], "tarot",
                                             title=agents.get("tarot").title)
@@ -249,15 +244,15 @@ async def draw(db, user, spread_code: str, *, surface: str = "bot",
             thread_id=thread["id"], agent="tarot", surface=surface)
         reading_id = await readings.start_reading(
             db, user["tg_id"], code, label, cards, surface=surface,
-            paid_with=limits.PAID_WITH.get(verdict.charge, "daily"),
-            deck_id=selected_id, ledger=ledger)
+            paid_with=limits.PAID_WITH.get(verdict.charge, "daily"))
 
     await analytics.track(db, analytics.E_TAROT, user["tg_id"],
-                          props={"spread": code, "charge": verdict.charge, "deck_id": selected_id},
+                          props={"spread": code, "charge": verdict.charge},
                           surface=surface)
     return {"reading_id": reading_id, "title": title, "positions": positions,
             "cards": cards, "spread": code, "thread_id": thread["id"],
-            "deck_id": selected_id, "ledger": ledger, "charge": verdict.charge}
+            "ledger": tarot.reading_ledger(cards, code),
+            "charge": verdict.charge}
 
 
 async def interpret(db, user, reading_id: int, *, surface: str = "bot") -> str:
@@ -276,20 +271,16 @@ async def interpret(db, user, reading_id: int, *, surface: str = "bot") -> str:
     if not cards:
         raise LookupError("в раскладе нет карт")
 
-    row_deck_id = row["deck_id"] if "deck_id" in row.keys() else None
-    deck_id = row_deck_id or next((c.get("deck_id") for c in cards if c.get("deck_id")), tarot.DEFAULT_DECK_ID)
-    selected_deck = tarot.deck_metadata(deck_id)
-    item = await catalog.get_spread(db, row["spread"] or "", selected_deck["deck_id"])
+    item = await catalog.get_spread(db, row["spread"] or "")
     if not row["spread"]:
         # исторические записи хранили только название расклада
         item = tarot.spread_by_title(
-            (row["question"] or "").replace("Расклад «", "").rstrip("»"), selected_deck["deck_id"])
+            (row["question"] or "").replace("Расклад «", "").rstrip("»"))
     positions = item["positions"][:len(cards)]
 
     answer = await agent_core.interpret_reading(db, user, item["title"], cards,
                                                 positions,
-                                                question=row["question"] or None,
-                                                deck_id=selected_deck["deck_id"])
+                                                question=row["question"] or None)
     await readings.finish_reading(db, reading_id, answer)
     thread = await dialog.ensure_thread(db, user["tg_id"], "tarot")
     await dialog.save_message(db, user["tg_id"], "assistant", answer,
