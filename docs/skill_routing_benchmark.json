@@ -1,0 +1,517 @@
+{
+  "benchmark": "multilingual_skill_routing_v1",
+  "source": "scripts/benchmark_skill_routing.py",
+  "total": 20,
+  "passed_top3": 20,
+  "top3_accuracy": 1.0,
+  "top1_passed": 20,
+  "top1_accuracy": 1.0,
+  "mrr": 1.0,
+  "initial_baseline": {
+    "passed_top3": 15,
+    "total": 20,
+    "accuracy": 0.75
+  },
+  "final_delta_top3_points": 25.0,
+  "by_agent": {
+    "astro": {
+      "total": 10,
+      "top3_passed": 10,
+      "top3_accuracy": 1.0,
+      "top1_passed": 10,
+      "top1_accuracy": 1.0
+    },
+    "oracle": {
+      "total": 10,
+      "top3_passed": 10,
+      "top3_accuracy": 1.0,
+      "top1_passed": 10,
+      "top1_accuracy": 1.0
+    }
+  },
+  "by_language": {
+    "ru": {
+      "total": 2,
+      "top3_passed": 2,
+      "top3_accuracy": 1.0,
+      "top1_passed": 2,
+      "top1_accuracy": 1.0
+    },
+    "en": {
+      "total": 9,
+      "top3_passed": 9,
+      "top3_accuracy": 1.0,
+      "top1_passed": 9,
+      "top1_accuracy": 1.0
+    },
+    "mixed": {
+      "total": 9,
+      "top3_passed": 9,
+      "top3_accuracy": 1.0,
+      "top1_passed": 9,
+      "top1_accuracy": 1.0
+    }
+  },
+  "failures": [],
+  "cases": [
+    {
+      "case_id": 1,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "Покажи Раху и Кету и объясни их ось",
+      "language": "ru",
+      "intent": "nodes/Rahu-Ketu",
+      "expected": "lunar-nodes",
+      "selected": [
+        "lunar-nodes",
+        "lunar-phases",
+        "chart-synthesis"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "lunar_node"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 2,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "Can you compare our synastry aspects without mind-reading?",
+      "language": "en",
+      "intent": "synastry",
+      "expected": "compatibility-synastry",
+      "selected": [
+        "compatibility-synastry",
+        "synastry-boundaries",
+        "aspects"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "compare",
+        "synastry",
+        "mind",
+        "reading",
+        "without",
+        "aspects"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 3,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "my natal chart: Асцендент, MC and houses",
+      "language": "mixed",
+      "intent": "houses and angles",
+      "expected": "houses-and-angles",
+      "selected": [
+        "houses-and-angles",
+        "natal-chart-foundations",
+        "chart-synthesis"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "ascendant",
+        "houses",
+        "chart",
+        "natal"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 4,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "Ретроградный Меркурий и practical checks",
+      "language": "mixed",
+      "intent": "retrogrades",
+      "expected": "retrogrades",
+      "selected": [
+        "retrogrades",
+        "aspects",
+        "astrology-history"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "retrograde"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 5,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "What are the current transits of Saturn for my chart?",
+      "language": "en",
+      "intent": "Western transits",
+      "expected": "transits",
+      "selected": [
+        "transits",
+        "chart-synthesis",
+        "saturn-and-boundaries"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "current",
+        "transits",
+        "chart",
+        "saturn"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 6,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "Что показывают Хирон, Джуно и expanded points?",
+      "language": "mixed",
+      "intent": "expanded points",
+      "expected": "chart-synthesis",
+      "selected": [
+        "chart-synthesis",
+        "lunar-nodes",
+        "nakshatra-pada"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "chiron",
+        "expanded",
+        "juno",
+        "points"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 7,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "No birth time: can you name the house of Rahu?",
+      "language": "en",
+      "intent": "date-only safety",
+      "expected": "date-only-mode",
+      "selected": [
+        "date-only-mode",
+        "houses-and-angles",
+        "lunar-nodes"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "birth",
+        "house",
+        "rahu",
+        "time"
+      ],
+      "anti_barnum_or_dependency": false
+    },
+    {
+      "case_id": 8,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "Compare two launch dates using my criteria, not a guarantee",
+      "language": "en",
+      "intent": "date comparison",
+      "expected": "electional-reflection",
+      "selected": [
+        "electional-reflection",
+        "anti-barnum-protocol",
+        "career-symbolism"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "compare",
+        "criteria",
+        "dates",
+        "using"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 9,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "career timing по карте — give criteria, not certainty",
+      "language": "mixed",
+      "intent": "career timing",
+      "expected": "career-symbolism",
+      "selected": [
+        "career-symbolism",
+        "electional-reflection",
+        "anti-barnum-protocol"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "career",
+        "criteria",
+        "timing",
+        "certainty"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 10,
+      "agent": "astro",
+      "agent_profile": "urania",
+      "query": "Лунные фазы и дневник наблюдений на неделю",
+      "language": "ru",
+      "intent": "lunar phases/journal",
+      "expected": "lunar-phases",
+      "selected": [
+        "lunar-phases"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "diary",
+        "дневник",
+        "лунные",
+        "фазы"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 11,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Разбери мой аркан судьбы: ресурс, тень и choice",
+      "language": "mixed",
+      "intent": "Matrix reading",
+      "expected": "matrix-reading",
+      "selected": [
+        "matrix-reading",
+        "emotion-naming",
+        "matrix-lines"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "arcana",
+        "choice",
+        "fate"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 12,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Help me name what I feel after that conversation",
+      "language": "en",
+      "intent": "emotion naming",
+      "expected": "emotion-naming",
+      "selected": [
+        "emotion-naming",
+        "conversation-rehearsal",
+        "answer-structure"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "after",
+        "conversation",
+        "feel",
+        "name",
+        "what"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 13,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Мне нужно design a boundary в переписке",
+      "language": "mixed",
+      "intent": "boundary design",
+      "expected": "boundary-design",
+      "selected": [
+        "boundary-design",
+        "answer-structure",
+        "career-reflection"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "boundary",
+        "design"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 14,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Что ты помнишь обо мне, если memory disabled?",
+      "language": "mixed",
+      "intent": "memory privacy",
+      "expected": "memory-recall",
+      "selected": [
+        "memory-recall",
+        "memory-save-decision",
+        "answer-structure"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "memory"
+      ],
+      "anti_barnum_or_dependency": false
+    },
+    {
+      "case_id": 15,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Why do I keep scrolling at night? Find the habit loop",
+      "language": "en",
+      "intent": "habit loop",
+      "expected": "habit-loop",
+      "selected": [
+        "habit-loop",
+        "emotion-naming",
+        "matrix-reading"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "habit",
+        "loop"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 16,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Что я могу наблюдать в repeated relationship pattern?",
+      "language": "mixed",
+      "intent": "relationship pattern",
+      "expected": "relationship-reflection",
+      "selected": [
+        "relationship-reflection",
+        "pattern-mapping",
+        "anti-barnum-protocol"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "relationship",
+        "pattern"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 17,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "I am choosing stability or an exciting project",
+      "language": "en",
+      "intent": "values conflict",
+      "expected": "values-conflict",
+      "selected": [
+        "values-conflict",
+        "matrix-reading"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "exciting",
+        "project",
+        "stability"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 18,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Подбери gentle practice for more спокойствия",
+      "language": "mixed",
+      "intent": "practice selection",
+      "expected": "practice-selection",
+      "selected": [
+        "practice-selection",
+        "practice-follow-through",
+        "matrix-reading"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "practice"
+      ],
+      "anti_barnum_or_dependency": false
+    },
+    {
+      "case_id": 19,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Review my diary themes this month",
+      "language": "en",
+      "intent": "diary review",
+      "expected": "diary-dynamics",
+      "selected": [
+        "diary-dynamics",
+        "monthly-review",
+        "matrix-reading"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "diary",
+        "themes",
+        "this",
+        "review"
+      ],
+      "anti_barnum_or_dependency": true
+    },
+    {
+      "case_id": 20,
+      "agent": "oracle",
+      "agent_profile": "lilith",
+      "query": "Help me rehearse a difficult conversation",
+      "language": "en",
+      "intent": "conversation rehearsal",
+      "expected": "conversation-rehearsal",
+      "selected": [
+        "conversation-rehearsal",
+        "emotion-naming",
+        "pattern-mapping"
+      ],
+      "expected_rank": 1,
+      "ok_top3": true,
+      "ok_top1": true,
+      "signals": [
+        "conversation",
+        "difficult",
+        "rehearse"
+      ],
+      "anti_barnum_or_dependency": true
+    }
+  ]
+}

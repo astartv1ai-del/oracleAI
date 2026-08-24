@@ -505,5 +505,27 @@ const widgetShell = (p, { title, body, tail = '' }) => {
     this.renderChat(document.getElementById('app-main'));
   };
 
+  /* Vedic quick actions: calculation remains in Urania's evidence-first chat. */
+  app.featureVedicChart = function() {
+    this.doSend(oracleLang() === 'en'
+      ? 'Build my separate Vedic Jyotish Kundli using sidereal Lahiri. Show the calculated evidence, time precision and limitations.'
+      : 'Построй мою отдельную ведическую карту Джйотиш по сидерическому Лахири. Покажи расчётные факты, точность времени и ограничения.');
+  };
+  app.featureVedicDasha = function() {
+    this.doSend(oracleLang() === 'en'
+      ? 'Calculate my Vimshottari Mahadasha and Antardasha timeline from the Moon nakshatra. Show the evidence and do not make guaranteed predictions.'
+      : 'Рассчитай мою Vimshottari Mahadasha и Antardasha по накшатре Луны. Покажи evidence и не делай гарантированных предсказаний.');
+  };
+  app.featureVedicPanchang = function() {
+    this.doSend(oracleLang() === 'en'
+      ? 'Show today’s local Vedic Panchang and Rahu Kaal for my birth location, with timezone, sunrise/sunset and limitations.'
+      : 'Покажи сегодняшний локальный ведический Панчангу и Раху-калу для места моего рождения, с часовым поясом, восходом/закатом и ограничениями.');
+  };
+  app.featureVedicGuna = function() {
+    this.doSend(oracleLang() === 'en'
+      ? 'Calculate an Ashtakoot Guna Milan comparison for me and my partner. Show every component and explain that the score is not a relationship verdict.'
+      : 'Рассчитай совместимость Ashtakoot Guna Milan для меня и партнёра. Покажи все компоненты и объясни, что балл не является вердиктом отношений.');
+  };
+
   /* ═══ ИНТЕРАКТИВ НАТАЛЬНОЙ КАРТЫ: тап по планете + фильтр по стихиям ═══ */
 

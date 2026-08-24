@@ -299,9 +299,29 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
         specialized = query & {"choice", "relationship", "career", "work", "money"}
         if skill.name == "compatibility-synastry" and {"relationship", "compatibility"} & query:
             score += 10
+        if skill.name == "compatibility-synastry" and "synastry" in query:
+            score += 25
+        if skill.name == "houses-and-angles" and {"house", "ascendant"} & query:
+            score += 22
+        if skill.name == "emotion-naming" and {"feel", "emotion"} & query:
+            score += 20
+        if skill.name == "relationship-reflection" and {"relationship", "pattern"} <= query:
+            score += 22
+        if skill.name == "practice-selection" and "practice" in query and "follow" not in query:
+            score += 18
+        if skill.name == "diary-dynamics" and {"diary", "review"} <= query:
+            score += 22
         if skill.name == "mounts-topography" and "mount" in query:
             score += 25
         lower_question = question.lower()
+        vedic_markers = query & {
+            "vedic", "jyotish", "kundli", "sidereal", "lahiri", "nakshatra",
+            "dasha", "vimshottari", "panchang", "tithi", "muhurta", "varga",
+            "navamsa", "ashtakoot", "guna_milan", "shadbala", "джйотиш",
+            "ведическая", "накшатра", "лагна",
+        }
+        if skill.name == "vedic-transits" and "transits" in query and not vedic_markers:
+            score -= 18
         date_only_markers = (
             "no birth time", "unknown birth time", "approximate birth time",
             "date-only", "date only", "без времени", "время рождения неизвестно",

@@ -19,6 +19,7 @@ openai==2.48.0
 
 # Астрология. Нужна именно 5.x: subject.model(), дома и NatalAspects.
 kerykeion==5.12.9
+pyswisseph==2.10.3.2
 lunardate==0.2.2
 geopy==2.5.0
 timezonefinder==8.2.5

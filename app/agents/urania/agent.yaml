@@ -28,6 +28,16 @@ tools:
 - list_partners
 - save_memory
 - recall_memory
+- get_vedic_chart
+- get_nakshatra
+- get_vimshottari_dasha
+- get_panchang
+- get_rahu_kaal
+- get_varga_chart
+- get_guna_milan
+- get_vedic_transits
+- get_graha_strengths
+- get_muhurta
 skills_max_active: 3
 limits:
   max_turns: 6

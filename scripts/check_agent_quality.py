@@ -15,6 +15,7 @@ from app.core.agents.file_loader import (
 )
 from app.core.agents.specs import get
 from scripts.benchmark_skill_routing import CASES as ROUTING_CASES
+from scripts.benchmark_vedic_routing import CASES as VEDIC_ROUTING_CASES
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {"oracle", "astro", "tarot", "chiromant"}
@@ -89,6 +90,17 @@ def build_report() -> dict:
         if expected not in selected_names:
             routing_failures.append((code, query, expected, selected_names))
     errors.extend(f"multilingual routing failure: {item}" for item in routing_failures)
+    vedic_routing_failures = []
+    vedic_top1_passed = 0
+    for query, expected in VEDIC_ROUTING_CASES:
+        profile = profile_for_legacy("astro")
+        selected_names = [skill.name for skill in select_skills(profile, query, 3)]
+        if expected in selected_names:
+            if selected_names[0] == expected:
+                vedic_top1_passed += 1
+        else:
+            vedic_routing_failures.append((query, expected, selected_names))
+    errors.extend(f"Vedic routing failure: {item}" for item in vedic_routing_failures)
 
     frontend = "\n".join(
         (ROOT / "miniapp" / "js" / name).read_text(encoding="utf-8")
@@ -103,6 +115,10 @@ def build_report() -> dict:
         "routing_cases": len(ROUTING_CASES),
         "routing_passed": len(ROUTING_CASES) - len(routing_failures),
         "routing_accuracy": round((len(ROUTING_CASES) - len(routing_failures)) / len(ROUTING_CASES), 3),
+        "vedic_routing_cases": len(VEDIC_ROUTING_CASES),
+        "vedic_routing_top1_passed": vedic_top1_passed,
+        "vedic_routing_top1_accuracy": round(vedic_top1_passed / len(VEDIC_ROUTING_CASES), 3),
+        "vedic_routing_top3_passed": len(VEDIC_ROUTING_CASES) - len(vedic_routing_failures),
         "agents": rows,
         "errors": errors,
     }

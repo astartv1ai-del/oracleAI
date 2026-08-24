@@ -127,3 +127,16 @@ def test_complex_multilingual_routing_benchmark_is_top_three_stable():
         if expected not in selected:
             failures.append((code, query, expected, selected))
     assert not failures, failures
+
+
+def test_vedic_adversarial_routing_benchmark_is_top_three_stable():
+    from scripts.benchmark_vedic_routing import CASES
+
+    profile = profile_for_legacy("astro")
+    assert profile is not None
+    failures = []
+    for query, expected in CASES:
+        selected = [skill.name for skill in select_skills(profile, query, 3)]
+        if expected not in selected:
+            failures.append((query, expected, selected))
+    assert not failures, failures
