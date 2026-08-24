@@ -289,10 +289,10 @@
           "text": "",
           "clientWidth": 48,
           "scrollWidth": 51,
-          "rectWidth": 48.01,
-          "rectHeight": 48.01,
-          "rectLeft": 28,
-          "rectRight": 76,
+          "rectWidth": 48.02,
+          "rectHeight": 48.02,
+          "rectLeft": 27.99,
+          "rectRight": 76.01,
           "overflowX": "visible",
           "clipped": true,
           "isScrollContainer": false
@@ -305,10 +305,10 @@
           "text": "",
           "clientWidth": 42,
           "scrollWidth": 48,
-          "rectWidth": 42.24,
-          "rectHeight": 42.24,
+          "rectWidth": 42.25,
+          "rectHeight": 42.25,
           "rectLeft": 30.87,
-          "rectRight": 73.11,
+          "rectRight": 73.12,
           "overflowX": "visible",
           "clipped": true,
           "isScrollContainer": false
@@ -634,7 +634,7 @@
           "className": "agent-sprite",
           "text": "",
           "clientWidth": 42,
-          "scrollWidth": 48,
+          "scrollWidth": 49,
           "rectWidth": 42.23,
           "rectHeight": 42.23,
           "rectLeft": 30.88,
@@ -667,10 +667,10 @@
           "text": "",
           "clientWidth": 48,
           "scrollWidth": 51,
-          "rectWidth": 48.04,
-          "rectHeight": 48.04,
-          "rectLeft": 27.98,
-          "rectRight": 76.02,
+          "rectWidth": 48.05,
+          "rectHeight": 48.05,
+          "rectLeft": 27.97,
+          "rectRight": 76.03,
           "overflowX": "visible",
           "clipped": true,
           "isScrollContainer": false
@@ -682,10 +682,10 @@
           "className": "agent-sprite",
           "text": "",
           "clientWidth": 42,
-          "scrollWidth": 48,
-          "rectWidth": 42.27,
-          "rectHeight": 42.27,
-          "rectLeft": 30.86,
+          "scrollWidth": 49,
+          "rectWidth": 42.28,
+          "rectHeight": 42.28,
+          "rectLeft": 30.85,
           "rectRight": 73.13,
           "overflowX": "visible",
           "clipped": true,
@@ -730,7 +730,7 @@
           "className": "agent-sprite",
           "text": "",
           "clientWidth": 42,
-          "scrollWidth": 48,
+          "scrollWidth": 49,
           "rectWidth": 42.23,
           "rectHeight": 42.23,
           "rectLeft": 30.88,
@@ -778,7 +778,7 @@
           "className": "agent-sprite",
           "text": "",
           "clientWidth": 42,
-          "scrollWidth": 48,
+          "scrollWidth": 49,
           "rectWidth": 42.23,
           "rectHeight": 42.23,
           "rectLeft": 30.88,
@@ -807,7 +807,7 @@
       "palmChildren": [],
       "sidebar": {
         "visible": true,
-        "transform": "matrix(1, 0, 0, 1, -2.92528, 0)",
+        "transform": "matrix(1, 0, 0, 1, -2.92613, 0)",
         "rectWidth": 281.59,
         "rectLeft": -2.93
       },
@@ -1285,9 +1285,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -1663,9 +1663,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -1901,8 +1901,8 @@
           "text": "",
           "clientWidth": 48,
           "scrollWidth": 51,
-          "rectWidth": 48.06,
-          "rectHeight": 48.06,
+          "rectWidth": 48.05,
+          "rectHeight": 48.05,
           "rectLeft": 27.97,
           "rectRight": 76.03,
           "overflowX": "visible",
@@ -1920,7 +1920,7 @@
           "rectWidth": 42.28,
           "rectHeight": 42.28,
           "rectLeft": 30.85,
-          "rectRight": 73.14,
+          "rectRight": 73.13,
           "overflowX": "visible",
           "clipped": true,
           "isScrollContainer": false
@@ -2041,9 +2041,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": true,
-        "transform": "matrix(1, 0, 0, 1, -9.78767, 0)",
-        "rectWidth": 320,
-        "rectLeft": -9.79
+        "transform": "matrix(1, 0, 0, 1, -5.94025, 0)",
+        "rectWidth": 324,
+        "rectLeft": -5.94
       },
       "sidebarOpen": true,
       "scrollContainers": [],
@@ -2115,9 +2115,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -2239,9 +2239,9 @@
       ],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -2313,9 +2313,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -2371,9 +2371,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -2445,9 +2445,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -2503,9 +2503,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -2692,7 +2692,7 @@
           "className": "agent-avatar",
           "text": "",
           "clientWidth": 54,
-          "scrollWidth": 57,
+          "scrollWidth": 58,
           "rectWidth": 54,
           "rectHeight": 54,
           "rectLeft": 34,
@@ -2740,9 +2740,9 @@
           "className": "agent-avatar",
           "text": "",
           "clientWidth": 54,
-          "scrollWidth": 57,
-          "rectWidth": 54.01,
-          "rectHeight": 54.01,
+          "scrollWidth": 58,
+          "rectWidth": 54.02,
+          "rectHeight": 54.02,
           "rectLeft": 33.99,
           "rectRight": 88.01,
           "overflowX": "visible",
@@ -2788,7 +2788,7 @@
           "className": "agent-avatar",
           "text": "",
           "clientWidth": 54,
-          "scrollWidth": 57,
+          "scrollWidth": 58,
           "rectWidth": 54,
           "rectHeight": 54,
           "rectLeft": 34,
@@ -2836,7 +2836,7 @@
           "className": "agent-avatar",
           "text": "",
           "clientWidth": 54,
-          "scrollWidth": 57,
+          "scrollWidth": 58,
           "rectWidth": 54,
           "rectHeight": 54,
           "rectLeft": 34,
@@ -2881,9 +2881,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -3119,8 +3119,8 @@
           "text": "",
           "clientWidth": 54,
           "scrollWidth": 58,
-          "rectWidth": 54.05,
-          "rectHeight": 54.05,
+          "rectWidth": 54.06,
+          "rectHeight": 54.06,
           "rectLeft": 33.97,
           "rectRight": 88.03,
           "overflowX": "visible",
@@ -3135,10 +3135,10 @@
           "text": "",
           "clientWidth": 48,
           "scrollWidth": 55,
-          "rectWidth": 47.56,
-          "rectHeight": 47.56,
+          "rectWidth": 47.57,
+          "rectHeight": 47.57,
           "rectLeft": 37.21,
-          "rectRight": 84.77,
+          "rectRight": 84.78,
           "overflowX": "visible",
           "clipped": true,
           "isScrollContainer": false
@@ -3259,9 +3259,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": true,
-        "transform": "matrix(1, 0, 0, 1, -15.7228, 0)",
-        "rectWidth": 320,
-        "rectLeft": -15.72
+        "transform": "matrix(1, 0, 0, 1, -9.89228, 0)",
+        "rectWidth": 324,
+        "rectLeft": -9.89
       },
       "sidebarOpen": true,
       "scrollContainers": [],
@@ -3333,9 +3333,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -3457,9 +3457,9 @@
       ],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -3531,9 +3531,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -3589,9 +3589,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
@@ -3663,9 +3663,9 @@
       "palmChildren": [],
       "sidebar": {
         "visible": false,
-        "transform": "matrix(1, 0, 0, 1, -332.8, 0)",
-        "rectWidth": 320,
-        "rectLeft": -332.8
+        "transform": "matrix(1, 0, 0, 1, -336.96, 0)",
+        "rectWidth": 324,
+        "rectLeft": -336.96
       },
       "sidebarOpen": false,
       "scrollContainers": [],
