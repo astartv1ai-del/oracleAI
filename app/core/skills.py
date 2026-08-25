@@ -680,6 +680,76 @@ async def _run_get_transits(db, user, args) -> str:
             f"{structured}")
 
 
+async def _run_get_composite(db, user, args) -> str:
+    """Return composite evidence for one owner-scoped saved partner."""
+    try:
+        partner_id = int((args or {}).get("partner_id") or 0)
+    except (TypeError, ValueError):
+        return "нужен partner_id сохранённого точного партнёра"
+    if partner_id <= 0:
+        return "нужен partner_id сохранённого точного партнёра"
+    partner = await readings_repo.get_partner(db, partner_id, user["tg_id"])
+    if not partner:
+        return "сохранённый партнёр не найден"
+    try:
+        owner_chart = json.loads(user["chart_json"] or "{}")
+        partner_chart = json.loads(partner["chart_json"] or "{}")
+        contract = await asyncio.to_thread(
+            chart_products.build_composite_contract,
+            owner_chart,
+            partner_chart,
+            partner_id=partner_id,
+            partner_label=str(partner["name"] or "Партнёр"),
+        )
+    except chart_products.ChartProductError as exc:
+        return json.dumps({
+            "product": "composite",
+            "error": {"code": exc.code, "message": exc.message, "missing": exc.missing},
+        }, ensure_ascii=False)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return "сохранённые карты для композита недоступны"
+    except Exception as exc:  # noqa: BLE001
+        log.debug("composite evidence unavailable: %s", type(exc).__name__)
+        return "композит временно недоступен — не выдумывай его значения"
+    return "[Детерминированное composite evidence — трактуй только эти значения]\n" + json.dumps(
+        contract, ensure_ascii=False, indent=2,
+    )
+
+
+async def _run_get_returns(db, user, args) -> str:
+    """Return solar-return evidence for an explicit year."""
+    raw_year = (args or {}).get("year")
+    try:
+        target_year = int(raw_year) if raw_year is not None else date.today().year
+    except (TypeError, ValueError):
+        return "год возврата должен быть целым числом"
+    planet_id = str((args or {}).get("planet") or "Sun")
+    try:
+        owner_chart = json.loads(user["chart_json"] or "{}")
+        contract = await asyncio.to_thread(
+            chart_products.build_returns_contract,
+            owner_chart,
+            target_year=target_year,
+            planet_id=planet_id,
+            lat=_user_field(user, "birth_lat"),
+            lon=_user_field(user, "birth_lon"),
+            tz_name=_user_field(user, "tz"),
+        )
+    except chart_products.ChartProductError as exc:
+        return json.dumps({
+            "product": "returns",
+            "error": {"code": exc.code, "message": exc.message, "missing": exc.missing},
+        }, ensure_ascii=False)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return "сохранённая карта для возврата недоступна"
+    except Exception as exc:  # noqa: BLE001
+        log.debug("returns evidence unavailable: %s", type(exc).__name__)
+        return "возврат планеты временно недоступен — не выдумывай дату"
+    return "[Детерминированное returns evidence — трактуй только эти значения]\n" + json.dumps(
+        contract, ensure_ascii=False, indent=2,
+    )
+
+
 async def _run_moon_week(db, user, args) -> str:
     """Лунный календарь на неделю — для планирования, а не «на сегодня»."""
     today = date.today()
@@ -1165,6 +1235,31 @@ SKILLS: dict[str, dict] = {
                 "as_of": {"type": "string", "description": "Дата YYYY-MM-DD, по умолчанию сегодня"},
                 "time": {"type": "string", "description": "UTC-время HH:MM, необязательно"},
             }},
+        },
+    },
+    "get_composite": {
+        "run": _run_get_composite,
+        "schema": {
+            "name": "get_composite",
+            "description": ("Канонический композит двух сохранённых точных карт. Зови только "
+                            "после выбора конкретного сохранённого партнёра; возвращает "
+                            "круговые середины планет и аспекты, не судьбу пары."),
+            "input_schema": {"type": "object", "properties": {
+                "partner_id": {"type": "integer", "description": "ID сохранённого партнёра"}},
+                "required": ["partner_id"]},
+        },
+    },
+    "get_returns": {
+        "run": _run_get_returns,
+        "schema": {
+            "name": "get_returns",
+            "description": ("Момент солнечного возврата к натальной долготе для указанного "
+                            "года. В первой версии поддерживается только Sun; результат "
+                            "является астрономическим моментом, а не предсказанием."),
+            "input_schema": {"type": "object", "properties": {
+                "planet": {"type": "string", "enum": ["Sun"]},
+                "year": {"type": "integer", "description": "Целевой год 1900–2200"}},
+                "required": ["year"]},
         },
     },
     "get_moon_week": {

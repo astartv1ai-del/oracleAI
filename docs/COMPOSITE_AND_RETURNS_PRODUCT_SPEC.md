@@ -1,15 +1,15 @@
 # Composite и planetary returns: продуктовая спецификация
 
-**Статус:** planned, не enabled в production-продукте.
+**Статус:** implemented as JSON-first product paths; visual extensions remain planned.
 **Дата:** 2026-08-26
 
-Этот документ фиксирует будущие контракты и задачи расчёта. Наличие возможностей upstream-библиотеки не считается реализацией OracleAI. До прохождения всех acceptance gates новые пути не добавляются в публичный Mini App или в agent skill registry.
+Этот документ фиксирует реализованные контракты и задачи расчёта. Наличие возможностей upstream-библиотеки не считается реализацией OracleAI. Composite и solar returns включены в API, agent evidence и Mini App только в ограниченном JSON-first scope, описанном ниже.
 
 ## Общие ограничения
 
 Оба пути должны использовать сохранённые owner-scoped данные и существующий canonical calculation layer. Клиент не передаёт натальные birth data через GET-URL, image URL или публичный cache key. LLM получает только deterministic evidence и не вычисляет долготы, моменты возврата, дома или аспекты самостоятельно. Первый релиз каждого пути — JSON-first; новый wheel, raw SVG, share image и PDF добавляются отдельными решениями.
 
-## Composite v1
+## Composite v1 — implemented JSON-first
 
 ### Вход
 
@@ -56,7 +56,7 @@
 | UX | Выбор сохранённого exact партнёра и отдельное состояние unavailable; сначала structured card, без нового колеса |
 | Release gate | Determinism, owner isolation, exactness gate, missing-point fixtures, regression natal suite и documentation link check |
 
-## Planetary returns v1
+## Planetary returns v1 — implemented as solar return
 
 ### Scope
 
@@ -85,10 +85,10 @@
   "precision": "exact",
   "natal_longitude_deg": 88.123456,
   "return_longitude_deg": 88.123456,
-  "return_at_utc": "2027-06-21T08:15:30+00:00",
-  "return_at_local": "2027-06-21T11:15:30+03:00",
+  "return_at_utc": "2027-06-21T08:15:00+00:00",
+  "return_at_local": "2027-06-21T11:15:00+03:00",
   "timezone": "Europe/Moscow",
-  "search_window": {"start": "2027-01-01", "end": "2027-12-31"},
+  "search_window": {"start": "2027-01-01T00:00:00+00:00", "end": "2028-01-01T00:00:00+00:00"},
   "match_count": 1,
   "limitations": ["Это астрономический момент возврата, а не гарантия события."]
 }
@@ -115,4 +115,4 @@
 
 ## Не входит в эту спецификацию
 
-В v1 не включаются composite houses, composite ASC/MC, return houses, relocation-based returns, transit periods/ingresses, automatic event predictions, visual wheels, PDF/share images и платёжный entitlement. Каждый из них требует отдельного product decision и не должен появляться как скрытый fallback.
+В v1 не включаются composite houses, composite ASC/MC, return houses, relocation-based returns, transit periods/ingresses, automatic event predictions, visual wheels, PDF/share images и платёжный entitlement. Каждый из них требует отдельного product decision и не появляется как скрытый fallback. Текущие endpoints: `POST /api/composite` и `POST /api/returns`; agent tools: `get_composite` и `get_returns`; Mini App journeys: `featureComposite` и `featureReturns`.

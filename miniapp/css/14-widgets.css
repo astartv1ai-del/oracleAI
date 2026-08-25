@@ -183,3 +183,6 @@
 @media (max-width: 380px) {
   .product-form-grid { grid-template-columns: 1fr; }
 }
+
+.product-return-moment { border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); display: grid; gap: 5px; margin: 16px 0 10px; padding: 12px 0; }
+.product-return-moment strong { color: var(--gold-bright); font-size: 16px; line-height: 1.35; }

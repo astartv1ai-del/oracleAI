@@ -6,10 +6,10 @@
 
 ### Added
 
-- Добавлены versioned JSON-контракты для полной натальной карты, synastry и transit product paths.
-- Добавлены owner-scoped маршруты `POST /api/synastry` и `POST /api/transits` с явными precision-gates.
-- Mini App получил отдельные journeys «Полная синастрия» и «Транзиты»; Astrologer agent получает deterministic evidence для этих путей.
-- Добавлена спецификация будущих `composite_schema_version=1` и `returns_schema_version=1` без включения этих возможностей в production runtime.
+- Добавлены versioned JSON-контракты для natal, synastry, transit, composite и solar returns product paths.
+- Добавлены owner-scoped маршруты `POST /api/synastry`, `POST /api/transits`, `POST /api/composite` и `POST /api/returns` с явными precision-gates.
+- Mini App получил отдельные journeys «Полная синастрия», «Транзиты», «Композит пары» и «Солнечный возврат»; Astrologer agent получает deterministic evidence для всех путей.
+- Реализованы circular midpoints для composite и bounded UTC ephemeris search с локальным timestamp для solar return; extended planets, houses, wheels and prediction semantics остаются отдельными gates.
 - Репозиторий очищен от исторических audit snapshots, AI handoff-файлов, generated inventories и одноразовых research artifacts.
 
 ### Changed

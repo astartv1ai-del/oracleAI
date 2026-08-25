@@ -63,14 +63,14 @@
     const labels = en ? {
       get_chart: 'Natal chart', get_all_placements: 'All placements', get_placement: 'Single placement',
       get_matrix: 'Matrix', get_life_path: 'Life path', get_chinese_zodiac: 'Chinese zodiac',
-      get_transits: 'Current sky', get_moon_week: 'Moon week', get_career_windows: 'Career windows',
+      get_transits: 'Current sky', get_composite: 'Composite', get_returns: 'Solar return', get_moon_week: 'Moon week', get_career_windows: 'Career windows',
       get_compatibility: 'Compatibility', list_partners: 'Saved partners', draw_tarot: 'Tarot draw',
       palm_scanner: 'Palm evidence', palm_photo_guide: 'Photo guide', palm_history: 'Palm history',
       suggest_practice: 'Practice catalogue', recall_diary: 'Diary', recall_memory: 'Memory', save_memory: 'Memory'
     } : {
       get_chart: 'Натальная карта', get_all_placements: 'Все placements', get_placement: 'Один placement',
       get_matrix: 'Матрица', get_life_path: 'Число пути', get_chinese_zodiac: 'Китайский зодиак',
-      get_transits: 'Текущее небо', get_moon_week: 'Лунная неделя', get_career_windows: 'Окна решений',
+      get_transits: 'Текущее небо', get_composite: 'Композит', get_returns: 'Солнечный возврат', get_moon_week: 'Лунная неделя', get_career_windows: 'Окна решений',
       get_compatibility: 'Совместимость', list_partners: 'Сохранённые люди', draw_tarot: 'Расклад Таро',
       palm_scanner: 'Evidence ладони', palm_photo_guide: 'Гид по фото', palm_history: 'История ладони',
       suggest_practice: 'Каталог практик', recall_diary: 'Дневник', recall_memory: 'Память', save_memory: 'Память'
@@ -467,6 +467,21 @@
 
       case 'transits-result':
         return `<div class="msg assistant">${p.data && this.transitProductHtml ? this.transitProductHtml(p.data) : `<div class="chat-widget"><div class="s-err">${esc(p.error || 'Транзиты пока недоступны.')}</div></div>`}</div>`;
+
+      case 'composite-select':
+        return `<div class="msg assistant"><div class="chat-widget">${p.loading ? '<div class="typing"><span></span><span></span><span></span></div>' : (p.error ? `<div class="s-err">${esc(p.error)}</div>` : '') + (this.compositeSelectHtml ? this.compositeSelectHtml(p.partners || []) : '')}</div></div>`;
+
+      case 'composite-loading':
+        return `<div class="msg assistant"><div class="chat-widget"><div class="typing"><span></span><span></span><span></span></div><p class="product-muted">Собираю общий рисунок двух точных карт…</p></div></div>`;
+
+      case 'composite-result':
+        return `<div class="msg assistant">${p.data && this.compositeProductHtml ? this.compositeProductHtml(p.data) : `<div class="chat-widget"><div class="s-err">${esc(p.error || 'Композит пока недоступен.')}</div></div>`}</div>`;
+
+      case 'returns-loading':
+        return `<div class="msg assistant"><div class="chat-widget"><div class="typing"><span></span><span></span><span></span></div><p class="product-muted">Ищу точный момент солнечного возврата…</p></div></div>`;
+
+      case 'returns-result':
+        return `<div class="msg assistant">${p.data && this.returnsProductHtml ? this.returnsProductHtml(p.data) : `<div class="chat-widget"><div class="s-err">${esc(p.error || 'Возврат планеты пока недоступен.')}</div></div>`}</div>`;
 
       case 'compat':
         return `<div class="msg assistant compat-message">

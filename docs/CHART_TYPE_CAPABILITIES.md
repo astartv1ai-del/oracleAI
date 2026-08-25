@@ -1,23 +1,23 @@
 # Chart-type capability matrix
 
 **Дата:** 2026-08-26
-**Правило:** в таблице различаются capability библиотек и реально включённый продуктовый путь. Наличие factory в upstream не считается доказательством OracleAI parity, UX, security или licensing readiness.
+**Правило:** upstream capability не считается включённым продуктом без canonical contract, precision-gate, owner-scoped API, tests and documented UX.
 
-| Тип | Capability Kerykeion | OracleAI status | Precision/product gate | Следующий evidence gate |
-|---|---|---|---|---|
-| Natal | `AstrologicalSubjectFactory`, `ChartDataFactory.create_natal_chart_data`, `ChartDrawer` wheel output | **Enabled for exact natal image** | Exact time, coordinates and timezone required; unknown time returns structured `insufficient_precision` and no wheel | RU/EN render artifacts, API auth/ETag tests, PDF print artifact, legal sign-off |
-| Natal date-only | Kerykeion can calculate positions using a technical time, but that does not make angles valid | **No wheel output** | Planets/aspects remain in JSON; ASC/MC/houses are hidden by canonical calculation contract | Keep explicit UX recovery state and regression test |
-| Synastry | Official factory/documentation capability exists | **Enabled as structured JSON product; no chart image** | `synastry_schema_version=1`; saved owner partner only; both charts must be exact; current route returns positions and major cross-chart aspects | Dedicated raster/PDF/share decision and licensing review; composite remains separate |
-| Transit | Official transit/chart-data capability exists | **Enabled as structured JSON product; no chart image** | `transit_schema_version=1`; explicit ISO date; optional UTC time gives `instant`, otherwise deterministic `day` snapshot; transit houses/angles are excluded | Transit periods/ingresses and visual decision require a future contract; licensing review |
-| Composite | Official composite capability exists | **Not enabled** | Requires two exact subjects and a documented composite convention | Dedicated calculation contract and owner/partner privacy review |
-| Planetary returns | Official returns capability exists | **Not enabled** | Requires return planet, target year/window, timezone and location semantics; current solar product is not a return implementation | Define return contract and deterministic fixtures before UI work |
-| Matrix | Existing `matrix_svg()` is a separate product visual | **Existing separate track** | Not a natal chart engine and not included in the Kerykeion image boundary | Preserve independent tests; do not conflate with natal migration |
+| Тип | OracleAI status | Current contract and gate | Not included yet |
+|---|---|---|---|
+| Natal exact | **Enabled** | `natal_schema_version=2`; full canonical chart with planets, houses, ASC/MC, nodes, Lilith, additional points and major aspects | Commercial licensing sign-off and external production/device QA |
+| Natal date-only | **Enabled with limitation** | Planets/aspects remain available; houses, ASC/MC and wheel are hidden | Any inferred angles or technical-noon wheel |
+| Synastry | **Enabled JSON-first** | `synastry_schema_version=1`; saved owner partner; both charts exact; positions and major cross-chart aspects | New chart image, PDF/share visual, composite semantics |
+| Transit | **Enabled JSON-first** | `transit_schema_version=1`; explicit ISO date; optional UTC time; `day`/`instant` precision; transit houses/angles excluded | Periods, ingresses and transit visual |
+| Composite | **Enabled JSON-first** | `composite_schema_version=1`; saved owner partner; both full exact; circular midpoints of ten traditional planets and internal major aspects | Nodes, additional points, ASC/MC, houses, wheel and PDF |
+| Solar returns | **Enabled JSON-first** | `returns_schema_version=1`; `planet=Sun`; target year 1900–2200; full exact natal plus owner coordinates/timezone; bounded UTC search and local timestamp | Jupiter/Saturn returns, return houses, relocation, wheel and predictions |
+| Matrix | **Existing separate track** | Independent matrix calculation and visual; not a natal chart engine | Conflation with chart renderer |
 
 ## Product invariants
 
-The visual engine never becomes a second source of truth. `app/core/astro.py` remains responsible for canonical values and precision. The chart adapter is responsible only for reconstructing an exact Kerykeion subject from server-side canonical inputs, asking the public ChartDrawer API for a wheel, validating the transient SVG envelope, and rasterizing it.
+The visual engine never becomes a second source of truth. `app/core/astro.py` remains responsible for canonical values and precision. `app/core/chart_products.py` builds JSON-ready synastry, transit, composite and returns contracts without FastAPI, database or LLM dependencies.
 
-A future chart type must not be enabled merely because an upstream documentation page lists it. Before enablement it needs a canonical input contract, deterministic fixture set, calculation parity review, visual evidence in RU/EN where applicable, owner-scoped API tests, PDF/share decision, operational limits and a completed license review.
+Every enabled product has owner authorization, deterministic fixtures, stable error codes, PII-safe responses, explicit limitations and a JSON-first UX. New images, PDFs, share artifacts, periods, relocation semantics or automatic predictions require separate product decisions and release gates.
 
 ## References
 
@@ -25,5 +25,5 @@ A future chart type must not be enabled merely because an upstream documentation
 [2]: https://pypi.org/project/kerykeion/ "Kerykeion PyPI"  
 [3]: https://github.com/g-battaglia/kerykeion "Kerykeion source repository"  
 [4]: ../app/core/astro.py "OracleAI canonical calculation source"  
-[5]: ../app/core/chart_rendering.py "OracleAI raster image adapter"
-[6]: CHART_PRODUCT_CONTRACTS.md "OracleAI synastry and transit product contracts"
+[5]: ../app/core/chart_products.py "OracleAI chart product builders"
+[6]: CHART_PRODUCT_CONTRACTS.md "OracleAI current chart product contracts"

@@ -59,7 +59,7 @@ sequenceDiagram
 
 ## Chart architecture
 
-`app/core/astro.py` — канонический calculation source. `app/core/chart_contract.py` фиксирует natal conventions and precision metadata. `app/core/chart_products.py` строит отдельные synastry/transit contracts; их public shapes описаны в [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md). Future composite/returns semantics находятся в [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) и пока не enabled.
+`app/core/astro.py` — канонический calculation source. `app/core/chart_contract.py` фиксирует natal conventions and precision metadata. `app/core/chart_products.py` строит отдельные synastry, transit, composite и solar-returns contracts; их public shapes описаны в [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md). Calculation semantics и acceptance boundaries перечислены в [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md). Новые типы включены только как JSON-first paths: visual wheels, PDF/share artifacts, extended planets and prediction semantics остаются отдельными gates.
 
 Натальный exact path включает planets, houses, angles, nodes, Lilith, additional points, major aspects и retrograde flags. При неизвестном времени используются только поддержанные date-only facts; дома, ASC, MC и natal wheel не подставляются.
 
@@ -74,7 +74,7 @@ Frontend намеренно не использует bundler: `miniapp/index.ht
 | `miniapp/js/00-runtime.js`–`02-api.js` | State, utilities, localization and authenticated API helpers |
 | `miniapp/js/03-data.js`–`05-app.js` | Tool catalog, application bootstrap, shell and navigation |
 | `miniapp/js/06-home.js`–`13-palm.js` | Home, chat, cards, natal/profile and domain widgets |
-| `miniapp/js/14-products.js` | Structured synastry and transit product journeys |
+| `miniapp/js/14-products.js` | Structured synastry, transit, composite and returns product journeys |
 | `miniapp/js/15-actions.js` | Delegated `data-act` action registry |
 | `miniapp/js/16-placements.js` | Placement and chart detail rendering |
 | `miniapp/css/` and `miniapp/styles.css` | Tokens, layout, widget and final visual layers |
@@ -90,6 +90,8 @@ Frontend намеренно не использует bundler: `miniapp/index.ht
 | Natal | `astro.compute_chart`, chart contract | Houses/angles только при exact time, coordinates and timezone |
 | Synastry | Owner-scoped saved partner and `synastry_schema_version=1` | Both charts must be exact; no birth data in URLs |
 | Transit | `transit_schema_version=1` and explicit snapshot date/time | Day snapshots are not false lunar instants; transit houses are not included |
+| Composite | `composite_schema_version=1` and saved exact partner | Circular midpoints and internal major aspects only; no houses or angles |
+| Solar returns | `returns_schema_version=1` and explicit target year | Sun only; full exact natal plus owner location required; no prediction claims |
 | Tarot | Saved drawn cards, position and orientation | No invented cards, timing or guarantees |
 | Palm | Vision observations with quality/confidence | No diagnosis or high-stakes claims |
 | Memory/diary | SQLite with consent and bounded context | Memory-off is enforced server-side |
@@ -109,6 +111,6 @@ Public launch remains gated by external production evidence: deployment/image va
 [1]: [app/api/main.py](../app/api/main.py) — application lifecycle and static/API mounting.
 [2]: [app/core/astro.py](../app/core/astro.py) — canonical astrology calculations.
 [3]: [app/core/chart_contract.py](../app/core/chart_contract.py) — natal calculation contract.
-[4]: [app/core/chart_products.py](../app/core/chart_products.py) — synastry/transit product contracts.
+[4]: [app/core/chart_products.py](../app/core/chart_products.py) — synastry, transit, composite and returns product contracts.
 [5]: [app/core/interpretation.py](../app/core/interpretation.py) — evidence-first interpretation and guardrails.
 [6]: [app/data/schema.py](../app/data/schema.py) and [app/data/migrations.py](../app/data/migrations.py) — data schema and migrations.

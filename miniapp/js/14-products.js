@@ -137,4 +137,100 @@
     }
     this.renderChat(document.getElementById('app-main'));
   };
+
+  app.compositeSelectHtml = function (partners) {
+    const saved = partners && partners.length ? `<div class="product-partners">${partners.map(p => {
+      const ready = Boolean(p.synastry_ready);
+      return `<button class="product-partner${ready ? '' : ' is-disabled'}" data-act="composite-load" data-id="${esc(String(p.id))}" ${ready ? '' : 'disabled'}>
+        <span class="product-partner__name">${esc(p.name || 'Партнёр')}</span>
+        <span class="product-muted">${ready ? 'Точная карта готова' : 'Нужны время и город рождения'}</span>
+      </button>`;
+    }).join('')}</div>` : '<p class="product-muted">Сначала сохрани партнёра с точным временем и городом рождения.</p>';
+    return `<section class="chart-product" aria-label="Выбор партнёра для композита">
+      <div class="w-title">Композит пары</div>
+      <p class="product-muted">Средние точки двух точных карт показывают общий символический рисунок связи. Это не вердикт и не прогноз.</p>
+      ${saved}
+      <button class="btn btn-ghost" data-act="chat-fn" data-chat="astro" data-fn="featureSynastry">Добавить точного партнёра</button>
+    </section>`;
+  };
+
+  app.compositeProductHtml = function (data) {
+    const points = data.points || [], aspects = data.aspects || [];
+    return `<section class="chart-product" data-result-anchor role="status" aria-label="Композит пары">
+      <div class="w-title">Композит${data.sources?.partner?.label ? ' · ' + esc(data.sources.partner.label) : ''}</div>
+      <div class="product-meta">${esc(labelPrecision(data.precision))} · ${esc(String(points.length))} общих точек · ${esc(String(aspects.length))} аспектов</div>
+      <div class="product-subtitle">Положения композита</div>
+      <div class="product-points">${points.map(pointRow).join('')}</div>
+      <div class="product-subtitle product-subtitle--spaced">Аспекты внутри композита</div>
+      <div class="product-aspects">${aspects.length ? aspects.slice(0, 12).map(aspectRow).join('') : '<p class="product-muted">Мажорных аспектов в выбранной политике орбов не найдено.</p>'}</div>
+      <p class="product-muted">${(data.limitations || []).map(esc).join(' ')}</p>
+      <button class="btn btn-ghost" data-act="chat-fn" data-chat="astro" data-fn="featureComposite">Выбрать другую пару</button>
+    </section>`;
+  };
+
+  app.returnsProductHtml = function (data) {
+    const first = (data.matches || [])[0] || {};
+    const moment = data.return_at_local || first.return_at_local || data.return_at_utc || first.return_at_utc || 'Момент не найден';
+    return `<section class="chart-product" data-result-anchor role="status" aria-label="Возврат Солнца">
+      <div class="w-title">Солнечный возврат</div>
+      <div class="product-meta">${esc(String(data.target_year || ''))} · ${esc(data.planet_label || 'Солнце')} · ${esc(labelPrecision(data.precision))}</div>
+      <div class="product-return-moment"><span class="product-muted">Момент возврата в локальном времени</span><strong>${esc(moment)}</strong><span class="product-muted">${esc(data.timezone || '')}</span></div>
+      <div class="product-meta">Найдено пересечений: ${esc(String(data.match_count ?? 0))}</div>
+      <p class="product-muted">${(data.limitations || []).map(esc).join(' ')}</p>
+      <div class="product-date-row"><label for="returns-year">Другой год</label><input id="returns-year" type="number" min="1900" max="2200" value="${esc(String(data.target_year || new Date().getFullYear()))}"><button class="btn btn-primary" data-act="returns-load">Рассчитать</button></div>
+    </section>`;
+  };
+
+  app.featureComposite = async function () {
+    if (this.chat.pending && ['composite-select', 'composite-loading'].includes(this.chat.pending.kind)) return;
+    const key = this.chat.key, view = this.view;
+    const pending = this.chat.pending = { kind: 'composite-select', loading: true, partners: [] };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const partners = await api('/api/partners');
+      if (!widAlive(key, view, pending)) return;
+      this.chat.pending = { kind: 'composite-select', loading: false, partners: partners || [] };
+    } catch (e) {
+      if (!widAlive(key, view, pending)) return;
+      this.chat.pending = { kind: 'composite-select', loading: false, partners: [], error: friendlyError(e) };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  };
+
+  app.loadComposite = async function (partnerId) {
+    const key = this.chat.key, view = this.view;
+    const pending = this.chat.pending = { kind: 'composite-loading', loading: true };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const data = await api('/api/composite', { method: 'POST', body: JSON.stringify({ partner_id: Number(partnerId) }) });
+      if (!widAlive(key, view, pending)) return;
+      this.chat.pending = { kind: 'composite-result', loading: false, data };
+    } catch (e) {
+      if (!widAlive(key, view, pending)) return;
+      this.chat.pending = { kind: 'composite-select', loading: false, partners: [], error: friendlyError(e) };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  };
+
+  app.featureReturns = function () {
+    const year = new Date().getFullYear();
+    this.loadReturns(year);
+  };
+
+  app.loadReturns = async function (year) {
+    const parsed = Number.parseInt(year, 10);
+    const targetYear = Number.isFinite(parsed) ? Math.min(2200, Math.max(1900, parsed)) : new Date().getFullYear();
+    const key = this.chat.key, view = this.view;
+    const pending = this.chat.pending = { kind: 'returns-loading', loading: true };
+    this.renderChat(document.getElementById('app-main'));
+    try {
+      const data = await api('/api/returns', { method: 'POST', body: JSON.stringify({ planet: 'Sun', year: targetYear }) });
+      if (!widAlive(key, view, pending)) return;
+      this.chat.pending = { kind: 'returns-result', loading: false, data };
+    } catch (e) {
+      if (!widAlive(key, view, pending)) return;
+      this.chat.pending = { kind: 'returns-result', loading: false, data: null, error: friendlyError(e) };
+    }
+    this.renderChat(document.getElementById('app-main'));
+  };
 }());
