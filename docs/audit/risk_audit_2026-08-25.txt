@@ -1,0 +1,173 @@
+## targeted-tests
+..................................................                       [100%]
+## security-script
+{"ts":"2026-08-25T18:31:49.349510+00:00","level":"INFO","logger":"weasyprint.progress","message":"Step 2 - Fetching and parsing CSS - CSS string","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:49.407021+00:00","level":"INFO","logger":"weasyprint.progress","message":"Step 2 - Fetching and parsing CSS - CSS string","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:49.429000+00:00","level":"INFO","logger":"weasyprint.progress","message":"Step 2 - Fetching and parsing CSS - CSS string","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:49.986827+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:49.996567+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:50.024554+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:50.034076+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:50.038612+00:00","level":"INFO","logger":"oracle.billing","message":"оплата o1:plan:vip уже обработана или заказ не найден","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:50.057243+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:50.065383+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:52.678371+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/embeddings \"HTTP/1.1 404 Not Found\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:52.679710+00:00","level":"INFO","logger":"oracle.memory","message":"эмбеддинги недоступны (404 page not found) — работаю по словам","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:52.964428+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:52.965418+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/agent попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:53.833441+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:53.834123+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/agent попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.439333+00:00","level":"WARNING","logger":"oracle.llm","message":"run_agent openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.441732+00:00","level":"WARNING","logger":"oracle.agents","message":"агент oracle не ответил (Все LLM-провайдеры недоступны: openai: пустой ответ модели) — офлайн","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.504881+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.513394+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.545086+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.555062+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.671909+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:55.672814+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:56.587994+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:56.588632+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:58.191351+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Овен ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:58.301796+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:58.302494+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:59.215690+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:31:59.216441+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:00.819341+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Телец ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:00.939122+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:00.939901+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:01.874271+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:01.875006+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:03.478051+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Близнецы ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:03.590617+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:03.591377+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:04.509766+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:04.510516+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:06.112347+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Рак ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:06.254631+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:06.255551+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:07.170223+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:07.170887+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:08.773770+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Лев ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:08.879960+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:08.880652+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:09.804374+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:09.805107+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:11.408232+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Дева ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:11.534561+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:11.535314+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:12.465549+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:12.466449+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:14.069485+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Весы ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:14.179131+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:14.179810+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:15.105755+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:15.106459+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:16.709124+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Скорпион ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:16.831659+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:16.832319+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:17.740269+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:17.741042+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:19.343789+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Стрелец ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:19.455722+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:19.456415+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:20.367780+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:20.368569+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:21.971672+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Козерог ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:22.081593+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:22.082454+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:23.018652+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:23.019495+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:24.622210+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Водолей ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:24.739909+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:24.740601+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:25.652053+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:25.652698+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:27.255571+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Рыбы ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:27.256431+00:00","level":"INFO","logger":"oracle.horoscopes","message":"гороскопы на 2026-08-25: собрано 11 знаков","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:27.261986+00:00","level":"WARNING","logger":"oracle.api.webhooks","message":"подпись вебхука просрочена (3600 с)","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:27.275368+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T18:32:27.284221+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+🔮 Самопроверка Оракула
+
+  ✅ Синтаксис всех .py — 185 файлов разобраны
+  ✅ Ядро: колода, астрология, Матрица, совместимость — солнце Рак, луна «Растущая Луна», аркан 10, карта mode=full, пара 75/100
+  ✅ Импорты всех модулей — 34 модулей импортируются
+  ✅ Файлы Mini App и админки — 20 файлов, 497 КБ
+  ✅ Безопасность: кризисный протокол — 5 кризисных, 2 смягчаемых, 3 обычных — разобраны верно
+  ✅ Практики и мантры: каталог и программы — 12 практик в 4 разделах, программы по дням собираются
+  ✅ Память: упаковка векторов и близость — эмбеддинги включены
+  ✅ Карточки для сторис — PNG 53 КБ собирается
+  ✅ PDF-разбор для маркетплейса — карта и октаграмма рисуются, вывод: PDF
+  ✅ База данных: схема, миграции, сид — 41 таблиц, 5 тарифов, 19 товаров
+  ✅ Деньги: идемпотентность оплаты и баланс ✦ — оплата идемпотентна, подписка до 2026-10-24
+  ✅ Лимиты и путь вопроса — лимит 3/день, отказ работает
+  ✅ Практики: старт, отметка, стрик — 12 практик, стрик и остановка работают
+  ✅ Гороскопы по знакам — 12 знаков, кеш держит, каналов настроено: 0
+  ✅ Вебхук web-оплаты: подпись и идемпотентность — подпись проверяется, повтор отсекается
+  ⏭ LLM: живой запрос к цепочке провайдеров — live LLM выключен; для staging выставь SELF_CHECK_LIVE=1
+  ⏭ Конфигурация .env — BOT_TOKEN не задан; ADMIN_ID не задан — в админ-панель будет не войти; WEBAPP_URL пуст — кнопка Mini App не появится
+
+✨ Всё работает. Предупреждений: 2 (см. ⏭ выше).
+Запуск: python -m app.bot.main  ·  uvicorn app.api.main:app --port 8080
+## dependency-audit
+No known vulnerabilities found
+## secret-patterns-tracked
+## dev-fail-closed
+app/api/auth.py:1:"""Совместимость: проверка initData переехала в `security.py` (там же срок жизни)."""
+app/api/deps.py:87:    """Клиентка по подписи Telegram. В DEV_MODE — по `?dev_user=<id>`."""
+app/api/deps.py:139:    при DEV_MODE, то есть на машине разработчика.
+app/api/main.py:45:    if settings.dev_mode or os.getenv("APP_ENV", "").lower() in {"dev", "test"}:
+app/api/main.py:53:        missing.append("WEBAPP_URL")
+app/api/main.py:58:            missing.append("WEBAPP_URL должен быть HTTPS URL без учётных данных")
+app/api/main.py:66:    # DEV_MODE=1 отключает подпись Telegram (?dev_user=<id>) — это только для
+app/api/main.py:68:    # запуск падает, если режим включён не в dev-окружении (APP_ENV=dev).
+app/api/main.py:69:    if settings.dev_mode and os.getenv("APP_ENV", "") != "dev":
+app/api/main.py:71:            "DEV_MODE=1 включает вход по ?dev_user=<id> БЕЗ подписи Telegram. "
+app/api/main.py:72:            "Допустимо только в dev: выстави APP_ENV=dev либо выключи DEV_MODE=0")
+app/api/main.py:84:        log.warning("DEV_MODE=1 — вход по ?dev_user=<id> без подписи Telegram. "
+app/api/main.py:85:                    "На боевом сервере поставь DEV_MODE=0")
+app/api/main.py:138:        # CDN и с inline-стилями, поэтому в DEV_MODE строгий CSP не вешаем (G24).
+app/api/main.py:219:    # Production startup requires WEBAPP_URL, so Host headers cannot poison
+app/api/routers/webhooks.py:73:def verify_paddle(raw: bytes, header: str, secret: str) -> bool:
+app/api/routers/webhooks.py:75:    if not secret:
+app/api/routers/webhooks.py:87:    calc = hmac.new(secret.encode(), f"{ts}:".encode() + raw,
+app/api/routers/webhooks.py:127:    if not settings.paddle_webhook_secret:
+app/api/routers/webhooks.py:128:        _failure("webhook secret is not configured", status_code=503)
+app/api/routers/webhooks.py:130:    if not verify_paddle(raw, paddle_signature or "", settings.paddle_webhook_secret):
+app/api/security.py:1:"""Проверка подписи Telegram WebApp initData.
+app/api/security.py:7:Дополнительно проверяем срок (`auth_date`): подпись у initData бессрочная, и без
+app/api/security.py:50:        secret = hmac.new(b"WebAppData", settings.bot_token.encode(),
+app/api/security.py:52:        calc = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
+app/api/security.py:64:            log.info("initData просрочена (%.0f ч)", (now - auth_date) / 3600)
+app/api/security.py:67:            log.info("initData из будущего (%.0f мин) — отклоняю",
+app/api/security.py:83:        log.debug("initData не разобрана: %s", e)
+app/bot/profile.py:161:    """Резерв, когда WEBAPP_URL не задан и веб-панель недоступна."""
+app/bot/profile.py:177:              "<i>Полная панель открывается, когда задан WEBAPP_URL.</i>"]
+app/config.py:37:    webapp_url: str = os.getenv("WEBAPP_URL", "").rstrip("/")
+app/config.py:78:    paddle_webhook_secret: str = os.getenv("PADDLE_WEBHOOK_SECRET", "")
+app/config.py:90:    app_env: str = os.getenv("APP_ENV", "dev").lower()
+app/config.py:91:    dev_mode: bool = os.getenv("DEV_MODE", "0") == "1"
+app/config.py:162:            problems.append("DEV_MODE=1 — вход в API без подписи Telegram")
+app/config.py:164:            problems.append("WEBAPP_URL пуст — кнопка Mini App не появится")
+app/core/observability.py:4:дневник, память, токены, initData или необезличенные Telegram ID. Модуль не
+app/core/observability.py:13:import secrets
+app/core/observability.py:26:    r"(?i)\b(api[_ -]?key|token|secret|password|signature|initData)\s*[:=]\s*[^\s,;]+"
+app/core/observability.py:33:    return secrets.token_hex(8)
+app/core/observability.py:69:            "environment": os.getenv("APP_ENV", "dev"),
+app/core/tarot.py:3:Выбор карт — криптографический рандом (secrets), LLM только трактует.
+app/core/tarot.py:10:import secrets
+app/core/tarot.py:342:_RNG = secrets.SystemRandom()
+app/repo/growth.py:4:import secrets
+app/repo/growth.py:13:    body = "".join(secrets.choice(ALPHABET) for _ in range(length))
+app/services/cryptobot.py:31:    secret = settings.cryptobot_api_token
+app/services/cryptobot.py:32:    if not secret or not header:
+app/services/cryptobot.py:34:    calc = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+infra/docker-compose.yml:2:# Домен в Caddyfile + WEBAPP_URL=https://домен в ../.env
+infra/docker-compose.yml:67:      - ${BACKUP_ENCRYPTION_KEY_HOST_PATH:-/etc/oracle/backup.key}:/run/secrets/oracle-backup-key:ro
+infra/docker-compose.yml:74:      BACKUP_ENCRYPTION_KEY_FILE: /run/secrets/oracle-backup-key
+.env.example:9:WEBAPP_URL=
+.env.example:59:# DEV_MODE=1 пускает в API любого по ?dev_user=<id> БЕЗ подписи Telegram.
+.env.example:61:DEV_MODE=0
+## docker-config
+bash: docker: command not found
+docker_config_exit=127

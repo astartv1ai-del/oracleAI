@@ -42,9 +42,14 @@ def _log_counts(path: Path, cutoff: datetime) -> dict[str, int]:
     return counts
 
 
-def _db_counts(db_path: Path, cutoff: datetime) -> dict[str, float | int]:
+def _db_counts(db_path: Path, cutoff: datetime) -> dict[str, float | int | str | None]:
+    empty = {
+        "llm_calls": 0, "llm_failed": 0, "last_backup_age_s": -1,
+        "scheduler_status": "missing", "scheduler_age_s": -1,
+        "scheduler_failures": 0, "scheduler_error": None,
+    }
     if not db_path.is_file():
-        return {"llm_calls": 0, "llm_failed": 0, "last_backup_age_s": -1}
+        return empty
     db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
     try:
         stamp = cutoff.isoformat()
@@ -54,9 +59,26 @@ def _db_counts(db_path: Path, cutoff: datetime) -> dict[str, float | int]:
         failed = db.execute(
             "SELECT COUNT(*) FROM llm_usage WHERE created_at>=? AND ok=0", (stamp,)
         ).fetchone()[0]
+        try:
+            scheduler = db.execute(
+                "SELECT last_status, last_finished_at, failure_count, last_error "
+                "FROM scheduler_leases WHERE name='main'"
+            ).fetchone()
+        except sqlite3.Error:
+            scheduler = None
     finally:
         db.close()
-    return {"llm_calls": calls, "llm_failed": failed, "last_backup_age_s": -1}
+    result = dict(empty)
+    result.update({"llm_calls": calls, "llm_failed": failed})
+    if scheduler:
+        finished = _parse_time(scheduler[1])
+        result.update({
+            "scheduler_status": scheduler[0] or "unknown",
+            "scheduler_age_s": max(0, (_now() - finished).total_seconds()) if finished else -1,
+            "scheduler_failures": int(scheduler[2] or 0),
+            "scheduler_error": scheduler[3],
+        })
+    return result
 
 
 def main() -> int:
@@ -69,6 +91,7 @@ def main() -> int:
     parser.add_argument("--max-webhook-failures", type=int, default=0)
     parser.add_argument("--max-fallback-rate", type=float, default=0.25)
     parser.add_argument("--max-backup-age-hours", type=float, default=30)
+    parser.add_argument("--max-scheduler-age-minutes", type=float, default=30)
     args = parser.parse_args()
     if args.window_minutes < 1:
         parser.error("--window-minutes must be positive")
@@ -98,6 +121,14 @@ def main() -> int:
         alerts.append("llm_fallback_rate_threshold")
     if backup_age_h > args.max_backup_age_hours:
         alerts.append("backup_stale_or_missing")
+    scheduler_status = str(db_counts.get("scheduler_status") or "missing")
+    scheduler_age_s = float(db_counts.get("scheduler_age_s", -1))
+    if scheduler_status == "error":
+        alerts.append("scheduler_last_run_failed")
+    if scheduler_status in {"missing", "never"} or scheduler_age_s < 0:
+        alerts.append("scheduler_status_missing")
+    elif scheduler_age_s > args.max_scheduler_age_minutes * 60:
+        alerts.append("scheduler_stale")
 
     result = {
         "ok": not alerts,
@@ -109,6 +140,9 @@ def main() -> int:
         "llm_fallbacks": log_counts["llm_fallback"],
         "llm_fallback_rate": round(fallback_rate, 4),
         "backup_age_hours": round(backup_age_h, 2) if backup_age_h != float("inf") else None,
+        "scheduler_status": scheduler_status,
+        "scheduler_age_minutes": round(scheduler_age_s / 60, 2) if scheduler_age_s >= 0 else None,
+        "scheduler_failures": int(db_counts.get("scheduler_failures", 0)),
         "alerts": alerts,
     }
     print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))

@@ -285,3 +285,9 @@
 - Full pytest suite: **465 passed**; Mini App JavaScript syntax, Python compileall, `git diff --check`, design-contract checker and operational selfcheck passed.
 - Routing/quality benchmarks remained green: agent routing 24/24, skill routing 20/20, Vedic routing 10/10, Mira/Lenormand routing 20/20.
 - Three deterministic profiles in both languages produced **6/6 valid PDFs**, all six pages each, with no audited ToV markers; representative generated pages passed visual inspection without clipping or accidental blank pages.
+
+### v89 — Scheduler ownership and operational status — 2026-08-25
+
+**Added.** The scheduler now persists a `main` lease in `scheduler_leases`, atomically admits one owner across bot processes, recovers after a stale lease expires, records run/failure status and bounded error context, and preserves per-delivery idempotency. `scripts/ops_alerts.py` now exposes scheduler freshness/failure signals and raises privacy-safe alerts for missing, stale or failed scheduler runs.
+
+**Tests.** Added cross-connection concurrency, stale-owner recovery, failure-accounting and operations-alert regressions. Focused scheduler/operations tests pass; the full suite passes locally. Production alert routing, off-site backup, live provider, device and payment evidence remain external launch gates.

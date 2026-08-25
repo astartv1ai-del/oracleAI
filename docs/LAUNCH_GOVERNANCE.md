@@ -35,9 +35,9 @@
 | Palm quality | Approved image benchmark, valid enum/schema rate ≥99%, p95 vision latency budget and `needs_photo` fallback. | AI/Product | OPEN |
 | Device UX | iOS, Android, Desktop Telegram matrix including first launch, permissions, RU/EN, offline and slow provider. | Product/QA | OPEN |
 | Privacy/legal | Privacy Policy, Terms, 16+, deletion, retention and cross-border review for first-wave countries. | Product/Legal | EXTERNAL |
-| Backup/restore | Encrypted off-site copy, checksum, isolated restore drill and post-restore selfcheck. | Operations | OPEN |
+| Backup/restore | Encrypted off-site copy, checksum, isolated restore drill and post-restore selfcheck. Disposable plaintext/encrypted restore now passes locally; off-site and scheduled production drill remain open. | Operations | OPEN |
 | Incident response | Severity matrix, contact tree, on-call owner, provider/payment/data incident tabletop. | Operations | OPEN |
-| Monitoring | Health, HTTP, LLM/provider and business funnel dashboards plus test alerts. | Operations | OPEN |
+| Monitoring | Health, HTTP, LLM/provider, scheduler and business funnel dashboards plus test alerts. Local scheduler lease/status and alert parsing are now verified; production routing remains open. | Operations | OPEN |
 
 ## P1 gates — до public launch
 

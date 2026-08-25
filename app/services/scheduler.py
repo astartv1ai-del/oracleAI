@@ -18,8 +18,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import socket
+import uuid
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+
+from ..data.session import transaction
 
 from ..core import agent as agent_core
 from ..core import astro
@@ -29,6 +34,8 @@ from . import analytics, broadcast, horoscopes, practices as practices_svc
 log = logging.getLogger("oracle.scheduler")
 
 TICK_SECONDS = 600          # 10 минут: часовые окна не проскакивают
+LEASE_SECONDS = max(TICK_SECONDS * 3, 1800)  # stale recovery after a missed owner
+SCHEDULER_NAME = "main"
 BATCH_PAUSE = 0.05          # пауза между отправками внутри тика
 AUDIENCE_CAP = 5000         # сколько клиенток обрабатываем за один тик
 
@@ -472,6 +479,70 @@ async def _horoscopes(bot, db, now_utc, settings_cache) -> None:
         await horoscopes.post_day(bot, db)
 
 
+def scheduler_owner() -> str:
+    """Stable-per-process owner token; it is never exposed to users or analytics."""
+    return f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:12]}"
+
+
+async def acquire_scheduler_lease(db, owner: str, *, now: datetime | None = None,
+                                  lease_seconds: int = LEASE_SECONDS) -> bool:
+    """Atomically claim the scheduler lease or recover an expired owner."""
+    current = now or datetime.now(timezone.utc)
+    stamp = current.isoformat()
+    lease_until = (current + timedelta(seconds=lease_seconds)).isoformat()
+    async with transaction(db):
+        cursor = await db.execute(
+            "INSERT INTO scheduler_leases "
+            "(name, owner, acquired_at, lease_until, last_started_at, last_status, "
+            "last_error, run_count) VALUES (?, ?, ?, ?, ?, 'running', NULL, 1) "
+            "ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, "
+            "acquired_at=excluded.acquired_at, lease_until=excluded.lease_until, "
+            "last_started_at=excluded.last_started_at, last_status='running', "
+            "last_error=NULL, run_count=scheduler_leases.run_count + 1 "
+            "WHERE scheduler_leases.lease_until IS NULL "
+            "OR scheduler_leases.lease_until <= ? "
+            "OR scheduler_leases.owner = ?",
+            (SCHEDULER_NAME, owner, stamp, lease_until, stamp, stamp, owner),
+        )
+        return cursor.rowcount == 1
+
+
+async def finish_scheduler_lease(db, owner: str, *, status: str,
+                                 error: str | None = None,
+                                 now: datetime | None = None) -> bool:
+    """Release only the lease owned by this process and record the outcome."""
+    if status not in {"ok", "error"}:
+        raise ValueError("scheduler lease status must be ok or error")
+    stamp = (now or datetime.now(timezone.utc)).isoformat()
+    message = (error or "")[:500] or None
+    async with transaction(db):
+        cursor = await db.execute(
+            "UPDATE scheduler_leases SET lease_until=?, last_finished_at=?, "
+            "last_status=?, last_error=?, failure_count=failure_count + ? "
+            "WHERE name=? AND owner=?",
+            (stamp, stamp, status, message, 1 if status == "error" else 0,
+             SCHEDULER_NAME, owner),
+        )
+        return cursor.rowcount == 1
+
+
+async def scheduler_status(db) -> dict:
+    """Return safe operator status without owner identifiers or private content."""
+    cursor = await db.execute(
+        "SELECT name, acquired_at, lease_until, last_started_at, last_finished_at, "
+        "last_status, last_error, run_count, failure_count "
+        "FROM scheduler_leases WHERE name=?", (SCHEDULER_NAME,))
+    row = await cursor.fetchone()
+    if not row:
+        return {"name": SCHEDULER_NAME, "status": "never", "run_count": 0,
+                "failure_count": 0, "last_error": None}
+    return {"name": row["name"], "acquired_at": row["acquired_at"],
+            "lease_until": row["lease_until"], "last_started_at": row["last_started_at"],
+            "last_finished_at": row["last_finished_at"], "status": row["last_status"],
+            "last_error": row["last_error"], "run_count": row["run_count"],
+            "failure_count": row["failure_count"]}
+
+
 async def tick(bot, db) -> None:
     """Один проход планировщика."""
     settings_cache = await _load_settings(db)
@@ -528,18 +599,30 @@ async def tick(bot, db) -> None:
 
 
 async def run(bot, db) -> None:
-    """Бесконечный цикл планировщика (запускается задачей из бота)."""
+    """Бесконечный цикл с SQLite lease: второй bot process остаётся standby."""
+    owner = scheduler_owner()
     log.info("планировщик запущен, тик каждые %s с", TICK_SECONDS)
     while True:
+        claimed = False
         try:
-            await tick(bot, db)
-            # Хартбит для docker healthcheck: бот жив, пока регулярно крутит тик
-            # (G21). Метку читает scripts/healthcheck.py из бэкап-контейнера.
-            await content.set_setting(db, "system.heartbeat",
-                                      datetime.now(timezone.utc).isoformat())
+            claimed = await acquire_scheduler_lease(db, owner)
+            if not claimed:
+                log.warning("планировщик standby: lease занят другим владельцем")
+            else:
+                try:
+                    await tick(bot, db)
+                    heartbeat = datetime.now(timezone.utc).isoformat()
+                    await content.set_setting(db, "system.heartbeat", heartbeat)
+                    await finish_scheduler_lease(db, owner, status="ok")
+                except asyncio.CancelledError:
+                    await finish_scheduler_lease(db, owner, status="error", error="cancelled")
+                    log.info("планировщик остановлен")
+                    raise
+                except Exception as e:  # noqa: BLE001
+                    await finish_scheduler_lease(db, owner, status="error", error=str(e))
+                    log.error("планировщик: %s", e)
         except asyncio.CancelledError:
-            log.info("планировщик остановлен")
             raise
         except Exception as e:  # noqa: BLE001
-            log.error("планировщик: %s", e)
+            log.error("lease планировщика: %s", e)
         await asyncio.sleep(TICK_SECONDS)

@@ -64,3 +64,35 @@ def test_cache_busting_policy_and_public_legal_pages():
     assert check_cache_busting.main() == 0
     for name in ("privacy.html", "terms.html", "privacy-en.html", "terms-en.html"):
         assert (ROOT / "web" / name).is_file()
+
+
+def test_ops_alert_db_counts_include_scheduler_status(tmp_path):
+    db_path = tmp_path / "ops.db"
+    import sqlite3
+
+    db = sqlite3.connect(db_path)
+    db.executescript(
+        """
+        CREATE TABLE llm_usage (created_at TEXT, ok INTEGER);
+        CREATE TABLE scheduler_leases (
+            name TEXT PRIMARY KEY,
+            last_status TEXT,
+            last_finished_at TEXT,
+            failure_count INTEGER,
+            last_error TEXT
+        );
+        """
+    )
+    stamp = datetime.now(timezone.utc).isoformat()
+    db.execute(
+        "INSERT INTO scheduler_leases VALUES ('main', 'ok', ?, 0, NULL)", (stamp,)
+    )
+    db.commit()
+    db.close()
+
+    counts = ops_alerts._db_counts(
+        db_path, ops_alerts._now() - timedelta(minutes=15)
+    )
+    assert counts["scheduler_status"] == "ok"
+    assert counts["scheduler_age_s"] >= 0
+    assert counts["scheduler_failures"] == 0

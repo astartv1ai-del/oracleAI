@@ -17,6 +17,8 @@ sys.path.insert(0, str(ROOT))
 
 # Выключаем провайдеров до импорта настроек: иначе тесты полезут в сеть.
 os.environ["LLM_PROVIDER"] = "off"
+# Tests use deterministic keyword memory; never inherit a sandbox embedding key.
+os.environ["EMBED_MODEL"] = ""
 os.environ.setdefault("BOT_TOKEN", "test:token")
 os.environ.setdefault("ADMIN_ID", "1")
 os.environ.setdefault("DEV_MODE", "1")

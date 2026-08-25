@@ -1,0 +1,1214 @@
+
+===== ruff =====
++ python -m ruff check app scripts tests
+All checks passed!
+[ruff_exit=0]
+
+===== compileall =====
++ python -m compileall -q app scripts tests
+[compileall_exit=0]
+
+===== js_syntax =====
++ bash -c set -e; for f in miniapp/js/*.js admin/*.js; do node --check "$f"; done
+[js_syntax_exit=0]
+
+===== selfcheck =====
++ python scripts/selfcheck.py
+{"ts":"2026-08-25T19:07:33.628118+00:00","level":"INFO","logger":"weasyprint.progress","message":"Step 2 - Fetching and parsing CSS - CSS string","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:33.686978+00:00","level":"INFO","logger":"weasyprint.progress","message":"Step 2 - Fetching and parsing CSS - CSS string","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:33.708088+00:00","level":"INFO","logger":"weasyprint.progress","message":"Step 2 - Fetching and parsing CSS - CSS string","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:34.331215+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:34.340728+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:34.367430+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:34.375845+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:34.379271+00:00","level":"INFO","logger":"oracle.billing","message":"оплата o1:plan:vip уже обработана или заказ не найден","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:34.405398+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:34.413873+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:37.254516+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/embeddings \"HTTP/1.1 404 Not Found\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:37.255712+00:00","level":"INFO","logger":"oracle.memory","message":"эмбеддинги недоступны (404 page not found) — работаю по словам","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:37.541525+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:37.542304+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/agent попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:38.408656+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:38.409367+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/agent попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.012066+00:00","level":"WARNING","logger":"oracle.llm","message":"run_agent openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.013343+00:00","level":"WARNING","logger":"oracle.agents","message":"агент oracle не ответил (Все LLM-провайдеры недоступны: openai: пустой ответ модели) — офлайн","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.072808+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.082139+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.111589+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.120601+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.288545+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:40.289411+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:41.204703+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:41.205398+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:42.808420+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Овен ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:42.923620+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:42.924774+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:43.851524+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:43.852549+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:45.455521+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Телец ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:45.566752+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:45.567516+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:46.478338+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:46.479153+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:48.081847+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Близнецы ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:48.199488+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:48.200251+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:49.107740+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:49.108595+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:50.711428+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Рак ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:50.834759+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:50.835575+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:51.752174+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:51.752951+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:53.355643+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Лев ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:53.508264+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:53.509043+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:54.432538+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:54.433383+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:56.036096+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Дева ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:56.145553+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:56.146351+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:57.070778+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:57.071744+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:58.674543+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Весы ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:58.812377+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:58.813151+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:59.738491+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:07:59.739541+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:01.342420+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Скорпион ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:01.462308+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:01.463094+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:02.383260+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:02.384062+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:03.986741+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Стрелец ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:04.120817+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:04.121576+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:05.038164+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:05.038949+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:06.641793+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Козерог ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:06.760193+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:06.760996+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:07.696561+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:07.697328+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:09.300274+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Водолей ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:09.425793+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:09.426632+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 1: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:10.358117+00:00","level":"INFO","logger":"httpx","message":"HTTP Request: POST https://api.manus.im/api/llm-proxy/v1/chat/completions \"HTTP/1.1 200 OK\"","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:10.358891+00:00","level":"WARNING","logger":"oracle.llm","message":"openai/complete попытка 2: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:11.961880+00:00","level":"WARNING","logger":"oracle.horoscopes","message":"гороскоп для Рыбы ушёл в офлайн: Все LLM-провайдеры недоступны: openai: пустой ответ модели","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:11.962612+00:00","level":"INFO","logger":"oracle.horoscopes","message":"гороскопы на 2026-08-25: собрано 11 знаков","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:11.973868+00:00","level":"WARNING","logger":"oracle.api.webhooks","message":"подпись вебхука просрочена (3601 с)","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:11.991601+00:00","level":"INFO","logger":"oracle.migrations","message":"миграция данных: 2026_07_referrals_from_ref_by, 2026_07_promo_used_count, 2026_07_reading_spread_from_question, 2026_07_events_day_backfill, 2026_07_users_sub_level_codes, 2026_08_forecasts_language_key","request_id":"-","release_id":"local","environment":"PROD"}
+{"ts":"2026-08-25T19:08:11.999945+00:00","level":"INFO","logger":"oracle.seed","message":"сид каталога: plans+6, products+19, flags+17, settings+24, content+31","request_id":"-","release_id":"local","environment":"PROD"}
+🔮 Самопроверка Оракула
+
+  ✅ Синтаксис всех .py — 185 файлов разобраны
+  ✅ Ядро: колода, астрология, Матрица, совместимость — солнце Рак, луна «Растущая Луна», аркан 10, карта mode=full, пара 75/100
+  ✅ Импорты всех модулей — 34 модулей импортируются
+  ✅ Файлы Mini App и админки — 20 файлов, 497 КБ
+  ✅ Безопасность: кризисный протокол — 5 кризисных, 2 смягчаемых, 3 обычных — разобраны верно
+  ✅ Практики и мантры: каталог и программы — 12 практик в 4 разделах, программы по дням собираются
+  ✅ Память: упаковка векторов и близость — эмбеддинги включены
+  ✅ Карточки для сторис — PNG 49 КБ собирается
+  ✅ PDF-разбор для маркетплейса — карта и октаграмма рисуются, вывод: PDF
+  ✅ База данных: схема, миграции, сид — 42 таблиц, 5 тарифов, 19 товаров
+  ✅ Деньги: идемпотентность оплаты и баланс ✦ — оплата идемпотентна, подписка до 2026-10-24
+  ✅ Лимиты и путь вопроса — лимит 3/день, отказ работает
+  ✅ Практики: старт, отметка, стрик — 12 практик, стрик и остановка работают
+  ✅ Гороскопы по знакам — 12 знаков, кеш держит, каналов настроено: 0
+  ✅ Вебхук web-оплаты: подпись и идемпотентность — подпись проверяется, повтор отсекается
+  ⏭ LLM: живой запрос к цепочке провайдеров — live LLM выключен; для staging выставь SELF_CHECK_LIVE=1
+  ⏭ Конфигурация .env — BOT_TOKEN не задан; ADMIN_ID не задан — в админ-панель будет не войти; WEBAPP_URL пуст — кнопка Mini App не появится
+
+✨ Всё работает. Предупреждений: 2 (см. ⏭ выше).
+Запуск: python -m app.bot.main  ·  uvicorn app.api.main:app --port 8080
+[selfcheck_exit=0]
+
+===== design_contract =====
++ python scripts/check_design_contract.py
+design contract ok: tokens, import order, reduced motion, component inventory
+[design_contract_exit=0]
+
+===== agent_quality =====
++ python scripts/check_agent_quality.py
+{
+  "ok": true,
+  "tool_count": 29,
+  "eval_cases": 54,
+  "routing_cases": 20,
+  "routing_passed": 20,
+  "routing_accuracy": 1.0,
+  "vedic_routing_cases": 10,
+  "vedic_routing_top1_passed": 10,
+  "vedic_routing_top1_accuracy": 1.0,
+  "vedic_routing_top3_passed": 10,
+  "mira_lenormand_routing_cases": 20,
+  "mira_lenormand_routing_top1_passed": 14,
+  "mira_lenormand_routing_top1_accuracy": 0.7,
+  "mira_lenormand_routing_top3_passed": 20,
+  "agents": [
+    {
+      "agent": "lenormand",
+      "legacy_code": "tarot",
+      "skills": 35,
+      "tools": 3,
+      "active_cap": 3,
+      "selected": [
+        "choice-spread",
+        "question-to-spread",
+        "card-ledger-evidence"
+      ],
+      "eval_cases": 13
+    },
+    {
+      "agent": "lilith",
+      "legacy_code": "oracle",
+      "skills": 31,
+      "tools": 11,
+      "active_cap": 3,
+      "selected": [
+        "matrix-lines",
+        "matrix-reading",
+        "matrix-compatibility"
+      ],
+      "eval_cases": 13
+    },
+    {
+      "agent": "mira",
+      "legacy_code": "chiromant",
+      "skills": 34,
+      "tools": 3,
+      "active_cap": 3,
+      "selected": [
+        "palm-photo-quality",
+        "palm-line-topology",
+        "heart-line"
+      ],
+      "eval_cases": 13
+    },
+    {
+      "agent": "urania",
+      "legacy_code": "astro",
+      "skills": 39,
+      "tools": 22,
+      "active_cap": 3,
+      "selected": [
+        "aspect-patterns",
+        "natal-chart-foundations",
+        "lunar-nodes"
+      ],
+      "eval_cases": 15
+    }
+  ],
+  "errors": []
+}
+[agent_quality_exit=0]
+
+===== domain_evals =====
++ python scripts/check_domain_evals.py
+lenormand cases= 13 ok
+lilith cases= 13 ok
+mira cases= 13 ok
+urania cases= 15 ok
+domain_evals=PASS cases= 54
+[domain_evals_exit=0]
+
+===== skill_library =====
++ python scripts/validate_skill_library.py
+lenormand skills= 35 validated
+lilith skills= 31 validated
+mira skills= 34 validated
+urania skills= 39 validated
+skill_library=PASS agents= 4 skills= 139
+[skill_library_exit=0]
+
+===== routing =====
++ python scripts/benchmark_agent_routing.py
+{
+  "cases": 24,
+  "passed": 24,
+  "accuracy": 1.0,
+  "auto_route_passed": 16,
+  "results": [
+    {
+      "id": "ru-astro-saturn",
+      "text": "Что значит мой Сатурн в 10 доме?",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched сатурн, дом",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-astro-nodes",
+      "text": "Раху и Кету: куда мне расти?",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched раху, кету",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-astro-compat",
+      "text": "Сделай синастрию и объясни аспекты Венеры",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched синастр, венер",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-astro-date",
+      "text": "Транзит Юпитера и выбор даты запуска",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched транзит, юпитер",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-astro-natal",
+      "text": "Tell me about my natal chart and rising sign",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched rising, natal, chart, sign",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-astro-house",
+      "text": "What does my Venus in the seventh house mean?",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched house, venus",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-astro",
+      "text": "Раху and Ketu in my natal chart",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched natal, chart, раху, ketu",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-tarot",
+      "text": "Сделай расклад Таро на решение",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched расклад, таро",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-tarot-reversed",
+      "text": "Объясни перевёрнутые карты в раскладе",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched перевёрнут, расклад, карты",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-tarot",
+      "text": "What does this tarot spread show?",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched spread, tarot",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-tarot",
+      "text": "Tarot расклад для journal reflection",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched расклад, tarot",
+      "candidates": [
+        "tarot",
+        "oracle",
+        "astro"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-lenormand",
+      "text": "Хочу расклад Ленорман",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched ленорман, расклад",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-palm",
+      "text": "Прочитай ладонь по фото, линия сердца",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched линия сердца, ладон, фото",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-palm",
+      "text": "Can you analyze my palm photo?",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched photo, palm",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-palm",
+      "text": "Фото ладони и heart line",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched heart line, ладон, фото",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-palm-mounts",
+      "text": "Что значат холмы на ладони?",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched ладон, холм",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-oracle-practice",
+      "text": "Подбери практику для спокойствия",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.9500000000000001,
+      "reason": "matched практик",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-oracle-diary",
+      "text": "Помоги с дневником и границами",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.98,
+      "reason": "matched дневник, границ",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-oracle-values",
+      "text": "Help me reflect on my values conflict",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.9500000000000001,
+      "reason": "matched values",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-oracle",
+      "text": "Нужен ritual для journal",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.98,
+      "reason": "matched journal, ritual",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ambiguous-tarot-astro",
+      "text": "Сделай расклад Таро и объясни мой натальный Сатурн",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.52,
+      "reason": "ambiguous hard domains; ask a clarifying question",
+      "candidates": [
+        "astro",
+        "tarot",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ambiguous-palm-tarot",
+      "text": "Фото ладони и расклад на отношения",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.52,
+      "reason": "ambiguous hard domains; ask a clarifying question",
+      "candidates": [
+        "chiromant",
+        "tarot",
+        "astro"
+      ],
+      "ok": true
+    },
+    {
+      "id": "no-signal",
+      "text": "Помоги мне понять, что делать дальше",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.5,
+      "reason": "no domain signal; keep default",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "off-topic",
+      "text": "Помоги написать SQL-запрос для отчёта",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.5,
+      "reason": "no domain signal; keep default",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    }
+  ]
+}
+[routing_exit=0]
+
+===== vedic_routing =====
++ python scripts/benchmark_vedic_routing.py
+{
+  "total": 10,
+  "top1_passed": 10,
+  "top3_passed": 10,
+  "top1_accuracy": 1.0,
+  "top3_accuracy": 1.0,
+  "cases": [
+    {
+      "query": "ведическая лагна и kundli по Lahiri",
+      "expected": "vedic-foundations",
+      "selected": [
+        "vedic-foundations",
+        "graha-strengths",
+        "nakshatra-pada"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "What is my Moon nakshatra and pada?",
+      "expected": "nakshatra-pada",
+      "selected": [
+        "nakshatra-pada",
+        "moon-cycles",
+        "luminaries"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "Покажи Vimshottari Mahadasha и antardasha",
+      "expected": "vimshottari-dasha",
+      "selected": [
+        "vimshottari-dasha"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "Panchang for tomorrow and Rahu Kaal",
+      "expected": "panchang-muhurta",
+      "selected": [
+        "panchang-muhurta",
+        "chart-synthesis",
+        "date-only-mode"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "Сравни две даты для muhurta launch",
+      "expected": "panchang-muhurta",
+      "selected": [
+        "panchang-muhurta"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "Read my Navamsa D9 and Dasamsa D10",
+      "expected": "varga-charts",
+      "selected": [
+        "varga-charts",
+        "aspects",
+        "astrology-history"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "Ashtakoot Guna Milan для нас",
+      "expected": "guna-milan",
+      "selected": [
+        "guna-milan"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "Vedic sidereal transits for today",
+      "expected": "vedic-transits",
+      "selected": [
+        "vedic-transits",
+        "vedic-foundations",
+        "transits"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "Graha strength / exaltation in my Kundli",
+      "expected": "graha-strengths",
+      "selected": [
+        "graha-strengths",
+        "vedic-foundations",
+        "guna-milan"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    },
+    {
+      "query": "No birth time, can I get Vedic houses?",
+      "expected": "date-only-mode",
+      "selected": [
+        "date-only-mode",
+        "vedic-foundations",
+        "vedic-evidence-safety"
+      ],
+      "expected_rank": 1,
+      "top1": true,
+      "top3": true
+    }
+  ]
+}
+[vedic_routing_exit=0]
+
+===== mira_lenormand =====
++ python scripts/benchmark_mira_lenormand.py
+{
+  "total": 20,
+  "passed": 20,
+  "accuracy": 1.0,
+  "top1_passed": 14,
+  "top3_passed": 20,
+  "failures": [],
+  "cases": [
+    {
+      "agent": "chiromant",
+      "query": "Разбери мою ладонь по этому снимку: что реально видно и какая уверенность?",
+      "expected": "visual-evidence-protocol",
+      "top3": [
+        "visual-evidence-protocol",
+        "palm-angle-classification",
+        "palm-evidence-reading"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "Trace the life line: continuity, breaks, branches and visible path only",
+      "expected": "palm-line-topology",
+      "top3": [
+        "life-line-continuity",
+        "palm-line-topology",
+        "life-line"
+      ],
+      "rank": 2,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "Сравни Western, Indian Hasta и Chinese подходы к моей линии головы, но не смешивай школы",
+      "expected": "palm-technique-triangulation",
+      "top3": [
+        "palm-technique-triangulation",
+        "photo-comparison",
+        "head-line"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "На открытой ладони видны ли линии брака и children? What photo should I take?",
+      "expected": "capture-rectification",
+      "top3": [
+        "palm-photo-quality",
+        "capture-rectification",
+        "visual-evidence-protocol"
+      ],
+      "rank": 2,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "Фото бликует и пальцы обрезаны — can you still read the mounts?",
+      "expected": "capture-rectification",
+      "top3": [
+        "capture-rectification",
+        "visual-evidence-protocol",
+        "palm-photo-quality"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "What is visible about my heart/head/fate lines on the uploaded image?",
+      "expected": "visual-evidence-protocol",
+      "top3": [
+        "visual-evidence-protocol",
+        "fate-line",
+        "fate-line-context"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "Скажи, что означает topology линии жизни: дуга, глубина, разрывы, но не срок жизни",
+      "expected": "palm-line-topology",
+      "top3": [
+        "palm-line-topology",
+        "life-line",
+        "life-line-continuity"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "Can you compare my old and new palm photos and report only visible changes?",
+      "expected": "photo-comparison",
+      "top3": [
+        "photo-comparison",
+        "visual-evidence-protocol",
+        "palm-photo-quality"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "Знаешь все техники хиромантии? Дай разницу между школами по одному видимому холму",
+      "expected": "palm-technique-triangulation",
+      "top3": [
+        "palm-technique-triangulation",
+        "mounts-topography",
+        "mounts"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "chiromant",
+      "query": "Can palm lines show disease, pregnancy or death?",
+      "expected": "palm-safety",
+      "top3": [
+        "palm-safety",
+        "palm-evidence-reading",
+        "palm-photo-quality"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "После draw покажи deck, position, card ID и upright/reversed ledger",
+      "expected": "card-ledger-evidence",
+      "top3": [
+        "card-ledger-evidence",
+        "card-position-semantics",
+        "tarot-proof-safety"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Explain the adjacent pair and repeated suit pattern, not isolated card meanings",
+      "expected": "combination-synthesis",
+      "top3": [
+        "card-ledger-evidence",
+        "combination-synthesis",
+        "card-position-semantics"
+      ],
+      "rank": 2,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Я не знаю, что спросить: what will happen in my life? Помоги выбрать spread",
+      "expected": "question-to-spread",
+      "top3": [
+        "question-to-spread",
+        "three-card-spread",
+        "career-spread"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Покажи checksum расклада и объясни, что он доказывает, а чего не доказывает",
+      "expected": "tarot-proof-safety",
+      "top3": [
+        "question-to-spread",
+        "tarot-proof-safety",
+        "three-card-spread"
+      ],
+      "rank": 2,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Two reversed cards together: compare their orientation tension and offer a counter-reading",
+      "expected": "combination-synthesis",
+      "top3": [
+        "reversed-cards",
+        "combination-synthesis",
+        "card-ledger-evidence"
+      ],
+      "rank": 2,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "What does my ex think and will they return? Reframe this before drawing",
+      "expected": "question-to-spread",
+      "top3": [
+        "question-to-spread",
+        "reversed-cards",
+        "tarot-proof-safety"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Can the cards decide a legal case or investment for me?",
+      "expected": "tarot-proof-safety",
+      "top3": [
+        "tarot-proof-safety",
+        "card-ledger-evidence",
+        "court-cards"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Для ежедневного journal reflection лучше one-card или Celtic Cross?",
+      "expected": "question-to-spread",
+      "top3": [
+        "card-ledger-evidence",
+        "question-to-spread",
+        "card-combinations"
+      ],
+      "rank": 2,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Read all ten Celtic Cross positions from the actual stored cards without adding cards",
+      "expected": "card-ledger-evidence",
+      "top3": [
+        "card-ledger-evidence",
+        "court-cards",
+        "reversed-cards"
+      ],
+      "rank": 1,
+      "ok": true
+    },
+    {
+      "agent": "tarot",
+      "query": "Tarot vs Lenormand: clarify deck tradition and select the smallest useful spread",
+      "expected": "question-to-spread",
+      "top3": [
+        "question-to-spread",
+        "three-card-spread",
+        "career-spread"
+      ],
+      "rank": 1,
+      "ok": true
+    }
+  ]
+}
+[mira_lenormand_exit=0]
+
+===== skill_routing =====
++ python scripts/benchmark_skill_routing.py
+{
+  "total": 20,
+  "passed": 20,
+  "accuracy": 1.0,
+  "failures": [],
+  "cases": [
+    {
+      "agent": "astro",
+      "query": "Покажи Раху и Кету и объясни их ось",
+      "expected": "lunar-nodes",
+      "selected": [
+        "lunar-nodes",
+        "lunar-phases",
+        "chart-synthesis"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "Can you compare our synastry aspects without mind-reading?",
+      "expected": "compatibility-synastry",
+      "selected": [
+        "compatibility-synastry",
+        "synastry-boundaries",
+        "aspects"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "my natal chart: Асцендент, MC and houses",
+      "expected": "houses-and-angles",
+      "selected": [
+        "houses-and-angles",
+        "natal-chart-foundations",
+        "chart-synthesis"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "Ретроградный Меркурий и practical checks",
+      "expected": "retrogrades",
+      "selected": [
+        "retrogrades",
+        "aspects",
+        "astrology-history"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "What are the current transits of Saturn for my chart?",
+      "expected": "transits",
+      "selected": [
+        "transits",
+        "chart-synthesis",
+        "saturn-and-boundaries"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "Что показывают Хирон, Джуно и expanded points?",
+      "expected": "chart-synthesis",
+      "selected": [
+        "chart-synthesis",
+        "lunar-nodes",
+        "nakshatra-pada"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "No birth time: can you name the house of Rahu?",
+      "expected": "date-only-mode",
+      "selected": [
+        "date-only-mode",
+        "houses-and-angles",
+        "lunar-nodes"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "Compare two launch dates using my criteria, not a guarantee",
+      "expected": "electional-reflection",
+      "selected": [
+        "electional-reflection",
+        "anti-barnum-protocol",
+        "career-symbolism"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "career timing по карте — give criteria, not certainty",
+      "expected": "career-symbolism",
+      "selected": [
+        "career-symbolism",
+        "electional-reflection",
+        "anti-barnum-protocol"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "astro",
+      "query": "Лунные фазы и дневник наблюдений на неделю",
+      "expected": "lunar-phases",
+      "selected": [
+        "lunar-phases"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Разбери мой аркан судьбы: ресурс, тень и choice",
+      "expected": "matrix-reading",
+      "selected": [
+        "matrix-reading",
+        "emotion-naming",
+        "matrix-lines"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Help me name what I feel after that conversation",
+      "expected": "emotion-naming",
+      "selected": [
+        "emotion-naming",
+        "conversation-rehearsal",
+        "answer-structure"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Мне нужно design a boundary в переписке",
+      "expected": "boundary-design",
+      "selected": [
+        "boundary-design",
+        "answer-structure",
+        "career-reflection"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Что ты помнишь обо мне, если memory disabled?",
+      "expected": "memory-recall",
+      "selected": [
+        "memory-recall",
+        "memory-save-decision",
+        "answer-structure"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Why do I keep scrolling at night? Find the habit loop",
+      "expected": "habit-loop",
+      "selected": [
+        "habit-loop",
+        "emotion-naming",
+        "matrix-reading"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Что я могу наблюдать в repeated relationship pattern?",
+      "expected": "relationship-reflection",
+      "selected": [
+        "relationship-reflection",
+        "pattern-mapping",
+        "anti-barnum-protocol"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "I am choosing stability or an exciting project",
+      "expected": "values-conflict",
+      "selected": [
+        "values-conflict",
+        "matrix-reading"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Подбери gentle practice for more спокойствия",
+      "expected": "practice-selection",
+      "selected": [
+        "practice-selection",
+        "practice-follow-through",
+        "matrix-reading"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Review my diary themes this month",
+      "expected": "diary-dynamics",
+      "selected": [
+        "diary-dynamics",
+        "monthly-review",
+        "matrix-reading"
+      ],
+      "ok": true
+    },
+    {
+      "agent": "oracle",
+      "query": "Help me rehearse a difficult conversation",
+      "expected": "conversation-rehearsal",
+      "selected": [
+        "conversation-rehearsal",
+        "emotion-naming",
+        "pattern-mapping"
+      ],
+      "ok": true
+    }
+  ]
+}
+[skill_routing_exit=0]
+
+===== release_gate =====
++ python scripts/release_gate.py
+RELEASE GATE: PASS
+[release_gate_exit=0]
+
+===== diff_check =====
++ git diff --check
+[diff_check_exit=0]

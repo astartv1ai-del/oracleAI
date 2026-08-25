@@ -103,3 +103,15 @@
 Шесть страниц PDF приняты как плотный, но читаемый результат при сохранении body `12.4pt`, полной calculation reference, wheel/matrix anchors, пяти тематических блоков и closing. Сокращение до пяти страниц допустимо только структурной компоновкой без уменьшения основного текста.
 
 Миграция уже сохранённых административных `content_items` не выполняет безусловную перезапись: новые defaults применяются для новых/пустых значений, а кастомный контент требует отдельного reviewed migration.
+
+
+## Фаза 8 — zero-baseline, traceability и scheduler operations — 2026-08-25
+
+- [x] Зафиксировать текущую ветку, commit, чистый baseline и полный локальный gate в `docs/audit/baseline_master_2026-08-25.txt`.
+- [x] Создать `docs/PROJECT_MAP.md` и машинный `docs/FILE_AUDIT.csv` через повторяемый `scripts/generate_project_audit.py` (746 файлов исключая vendor/cache).
+- [x] Создать `docs/TRACEABILITY_MATRIX.md` с evidence/status/owner для Gate 0–5 и Definition of Done.
+- [x] Выполнить disposable plaintext/encrypted SQLite backup/restore drill; сохранить честный статус fixture-only.
+- [x] Добавить `scheduler_leases` и атомарный single-owner lease с stale recovery, failure accounting и bounded operator status.
+- [x] Расширить `scripts/ops_alerts.py` сигналами scheduler missing/stale/failed без вывода private content.
+- [x] Добавить regression tests на двух соединениях SQLite, expired lease, failure accounting и ops parsing.
+- [ ] Не закрывать внешние gates по наличию локального кода: live LLM/palm, real Telegram devices, legal/privacy, off-site backup, production alerts/on-call, payment sandbox, capacity и Dubai/UAE approvals остаются OPEN/BLOCKED.

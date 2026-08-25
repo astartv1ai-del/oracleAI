@@ -215,3 +215,45 @@ async def test_voice_forecast_updates_only_current_language(db, monkeypatch):
         (tg_id, day))
     versions = {row["lang"]: row["audio_file_id"] for row in await cur.fetchall()}
     assert versions == {"en": "en-file-id", "ru": None}
+
+
+async def test_scheduler_lease_allows_one_owner_across_connections(tmp_path):
+    """Two bot processes sharing SQLite cannot both own the scheduler tick."""
+    from asyncio import gather
+    from app.data.session import connect
+
+    path = str(tmp_path / "lease.db")
+    db_a = await connect(path)
+    db_b = await connect(path)
+    try:
+        results = await gather(
+            scheduler.acquire_scheduler_lease(
+                db_a, "owner-a", now=datetime(2026, 8, 3, 5, 0, tzinfo=timezone.utc)
+            ),
+            scheduler.acquire_scheduler_lease(
+                db_b, "owner-b", now=datetime(2026, 8, 3, 5, 0, tzinfo=timezone.utc)
+            ),
+        )
+        assert sorted(results) == [False, True]
+        status = await scheduler.scheduler_status(db_a)
+        assert status["status"] == "running"
+        assert status["run_count"] == 1
+    finally:
+        await db_a.close()
+        await db_b.close()
+
+
+async def test_scheduler_lease_recovers_after_expiry_and_records_failure(db):
+    """A crashed owner can be replaced after the lease deadline."""
+    first = datetime(2026, 8, 3, 5, 0, tzinfo=timezone.utc)
+    expired = first + timedelta(seconds=scheduler.LEASE_SECONDS + 1)
+    assert await scheduler.acquire_scheduler_lease(db, "owner-a", now=first)
+    assert not await scheduler.acquire_scheduler_lease(db, "owner-b", now=first)
+    assert await scheduler.acquire_scheduler_lease(db, "owner-b", now=expired)
+    assert await scheduler.finish_scheduler_lease(
+        db, "owner-b", status="error", error="fixture failure", now=expired
+    )
+    status = await scheduler.scheduler_status(db)
+    assert status["status"] == "error"
+    assert status["failure_count"] == 1
+    assert status["last_error"] == "fixture failure"

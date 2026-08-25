@@ -359,6 +359,18 @@ CREATE TABLE IF NOT EXISTS safety_events (
     action     TEXT,                        -- support|soften|blocked
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS scheduler_leases (
+    name             TEXT PRIMARY KEY,
+    owner            TEXT,
+    acquired_at      TEXT,
+    lease_until      TEXT,
+    last_started_at  TEXT,
+    last_finished_at TEXT,
+    last_status      TEXT DEFAULT 'never', -- never|running|ok|error
+    last_error       TEXT,
+    run_count        INTEGER DEFAULT 0,
+    failure_count    INTEGER DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS webhook_events (
     event_id   TEXT PRIMARY KEY,            -- id от провайдера: ключ идемпотентности
     provider   TEXT,
