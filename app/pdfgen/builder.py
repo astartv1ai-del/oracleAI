@@ -262,6 +262,39 @@ async def _brand_context(db, lang: str) -> dict[str, str]:
         return defaults
 
 
+def _element_balance_block(chart: dict, language: str) -> str:
+    """Render a compact count-based element balance from canonical planet signs."""
+    element_by_sign = {name: element for name, _glyph, element in astro.SIGNS}
+    labels = {
+        "огонь": "Огонь" if language == "ru" else "Fire",
+        "земля": "Земля" if language == "ru" else "Earth",
+        "воздух": "Воздух" if language == "ru" else "Air",
+        "вода": "Вода" if language == "ru" else "Water",
+    }
+    accents = {"огонь": "#f08a9b", "земля": "#e8c56b", "воздух": "#65c7f0", "вода": "#b9a6ff"}
+    counts = {element: 0 for element in labels}
+    for point in chart.get("planets") or []:
+        element = element_by_sign.get(point.get("sign"))
+        if element in counts:
+            counts[element] += 1
+    total = sum(counts.values())
+    if not total:
+        return ""
+    rows = []
+    for element in ("огонь", "земля", "воздух", "вода"):
+        count = counts[element]
+        width = round((count / total) * 100) if total else 0
+        rows.append(
+            f'<div class="element-row"><span class="element-row__label">{layout.esc(labels[element])}</span>'
+            f'<span class="element-row__track"><i style="width:{width}%;background:{accents[element]}"></i></span>'
+            f'<b>{count if count else "—"}</b></div>'
+        )
+    return (f'<div class="element-balance"><div class="element-balance__header">'
+            f'<span>{layout.esc("Баланс стихий" if language == "ru" else "Element balance")}</span>'
+            f'<small>{layout.esc("планеты по знакам" if language == "ru" else "planets by sign")}</small></div>'
+            f'<div class="element-rows">{"".join(rows)}</div></div>')
+
+
 def _facts_block(order: Order, data: dict, lang: str) -> str:
     """Branded numeric overview: a sun-centered core with readable fact tiles."""
     language = _lang(lang)
@@ -301,6 +334,7 @@ def _facts_block(order: Order, data: dict, lang: str) -> str:
         f'<div class="facts-placement"><span>{layout.esc(k)}</span><b>{layout.esc(v)}</b></div>'
         for k, v in rows[4:]
     )
+    element_balance = _element_balance_block(chart, language)
     return (
         '<div class="facts-constellation">'
         f'<div class="facts-constellation__header"><span>{layout.esc("Главные опоры" if language == "ru" else "Core anchors")}</span>'
@@ -311,6 +345,7 @@ def _facts_block(order: Order, data: dict, lang: str) -> str:
         '</div>'
         f'<div class="facts-profile">{profile_cells}</div>'
         f'<div class="facts-placements">{placement_cells}</div>'
+        f'{element_balance}'
         '</div>'
     )
 
@@ -752,10 +787,17 @@ def _natal_key_strip(data: dict, language: str) -> str:
     )
     node_label = "Раху · северный узел" if language == "ru" else "Rahu · north node"
     node_value = f'{_display_sign(rahu.get("sign", "—"), language)} {rahu.get("deg", "—")}°'
+    mc = chart.get("mc") or {}
+    houses_by_number = {house.get("n"): house for house in chart.get("houses") or []}
+    ic = houses_by_number.get(4) or {}
+    mc_value = f'MC {_display_sign(mc.get("sign", "—"), language)} {mc.get("deg", "—")}° · IC {_display_sign(ic.get("sign", "—"), language)} {ic.get("deg", "—")}°'
     return (f'<div class="natal-key-strip"><div class="natal-key-strip__title">'
             f'{layout.esc("Три главные опоры" if language == "ru" else "Three core anchors")}</div>'
             f'<div class="natal-key-primary">{primary_cells}</div>'
-            f'<div class="natal-key-secondary"><span>{layout.esc(node_label)}</span><b>{layout.esc(node_value)}</b></div></div>')
+            f'<div class="natal-key-secondary">'
+            f'<div><span>{layout.esc(node_label)}</span><b>{layout.esc(node_value)}</b></div>'
+            f'<div><span>{layout.esc("Ось MC / IC" if language == "ru" else "MC / IC axis")}</span><b>{layout.esc(mc_value)}</b></div>'
+            f'</div></div>')
 
 
 async def _natal_print_block(data: dict, order: Order, language: str) -> str:

@@ -59,6 +59,8 @@ async def test_full_natal_report_contains_extended_chart_and_mobile_viewport(mon
     assert "data-contract-version=\"1\"" not in html
     assert "Линии аспектов" in html
     assert "Три главные опоры" in html
+    assert "Баланс стихий" in html
+    assert "Ось MC / IC" in html
     assert "Солнце" in html and "Луна" in html and "Асцендент" in html
     assert "Print image rendered by the mature chart engine" not in html
     assert "source SVG never leaves the server render pipeline" not in html
@@ -102,6 +104,8 @@ async def test_english_natal_report_is_localized(monkeypatch):
     assert "Tropical" not in html
     assert "Apparent Geocentric" not in html
     assert "Three core anchors" in html
+    assert "Element balance" in html
+    assert "MC / IC axis" in html
     assert "Sun" in html and "Moon" in html and "Ascendant" in html
     assert "Print image rendered by the mature chart engine" not in html
     assert "source SVG never leaves the server render pipeline" not in html

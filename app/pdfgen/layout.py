@@ -117,6 +117,16 @@ p { margin: 0 0 3.2mm; }
 .facts-profile-cell b, .facts-placement b { display: block; margin-top: 1mm; color: #f4efff; font-size: 9.5pt; font-weight: normal; overflow-wrap: anywhere; }
 .facts-placements { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 4mm; padding-top: 3mm; }
 .facts-placement { min-width: 0; padding: 1.5mm 0; border-bottom: 1px dotted rgba(255,255,255,.13); }
+.element-balance { margin-top: 4mm; padding-top: 3mm; border-top: 1px solid rgba(232,197,107,.22); }
+.element-balance__header { display: flex; justify-content: space-between; align-items: baseline; gap: 3mm; color: #e8c56b; font-size: 8.5pt; letter-spacing: 1px; text-transform: uppercase; }
+.element-balance__header small { color: #a99fc9; font-size: 7pt; letter-spacing: 0; text-transform: none; }
+.element-rows { display: grid; gap: 1.5mm; margin-top: 2.5mm; }
+.element-row { display: grid; grid-template-columns: 18mm 1fr 5mm; align-items: center; gap: 2mm; }
+.element-row__label { color: #c8b9e8; font-size: 7.8pt; }
+.element-row__track { display: block; height: 2.2mm; border-radius: 2mm; background: rgba(255,255,255,.10); overflow: hidden; }
+.element-row__track i { display: block; height: 100%; border-radius: 2mm; }
+.element-row b { color: #f4efff; font-size: 8pt; font-weight: normal; text-align: right; }
+
 .natal-print-section { break-before: page; }
 .natal-print-figure { margin: 0; text-align: center; break-inside: avoid; }
 .natal-print-image { display: block; width: 100%; max-width: 180mm; height: auto; margin: 0 auto; background: #0c0a1d; }
@@ -131,8 +141,10 @@ p { margin: 0 0 3.2mm; }
 .natal-key-card:nth-child(3) strong { color: #7be0c5; font-size: 13pt; line-height: 1.4; }
 .natal-key-card span { display: block; margin-top: 1mm; color: #c8b9e8; font-size: 8pt; line-height: 1.2; text-transform: uppercase; }
 .natal-key-card b { display: block; margin-top: 1.2mm; color: #f4efff; font-size: 11pt; font-weight: normal; overflow-wrap: anywhere; }
-.natal-key-secondary { display: flex; justify-content: center; gap: 3mm; margin-top: 2mm; padding-top: 2mm; border-top: 1px dotted rgba(255,255,255,.16); color: #a99fc9; font-size: 7.8pt; }
-.natal-key-secondary b { color: #e8c56b; font-weight: normal; }
+.natal-key-secondary { display: grid; grid-template-columns: 1fr 1.6fr; gap: 3mm; margin-top: 2mm; padding-top: 2mm; border-top: 1px dotted rgba(255,255,255,.16); color: #a99fc9; font-size: 7.8pt; text-align: center; }
+.natal-key-secondary > div + div { border-left: 1px solid rgba(232,197,107,.16); }
+.natal-key-secondary span { display: block; }
+.natal-key-secondary b { display: block; margin-top: .8mm; color: #e8c56b; font-weight: normal; overflow-wrap: anywhere; }
 .natal-print-state { border: 1px solid rgba(232, 197, 107, .35); padding: 6mm; color: #c8b9e8; }
 .closing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 5mm; }
 .closing-grid .card { margin-bottom: 0; }
