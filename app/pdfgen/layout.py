@@ -96,10 +96,36 @@ p { margin: 0 0 3.2mm; }
 .brand-mark { margin: 0 auto 6mm; }
 .brand-mark svg { width: 43mm; height: 43mm; }
 
-.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
-.overview-visuals { display: grid; gap: 3mm; justify-items: center; }
+.overview-grid { display: grid; grid-template-columns: 1.12fr .88fr; gap: 6mm; align-items: stretch; }
+.overview-visuals { display: grid; gap: 3mm; align-content: start; justify-items: center; }
 .overview-visuals .wheel { margin: 0; width: 100%; }
 .overview-visuals svg { max-width: 100%; height: auto; }
+.matrix-visual { width: 100%; min-height: 92mm; padding: 5mm 4mm 3mm; border: 1px solid rgba(232, 197, 107, .28); border-radius: 5mm; background: radial-gradient(circle at 50% 38%, rgba(185,166,255,.12), transparent 44%), linear-gradient(160deg, rgba(255,255,255,.055), rgba(16,12,38,.72)); box-sizing: border-box; }
+.matrix-visual__label { color: #e8c56b; font-size: 10pt; letter-spacing: 1.2px; text-transform: uppercase; text-align: center; margin-bottom: 2mm; }
+.matrix-visual svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.facts-constellation { min-height: 92mm; padding: 5mm; border: 1px solid rgba(232, 197, 107, .28); border-radius: 5mm; background: radial-gradient(circle at 50% 34%, rgba(232,197,107,.13), transparent 34%), linear-gradient(145deg, rgba(255,255,255,.07), rgba(20,15,43,.78)); box-sizing: border-box; }
+.facts-constellation__header { display: flex; align-items: baseline; justify-content: space-between; gap: 4mm; color: #e8c56b; font-size: 10pt; letter-spacing: 1px; text-transform: uppercase; }
+.facts-constellation__header small { color: #a99fc9; font-size: 7.5pt; letter-spacing: 0; text-transform: none; text-align: right; }
+.facts-core { display: grid; justify-items: center; gap: 1mm; padding: 4mm 0 3mm; text-align: center; }
+.facts-core__halo { display: grid; align-items: center; justify-items: center; width: 23mm; height: 23mm; border: 1px solid rgba(232,197,107,.75); border-radius: 50%; background: radial-gradient(circle, rgba(232,197,107,.23), rgba(185,166,255,.08) 58%, transparent 60%); }
+.facts-core__halo strong { color: #f4d88b; font-size: 24pt; font-weight: normal; }
+.facts-core > span { color: #a99fc9; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 1px; }
+.facts-core > b { color: #f4efff; font-size: 13pt; font-weight: normal; }
+.facts-profile { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; padding: 3mm 0; border-top: 1px solid rgba(232,197,107,.22); border-bottom: 1px solid rgba(232,197,107,.22); }
+.facts-profile-cell { min-width: 0; text-align: center; }
+.facts-profile-cell span, .facts-placement span { display: block; color: #a99fc9; font-size: 7.5pt; line-height: 1.2; }
+.facts-profile-cell b, .facts-placement b { display: block; margin-top: 1mm; color: #f4efff; font-size: 9.5pt; font-weight: normal; overflow-wrap: anywhere; }
+.facts-placements { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 4mm; padding-top: 3mm; }
+.facts-placement { min-width: 0; padding: 1.5mm 0; border-bottom: 1px dotted rgba(255,255,255,.13); }
+.natal-print-section { break-before: page; }
+.natal-print-figure { margin: 0; text-align: center; break-inside: avoid; }
+.natal-print-image { display: block; width: 100%; max-width: 180mm; height: auto; margin: 0 auto; background: #0c0a1d; }
+.natal-print-figure figcaption { margin-top: 2mm; }
+.natal-key-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 6mm 0 0; padding: 4mm 3mm; border-top: 1px solid rgba(232,197,107,.38); border-bottom: 1px solid rgba(232,197,107,.24); background: rgba(255,255,255,.035); }
+.natal-key-cell { min-width: 0; text-align: center; }
+.natal-key-cell span { display: block; color: #a99fc9; font-size: 8.5pt; line-height: 1.25; }
+.natal-key-cell b { display: block; margin-top: 1.5mm; color: #f4efff; font-size: 11pt; font-weight: normal; overflow-wrap: anywhere; }
+.natal-print-state { border: 1px solid rgba(232, 197, 107, .35); padding: 6mm; color: #c8b9e8; }
 .closing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 5mm; }
 .closing-grid .card { margin-bottom: 0; }
 .closing-grid h3 { margin-top: 0; }
@@ -123,6 +149,21 @@ td.label { color: #a99fc9; width: 42%; }
 table.data-table { font-size: 10.2pt; line-height: 1.35; }
 table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,255,255,.12); }
 .card, .ticket { break-inside: avoid; }
+.reference-section { margin-top: 0; }
+.reference-config { max-width: 150mm; margin: 8mm auto 0; }
+.reference-lead { max-width: 145mm; color: #c8b9e8; font-size: 12pt; line-height: 1.5; }
+.house-reference, .aspect-reference { break-before: page; }
+.house-reference table.data-table { font-size: 13.2pt; line-height: 1.45; margin-top: 6mm; }
+.house-reference table.data-table td, .house-reference table.data-table th { padding: 2.2mm 2.5mm; }
+.house-angle-panel { margin-top: 7mm; padding: 3.5mm 6mm 4mm; border: 1px solid rgba(232,197,107,.3); border-radius: 5mm; background: linear-gradient(145deg, rgba(255,255,255,.055), rgba(20,15,43,.68)); }
+.house-angle-panel__title { color: #e8c56b; font-size: 11pt; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+.house-angle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-top: 3mm; }
+.house-angle { min-width: 0; padding: 2mm 2mm; border-top: 1px solid rgba(232,197,107,.28); text-align: center; }
+.house-angle span { display: block; color: #a99fc9; font-size: 8.5pt; }
+.house-angle b { display: block; margin-top: 1mm; color: #f4efff; font-size: 12pt; font-weight: normal; }
+.house-angle small { display: block; margin-top: 1mm; color: #e8c56b; font-size: 10pt; }
+.house-reference table.data-table th:first-child, .house-reference table.data-table td:first-child { width: 18%; }
+.house-reference table.data-table th:nth-child(2), .house-reference table.data-table td:nth-child(2) { width: 32%; }
 
 @media screen {
   body { font-size: 13pt; line-height: 1.58; padding: 12px; }
@@ -134,8 +175,14 @@ table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,25
   td, th { padding: 7px 5px; }
   table.data-table { font-size: 11.5pt; line-height: 1.45; }
   .overview-grid { grid-template-columns: 1fr; }
+  .facts-constellation { min-height: 0; }
+  .natal-key-strip { grid-template-columns: repeat(2, 1fr); }
+  .house-angle-grid { grid-template-columns: repeat(2, 1fr); }
+  .facts-placements { grid-template-columns: repeat(3, 1fr); }
+  .matrix-visual { min-height: 0; }
   .closing-grid { grid-template-columns: 1fr; }
   .wheel svg { max-width: 100%; height: auto; }
+  .natal-print-image { max-width: 100%; }
 }
 
 @media print {
@@ -200,107 +247,6 @@ def paragraphs(text: str) -> str:
         else:
             out.append(f"<p>{esc(block)}</p>")
     return "\n".join(out)
-
-
-def wheel_svg(chart: dict, size: int = 330) -> str:
-    """Натальное колесо: знаки, куспиды домов, планеты по долготе.
-
-    Планеты, стоящие рядом, разводим по радиусу — иначе символы наезжают и
-    колесо выглядит браком печати.
-    """
-    cx = cy = size / 2
-    R = size * 0.47
-    Rin = size * 0.36
-    parts = [
-        f'<circle cx="{cx}" cy="{cy}" r="{R:.1f}" fill="none" '
-        f'stroke="rgba(232,197,107,.55)" stroke-width="1"/>',
-        f'<circle cx="{cx}" cy="{cy}" r="{Rin:.1f}" fill="none" '
-        f'stroke="rgba(255,255,255,.22)" stroke-width="1"/>',
-        f'<circle cx="{cx}" cy="{cy}" r="{size * 0.17:.1f}" fill="none" '
-        f'stroke="rgba(255,255,255,.14)" stroke-width="1"/>',
-    ]
-
-    for i in range(12):
-        a = math.radians(i * 30 - 90)
-        parts.append(
-            f'<line x1="{cx + Rin * math.cos(a):.1f}" y1="{cy + Rin * math.sin(a):.1f}" '
-            f'x2="{cx + R * math.cos(a):.1f}" y2="{cy + R * math.sin(a):.1f}" '
-            f'stroke="rgba(255,255,255,.22)" stroke-width="0.8"/>')
-        am = math.radians(i * 30 + 15 - 90)
-        parts.append(
-            f'<text x="{cx + (R - 15) * math.cos(am):.1f}" '
-            f'y="{cy + (R - 15) * math.sin(am) + 4:.1f}" fill="#e8c56b" '
-            f'font-size="13" text-anchor="middle">{SIGN_GLYPHS[i]}</text>')
-
-    for house in (chart.get("houses") or []):
-        a = math.radians((house.get("abs_deg") or 0) - 90)
-        r0 = size * 0.17
-        parts.append(
-            f'<line x1="{cx + r0 * math.cos(a):.1f}" y1="{cy + r0 * math.sin(a):.1f}" '
-            f'x2="{cx + Rin * math.cos(a):.1f}" y2="{cy + Rin * math.sin(a):.1f}" '
-            f'stroke="rgba(255,255,255,.16)" stroke-width="0.7" '
-            f'stroke-dasharray="3 3"/>')
-        rl = size * 0.21
-        parts.append(
-            f'<text x="{cx + rl * math.cos(a):.1f}" y="{cy + rl * math.sin(a) + 3:.1f}" '
-            f'fill="#a99fc9" font-size="8" text-anchor="middle">{house.get("n")}</text>')
-
-    used: list[tuple[float, float]] = []
-    point_positions: dict[str, tuple[float, float]] = {}
-    wheel_points = list(chart.get("planets") or [])
-    wheel_points.extend(
-        node for node in (chart.get("nodes") or [])
-        if node.get("name", "").startswith(("Раху", "Кету"))
-    )
-    for planet in wheel_points:
-        deg = planet.get("abs_deg_exact", planet.get("abs_deg")) or 0
-        radius = size * 0.28
-        while any(abs(d - deg) < 9 and abs(r - radius) < 9 for d, r in used):
-            radius -= size * 0.05
-            if radius < size * 0.19:
-                radius = size * 0.28
-                break
-        used.append((deg, radius))
-        a = math.radians(deg - 90)
-        px, py = cx + radius * math.cos(a), cy + radius * math.sin(a)
-        point_positions[planet.get("name", "")] = (px, py)
-        glyph = PLANET_GLYPHS.get(planet.get("name", ""), "•")
-        parts.append(
-            f'<circle cx="{px:.1f}" cy="{py:.1f}" r="9" '
-            f'fill="rgba(232,197,107,.14)"/>'
-            f'<text x="{px:.1f}" y="{py + 4:.1f}" fill="#f4efff" font-size="12" '
-            f'text-anchor="middle">{glyph}</text>')
-        if planet.get("retro"):
-            parts.append(f'<text x="{px + 8:.1f}" y="{py - 6:.1f}" fill="#e88f8f" '
-                         f'font-size="7">R</text>')
-
-    aspect_colors = {
-        "соединение": ("#e8c56b", "", 1.8),
-        "оппозиция": ("#e88f8f", "5 3", 1.1),
-        "трин": ("#9edfc8", "2 3", 1.2),
-        "квадрат": ("#b69cf4", "1 3", 1.4),
-        "секстиль": ("#83c8ef", "7 3", 1.1),
-    }
-    for aspect in (chart.get("aspects") or [])[:12]:
-        p1 = point_positions.get(aspect.get("p1", ""))
-        p2 = point_positions.get(aspect.get("p2", ""))
-        if not p1 or not p2:
-            continue
-        color, dash, width = aspect_colors.get(aspect.get("aspect"), ("#8f86aa", "2 4", .8))
-        dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
-        parts.append(
-            f'<line x1="{p1[0]:.1f}" y1="{p1[1]:.1f}" x2="{p2[0]:.1f}" y2="{p2[1]:.1f}" '
-            f'stroke="{color}" stroke-width="{width}" opacity=".85"{dash_attr}/>')
-
-    if not (chart.get("planets") or []) and chart.get("sun"):
-        parts.append(
-            f'<text x="{cx}" y="{cy + 14}" fill="#e8c56b" font-size="40" '
-            f'text-anchor="middle">{esc(chart["sun"].get("symbol", "☉"))}</text>')
-
-    contract_version = (chart.get("calculation") or {}).get("contract_version", "")
-    return (f'<svg viewBox="0 0 {size} {size}" width="{size}" height="{size}" '
-            f'role="img" aria-label="OracleAI natal chart wheel" data-contract-version="{esc(contract_version)}" '
-            f'xmlns="http://www.w3.org/2000/svg">{"".join(parts)}</svg>')
 
 
 def matrix_svg(matrix: dict, size: int = 300, labels: dict[str, str] | None = None) -> str:

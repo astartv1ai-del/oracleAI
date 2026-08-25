@@ -69,7 +69,7 @@
   padding-top: 10px;
 }
 
-/* ── натальная карта: интерактивное колесо + плашка планеты ── */
+/* ── натальная карта: private raster image + accessible placement plaque ── */
 .nw {
   position: relative; width: 210px; height: 210px; margin: 4px auto;
   overflow: hidden; border-radius: 22px;
@@ -87,14 +87,13 @@
 }
 .nw-plaque b { color: var(--gold-bright); }
 .nw-plaque .pl-glyph { font-size: 15px; color: var(--gold-bright); flex: none; }
-.n-planet { cursor: pointer; transition: opacity .25s var(--ease); }
-.n-planet circle { transition: stroke .2s var(--ease), stroke-width .2s var(--ease); }
-.n-planet:hover circle { stroke-width: 2.4; }
-.n-planet.active circle {
-  stroke: var(--gold-bright); stroke-width: 2.6;
-  filter: drop-shadow(0 0 8px rgba(255,217,143,.95));
-}
-.n-planet.el-off { opacity: .13; }
+.chart-engine-image { width: 100%; height: 100%; display: grid; place-items: center; }
+.chart-engine-image__img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.chart-engine-image__placeholder, .chart-engine-state { display: grid; gap: 6px; place-items: center; padding: 12px; color: var(--text-dim); text-align: center; font-size: 11px; line-height: 1.4; }
+.chart-engine-state b { color: var(--gold-bright); }
+.chart-engine-state span { color: var(--text-muted); }
+.planet-line.is-selected { background: rgba(245,212,139,.09); border-radius: 8px; }
+.planet-line.el-off { opacity: .28; }
 
 /* легенда стихий — фильтр планет */
 .el-legend {

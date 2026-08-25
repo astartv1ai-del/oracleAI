@@ -17,15 +17,15 @@ OracleAI уже использует `kerykeion==5.12.9`, который раб�
 |---|---|---|---|
 | Собственная математика + Swiss Ephemeris низкого уровня | Высокая, но ответственность за conventions и edge cases полностью на проекте | Полный | Большая поверхность тестирования и лицензирования |
 | Готовый полный движок вместе с его визуализацией | Высокая при корректных conventions | Ограниченный; сложнее добиться уникального wheel | Vendor/style coupling, лицензия и кастомизация |
-| Гибрид: Kerykeion/Swiss Ephemeris adapter + собственный canonical DTO + собственный SVG | Высокая и уже подтверждённая benchmark | Полный | Нужны adapter, fixtures и явная лицензия |
+| Гибрид: Kerykeion/Swiss Ephemeris adapter + собственный canonical DTO + зрелый server-side chart renderer | Высокая и уже подтверждённая benchmark | Ограниченный визуальным engine | Нужны adapter, fixtures и явная лицензия |
 
 ### Решение
 
-Оставить Kerykeion/Swiss Ephemeris единственным production source of truth. Не объединять два независимых full chart engines. Выделить явные `CalculationConfig` и versioned `ChartModel`, хранить exact values отдельно от UI-rounded values, а SVG строить собственным кодом поверх canonical payload. Direct `pyswisseph`, flatlib, Immanuel, Astrolog и sweph-wasm могут использоваться только как reference/regression engines для отдельных conventions.
+Оставить Kerykeion/Swiss Ephemeris единственным production source of truth. Не объединять два независимых full chart engines. Выделить явные `CalculationConfig` и versioned `ChartModel`, хранить exact values отдельно от UI-rounded values, а natal visual строить через зрелый server-side Kerykeion ChartDrawer → transient SVG → resvg raster adapter, как зафиксировано в [CHART_ENGINE_DECISION](CHART_ENGINE_DECISION.md). Direct `pyswisseph`, flatlib, Immanuel, Astrolog и sweph-wasm могут использоваться только как reference/regression engines для отдельных conventions.
 
 ### Обоснование
 
-Переход на другой high-level движок не даёт измеримого выигрыша по natal precision, но добавляет расхождения conventions, адаптационный код и новые риски. Собственный SVG сохраняет полный контроль над тёмной темой, глифами, collision avoidance, responsive viewBox и анимацией.
+Переход на другой calculation engine не даёт измеримого выигрыша по natal precision, но добавляет расхождения conventions, адаптационный код и новые риски. Для визуального слоя Mode P сознательно принимает engine/style coupling, чтобы убрать самописную natal-wheel geometry и collision surface.
 
 ### Последствия
 
@@ -51,7 +51,7 @@ OracleAI уже использует `kerykeion==5.12.9`, который раб�
 ## ADR-003 — PDF rendering baseline
 
 **Дата:** 2026-08-25  
-**Статус:** pending deployment smoke test
+**Статус:** superseded by Mode P image integration; target deployment smoke test remains open
 
 ### Контекст
 
@@ -67,7 +67,7 @@ OracleAI уже использует `kerykeion==5.12.9`, который раб�
 
 ### Временное решение
 
-Не менять backend до раннего deployment smoke test. Предварительно усилить существующий HTML print-template; если WeasyPrint не выдержит нужные page-break/overflow/SVG cases в целевом окружении, перейти на Puppeteer или другой утверждённый renderer отдельным ADR. В любом случае PDF должен получать canonical chart SVG и i18n labels, а не screenshot.
+WeasyPrint remains the HTML→PDF path. The natal visual now arrives as a high-resolution canonical PNG from the Mode P adapter; the PDF never receives raw natal SVG or a browser screenshot. Target deployment smoke and page raster inspection remain open; see [PDF_AUDIT](PDF_AUDIT.md).
 
 ## ADR-004 — Agent routing baseline
 
@@ -181,7 +181,7 @@ The evidence reinforces ADR-001: keep Kerykeion/Swiss Ephemeris as the only prod
 ## ADR-006 — Product wheel renderer after real smoke tests
 
 **Дата:** 2026-08-25  
-**Статус:** accepted
+**Статус:** superseded by Mode P on 2026-08-25
 
 ### Контекст
 
@@ -191,17 +191,17 @@ The evidence reinforces ADR-001: keep Kerykeion/Swiss Ephemeris as the only prod
 
 | Вариант | Реальный smoke result | Лицензия | Оценка интеграции |
 |---|---|---|---|
-| Текущий собственный SVG (`miniapp/js/04-nativity.js`) | Sparse/clustered/spread fixtures; canonical payload, collision lanes, semantic aspects, ARIA/title, responsive viewBox и reduced-motion уже покрыты текущими тестами | Проектный код | Лучший контроль продукта и отсутствие второго adapter/runtime |
+| Текущий собственный SVG (retired) | Historical sparse/clustered/spread fixtures; no longer a product path | Project code | Explicitly cancelled by the latest migration brief |
 | `@astrodraw/astrochart` 3.0.2 | Node/jsdom smoke успешно создал 3 SVG: 53,470 / 61,696 / 58,844 bytes; viewBox `0 0 760 760`; 27–42 text nodes; cusp labels присутствуют | MIT | Качественный reference renderer, но потребует adapter из canonical contract и заменит текущие interaction/accessibility hooks |
-| Kerykeion 5.12.9 `ChartDrawer` classic/modern | Реально созданы SVG 221,739 / 234,591 bytes; 115 / 163 text nodes; house labels и aspect layer присутствуют в обоих стилях | AGPL-3.0; коммерческое использование требует отдельной лицензионной проверки | Полезный Python reference и источник расчёта, но не добавлять ещё один production visual runtime |
+| Kerykeion 5.12.9 `ChartDrawer` + resvg_py 0.5.0 | Real SVG→PNG spike passed after CSS-variable removal; visual artifacts show glyphs, houses and aspect layer; raw SVG remains transient | AGPL-3.0 plus Swiss Ephemeris license gate | Selected Mode P adapter; commercial release remains blocked pending legal sign-off |
 
 ### Решение
 
-Оставить собственный SVG-слой как production renderer Mini App. Не подключать AstroChart или Kerykeion ChartDrawer в пользовательский runtime. AstroChart фиксируется как проверенный MIT reference для структуры SVG и decluttering-подходов; Kerykeion modern renderer — как reference для concentric rings и largest-gap decluttering, без импорта его визуального runtime. Такое решение напрямую принимает canonical contract, сохраняет текущие интерактивные hooks, accessibility, responsive/reduced-motion поведение и не создаёт второй data adapter, browser runtime или лицензионную поверхность.
+Собственный natal SVG-слой удалён из production. Активный путь — серверный Kerykeion ChartDrawer → transient SVG → resvg PNG/WebP; Mini App, share и PDF получают только raster bytes. AstroChart остаётся research reference, а accessibility для клиента обеспечивается HTML placement list и structured precision/recovery states.
 
 ### Последствия
 
-Дальнейшие улучшения wheel выполняются в `04-nativity.js` поверх canonical DTO. При необходимости можно переносить отдельные алгоритмические идеи, но каждый перенос должен иметь SVG regression fixture. Лицензионный review Kerykeion/Swiss Ephemeris остаётся отдельным release gate для коммерческого развёртывания.
+Natal visual changes выполняются только через публичный Kerykeion ChartDrawer/resvg adapter; ручная natal geometry, Canvas export и raw-SVG product path запрещены. Visual evidence теперь хранится как PNG/WebP artifacts. Лицензионный review Kerykeion/Swiss Ephemeris остаётся отдельным release gate для коммерческого развёртывания.
 
 ## ADR-007 — Confident voice and readable dense PDF
 

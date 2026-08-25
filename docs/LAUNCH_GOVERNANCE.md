@@ -79,3 +79,14 @@ The release is **NO-GO** if any P0 item is OPEN, if legal/privacy review is not 
 [2]: [Security checklist](SECURITY.md)
 [3]: [Deployment runbook](DEPLOYMENT.md)
 [4]: [Production readiness plan](PRODUCTION_READINESS_AND_LAUNCH_PLAN.md)
+
+
+## Evidence update — 2026-08-25
+
+The current cycle added the following local evidence without closing the external launch gates: a sanitized production-like `release_gate.py --production` run passed with synthetic staging values; an isolated API health smoke returned `{"ok":true}` against a disposable database; plaintext and AES-256 encrypted SQLite backup/restore fixtures passed with checksum and integrity checks; and the synthetic operational alert dry-run detected HTTP 5xx, webhook failure, stale backup and scheduler error signals without user content. `docs/INCIDENT_RESPONSE_RUNBOOK.md` now defines severity, containment and tabletop procedures, but named owners, real alert routing and external acknowledgement remain open.
+
+The live LLM probe was attempted through the configured sandbox provider and failed because the provider returned empty responses after retries. This is evidence that P0 live-provider readiness is **not closed**; no successful live-quality claim is made. The declared project requirements audit (`pip-audit -r requirements-dev.txt`) reports no known vulnerabilities, while the ambient sandbox environment has unrelated installed-package findings; production image verification still requires a clean Docker/staging run.
+
+## Chart-engine migration gate — 2026-08-25
+
+The natal visual migration is technically implemented in Mode P: Kerykeion 5.12.9 → transient in-memory SVG → resvg_py 0.5.0 → PNG/WebP, with authenticated owner-scoped binary delivery and no raw SVG in client/share/PDF boundaries. Exact natal output, unknown-time recovery, API ETag behavior, PDF print image, visual artifacts and local regression gates pass. This does **not** close public-launch governance: Kerykeion AGPL-3.0/Swiss Ephemeris licensing requires legal owner sign-off, and Docker/target-image verification remains open. The public release remains **NO-GO** while any P0 gate is open.

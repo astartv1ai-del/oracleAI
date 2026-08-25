@@ -1,0 +1,26 @@
+[
+  {
+    "fixture": "known_time",
+    "svg_bytes": 151110,
+    "png_bytes": 307891,
+    "png_dimensions": [
+      1200,
+      1200
+    ],
+    "webp_bytes": 108996,
+    "svg_has_script": false,
+    "svg_has_external_href": false
+  },
+  {
+    "fixture": "dense_stellium",
+    "svg_bytes": 143324,
+    "png_bytes": 241077,
+    "png_dimensions": [
+      1200,
+      1200
+    ],
+    "webp_bytes": 92794,
+    "svg_has_script": false,
+    "svg_has_external_href": false
+  }
+]

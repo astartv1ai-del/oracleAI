@@ -79,3 +79,20 @@
 ## Final operational conclusion
 
 The correct release statement is: **OracleAI has passed the current local code, schema, deterministic domain, agent-routing, PDF, syntax and static release checks; it is not approved for public launch until the listed external P0/P1 gates are evidenced.**
+
+
+## Ordered execution update — 2026-08-25
+
+The P0 workstreams were executed in order as far as the sandbox permits. A sanitized production-like release gate passed with synthetic staging values; an isolated disposable API/database smoke returned `{"ok":true}`; plaintext and AES-256 encrypted backup/restore fixtures passed with checksum and SQLite integrity checks; a synthetic monitoring dry-run detected HTTP 5xx, webhook failure, stale backup and scheduler error signals; and `docs/INCIDENT_RESPONSE_RUNBOOK.md` was created for staging rehearsal.
+
+The bounded live LLM probe was attempted and failed after two empty provider responses, so live LLM/Palm readiness remains **OPEN**. Real Telegram device QA and qualified privacy/legal review were not available in the sandbox and remain **OPEN/EXTERNAL**. Docker was unavailable, so production-like container, capacity and dashboard routing could not be closed. The declared requirements audit (`pip-audit -r requirements-dev.txt`) reported no known vulnerabilities; the ambient sandbox environment separately reported seven installed-package findings and must not be used as deployable-image evidence until a clean image audit is run.
+
+The final post-execution gate passed: Ruff, full pytest, compileall, Mini App/Admin JavaScript syntax, selfcheck, design contract, domain evaluations, routing, skill routing, release gate, unfinished-requirements checker and `git diff --check`. Full prior verbose baseline remains **469 passed**. Public launch remains **NO-GO** because none of the nine P0 gates has all required production/external evidence yet.
+
+Execution evidence: `docs/audit/P0_REMEDIATION_PLAN_AND_STATUS_CHECK_2026-08-25.md`, `docs/audit/final_p0_execution_gate_2026-08-25.txt`, `docs/audit/live_llm_probe_2026-08-25.txt`, `docs/audit/declared_requirements_audit_2026-08-25.txt`, `docs/audit/monitoring_incident_dry_run_2026-08-25.txt`, `docs/INCIDENT_RESPONSE_RUNBOOK.md` and `docs/audit/unfinished_requirements_check_2026-08-25.txt`.
+
+## Chart-engine migration update — 2026-08-25
+
+The superseding chart-engine brief was implemented in Mode P. Kerykeion 5.12.9 now renders natal geometry server-side into transient SVG, resvg_py 0.5.0 rasterizes to PNG/WebP, and the raw SVG is not persisted, logged, returned or sent to the Mini App/share/PDF surfaces. The old `nativitySvg()` and `wheel_svg()` product paths were removed; Matrix remains a separate visual track. Exact-time natal image output is available through an authenticated owner-scoped binary endpoint with private ETag caching; unknown-time profiles receive a typed `insufficient_precision` state rather than a fake wheel.
+
+Local evidence: full pytest passed after migration; `tests/test_api.py -k chart_image`, `tests/test_pdfgen.py`, the engine spike, adapter contract, selfcheck, JavaScript syntax and `git diff --check` passed. Synthetic RU/EN WeasyPrint PDFs were generated, inspected with `pdfinfo`/`pdftotext`, and the dedicated natal page was visually reviewed at `docs/audit/chart_engine_smoke/pdf_pages/ru-natal-3.png`. The implementation is not public-launch ready: Kerykeion AGPL-3.0 and Swiss Ephemeris dual licensing remain a legal/product-owner blocker, and Docker/target-image dependency verification remains external. See `docs/CHART_ENGINE_DECISION.md`, `docs/CHART_TYPE_CAPABILITIES.md`, `docs/CHART_ENGINE_LICENSING.md`, `docs/PDF_AUDIT.md` and `docs/QA_REPORT.md`.

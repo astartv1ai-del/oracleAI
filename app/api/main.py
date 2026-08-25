@@ -163,7 +163,11 @@ _ASSET_EXTS = {"js", "css", "png", "jpg", "jpeg", "webp", "gif", "svg",
 
 
 def _cache_control(path: str, response) -> None:
-    if path.startswith("/static/") or path.startswith("/admin/static/"):
+    if path == "/api/chart/image":
+        # Authenticated raster charts may be reused by the same private webview,
+        # but must never become a shared/proxy cache object.
+        response.headers.setdefault("Cache-Control", "private, max-age=3600, must-revalidate")
+    elif path.startswith("/static/") or path.startswith("/admin/static/"):
         response.headers["Cache-Control"] = "public, max-age=3600"
     elif path.count("/") <= 1 and path.rsplit(".", 1)[-1].lower() in _ASSET_EXTS:
         response.headers["Cache-Control"] = "public, max-age=3600"

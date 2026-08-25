@@ -159,12 +159,13 @@ def pdf_pipeline():
                           birth_time="14:30", birth_city="Казань",
                           promo_code="ORA-TEST1234")
     data = asyncio.run(builder.build_report_data(order))
+    natal = asyncio.run(builder._natal_print_block(data, order, "ru"))
     html = layout.document("Проверка", [
-        f'<div class="wheel">{layout.wheel_svg(data["chart"])}</div>',
+        natal,
         f'<div class="wheel">{layout.matrix_svg(data["matrix"])}</div>'])
-    assert "<svg" in html and len(html) > 2000, "вёрстка разбора пустая"
+    assert "data:image/png;base64," in html and "<svg" in html and len(html) > 2000, "вёрстка разбора пустая"
     where = "PDF" if render.available() else "только HTML (нет WeasyPrint)"
-    return f"карта и октаграмма рисуются, вывод: {where}"
+    return f"натальная PNG-карта и отдельная октаграмма рисуются, вывод: {where}"
 
 
 def frontend_assets():
@@ -172,7 +173,7 @@ def frontend_assets():
     required = [
         "miniapp/index.html", "miniapp/styles.css",
         "miniapp/js/01-utils.js", "miniapp/js/02-art.js",
-        "miniapp/js/03-data.js", "miniapp/js/04-nativity.js",
+        "miniapp/js/03-data.js",
         "miniapp/js/05-app.js", "miniapp/js/06-home.js",
         "miniapp/js/07-chat.js", "miniapp/js/08-widgets.js",
         "miniapp/js/09-tarot.js", "miniapp/js/10-chart.js",

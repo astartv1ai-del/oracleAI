@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<style>
+*{box-sizing:border-box}:root{--n:#1A1A3A;--o:#FF5A00;--g:#E0E0E0;--m:#62627A}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#fff;color:var(--n);font-family:Arial,Helvetica,sans-serif;padding:52px 64px 0 64px}
+.head{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--n);padding-bottom:10px}
+.eyebrow{font:700 14px monospace;letter-spacing:2px;text-transform:uppercase;color:var(--o)}.page{font:400 14px monospace;color:var(--m)}
+h2{font:900 48px/.98 Arial;margin:32px 0 0;letter-spacing:-1.5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 48px;margin-top:32px}
+.item{border-top:1px solid var(--n);padding:8px 0}
+.col .item:last-child{border-bottom:1px solid var(--n)}
+.status{display:inline-block;padding:4px 8px;font:700 11px monospace;text-transform:uppercase;background:var(--g);color:var(--n);margin-bottom:8px}
+.status.open{background:var(--o);color:#fff}
+.status.partial{background:var(--n);color:#fff}
+.title{font:900 20px/1.2 Arial;margin-bottom:6px}
+.desc{font:400 14px/1.4 monospace;color:var(--m)}
+.note{margin-top:32px;padding:8px;background:var(--g);font:700 14px monospace;color:var(--n);text-align:center;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head><body>
+<div class="slide-container">
+  <div class="head"><div class="eyebrow">06 / P1 Blockers</div><div class="page">OracleAI · 25.08.2026</div></div>
+  <h2>P1 blockers before public launch</h2>
+  <div class="grid">
+    <div class="col">
+      <div class="item">
+        <div class="status open">OPEN</div>
+        <div class="title">Capacity / SQLite ceiling</div>
+        <div class="desc">Approved load profile, p50/p95/p99, SQLite ceiling and scale decision.</div>
+      </div>
+      <div class="item">
+        <div class="status partial">PARTIAL</div>
+        <div class="title">Payment sandbox certification</div>
+        <div class="desc">Provider sandbox signed webhooks, duplicate/out-of-order, refund/restore/reconciliation.</div>
+      </div>
+      <div class="item">
+        <div class="status open">OPEN</div>
+        <div class="title">Support readiness and SLA</div>
+        <div class="desc">FAQ, response templates, deletion/privacy/payment/safety escalation paths, named support owner.</div>
+      </div>
+      <div class="item">
+        <div class="status open">OPEN</div>
+        <div class="title">Privacy-safe funnel and cohort analytics</div>
+        <div class="desc">Event dictionary implementation from landing to first value, D1/D7 cohorts, cost and conversion.</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="item">
+        <div class="status partial">PARTIAL</div>
+        <div class="title">Accessibility / device acceptance</div>
+        <div class="desc">Touch target, keyboard/focus, screen reader, contrast/WCAG AA, reduced motion, Telegram safe area.</div>
+      </div>
+      <div class="item">
+        <div class="status open">OPEN</div>
+        <div class="title">Two controlled beta waves</div>
+        <div class="desc">Invite-only beta waves with capped traffic, feature flags, release owner, stop conditions.</div>
+      </div>
+      <div class="item">
+        <div class="status open">OPEN</div>
+        <div class="title">Canary, rollback and 72-hour rota</div>
+        <div class="desc">Versioned release, backup confirmation, canary, feature flags, rollback command, migration rehearsal.</div>
+      </div>
+    </div>
+  </div>
+  <div class="note">A green unit-test suite alone cannot close these gates.</div>
+</div>
+</body></html>

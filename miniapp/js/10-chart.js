@@ -21,6 +21,9 @@
       this.chat.pending = { kind: 'chart', loading: false, html: this.chartForm() };
     }
     this.renderChat(document.getElementById('app-main'));
+    if (this.chart && this.chat.pending && !this.chat.pending.loading) {
+      this.hydrateChartImage(this.chart, 'compact-chart-image', 'compact');
+    }
   };
 
 
@@ -82,6 +85,37 @@
     </section>`;
   };
 
+  app.chartImageHtml = function(c, id, variant = 'compact') {
+    if (!c || c.precision !== 'exact') {
+      return `<div class="chart-engine-state chart-engine-state--precision" role="status" data-chart-image-state="precision">
+        <b>${oracleLang() === 'en' ? 'Chart image needs exact birth time' : 'Для изображения карты нужно точное время рождения'}</b>
+        <span>${oracleLang() === 'en' ? 'Planets remain available below; ASC, MC and houses stay hidden until the time is confirmed.' : 'Планеты доступны ниже; ASC, MC и дома останутся скрытыми, пока время не подтверждено.'}</span>
+      </div>`;
+    }
+    return `<div class="chart-engine-image" data-chart-image="${esc(id)}" data-chart-variant="${esc(variant)}" role="status" aria-label="${oracleLang() === 'en' ? 'Natal chart image loading' : 'Загрузка изображения натальной карты'}">
+      <div class="chart-engine-image__placeholder"><span class="loader-ring"></span><span>${oracleLang() === 'en' ? 'Preparing the chart image…' : 'Готовим изображение карты…'}</span></div>
+    </div>`;
+  };
+
+  app.hydrateChartImage = async function(c, id, variant = 'compact') {
+    const host = document.querySelector(`[data-chart-image="${id}"]`);
+    if (!host || !c || c.precision !== 'exact') return;
+    try {
+      const blob = await apiBlob(`/api/chart/image?variant=${encodeURIComponent(variant)}&format=png&locale=${encodeURIComponent(oracleLang())}`);
+      const url = URL.createObjectURL(blob);
+      if (host._chartImageUrl) URL.revokeObjectURL(host._chartImageUrl);
+      host.innerHTML = `<img class="chart-engine-image__img" alt="${oracleLang() === 'en' ? 'Natal chart' : 'Натальная карта'}" decoding="async">`;
+      const image = host.querySelector('img');
+      image.src = url;
+      image.addEventListener('load', () => { host.dataset.chartImageState = 'ready'; }, { once: true });
+      image.addEventListener('error', () => { URL.revokeObjectURL(url); }, { once: true });
+      host._chartImageUrl = url;
+    } catch (e) {
+      host.dataset.chartImageState = e && e.code === 'insufficient_precision' ? 'precision' : 'error';
+      host.innerHTML = `<div class="chart-engine-state" role="status"><b>${oracleLang() === 'en' ? 'Chart image is temporarily unavailable' : 'Изображение карты временно недоступно'}</b><span>${oracleLang() === 'en' ? 'The placement list below is still available.' : 'Список положений ниже по-прежнему доступен.'}</span></div>`;
+    }
+  };
+
   app.chartHtml = function(c) {
     this.chart = c;
     const sun = c.sun || {};
@@ -95,8 +129,8 @@
       </div>` : '';
     const aspects = c.aspects || [];
     const glyph = p => planetGlyph(p.name) || (p.sign ? SIGNS[p.sign] : '');
-    const lines = planets.map(p => `
-      <div class="planet-line">
+    const lines = planets.map((p, i) => `
+      <div class="planet-line" data-planet-index="${i}" data-element="${esc(signElement(p.sign) || '')}">
         <div class="p-ico">${glyph(p)}</div>
         <div class="p-name">${esc(p.name)}</div>
         <div class="p-val">${esc(p.sign)}${p.house ? ' · дом ' + p.house : ''}${p.retro ? ' ☍' : ''}</div>
@@ -124,10 +158,10 @@
         <div class="w-title">🌌 Натальная карта</div>
         ${this.chartOnboardingHtml()}
         <div class="nw" data-act="full-chart" title="Открыть полную карту">
-          ${this.chart ? nativitySvg(this.chart, 210) : ''}
+          ${this.chartImageHtml(c, 'compact-chart-image', 'compact')}
           <div class="nw-plaque" id="nw-plaque" aria-live="polite"></div>
         </div>
-        <div class="chart-wheel-hint">Тапни планету — она расскажет о себе · тап по колесу — полный разбор</div>
+        <div class="chart-wheel-hint">${oracleLang() === 'en' ? 'Open the full chart for the image · use the accessible placement list below' : 'Открой полную карту для изображения · список положений ниже доступен для чтения'}</div>
         ${elLegend}
         ${accentChips}
         <div class="chart-signature">Солнце в ${esc(sun.sign || '—')}${anglesAvailable ? ' · Асцендент ' + esc(asc.sign || '—') : ''}</div>
@@ -213,6 +247,9 @@
     }
     this.chat.busy = false;
     this.renderChat(document.getElementById('app-main'));
+    if (this.chart && this.chat.pending && !this.chat.pending.loading) {
+      this.hydrateChartImage(this.chart, 'compact-chart-image', 'compact');
+    }
   };
 
 
@@ -248,15 +285,15 @@
     if (q && q.trim()) this.chatAsk('Что в моей натальной карте говорит о ' + q.trim());
   };
 
-  /* B2 — «Сохранить в сторис»: SVG-колесо → canvas → PNG.
-     Фронт-рендер без новых зависимостей; nativitySvg уже использует литеральные
-     цвета (не var()), чтобы standalone-SVG в <img> не терял палитру. */
+  /* Backend share: the browser receives only a raster Blob. */
 
-  app.downloadPng = function(dataUrl, name) {
+  app.downloadBlob = function(blob, name) {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = dataUrl; a.download = name || 'oracle-natal-card.png';
+    a.href = url; a.download = name || 'oracle-natal-card.png';
     document.body.appendChild(a); a.click(); a.remove();
-    this.toast('Картинка сохранена — добавь её в сторис ✨');
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    this.toast(oracleLang() === 'en' ? 'Image saved — add it to your story.' : 'Картинка сохранена — добавь её в сторис ✨');
   };
   // G004 «в сторис»: готовый PNG расклада с бэка (/api/share/reading/{id}.png)
 
@@ -268,35 +305,25 @@
   };
   // G004 рефералка: скопировать ссылку приглашения
 
-  app.shareChart = function() {
+  app.shareChart = async function() {
     const c = this.chart;
     if (!c || !(c.planets || []).length) { this.toast('Сначала построй карту ✨'); return; }
-    const size = 560; // 2× для чёткости
-    let svg = nativitySvg(c, size);
-    svg = svg.replace('style="width:100%;max-width:280px;height:auto;margin:0 auto;display:block;"',
-      `width="${size}" height="${size}"`);
-    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#08070f'; ctx.fillRect(0, 0, size, size); // ночной фон
-      ctx.drawImage(img, 0, 0, size, size);
-      URL.revokeObjectURL(url);
-      const png = canvas.toDataURL('image/png');
+    if (c.precision !== 'exact') {
+      this.toast(oracleLang() === 'en' ? 'Add an exact birth time before sharing the chart image.' : 'Добавь точное время рождения, чтобы поделиться изображением карты.');
+      return;
+    }
+    try {
+      const blob = await apiBlob(`/api/chart/image?variant=share&format=png&locale=${encodeURIComponent(oracleLang())}`);
       if (navigator.share && navigator.canShare && this.me && this.me.flags && this.me.flags.share_cards) {
-        fetch(png).then(r => r.blob()).then(b => {
-          const f = new File([b], 'oracle-natal-card.png', { type: 'image/png' });
-          navigator.share({ title: 'Моя натальная карта', files: [f] }).catch(() => this.downloadPng(png));
-        }).catch(() => this.downloadPng(png));
+        const file = new File([blob], 'oracle-natal-card.png', { type: 'image/png' });
+        navigator.share({ title: oracleLang() === 'en' ? 'My natal chart' : 'Моя натальная карта', files: [file] })
+          .catch(() => this.downloadBlob(blob, 'oracle-natal-card.png'));
       } else {
-        this.downloadPng(png);
+        this.downloadBlob(blob, 'oracle-natal-card.png');
       }
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); this.toast('Не удалось собрать картинку 🌙'); };
-    img.src = url;
+    } catch (e) {
+      this.toast(oracleLang() === 'en' ? 'The chart image is temporarily unavailable.' : 'Изображение карты временно недоступно.');
+    }
   };
 
   /* ═══ ФИЧА: ПРОГНОЗ / НЕБО ═══ */
@@ -307,11 +334,11 @@
     if (!p) return;
     haptic('light');
     vb(15);
-    const svg = document.querySelector('.nw svg');
-    if (svg) {
-      svg.querySelectorAll('.n-planet.active').forEach(g => g.classList.remove('active'));
-      const g = svg.querySelector('.n-planet[data-p="' + i + '"]');
-      if (g) g.classList.add('active');
+    document.querySelectorAll('.planet-line.is-selected').forEach(row => row.classList.remove('is-selected'));
+    const row = document.querySelector('.planet-line[data-planet-index="' + i + '"]');
+    if (row) {
+      row.classList.add('is-selected');
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
     const pl = document.getElementById('nw-plaque');
     if (pl) {
@@ -329,19 +356,17 @@
     haptic('light');
     vb(10);
     const c = this.chart;
-    const svg = document.querySelector('.nw svg');
-    if (!svg || !c || !c.planets) return;
+    if (!c || !c.planets) return;
     const chips = document.querySelectorAll('.el-chip');
-    if (document.querySelector('.el-chip[data-el="' + el + '"].on')) {
+    const active = document.querySelector('.el-chip[data-el="' + el + '"].on');
+    if (active) {
       chips.forEach(ch => ch.classList.remove('on'));
-      svg.querySelectorAll('.n-planet').forEach(g => g.classList.remove('el-off'));
+      document.querySelectorAll('.planet-line').forEach(row => row.classList.remove('el-off'));
       return;
     }
     chips.forEach(ch => ch.classList.toggle('on', ch.dataset.el === el));
-    svg.querySelectorAll('.n-planet').forEach(g => {
-      const idx = parseInt(g.dataset.p, 10);
-      const p = c.planets[idx];
-      g.classList.toggle('el-off', signElement(p && p.sign) !== el);
+    document.querySelectorAll('.planet-line').forEach(row => {
+      row.classList.toggle('el-off', row.dataset.element !== el);
     });
   };
 

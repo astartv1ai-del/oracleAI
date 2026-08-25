@@ -485,8 +485,8 @@
         row(a.glyph || '◈', `${a.p1} — ${a.p2}`, `${a.aspect}${a.orb != null ? ' · ' + profileT('orb') + ' ' + a.orb + '°' : ''}`)).join('');
       document.getElementById('fc-body').innerHTML = `
         ${precisionNotice}
-        <div class="fc-hero" style="margin-bottom:6px;display:flex;justify-content:center;align-items:center;background:rgba(14,13,30,.7);border-radius:var(--r-m);padding:10px;box-shadow:var(--sh-card);">
-          <div style="width:260px;height:260px;">${nativitySvg(c, 260)}</div>
+        <div class="fc-hero chart-engine-image-shell" style="margin-bottom:6px;display:flex;justify-content:center;align-items:center;background:rgba(14,13,30,.7);border-radius:var(--r-m);padding:10px;box-shadow:var(--sh-card);">
+          ${this.chartImageHtml(c, 'full-chart-image', 'full')}
         </div>
         <div class="fc-card">
           <span class="fc-ico">☉</span>
@@ -560,6 +560,7 @@
         <button class="btn btn-primary" style="width:100%;margin-top:8px" data-act="share-chart">${esc(profileT('shareChart'))}</button>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" data-act="fc-explain">${esc(profileT('simpleReading'))}</button>
         <div id="fc-explain" style="margin-top:12px"></div>`;
+      this.hydrateChartImage(c, 'full-chart-image', 'full');
     } catch (e) {
       const body = document.getElementById('fc-body');
       if (body) body.innerHTML = this.softEmpty({

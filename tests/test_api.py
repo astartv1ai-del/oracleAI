@@ -712,3 +712,48 @@ async def test_default_chat_auto_routes_and_explicit_agent_wins(client, user):
     assert explicit_body["requested_agent"] == "tarot"
     assert explicit_body["agent"] == "tarot"
     assert explicit_body["routing"]["auto_route"] is False
+
+
+async def test_chart_image_is_private_raster_with_conditional_etag(client, user):
+    params = as_user(user, {"variant": "compact", "format": "png", "locale": "ru"})
+    response = await client.get("/api/chart/image", params=params)
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/png")
+    assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
+    assert b"<svg" not in response.content.lower()
+    assert response.headers["cache-control"].startswith("private")
+    assert response.headers["content-length"] == str(len(response.content))
+    etag = response.headers["etag"]
+
+    cached = await client.get("/api/chart/image", params=params,
+                              headers={"If-None-Match": etag})
+    assert cached.status_code == 304
+    assert cached.headers["etag"] == etag
+    assert cached.content == b""
+
+
+async def test_chart_image_supports_webp_and_rejects_unknown_variant(client, user):
+    response = await client.get("/api/chart/image", params=as_user(
+        user, {"variant": "share", "format": "webp", "locale": "en"}))
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/webp")
+    assert response.content[:4] == b"RIFF" and response.content[8:12] == b"WEBP"
+
+    bad = await client.get("/api/chart/image", params=as_user(
+        user, {"variant": "custom", "format": "png", "locale": "ru"}))
+    assert bad.status_code == 422
+    assert bad.json()["detail"]["code"] == "unsupported_render"
+
+
+async def test_date_only_chart_image_is_structured_not_a_fake_wheel(client, db, user):
+    import json
+    from app.core import astro
+
+    chart = await astro.compute_chart_async("1990-06-21", None, "Казань",
+                                            55.79, 49.12, "Europe/Moscow",
+                                            time_known=False)
+    await users.update(db, user["tg_id"], birth_time=None, birth_time_known=0,
+                       chart_json=json.dumps(chart, ensure_ascii=False))
+    response = await client.get("/api/chart/image", params=as_user(user))
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "insufficient_precision"

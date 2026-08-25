@@ -1,16 +1,17 @@
 """Натальная карта, Матрица Судьбы, совместимость, партнёры, разборы."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from ...core import agent as agent_core
-from ...core import astro, geo, memory
+from ...core import astro, chart_rendering, geo, memory
 from ...core.chart_contract import public_calculation_contract
 from ...core.matrix import compute_matrix
 from ...core.observability import log_event
@@ -100,6 +101,64 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
         },
     }
     return {**meta, **payload}
+
+
+@router.get("/chart/image")
+async def chart_image(
+    request: Request,
+    variant: str = Query(default="compact", min_length=1, max_length=16),
+    format: str = Query(default="png", min_length=1, max_length=8),
+    locale: str = Query(default="ru", min_length=2, max_length=2),
+    user=Depends(current_user),
+):
+    """Private raster chart image; the SVG engine output never crosses this boundary."""
+    started = time.monotonic()
+    data = users.chart_of(user)
+    if not data:
+        raise HTTPException(400, "карта ещё не построена")
+    calculation_input = (data.get("calculation") or {}).get("input") or {}
+    birth_date = user["birth_date"] or calculation_input.get("birth_date")
+    birth_time = user["birth_time"] or calculation_input.get("birth_time")
+    lat = user["birth_lat"] if user["birth_lat"] is not None else calculation_input.get("lat")
+    lon = user["birth_lon"] if user["birth_lon"] is not None else calculation_input.get("lon")
+    tz = user["tz"] or calculation_input.get("tz")
+    try:
+        image, spec, cache_hit, etag = await asyncio.to_thread(
+            chart_rendering.render_chart_image,
+            data,
+            birth_date=birth_date, birth_time=birth_time,
+            lat=lat, lon=lon, tz=tz,
+            variant=variant, image_format=format, locale=locale,
+        )
+    except chart_rendering.InsufficientPrecisionError as exc:
+        raise HTTPException(409, {"code": exc.code, "message": str(exc)}) from exc
+    except chart_rendering.UnsupportedRenderError as exc:
+        raise HTTPException(422, {"code": exc.code, "message": str(exc)}) from exc
+    except chart_rendering.RasterizerUnavailableError as exc:
+        raise HTTPException(503, {"code": exc.code, "message": "картинка временно недоступна"}) from exc
+    except chart_rendering.ChartRenderError as exc:
+        _log_astro(logging.ERROR, "astro_chart_image_failed", "отрисовка натальной карты завершилась ошибкой", started,
+                   data, variant=variant, format=format, locale=locale,
+                   cache_hit=False, status="error", error_type=type(exc).__name__)
+        raise HTTPException(503, {"code": getattr(exc, "code", "chart_image_failed"),
+                                  "message": "картинка временно недоступна"}) from exc
+
+    quoted = f'"{etag}"'
+    headers = {
+        "Cache-Control": "private, max-age=3600, must-revalidate",
+        "Vary": "X-Init-Data",
+        "ETag": quoted,
+        "Content-Length": str(len(image)),
+        "Content-Disposition": f'inline; filename="oracle-natal-{spec.variant}.{spec.image_format}"',
+        "X-Content-Type-Options": "nosniff",
+    }
+    if request.headers.get("if-none-match") == quoted:
+        return Response(status_code=304, headers=headers)
+    media_type = "image/webp" if spec.image_format == "webp" else "image/png"
+    _log_astro(logging.INFO, "astro_chart_image_served", "растровая натальная карта отдана клиенту", started,
+               data, variant=spec.variant, format=spec.image_format, locale=spec.locale,
+               cache_hit=cache_hit, live=False, status="ok")
+    return Response(content=image, media_type=media_type, headers=headers)
 
 
 @router.get("/chart")

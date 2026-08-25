@@ -11,12 +11,13 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from ..config import settings
-from ..core import astro, geo, llm, skills
+from ..core import astro, chart_rendering, geo, llm, skills
 from ..core.matrix import compute_matrix
 from ..repo import content
 from . import layout
@@ -223,6 +224,8 @@ async def build_report_data(order: Order) -> dict:
         "matrix": matrix,
         "sky": astro.today_sky(),
         "tz": tz,
+        "lat": lat,
+        "lon": lon,
         "brief": astro.chart_brief(chart, time_known=order.time_known),
     }
 
@@ -260,7 +263,7 @@ async def _brand_context(db, lang: str) -> dict[str, str]:
 
 
 def _facts_block(order: Order, data: dict, lang: str) -> str:
-    """Compact facts card used as the first content block after the cover."""
+    """Branded numeric overview: a sun-centered core with readable fact tiles."""
     language = _lang(lang)
     chart = data["chart"]
     sun = chart.get("sun") or {}
@@ -272,7 +275,7 @@ def _facts_block(order: Order, data: dict, lang: str) -> str:
         (labels[0], _human_date(order.birth_date)),
         (labels[1], order.birth_time if order.time_known else _text(language, "unknown")),
         (labels[2], order.birth_city or ("not specified" if language == "en" else "не указано")),
-        (labels[3], f"{sun.get('symbol', '')} {_display_sign(sun.get('sign', '—'), language)} · {element}"),
+        (labels[3], f"{_display_sign(sun.get('sign', '—'), language)} · {element}"),
     ]
     if asc:
         rows.append((labels[4], f"{_display_sign(asc.get('sign', '—'), language)} {asc.get('deg', '')}°"))
@@ -288,11 +291,28 @@ def _facts_block(order: Order, data: dict, lang: str) -> str:
         rows.append((labels[7], f"{_display_sign(ketu.get('sign', '—'), language)} {ketu.get('deg', '—')}°"))
     _, destiny_arcana, _ = _matrix_display(data["matrix"]["destiny"], language)
     rows.append((labels[8], f"{data['matrix']['destiny']['n']} — {destiny_arcana}"))
-    cells = "".join(
-        f'<tr><td class="label">{layout.esc(k)}</td><td>{layout.esc(v)}</td></tr>'
-        for k, v in rows
+
+    profile_cells = "".join(
+        f'<div class="facts-profile-cell"><span>{layout.esc(k)}</span><b>{layout.esc(v)}</b></div>'
+        for k, v in rows[:3]
     )
-    return f'<div class="card"><table>{cells}</table></div>'
+    sun_label, sun_value = rows[3]
+    placement_cells = "".join(
+        f'<div class="facts-placement"><span>{layout.esc(k)}</span><b>{layout.esc(v)}</b></div>'
+        for k, v in rows[4:]
+    )
+    return (
+        '<div class="facts-constellation">'
+        f'<div class="facts-constellation__header"><span>{layout.esc("Главные опоры" if language == "ru" else "Core anchors")}</span>'
+        f'<small>{layout.esc("точки, с которых начинается чтение" if language == "ru" else "the points where the reading begins")}</small></div>'
+        '<div class="facts-core">'
+        '<div class="facts-core__halo"><strong>✦</strong></div>'
+        f'<span>{layout.esc(sun_label)}</span><b>{layout.esc(sun_value)}</b>'
+        '</div>'
+        f'<div class="facts-profile">{profile_cells}</div>'
+        f'<div class="facts-placements">{placement_cells}</div>'
+        '</div>'
+    )
 
 
 def _human_date(iso: str) -> str:
@@ -614,36 +634,43 @@ def _point_rows(points: list[dict], lang: str) -> list[list[str]]:
 
 
 def _natal_reference_block(data: dict, lang: str) -> str:
+    """Split the technical reference into calm, readable print sections."""
     language = _lang(lang)
     chart = data["chart"]
     def t(key: str):
         return _text(language, key)
 
     headers = [t("object"), t("sign"), t("degree"), t("house"), t("status")]
-    parts = [
-        f'<div class="section"><h2>{t("reference")}</h2>',
-        f'<p class="small muted">{t("exact_note")}</p>',
-        '<div class="reference-columns compact-columns">'
-        f'<div class="card"><table><tr><td class="label">{t("engine")}</td><td>{layout.esc(chart.get("engine", "Swiss Ephemeris"))}</td></tr>'
+    config_rows = (
+        f'<table><tr><td class="label">{t("engine")}</td><td>{layout.esc(chart.get("engine", "Swiss Ephemeris"))}</td></tr>'
         f'<tr><td class="label">{t("zodiac")}</td><td>{layout.esc(chart.get("zodiac_type", "Tropical"))}</td></tr>'
         f'<tr><td class="label">{t("houses")}</td><td>{layout.esc(chart.get("house_system_name", "Placidus"))} ({layout.esc(chart.get("house_system", "P"))})</td></tr>'
         f'<tr><td class="label">{t("perspective")}</td><td>{layout.esc(chart.get("perspective_type", "Apparent Geocentric"))}</td></tr>'
         f'<tr><td class="label">{t("precision")}</td><td>{layout.esc(_display_precision(chart.get("precision", "unknown"), language))}</td></tr>'
         f'<tr><td class="label">{t("node_mode")}</td><td>{layout.esc((chart.get("lunar_nodes") or {}).get("mode_label", t("true_node")))}</td></tr>'
         f'<tr><td class="label">{t("contract")}</td><td>v{layout.esc((chart.get("calculation") or {}).get("contract_version", "1"))}</td></tr>'
-        f'<tr><td class="label">{t("aspect_policy")}</td><td>{layout.esc(", ".join(f"{k}: {v}°" for k, v in (((chart.get("calculation") or {}).get("config") or {}).get("aspect_policy") or {}).get("orbs_deg", {}).items()) or "major aspects")}</td></tr></table></div>',
-        f'<h3>{t("planets")}</h3>',
-        _data_table(headers, _point_rows(chart.get("planets") or [], language)),
+        f'<tr><td class="label">{t("aspect_policy")}</td><td>{layout.esc(", ".join(f"{k}: {v}°" for k, v in (((chart.get("calculation") or {}).get("config") or {}).get("aspect_policy") or {}).get("orbs_deg", {}).items()) or "major aspects")}</td></tr></table>'
+    )
+    parts = [
+        f'<div class="section reference-section"><h2>{t("reference")}</h2>',
+        f'<p class="small muted">{t("exact_note")}</p>',
+        f'<div class="card reference-config">{config_rows}</div>',
+        '</div>',
     ]
+
+    placement_parts = [f'<div class="section reference-section placement-reference"><h2>{t("planets")}</h2>', _data_table(headers, _point_rows(chart.get("planets") or [], language))]
     nodes = chart.get("nodes") or []
     if nodes:
         note = ("Rahu is the North Node and Ketu is the South Node. Together they show the axis of inherited patterns and growth."
                 if language == "en" else
                 "Rahu — Северный лунный узел, Ketu — Южный лунный узел. Вместе они показывают ось привычного опыта и роста.")
-        parts.extend([f'<h3>{t("nodes")}</h3>', f'<p>{note}</p>', _data_table(headers, _point_rows(nodes, language))])
+        placement_parts.extend([f'<h3>{t("nodes")}</h3>', f'<p>{note}</p>', _data_table(headers, _point_rows(nodes, language))])
     expanded = chart.get("additional_points") or []
     if expanded:
-        parts.extend([f'<h3>{t("additional")}</h3>', _data_table(headers, _point_rows(expanded, language))])
+        placement_parts.extend([f'<h3>{t("additional")}</h3>', _data_table(headers, _point_rows(expanded, language))])
+    placement_parts.append('</div>')
+    parts.extend(placement_parts)
+
     houses = chart.get("houses") or []
     if houses:
         rows = []
@@ -651,7 +678,22 @@ def _natal_reference_block(data: dict, lang: str) -> str:
             exact = house.get("abs_deg_exact", house.get("abs_deg"))
             degree = f"{house.get('deg', '—')}° <span class=\"muted small\">({_exact_degree(exact)})</span>"
             rows.append([str(house.get("n", "—")), layout.esc(_display_sign(house.get("sign", "—"), language)), degree])
-        parts.extend([f'<h3>{t("cusps")}</h3>', _data_table([t("house"), t("sign"), "Cusp longitude" if language == "en" else "Долгота куспида"], rows)])
+        angle_houses = {item.get("n"): item for item in houses if item.get("n") in {1, 4, 7, 10}}
+        angle_labels = {1: ("Асцендент", "Ascendant"), 4: ("IC", "IC"), 7: ("Десцендент", "Descendant"), 10: ("MC", "MC")}
+        angle_cards = "".join(
+            f'<div class="house-angle"><span>{layout.esc(angle_labels[number][1 if language == "en" else 0])}</span>'
+            f'<b>{layout.esc(_display_sign(item.get("sign", "—"), language))}</b>'
+            f'<small>{layout.esc(str(item.get("deg", "—")) + "°")}</small></div>'
+            for number, item in angle_houses.items()
+        )
+        parts.extend([
+            f'<div class="section reference-section house-reference"><h2>{t("cusps")}</h2>',
+            f'<p class="reference-lead">{"Каждый дом — отдельная область опыта; здесь собраны его знак и точная долгота куспида." if language == "ru" else "Each house marks a distinct area of experience; this page lists its sign and exact cusp longitude."}</p>',
+            _data_table([t("house"), t("sign"), "Cusp longitude" if language == "en" else "Долгота куспида"], rows),
+            f'<div class="house-angle-panel"><div class="house-angle-panel__title">{"Четыре угловые точки" if language == "ru" else "Four angular points"}</div><div class="house-angle-grid">{angle_cards}</div></div>',
+            '</div>',
+        ])
+
     aspects = chart.get("aspects") or []
     if aspects:
         aspect_en = {"соединение": "conjunction", "оппозиция": "opposition", "трин": "trine", "квадрат": "square", "секстиль": "sextile"}
@@ -662,9 +704,11 @@ def _natal_reference_block(data: dict, lang: str) -> str:
             p2 = _display_point(aspect.get("p2", "—"), language)
             aspect_name = aspect_en.get(aspect.get("aspect", "—"), aspect.get("aspect", "—")) if language == "en" else aspect.get("aspect", "—")
             rows.append([layout.esc(f"{p1} {aspect.get('glyph', '')} {p2}"), layout.esc(aspect_name), f"{aspect.get('orb', '—')}° <span class=\"muted small\">({_exact_degree(orb)})</span>"])
-        parts.extend([f'<h3>{t("aspects")}</h3>', _data_table(["Pattern" if language == "en" else "Связка", "Aspect" if language == "en" else "Аспект", "Orb" if language == "en" else "Орб"], rows)])
-    parts.append('</div>')
-    parts.append('</div>')
+        parts.extend([
+            f'<div class="section reference-section aspect-reference"><h2>{t("aspects")}</h2>',
+            _data_table(["Pattern" if language == "en" else "Связка", "Aspect" if language == "en" else "Аспект", "Orb" if language == "en" else "Орб"], rows),
+            '</div>',
+        ])
     return "".join(parts)
 
 
@@ -698,6 +742,51 @@ def _closing_block(order: Order, data: dict, brand: dict[str, str], lang: str) -
     return (f'<div class="closing-grid"><div class="card"><h3>{layout.esc("Ключевые позиции" if language == "ru" else "Key placements")}</h3>'
             f'<table>{rows_html}</table></div><div class="card"><h3>{layout.esc(guide_title)}</h3>'
             f'<p>{layout.esc(guide)}</p><p class="small muted">{layout.esc(destiny_meaning)}</p>{project}</div></div>')
+
+
+def _natal_key_strip(data: dict, language: str) -> str:
+    chart = data["chart"]
+    planets = chart.get("planets") or []
+    sun = chart.get("sun") or next((p for p in planets if p.get("name") == "Солнце"), {})
+    moon = next((p for p in planets if p.get("name") == "Луна"), {})
+    asc = chart.get("ascendant") or {}
+    nodes = chart.get("lunar_nodes") or {}
+    rahu = nodes.get("rahu") or next((n for n in chart.get("nodes") or [] if n.get("name", "").startswith("Раху")), {})
+    items = [
+        (("Солнце" if language == "ru" else "Sun"), f'{_display_sign(sun.get("sign", "—"), language)} {sun.get("deg", "—")}°'),
+        (("Луна" if language == "ru" else "Moon"), f'{_display_sign(moon.get("sign", "—"), language)} {moon.get("deg", "—")}°'),
+        (("Асцендент" if language == "ru" else "Ascendant"), f'{_display_sign(asc.get("sign", "—"), language)} {asc.get("deg", "—")}°' if asc else _text(language, "unknown")),
+        (("Раху" if language == "ru" else "Rahu"), f'{_display_sign(rahu.get("sign", "—"), language)} {rahu.get("deg", "—")}°'),
+    ]
+    cells = "".join(f'<div class="natal-key-cell"><span>{layout.esc(label)}</span><b>{layout.esc(value)}</b></div>' for label, value in items)
+    return f'<div class="natal-key-strip">{cells}</div>'
+
+
+async def _natal_print_block(data: dict, order: Order, language: str) -> str:
+    """Return a full-width print image or an explicit precision/recovery state."""
+    title = "Натальная карта" if language == "ru" else "Natal chart"
+    if (data["chart"].get("precision") or "") != "exact":
+        copy = ("Изображение колеса не строится без подтверждённого времени, координат и часового пояса. Планеты и таблица положений сохранены ниже."
+                if language == "ru" else
+                "The wheel image is not generated without confirmed birth time, coordinates and timezone. Planet placements remain in the reference tables below.")
+        return f'<div class="section natal-print-section"><h2>{layout.esc(title)}</h2><div class="natal-print-state"><b>{layout.esc(_text(language, "precision"))}</b><p>{layout.esc(copy)}</p></div></div>'
+    try:
+        image, spec, _, _ = await asyncio.to_thread(
+            chart_rendering.render_chart_image,
+            data["chart"], birth_date=order.birth_date, birth_time=order.birth_time,
+            lat=data.get("lat"), lon=data.get("lon"), tz=data.get("tz"),
+            variant="print", image_format="png", locale=language,
+        )
+    except chart_rendering.ChartRenderError:
+        copy = ("Изображение карты временно недоступно; отчёт продолжает содержать проверяемые таблицы положений."
+                if language == "ru" else
+                "The chart image is temporarily unavailable; the report still contains the verified placement tables.")
+        return f'<div class="section natal-print-section"><h2>{layout.esc(title)}</h2><div class="natal-print-state"><p>{layout.esc(copy)}</p></div></div>'
+    encoded = base64.b64encode(image).decode("ascii")
+    return (f'<div class="section natal-print-section"><h2>{layout.esc(title)}</h2>'
+            f'<figure class="natal-print-figure"><img class="natal-print-image" width="{spec.width}" height="{spec.height}" '
+            f'src="data:image/png;base64,{encoded}" alt="{layout.esc(title)}" /></figure>'
+            f'{_aspect_legend(data["chart"], language)}{_natal_key_strip(data, language)}</div>')
 
 
 async def generate(db, order: Order, *, bot_username: str = "",
@@ -742,9 +831,10 @@ async def generate(db, order: Order, *, bot_username: str = "",
         '<div class="overview-grid">'
         f'<div>{_facts_block(order, data, language)}</div>'
         '<div class="overview-visuals">'
-        f'<div class="wheel">{layout.wheel_svg(data["chart"], size=245)}{_aspect_legend(data["chart"], language)}</div>'
-        f'<div class="wheel">{layout.matrix_svg(data["matrix"], size=220, labels=matrix_labels)}</div>'
+        f'<div class="matrix-visual"><div class="matrix-visual__label">{layout.esc(_text(language, "matrix"))}</div>'
+        f'<div class="wheel">{layout.matrix_svg(data["matrix"], size=220, labels=matrix_labels)}</div></div>'
         '</div></div></div>',
+        await _natal_print_block(data, order, language),
         _natal_reference_block(data, language),
     ]
     for start in range(0, len(SECTIONS), 2):

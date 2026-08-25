@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<style>
+*{box-sizing:border-box}
+:root{--n:#1A1A3A;--o:#FF5A00;--g:#E0E0E0;--m:#62627A}
+body{margin:0}
+.slide-container{width:1280px;min-height:720px;background:#fff;color:var(--n);font-family:Arial,Helvetica,sans-serif;padding:51px 64px 0 64px;transform:translateY(-1px)}
+.head{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--n);padding-bottom:10px}
+.eyebrow{font:700 14px monospace;letter-spacing:2px;text-transform:uppercase;color:var(--o)}.page{font:400 14px monospace;color:var(--m)}
+.title-section{padding:32px 0 24px 0;border-bottom:1px solid var(--n)}
+h2{font:900 48px/1.1 Arial;margin:0;letter-spacing:-1px}
+.grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;border-bottom:1px solid var(--n)}
+.cell{padding:20px 32px 20px 0;border-right:1px solid var(--g);border-bottom:1px solid var(--g)}
+.cell:nth-child(2n){border-right:none;padding-left:32px;padding-right:0}
+.cell:nth-child(3),.cell:nth-child(4){border-bottom:none}
+.cell-title{font:900 24px/1.2 Arial;color:var(--o);margin-bottom:10px}
+.cell-desc{font:400 16px/1.45 monospace;color:var(--n)}
+.footer-note{padding-top:20px;font:400 14px/1.45 monospace;color:var(--m)}
+</style>
+</head><body><div class="slide-container"><div class="head"><div class="eyebrow">04 / Scheduler improvement</div><div class="page">OracleAI · 25.08.2026</div></div>
+<div class="title-section"><h2>Scheduler operations hardened</h2></div>
+<div class="grid">
+  <div class="cell">
+    <div class="cell-title">Persistent Lease</div>
+    <div class="cell-desc">Добавлена таблица <code>scheduler_leases</code>. Реализован атомарный single-owner claim для предотвращения двойного запуска.</div>
+  </div>
+  <div class="cell">
+    <div class="cell-title">Stale Recovery</div>
+    <div class="cell-desc">Автоматическое восстановление работы планировщика после истечения времени аренды (lease expiry).</div>
+  </div>
+  <div class="cell">
+    <div class="cell-title">Failure Accounting</div>
+    <div class="cell-desc">Учёт ошибок выполнения с сохранением ограниченного контекста ошибки (bounded error context) и счётчиком сбоев.</div>
+  </div>
+  <div class="cell">
+    <div class="cell-title">Privacy-safe Alerts</div>
+    <div class="cell-desc">Скрипт <code>ops_alerts.py</code> выявляет пропущенные, зависшие и упавшие запуски без раскрытия пользовательского контента.</div>
+  </div>
+</div>
+<div class="footer-note">Regression evidence covers two SQLite connections, concurrent ownership, expiry recovery, failure recording and alert parsing.</div>
+</div></body></html>

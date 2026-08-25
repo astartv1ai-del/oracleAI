@@ -74,7 +74,39 @@ async function api(path, opts = {}) {
   }
 }
 
-const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+/* Binary API client for private chart/share images. Auth stays in headers; only
+   allowlisted render parameters are present in the URL. */
+async function apiBlob(path, opts = {}) {
+  const headers = Object.assign({ Accept: 'image/png, image/webp' }, opts.headers || {});
+  const initData = tg() && tg().initData;
+  if (initData) headers['X-Init-Data'] = initData;
+  let url = path;
+  const dev = new URLSearchParams(location.search).get('dev_user');
+  if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + encodeURIComponent(dev);
+  const request = async () => {
+    const res = await fetch(url, Object.assign({}, opts, { headers }));
+    if (!res.ok) {
+      let body = null;
+      try { body = await res.json(); } catch (e) { /* non-JSON error */ }
+      const detail = body && (body.detail || body);
+      const err = new Error(typeof detail === 'string' ? detail : JSON.stringify(detail || 'Связь прервалась 🌙'));
+      err.status = res.status;
+      err.code = detail && typeof detail === 'object' ? detail.code : undefined;
+      throw err;
+    }
+    return res.blob();
+  };
+  try {
+    return await request();
+  } catch (err) {
+    const retriable = !err || !err.status || err.status >= 500;
+    if (!retriable) throw err;
+    await new Promise(r => setTimeout(r, 600));
+    return request();
+  }
+}
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>\"]/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* User-facing errors must never expose Telegram auth, provider, HTML or JSON details. */

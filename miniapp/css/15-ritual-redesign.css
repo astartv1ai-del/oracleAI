@@ -1082,14 +1082,8 @@ html, body { background: #070713; }
   transform: translate(-50%, 0) scale(1);
   transition-delay: 0s;
 }
-.n-planet.n-in {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation-name: chartPlanetArrive;
-  animation-duration: .68s;
-  animation-timing-function: cubic-bezier(.18,.92,.24,1.18);
-}
-.n-core.n-in { transform-box: fill-box; transform-origin: center; animation: chartCoreArrive .62s .24s var(--ease-ritual) both; }
+.chart-engine-image-shell .chart-engine-image { width: 100%; min-height: 260px; }
+.chart-engine-image-shell .chart-engine-image__img { max-width: 100%; height: auto; }
 .el-chip { transition: color 180ms var(--ease-ritual), border-color 180ms var(--ease-ritual), background 180ms var(--ease-ritual), box-shadow 180ms var(--ease-ritual), transform 180ms var(--ease-ritual); }
 .el-chip.on { animation: elementChipIgnite .36s var(--ease-ritual) both; }
 @keyframes chartRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -1097,11 +1091,9 @@ html, body { background: #070713; }
 @keyframes chartSpin { to { transform: rotate(360deg); } }
 @keyframes chartHalo { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245,212,139,.08); } 50% { transform: scale(1.06); box-shadow: 0 0 0 9px rgba(245,212,139,0); } }
 @keyframes chartOrbit { to { transform: rotate(360deg); } }
-@keyframes chartPlanetArrive { from { opacity: 0; transform: scale(.18); } 72% { opacity: 1; transform: scale(1.1); } to { opacity: 1; transform: scale(1); } }
-@keyframes chartCoreArrive { from { opacity: 0; transform: scale(.48); } 70% { opacity: 1; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
 @keyframes elementChipIgnite { 0% { transform: scale(.9); box-shadow: 0 0 0 rgba(245,212,139,0); } 62% { transform: scale(1.07); box-shadow: 0 0 18px rgba(245,212,139,.42); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
-  .chart-onboarding, .chart-form-intro, .chart-form, .chart-loading, .chart-result, .n-core.n-in, .el-chip.on { animation: none !important; }
+  .chart-onboarding, .chart-form-intro, .chart-form, .chart-loading, .chart-result, .el-chip.on { animation: none !important; }
   .nw-plaque, .chart-form__submit, .el-chip { transition: none; }
 }
 

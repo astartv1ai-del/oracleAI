@@ -98,7 +98,7 @@
     const n = Math.max(1, spheres.length);
     const cx = 110, cy = 110, R = 84, sw = 15;
     const seg = 360 / n;
-    // deg отсчитывается от 3 часов против часовой (как в nativitySvg)
+    // deg отсчитывается от 3 часов против часовой; это отдельная compatibility visual, не natal chart renderer
     const pol = (deg, rad) => [cx + Math.cos(deg * Math.PI / 180) * rad, cy - Math.sin(deg * Math.PI / 180) * rad];
     const arc = (a1, a2) => {
       const [x1, y1] = pol(a1, R);

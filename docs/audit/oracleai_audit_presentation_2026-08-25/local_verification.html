@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<style>
+*{box-sizing:border-box}:root{--n:#1A1A3A;--o:#FF5A00;--g:#E0E0E0;--m:#62627A}
+.slide-container{width:1280px;min-height:720px;background:#fff;color:var(--n);font-family:Arial,Helvetica,sans-serif;padding:52px 64px 0 64px}
+.head{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--n);padding-bottom:10px}
+.eyebrow{font:700 14px monospace;letter-spacing:2px;text-transform:uppercase;color:var(--o)}.page{font:400 14px monospace;color:var(--m)}
+.body{display:grid;grid-template-columns:1fr 1.5fr;min-height:560px}
+.left{padding:48px 24px 0 0;border-right:1px solid var(--n)}
+h2{font:900 48px/1.05 Arial;margin:0;letter-spacing:-1.5px}
+.stat-box{margin-top:16px;background:var(--n);color:#fff;padding:12px}
+.stat-box strong{display:block;font:900 40px/1 Arial;color:var(--o)}
+.stat-box span{display:block;font:400 16px/1.4 monospace;margin-top:8px}
+.note{margin-top:16px;border-top:1px solid var(--g);padding-top:12px;font:400 14px/1.5 monospace;color:var(--m)}
+.right{padding:48px 0 0 24px}
+table{width:100%;border-collapse:collapse;border-top:1px solid var(--n);border-bottom:1px solid var(--n)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--g);font:400 15px/1.4 monospace}
+th{font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--m);border-bottom:1px solid var(--n)}
+tr:last-child td{border-bottom:none}
+.pass{color:var(--o);font-weight:700}
+</style>
+</head><body><div class="slide-container"><div class="head"><div class="eyebrow">03 / Local verification results</div><div class="page">OracleAI · 25.08.2026</div></div><div class="body"><section class="left"><h2>Локальные проверки пройдены</h2><div class="stat-box"><strong>469 passed</strong><span>in 70.76s, zero failures</span></div><div class="note"><strong>Note:</strong> Test setup explicitly disables inherited embedding credentials. Final verbose log has no closed-event-loop cleanup errors.</div></section><section class="right"><table><thead><tr><th>Gate</th><th>Result</th></tr></thead><tbody><tr><td>Full pytest</td><td class="pass">469 passed in 70.76s</td></tr><tr><td>Ruff</td><td class="pass">PASS</td></tr><tr><td>Python compileall</td><td class="pass">PASS</td></tr><tr><td>Mini App/Admin JS syntax</td><td class="pass">PASS</td></tr><tr><td>Selfcheck / design contract</td><td class="pass">PASS</td></tr><tr><td>Domain evaluations</td><td class="pass">54 / 54</td></tr><tr><td>Agent / skill routing</td><td class="pass">24/24; 4 agents / 139 skills</td></tr><tr><td>Release gate</td><td class="pass">PASS</td></tr><tr><td>Indexed secret scan</td><td class="pass">Clean</td></tr></tbody></table></section></div></div></body></html>
