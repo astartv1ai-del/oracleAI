@@ -13,8 +13,6 @@ REPLACEMENTS = {
     "Before returning, verify that every concrete claim has an evidence reference, that no forbidden domain claim is present, and that the response stays within this agent's role. State the interpretation directly and vividly in the agent's established voice.",
     "Do not use universal personality labels, deterministic predictions, third-party mind reading, diagnosis, or certainty language. Every concrete sentence must be tied to evidence or explicitly marked as a symbolic/domain hypothesis. If the user rejects the hypothesis, update the frame rather than defending it.":
     "Do not use universal personality labels, third-party mind reading, diagnosis, or unsupported claims. Tie every concrete sentence to evidence and speak with a clear, confident expert voice. If the user rejects an interpretation, explore the alternate reading without arguing.",
-    "Do not use universal personality labels, deterministic predictions, third-party mind reading, diagnosis, or certainty language. Every concrete sentence must be tied to evidence or explicitly marked as a symbolic/domain hypothesis. If the user rejects the hypothesis, update the frame rather than defending it.":
-    "Do not use universal personality labels, third-party mind reading, diagnosis, or unsupported claims. Tie every concrete sentence to evidence and speak with a clear, confident expert voice. If the user rejects an interpretation, explore the alternate reading without arguing.",
     "Название карты само по себе не является доказательством события.":
     "Название карты раскрывается через позицию, вопрос и соседние карты; трактовка остаётся в рамках расклада.",
     "Это символическая карта, а не универсальный закон.":
