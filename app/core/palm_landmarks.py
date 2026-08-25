@@ -15,6 +15,8 @@ from PIL import Image
 
 ADAPTER_VERSION = "mediapipe-hand-landmarker-v1"
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "hand_landmarker.task"
+MAX_DETECTION_SIDE = 1280
+DETECTOR_ATTEMPTS = 2
 
 
 def _empty(status: str, issues: list[str], *, model_path: str | None = None) -> dict[str, Any]:
@@ -58,7 +60,19 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
         with Image.open(io.BytesIO(image_bytes)) as source:
             rgb = source.convert("RGB")
             width, height = rgb.size
-            image_data = rgb.tobytes()
+            # Hand Landmarker does not need full camera resolution. A bounded,
+            # owned contiguous array avoids intermittent mp.Image constructor
+            # failures on large frames in hosted runners while preserving the
+            # original dimensions in the public evidence.
+            scale = min(1.0, MAX_DETECTION_SIDE / max(width, height))
+            detector_frame = rgb
+            if scale < 1.0:
+                detector_frame = rgb.resize(
+                    (max(1, round(width * scale)), max(1, round(height * scale))),
+                    Image.Resampling.LANCZOS,
+                )
+            image_data = detector_frame.tobytes()
+            detector_width, detector_height = detector_frame.size
     except Exception:
         return _empty("invalid_image", ["image_decode_failed"], model_path=str(path))
     if not path.exists():
@@ -80,10 +94,25 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
             min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        array = np.frombuffer(image_data, dtype=np.uint8).reshape((height, width, 3))
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=array)
-        with vision.HandLandmarker.create_from_options(options) as landmarker:
-            detected = landmarker.detect(mp_image)
+        detected = None
+        last_runtime_error: Exception | None = None
+        for _attempt in range(DETECTOR_ATTEMPTS):
+            try:
+                array = np.frombuffer(image_data, dtype=np.uint8).reshape(
+                    (detector_height, detector_width, 3)
+                )
+                # The MediaPipe binding keeps a native pointer to this buffer;
+                # use a private contiguous copy so its lifetime is unambiguous.
+                array = np.ascontiguousarray(array)
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=array)
+                with vision.HandLandmarker.create_from_options(options) as landmarker:
+                    detected = landmarker.detect(mp_image)
+                break
+            except (RuntimeError, ValueError, TypeError) as exc:
+                last_runtime_error = exc
+                continue
+        if detected is None:
+            raise last_runtime_error or RuntimeError("mediapipe detection failed")
         hands: list[dict[str, Any]] = []
         for index, landmarks in enumerate(detected.hand_landmarks):
             points = [_landmark(point) for point in landmarks]
