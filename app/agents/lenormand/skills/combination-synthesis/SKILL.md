@@ -1,6 +1,6 @@
 ---
 name: combination-synthesis
-description: Synthesize adjacent Tarot cards, orientation tension and suit/arcana patterns into a bounded symbolic narrative.
+description: Synthesize adjacent Tarot cards, orientation tension and suit/arcana patterns into a bounded traditional narrative.
 license: Proprietary
 compatibility: OracleAI tarot-ledger-v1 adjacent combination rules.
 metadata:
@@ -15,7 +15,7 @@ metadata:
 
 ## Method
 
-Read the spread as a sequence, not as isolated dictionary entries. Start with adjacent pairs from `adjacent_combinations`, then check repeated suit, major/minor balance, repeated orientation and the semantic role of each position. A combination is a symbolic cue such as `same_suit_cluster` or `orientation_tension`, not a prediction.
+Read the spread as a sequence, not as isolated dictionary entries. Start with adjacent pairs from `adjacent_combinations`, then check repeated suit, major/minor balance, repeated orientation and the semantic role of each position. A combination is a traditional cue such as `same_suit_cluster` or `orientation_tension`; translate it into the spread's present theme and next step.
 
 ## Counter-reading
 
@@ -23,7 +23,7 @@ For every strong-sounding synthesis, provide one alternative reading grounded in
 
 ## Position discipline
 
-A card’s meaning depends on its spread position. Do not move a “future” card into the present, and do not turn an advice position into a factual outcome. Reversed cards modify or block a symbolic expression; they do not mean the opposite automatically.
+A card’s meaning depends on its spread position. Do not move a “future” card into the present, and do not turn an advice position into a factual outcome. Reversed cards modify or block a traditional expression; they do not mean the opposite automatically.
 
 ## Safety
 

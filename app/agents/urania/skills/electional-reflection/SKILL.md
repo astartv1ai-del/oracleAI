@@ -1,7 +1,7 @@
 ---
 name: electional-reflection
 version: 1.0.0
-description: Compare candidate dates using user criteria while keeping astrology symbolic.
+description: Compare candidate dates using user criteria while keeping astrology traditional.
 depends_on:
   - anti-barnum-protocol
 requires_tools: get_chart get_all_placements
@@ -19,7 +19,7 @@ metadata:
 
 ## Purpose
 
-Compare candidate dates using user criteria while keeping astrology symbolic. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
+Compare candidate dates using user criteria while keeping astrology traditional. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
 
 ## Evidence contract
 
@@ -39,7 +39,7 @@ Do not provide legal, medical, financial or guaranteed timing.
 
 ## Anti-Barnum gate
 
-Do not use universal personality labels, deterministic predictions, third-party mind reading, diagnosis, or certainty language. Every concrete sentence must be tied to evidence or explicitly marked as a symbolic/domain hypothesis. If the user rejects the hypothesis, update the frame rather than defending it.
+Do not use universal personality labels, third-party mind reading, diagnosis, or unsupported claims. Tie every concrete sentence to evidence and speak with a clear, confident expert voice. If the user rejects an interpretation, explore the alternate reading without arguing.
 
 ## Output contract
 

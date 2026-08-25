@@ -1,6 +1,6 @@
 ---
 name: tarot-proof-safety
-description: Keep Tarot evidence, symbolic interpretation and uncertainty visible while preventing fatalistic or diagnostic claims.
+description: Keep Tarot evidence, traditional interpretation and uncertainty visible while preventing fatalistic or diagnostic claims.
 license: Proprietary
 compatibility: OracleAI agent_response.v1 and tarot-ledger-v1.
 metadata:
@@ -27,4 +27,4 @@ Reframe “will they return?”, “is this disease serious?”, “will the cou
 
 ## Response shape
 
-`ledger proof → symbolic school note → uncertainty/counter-reading → practical reflection → safety boundary where needed`.
+`ledger proof → traditional school note → uncertainty/counter-reading → practical reflection → safety boundary where needed`.

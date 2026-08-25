@@ -689,3 +689,26 @@ async def test_admin_sees_coupon_activations_and_can_filter_batch(client, db, us
     assert redemption["kind"] == "crystals"
     assert redemption["crystals"] == 10
     assert redemption["name"] == "Тестовая"
+
+
+async def test_default_chat_auto_routes_and_explicit_agent_wins(client, user):
+    routed = await client.post(
+        "/api/chat/oracle", params=as_user(user),
+        json={"text": "Что значит мой Сатурн в 10 доме?"},
+    )
+    assert routed.status_code == 200
+    routed_body = routed.json()
+    assert routed_body["requested_agent"] == "oracle"
+    assert routed_body["agent"] == "astro"
+    assert routed_body["routing"]["auto_route"] is True
+    assert routed_body["thread_id"]
+
+    explicit = await client.post(
+        "/api/chat/tarot", params=as_user(user),
+        json={"text": "Что значит мой Сатурн в 10 доме?"},
+    )
+    assert explicit.status_code == 200
+    explicit_body = explicit.json()
+    assert explicit_body["requested_agent"] == "tarot"
+    assert explicit_body["agent"] == "tarot"
+    assert explicit_body["routing"]["auto_route"] is False

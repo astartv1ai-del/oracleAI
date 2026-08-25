@@ -1,0 +1,53 @@
+{
+  "package": "3.0.2",
+  "results": [
+    {
+      "profile": "sparse",
+      "file": "/home/ubuntu/oracleAI/docs/audit/renderers/astrochart/sparse.svg",
+      "bytes": 53470,
+      "width": "760",
+      "height": "760",
+      "viewBox": "0 0 760 760",
+      "lines": 101,
+      "circles": 4,
+      "paths": 54,
+      "text": 27,
+      "planetGroups": 10,
+      "hasCuspLabels": true,
+      "hasPremiumGold": true,
+      "hasPremiumViolet": false
+    },
+    {
+      "profile": "clustered",
+      "file": "/home/ubuntu/oracleAI/docs/audit/renderers/astrochart/clustered.svg",
+      "bytes": 61696,
+      "width": "760",
+      "height": "760",
+      "viewBox": "0 0 760 760",
+      "lines": 117,
+      "circles": 4,
+      "paths": 62,
+      "text": 42,
+      "planetGroups": 15,
+      "hasCuspLabels": true,
+      "hasPremiumGold": true,
+      "hasPremiumViolet": false
+    },
+    {
+      "profile": "spread",
+      "file": "/home/ubuntu/oracleAI/docs/audit/renderers/astrochart/spread.svg",
+      "bytes": 58844,
+      "width": "760",
+      "height": "760",
+      "viewBox": "0 0 760 760",
+      "lines": 104,
+      "circles": 4,
+      "paths": 62,
+      "text": 39,
+      "planetGroups": 14,
+      "hasCuspLabels": true,
+      "hasPremiumGold": true,
+      "hasPremiumViolet": false
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+lang=ru html=/home/ubuntu/oracleAI-sample-natal-report-ru.html
+lang=ru rendered=/home/ubuntu/oracleAI-sample-natal-report-ru.pdf
+lang=ru pdf_available=True
+lang=ru html_bytes=37280
+lang=ru pdf_bytes=140534
+lang=en html=/home/ubuntu/oracleAI-sample-natal-report-en.html
+lang=en rendered=/home/ubuntu/oracleAI-sample-natal-report-en.pdf
+lang=en pdf_available=True
+lang=en html_bytes=32996
+lang=en pdf_bytes=138231

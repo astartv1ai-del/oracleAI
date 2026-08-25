@@ -31,7 +31,7 @@ Use this skill before every palm interpretation and whenever the user asks wheth
 
 Check the returned `palm_scanner`/photo evidence for these gates: one whole palm is visible; wrist and all fingers are inside the frame when relevant; the palm is open and not strongly curled; the main lines are in focus; light is even without hard glare or deep shadow; perspective is close to overhead; resolution is sufficient for the requested zone; and there is no crop, blur, filter, text or watermark that could obscure evidence. Keep the quality result as pass, conditional or fail with a short reason.
 
-If the gate fails, return a **quality-only** response. State the failed gate, explain why it blocks the requested observation, and give no symbolic personality, health or future claim. Offer at most three reshoot actions: move the camera farther away, use diffuse light, and show the requested zone from the appropriate angle. Do not ask for unnecessary personal information.
+If the gate fails, return a **quality-only** response. State the failed gate, explain why it blocks the requested observation, and give no personality, health or future claim. Offer at most three reshoot actions: move the camera farther away, use diffuse light, and show the requested zone from the appropriate angle. Do not ask for unnecessary personal information.
 
 ## Evidence and confidence
 
@@ -45,7 +45,7 @@ A whole-palm overhead image is appropriate for life, head, heart and fate-line o
 
 ## Output contract
 
-When quality passes, return: **image quality**, **hand/view context**, **visible evidence with confidence**, **traditional symbolic correspondence**, **alternative explanation** (lighting, angle, skin position or image artefact), and **one reflective question**. Symbolic correspondence must never be phrased as a medical fact, lifespan, diagnosis, exact event, income, profession or third-party intention.
+When quality passes, return: **image quality**, **hand/view context**, **visible evidence with confidence**, **traditional traditional correspondence**, **alternative explanation** (lighting, angle, skin position or image artefact), and **one reflective question**. Traditional correspondence must never be phrased as a medical fact, lifespan, diagnosis, exact event, income, profession or third-party intention.
 
 ## Hard safety boundary
 

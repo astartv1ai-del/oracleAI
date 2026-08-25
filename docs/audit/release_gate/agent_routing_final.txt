@@ -1,0 +1,368 @@
+{
+  "cases": 24,
+  "passed": 24,
+  "accuracy": 1.0,
+  "auto_route_passed": 16,
+  "results": [
+    {
+      "id": "ru-astro-saturn",
+      "text": "Что значит мой Сатурн в 10 доме?",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched сатурн, дом",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-astro-nodes",
+      "text": "Раху и Кету: куда мне расти?",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched раху, кету",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-astro-compat",
+      "text": "Сделай синастрию и объясни аспекты Венеры",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched синастр, венер",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-astro-date",
+      "text": "Транзит Юпитера и выбор даты запуска",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched транзит, юпитер",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-astro-natal",
+      "text": "Tell me about my natal chart and rising sign",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched rising, natal, chart, sign",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-astro-house",
+      "text": "What does my Venus in the seventh house mean?",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched house, venus",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-astro",
+      "text": "Раху and Ketu in my natal chart",
+      "expected": "astro",
+      "actual": "astro",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched natal, chart, раху, ketu",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-tarot",
+      "text": "Сделай расклад Таро на решение",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched расклад, таро",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-tarot-reversed",
+      "text": "Объясни перевёрнутые карты в раскладе",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched перевёрнут, расклад, карты",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-tarot",
+      "text": "What does this tarot spread show?",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched spread, tarot",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-tarot",
+      "text": "Tarot расклад для journal reflection",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched расклад, tarot",
+      "candidates": [
+        "tarot",
+        "oracle",
+        "astro"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-lenormand",
+      "text": "Хочу расклад Ленорман",
+      "expected": "tarot",
+      "actual": "tarot",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched ленорман, расклад",
+      "candidates": [
+        "tarot",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-palm",
+      "text": "Прочитай ладонь по фото, линия сердца",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched линия сердца, ладон, фото",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-palm",
+      "text": "Can you analyze my palm photo?",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched photo, palm",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-palm",
+      "text": "Фото ладони и heart line",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched heart line, ладон, фото",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-palm-mounts",
+      "text": "Что значат холмы на ладони?",
+      "expected": "chiromant",
+      "actual": "chiromant",
+      "auto_route": true,
+      "confidence": 0.98,
+      "reason": "matched ладон, холм",
+      "candidates": [
+        "chiromant",
+        "astro",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-oracle-practice",
+      "text": "Подбери практику для спокойствия",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.9500000000000001,
+      "reason": "matched практик",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ru-oracle-diary",
+      "text": "Помоги с дневником и границами",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.98,
+      "reason": "matched дневник, границ",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "en-oracle-values",
+      "text": "Help me reflect on my values conflict",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.9500000000000001,
+      "reason": "matched values",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "mixed-oracle",
+      "text": "Нужен ritual для journal",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.98,
+      "reason": "matched journal, ritual",
+      "candidates": [
+        "oracle",
+        "astro",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ambiguous-tarot-astro",
+      "text": "Сделай расклад Таро и объясни мой натальный Сатурн",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.52,
+      "reason": "ambiguous hard domains; ask a clarifying question",
+      "candidates": [
+        "astro",
+        "tarot",
+        "chiromant"
+      ],
+      "ok": true
+    },
+    {
+      "id": "ambiguous-palm-tarot",
+      "text": "Фото ладони и расклад на отношения",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.52,
+      "reason": "ambiguous hard domains; ask a clarifying question",
+      "candidates": [
+        "chiromant",
+        "tarot",
+        "astro"
+      ],
+      "ok": true
+    },
+    {
+      "id": "no-signal",
+      "text": "Помоги мне понять, что делать дальше",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.5,
+      "reason": "no domain signal; keep default",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    },
+    {
+      "id": "off-topic",
+      "text": "Помоги написать SQL-запрос для отчёта",
+      "expected": "oracle",
+      "actual": "oracle",
+      "auto_route": false,
+      "confidence": 0.5,
+      "reason": "no domain signal; keep default",
+      "candidates": [
+        "astro",
+        "chiromant",
+        "oracle"
+      ],
+      "ok": true
+    }
+  ]
+}

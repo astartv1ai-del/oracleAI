@@ -329,7 +329,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
   const AGENT_BRAND = {
     oracle: { name: 'Лилит', title: 'Личный Оракул', emoji: '🔮', accent: '#e8c56b', accentBright: '#ffe7a3', accentGlow: 'rgba(232,197,107,.34)', surface: 'rgba(232,197,107,.12)', tagline: 'Мягко помогает услышать себя и увидеть следующий шаг.' },
     astro:  { name: 'Урания', title: 'Астролог', emoji: '🌠', accent: '#8cc8ff', accentBright: '#c7e6ff', accentGlow: 'rgba(140,200,255,.34)', surface: 'rgba(140,200,255,.12)', tagline: 'Переводит язык звёзд в ясные опоры на каждый день.' },
-    tarot:  { name: 'Мадам Ленорман', title: 'Таролог', emoji: '🃏', accent: '#e7a8d8', accentBright: '#ffd0ec', accentGlow: 'rgba(231,168,216,.34)', surface: 'rgba(231,168,216,.12)', tagline: 'Читает символы карт бережно и без категоричных ответов.' },
+    tarot:  { name: 'Мадам Ленорман', title: 'Таролог', emoji: '🃏', accent: '#e7a8d8', accentBright: '#ffd0ec', accentGlow: 'rgba(231,168,216,.34)', surface: 'rgba(231,168,216,.12)', tagline: 'Читает образы карт бережно, точно и по сюжету расклада.' },
     chiromant: { name: 'Мира', title: 'Проводник ладони', emoji: '✋', accent: '#6fd6b0', accentBright: '#b7f5da', accentGlow: 'rgba(111,214,176,.34)', surface: 'rgba(111,214,176,.12)', tagline: 'Собирает карту только различимых зон ладони и честно показывает границы снимка.', avatar: '/static/img/agents/chiromant.jpg' }
   };
 
@@ -337,7 +337,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     const code = (raw && raw.code) || key || 'oracle';
     const brand = AGENT_BRAND[code] || {};
     const agent = Object.assign({}, raw || {}, brand, { code });
-    // API может вернуть служебное имя вида «oracle» — оно не является именем персонажа.
+    // API может вернуть служебный код вида «oracle» — нормализуем его в имя персонажа.
     if (!agent.name || String(agent.name).toLowerCase() === code) agent.name = brand.name || 'Твой Оракул';
     if (!agent.title) agent.title = brand.title || 'Проводник';
     if (!agent.emoji) agent.emoji = brand.emoji || '✦';

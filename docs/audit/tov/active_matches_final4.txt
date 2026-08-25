@@ -1,0 +1,120 @@
+app/agents/lenormand/knowledge/DOMAIN_PLAYBOOK.md:13:Сохрани card id, название, orientation, position, suit, number и tool source. Сначала опиши видимые элементы изображения: фигуры, направление взгляда, жесты, предметы, фон, движение, цвет и повторяющиеся символы. Затем добавь традиционную ассоциацию масти/аркана. В конце сформулируй одну гипотезу, прямо связанную с вопросом. Название карты раскрывается через позицию, вопрос и соседние карты; трактовка остаётся в рамках расклада.
+app/agents/lenormand/knowledge/DOMAIN_PLAYBOOK.md:33:Death, Tower, Devil и другие сильные арканы никогда не трактуются буквально как смерть, болезнь, катастрофа, одержимость или моральный приговор. Таро не используется для медицинских, юридических, финансовых, карьерных и кризисных решений. При риске сначала срабатывает safety protocol.
+app/agents/lenormand/skills/anti-barnum-protocol/SKILL.md:34:Use only the tool-returned cards. Do not invent orientation, card combinations, deck system or historical attribution. Do not let a user's demand for certainty override the symbolic frame or safety protocol.
+app/agents/lenormand/skills/card-ledger-evidence/SKILL.md:25:4. Interpret each card in its position, then synthesize the spread. Separate card evidence from symbolic association and from the user’s own context.
+app/agents/lenormand/skills/deck-variation/SKILL.md:4:description: Identify deck-specific visual and symbolic differences before applying meanings.
+app/agents/lenormand/skills/deck-variation/SKILL.md:22:Identify deck-specific visual and symbolic differences before applying meanings. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
+app/agents/lenormand/skills/shadow-card/SKILL.md:38:Never use fear, punishment or fatalism to persuade.
+app/agents/lenormand/skills/tarot-proof-safety/SKILL.md:3:description: Keep Tarot evidence, symbolic interpretation and uncertainty visible while preventing fatalistic or diagnostic claims.
+app/agents/lenormand/skills/tarot-proof-safety/SKILL.md:30:`ledger proof → symbolic school note → uncertainty/counter-reading → practical reflection → safety boundary where needed`.
+app/agents/lenormand/skills/visual-symbol-reading/SKILL.md:18:Interpret only the cards returned by `draw_tarot`. The Rider-Waite-Smith tradition uses fully illustrated pip cards and a rich visual language; use the deck's actual imagery, suit and position rather than a generic keyword list. Tarot is a symbolic reflective practice, not evidence of a fixed future or another person's private thoughts.
+app/agents/lenormand/skills/visual-symbol-reading/SKILL.md:43:Avoid flattering generic claims that could fit anyone. Do not claim that a partner loves, lies, cheats or will return based on cards. Do not make medical, legal, financial or employment guarantees. A request for certainty should receive a calm explanation of the symbolic limit and a grounded alternative question.
+app/agents/lilith/knowledge/DOMAIN_PLAYBOOK.md:9:Перед ответом молча разделяй материал на четыре колонки: `высказано сейчас`, `найдено в opt-in memory/diary`, `символический материал`, `неизвестно`. Текущие слова имеют больший вес, чем старые записи. Память не является доказательством мотива или диагноза. Если найденная запись не помогает ответить на текущий вопрос, её нельзя цитировать или даже намекать на её существование.
+app/agents/lilith/skills/matrix-lines/SKILL.md:3:description: Read symbolic love, money and purpose lines without fate claims. Use when the user's question requires this capability.
+app/agents/lilith/skills/matrix-lines/SKILL.md:17:Use this skill as a focused workflow for read symbolic love, money and purpose lines without fate claims. It is not a replacement for a deterministic tool and it cannot grant the agent new permissions.
+app/agents/mira/knowledge/DOMAIN_PLAYBOOK.md:5:Мира описывает фотографию и раскрывает традиционный язык хиромантии, но не диагностирует тело и не предсказывает судьбу. Видимая складка, форма руки или цвет кожи — наблюдаемая особенность кадра; её традиционное значение — культурная интерпретация; вывод о здоровье, возрасте, смерти или характере — недопустимая экстраполяция.
+app/agents/mira/skills/head-line/SKILL.md:3:description: Interpret a visible head-line pattern symbolically. Use when the user's question requires this capability.
+app/agents/mira/skills/head-line/SKILL.md:17:Use this skill as a focused workflow for interpret a visible head-line pattern symbolically. It is not a replacement for a deterministic tool and it cannot grant the agent new permissions.
+app/agents/mira/skills/heart-line/SKILL.md:3:description: Interpret a visible heart-line pattern symbolically. Use when the user's question requires this capability.
+app/agents/mira/skills/heart-line/SKILL.md:17:Use this skill as a focused workflow for interpret a visible heart-line pattern symbolically. It is not a replacement for a deterministic tool and it cannot grant the agent new permissions.
+app/agents/mira/skills/palm-evidence-reading/SKILL.md:30:For the life line, discuss arc, continuity and visibility through the traditional palmistry vocabulary. Never infer lifespan, health, illness, pregnancy or danger. For the heart line, discuss the traditional vocabulary of emotional expression and boundaries, not whether the user loves someone or what a partner thinks. For the head line, discuss symbolic approaches to attention and decision-making, not intelligence or mental health. For the fate line, discuss perceived direction and structure, not career certainty. For mounts and hand shape, describe what is visible and avoid fixed personality labels.
+app/agents/mira/skills/palm-evidence-reading/SKILL.md:34:`high` means the feature is clearly visible and the image supports the relevant question. `medium` means a feature is partly visible or interpretation depends on angle. `low` means the photo cannot support the claim. Only high and carefully qualified medium evidence may receive a symbolic interpretation; low evidence receives a reshoot request.
+app/agents/mira/skills/visual-evidence-protocol/SKILL.md:3:description: Convert a palm image into a bounded visual evidence packet before any symbolic palmistry interpretation.
+app/agents/urania/knowledge/DOMAIN.md:3:This handbook supports the urania profile. Domain: symbolic Western astrology grounded in calculated chart evidence.
+app/agents/urania/knowledge/DOMAIN_PLAYBOOK.md:13:Сначала собери 2–4 факта, относящихся к вопросу. Приоритет получают точные положения, повторяющиеся тематические связи и данные, которые пользователь сам подтверждает. Один placement не должен определять весь портрет. Для аспекта учитывай orb и тип аспекта, но не называй его причиной поведения. Сильный синтез объясняет напряжение между двумя символическими темами и показывает, как пользователь может проверить гипотезу в реальной жизни.
+app/agents/urania/knowledge/DOMAIN_PLAYBOOK.md:33:Не диагностируй здоровье, психику, беременность, смерть или зависимости. Не давай финансовых, юридических и карьерных гарантий. Натальная карта не заменяет врача, психолога, юриста или финансового консультанта.
+app/agents/urania/skills/anti-barnum-protocol/SKILL.md:30:Require: precision status, two to four relevant facts, bounded traditional interpretation, explicit uncertainty, agency and one observable next step. Delete Barnum statements, fatalism, third-party mind reading, medical language, financial guarantees and exact dates not present in tool output.
+app/agents/urania/skills/anti-barnum-protocol/SKILL.md:34:Do not invent an aspect, orb, house cusp, transit date or planetary position. If calculators disagree, report a data-quality conflict and ask for corrected birth data. A calculated fact is not evidence that the symbolic interpretation is scientifically true.
+app/agents/urania/skills/aspects/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/astrology-history/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/astrology-safety/SKILL.md:3:description: Block medical, legal, financial and fatalistic claims. Use when the user's question requires this capability.
+app/agents/urania/skills/astrology-safety/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/astrology-safety/SKILL.md:17:Use this skill as a focused workflow for block medical, legal, financial and fatalistic claims. It is not a replacement for a deterministic tool and it cannot grant the agent new permissions.
+app/agents/urania/skills/career-symbolism/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/chart-data-quality/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/chart-synthesis/SKILL.md:4:description: Synthesize calculated natal facts, Rahu/Ketu and expanded points into a precise, readable symbolic interpretation.
+app/agents/urania/skills/chart-synthesis/SKILL.md:27:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/chart-synthesis/SKILL.md:46:3. For broad questions, begin with Sun/Moon/Ascendant only if valid, then use Mercury/Mars for thinking/action, Venus for values/connection, Saturn for limits, and Rahu/Ketu as a paired symbolic axis.
+app/agents/urania/skills/chart-synthesis/SKILL.md:57:Separate `calculation`, `tradition`, `user observation` and `hypothesis`. Prefer `в традиционной астрологии это связывают с...` or `in this symbolic tradition...` and `можно проверить, проявляется ли это...`. For English/Russian mixed questions, preserve the user's language while keeping canonical point names visible. Avoid Barnum statements unless tied to a named placement and the user's words.
+app/agents/urania/skills/chart-synthesis/SKILL.md:65:Return: **question and precision status**, **calculated conventions**, **2–4 evidence anchors**, **bounded symbolic synthesis**, **uncertainty/alternative explanation**, and **one observable next step**. If the user asks for all points, place the full table after the concise synthesis and label it reference data.
+app/agents/urania/skills/compatibility-synastry/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/date-only-mode/SKILL.md:19:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/date-only-mode/SKILL.md:40:5. If the user wants a reflective reading, keep it symbolic and label the uncertainty prominently.
+app/agents/urania/skills/date-only-mode/SKILL.md:50:## Safety and symbolic boundary
+app/agents/urania/skills/electional-framework/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/electional-reflection/SKILL.md:4:description: Compare candidate dates using user criteria while keeping astrology symbolic.
+app/agents/urania/skills/electional-reflection/SKILL.md:22:Compare candidate dates using user criteria while keeping astrology symbolic. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
+app/agents/urania/skills/guna-milan/SKILL.md:3:description: Explain deterministic Ashtakoot/Guna Milan components as a non-fatalistic compatibility lens.
+app/agents/urania/skills/houses-and-angles/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/luminaries/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/lunar-nodes/SKILL.md:18:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/lunar-phases/SKILL.md:23:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/lunar-phases/SKILL.md:32:Use this skill for questions about the New Moon, Full Moon, waxing/waning phases, lunar cycles, weekly planning, a moon journal or observation tracking (`лунные фазы`, `дневник наблюдений`, `неделя`, `journal`, `weekly tracking`). The phase is a calculated astronomical timestamp/context; the symbolic association is a reflective planning lens, not a forecast of mood, fertility or events.
+app/agents/urania/skills/lunar-phases/SKILL.md:52:Return: **Calculated phase/window**, **symbolic planning lens**, **journal template**, **counter-hypothesis**, and **one observable step**. Explicitly label the phase as calculated and the meaning as traditional/symbolic. If the user asks for a guaranteed prediction, refuse that part and offer an observation-based alternative.
+app/agents/urania/skills/mercury-and-mars/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/moon-cycles/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/natal-chart-foundations/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/outer-planets/SKILL.md:3:description: Explain slow symbolic themes without personal determinism. Use when the user's question requires this capability.
+app/agents/urania/skills/outer-planets/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/outer-planets/SKILL.md:17:Use this skill as a focused workflow for explain slow symbolic themes without personal determinism. It is not a replacement for a deterministic tool and it cannot grant the agent new permissions.
+app/agents/urania/skills/planets-in-signs/SKILL.md:3:description: Interpret planets in signs as symbolic tendencies. Use when the user's question requires this capability.
+app/agents/urania/skills/planets-in-signs/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/planets-in-signs/SKILL.md:17:Use this skill as a focused workflow for interpret planets in signs as symbolic tendencies. It is not a replacement for a deterministic tool and it cannot grant the agent new permissions.
+app/agents/urania/skills/saturn-and-boundaries/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/transits/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/agents/urania/skills/vedic-transits/SKILL.md:26:Use transit positions to frame themes, timing questions and practical preparation. Mention uncertainty from exact birth inputs and the symbolic nature of interpretation. Never predict death, illness, legal outcomes, guaranteed wealth, marriage or another person’s actions.
+app/agents/urania/skills/venus-and-relationships/SKILL.md:8:  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+app/api/routers/placements.py:31:             "scope": "symbolic themes of purpose and recurring choices"},
+app/bot/chat.py:25:# Telegram не принимает сообщения длиннее 4096 символов. Режем по абзацам,
+app/bot/features.py:240:                (f"\n{rest}" if rest else "") + "\n\n<i>Вглядываюсь в символы...</i>")
+app/bot/onboarding.py:422:    disclaimer = await content.get_setting(
+app/bot/onboarding.py:423:        db, "disclaimer",
+app/bot/onboarding.py:435:        f"<i>{disclaimer}</i>",
+app/core/agent.py:608:                "а не превращай их в буквальный сценарий или обязательную миссию. Если времени рождения нет, честно назови ASC, "
+app/core/agents/context.py:3:Контекст чата не является памятью: он живёт только в рамках одного треда и
+app/core/astro.py:76:    """(знак, символ, стихия) по дате — без эфемерид."""
+app/core/astro.py:487:    Этот слой не делает предсказаний и не утверждает буквальную карму или прошлые
+app/core/astro.py:525:            "intro": "Планеты описывают стиль мышления и действия; дома — сферы жизни. Финансовый потенциал не является гарантией дохода и зависит от решений и обстоятельств.",
+app/core/cards.py:150:    """Подпись-реклама. Только символы из системных шрифтов: цветных эмодзи
+app/core/cards.py:258:        # символом, а там, где его нет, — нарисованным полумесяцем
+app/core/cards.py:300:    символами (♈ есть в DejaVu), цветных эмодзи в системных шрифтах нет.
+app/core/interpretation.py:74:    MC и узлы по домам: полуденная техническая точка не является данными рождения.
+app/core/interpretation.py:222:        "Не выдавай символическую интерпретацию за диагностику, юридический, финансовый или медицинский совет.",
+app/core/interpretation.py:241:    клиентки. Это предотвращает «разбор по одному символу» и не подменяет
+app/core/interpretation.py:265:            "и объясни их прикладное значение, а не перечисляй символы отдельно»."
+app/core/llm.py:521:                log.info("скилл %s вернул большой результат (%d символов)", name, len(text))
+app/core/placements.py:173:        "interpretation_scope": "symbolic themes of purpose and recurring choices",
+app/core/practices.py:93:            "Положи рядом что-то, что символизирует достаток: купюру, монету, украшение.",
+app/core/practices.py:139:            "буквально один, самый простой.",
+app/core/practices.py:252:            "Каждый вечер клади в кошелёк любую монету — как символ пополнения.",
+app/core/safety.py:14:  обычно, но в системный промпт добавляется предписание не предсказывать исход и
+app/core/safety.py:149:        "Тебе сейчас очень тяжело, и это не слабость и не приговор — это боль, "
+app/core/safety.py:178:        "СТРОГО: не предсказывай исход, диагноз, сроки и вероятность "
+app/core/tarot.py:363:    """Return a bounded symbolic cue, never a prediction or factual claim."""
+app/core/tarot.py:415:        "interpretation_boundary": "Cards and positions are calculated evidence; meanings remain symbolic reflection, not certainty.",
+app/core/vedic.py:288:                     limitations=["interpretation is symbolic and not a guarantee of events"])
+app/core/vedic.py:456:                     limitations=["transits are a symbolic timing context, not a certain forecast"])
+app/core/chart_interpretation.py:22:    "disclaimer": 260,
+app/core/chart_interpretation.py:34:    "peak_periods", "synthesis", "disclaimer",
+app/core/chart_interpretation.py:77:        "disclaimer": {"type": "string", "maxLength": MAX["disclaimer"]},
+app/core/chart_interpretation.py:170:Пиши на русском, на «ты», конкретно и без эзотерического тумана. Для поля disclaimer используй не юридическую оговорку, а короткую сильную closing note, которая закрепляет главный инсайт карты.
+app/core/chart_interpretation.py:197:        f"**11. Итог**\n{payload['synthesis']}\n\n_{payload['disclaimer']}_",
+app/data/seed.py:160:    "disclaimer": ("Твоя карта уже собрана в единый узор: возвращайся к этому чтению, "
+app/data/seed.py:162:    "disclaimer_en": ("Your chart forms a coherent pattern: return to this reading "
+app/pdfgen/builder.py:128:        "matrix": "Матрица Судьбы", "disclaimer": "Твоя карта уже собрана в единый узор: возвращайся к этому чтению, когда понадобится увидеть направление яснее.",
+app/pdfgen/builder.py:145:        "matrix": "Destiny Matrix", "disclaimer": "Your chart forms a coherent pattern: return to this reading whenever you need to see your direction with greater clarity.",
+app/pdfgen/builder.py:239:        "disclaimer": (_text(language, "disclaimer")),
+app/pdfgen/builder.py:249:        disclaimer_key = "disclaimer_en" if language == "en" else "disclaimer"
+app/pdfgen/builder.py:250:        disclaimer = await content.get_setting(db, disclaimer_key, defaults["disclaimer"])
+app/pdfgen/builder.py:255:            "disclaimer": str(disclaimer or defaults["disclaimer"]),
+app/pdfgen/builder.py:321:            "Do not add generic scientific, entertainment or self-discrediting disclaimers."
+app/pdfgen/builder.py:340:            "общих оговорок о ненаучности, развлечении или буквальности. Для медицинских, юридических и финансовых "
+app/pdfgen/builder.py:763:        + f'<p class="disclaimer">{layout.esc(brand["disclaimer"])}</p></div>')
+app/pdfgen/layout.py:172:  .disclaimer { color: #c8b9e8; font-size: 11pt; line-height: 1.45; margin-top: 7mm; }
+app/pdfgen/layout.py:208:    Планеты, стоящие рядом, разводим по радиусу — иначе символы наезжают и
+miniapp/js/03-data.js:109:// Планетные символы (астрологический unicode) вместо глифов знаков:
+miniapp/js/05-app.js:110:      <p>OracleAI создан для пользователей от 16 лет. Здесь есть развлекательные астрологические практики и поддерживающие диалоги, но не медицинская, юридическая или психологическая помощь.</p>
+miniapp/js/08-widgets.js:208:        <div class="diary-privacy">Запись остаётся в дневнике. При включённой памяти первые 150 символов могут помочь Оракулу помнить контекст — это можно изменить в «Памяти».</div>
+miniapp/js/08-widgets.js:527:      : 'Рассчитай совместимость Ashtakoot Guna Milan для меня и партнёра. Покажи все компоненты и объясни, что балл не является вердиктом отношений.');
+miniapp/js/13-palm.js:44:      <p class="palm-disclaimer">Мира читает только различимые линии и зоны: чем яснее кадр, тем глубже разбор.</p>
+miniapp/js/13-palm.js:111:      <p class="palm-disclaimer">Линия жизни раскрывается через форму, непрерывность и ритм ресурса; здоровье и длительность жизни не считываются по линиям.</p>

@@ -360,7 +360,7 @@ def draw(n: int = 3, *, seed: str | None = None) -> list[dict]:
 
 
 def _combination_rule(left: dict, right: dict) -> str:
-    """Return a bounded symbolic cue, never a prediction or factual claim."""
+    """Return a bounded traditional cue tied to the adjacent cards, never an unsupported claim."""
     names = {str(left.get("name", "")), str(right.get("name", ""))}
     if {"Смерть", "Башня"} <= names:
         return "transformational_pressure"
@@ -412,7 +412,7 @@ def reading_ledger(cards: list[dict], spread_code: str = "three",
         "entries": entries,
         "adjacent_combinations": combinations,
         "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16],
-        "interpretation_boundary": "Cards and positions are calculated evidence; meanings remain symbolic reflection, not certainty.",
+        "interpretation_boundary": "Cards and positions are calculated evidence; meanings are read through the spread's traditional language and position.",
     }
 
 

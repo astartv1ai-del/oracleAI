@@ -15,12 +15,24 @@ import math
 PAGE_CSS = """
 @page {
   size: A4;
-  margin: 14mm 15mm 16mm 15mm;
+  margin: 11mm 13mm 13mm 13mm;
   background: #0b0722;
-  @bottom-center {
-    content: counter(page);
+  @bottom-left {
+    content: "OracleAI";
     color: #6f6494;
-    font-size: 9pt;
+    font-size: 8pt;
+    font-family: Georgia, serif;
+  }
+  @bottom-center {
+    content: "✦  " counter(page) "  ✦";
+    color: #e8c56b;
+    font-size: 8.5pt;
+    font-family: Georgia, serif;
+  }
+  @bottom-right {
+    content: "Personal natal report";
+    color: #6f6494;
+    font-size: 8pt;
     font-family: Georgia, serif;
   }
 }
@@ -30,22 +42,36 @@ body {
   background: #0b0722;
   color: #f4efff;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 10.5pt;
-  line-height: 1.46;
+  font-size: 12.4pt;
+  line-height: 1.56;
   overflow-wrap: anywhere;
 }
 h1, h2, h3 { font-weight: normal; color: #e8c56b; }
 h1 { font-size: 30pt; line-height: 1.08; margin: 0 0 7mm; }
 h2 {
-  font-size: 16pt;
+  font-size: 24pt;
+  line-height: 1.12;
   margin: 0 0 4mm;
   padding-bottom: 2mm;
   border-bottom: 1px solid rgba(232, 197, 107, .35);
 }
-h3 { font-size: 11.5pt; margin: 4mm 0 1.5mm; color: #f3dc9a; }
-p { margin: 0 0 2.5mm; }
+h3 { font-size: 17pt; line-height: 1.2; margin: 4mm 0 1.8mm; color: #f3dc9a; }
+p { margin: 0 0 3.2mm; }
 .muted { color: #a99fc9; }
-.small { font-size: 9.5pt; }
+.small { font-size: 10.5pt; line-height: 1.4; }
+.pull-quote { margin: 5mm 0; padding: 4mm 5mm; border-left: 1.5mm solid #e8c56b; color: #f3dc9a; font-size: 16pt; line-height: 1.3; font-style: italic; }
+.compact-columns { columns: 2; column-gap: 8mm; column-fill: balance; }
+.compact-columns > * { break-inside: avoid; }
+.chapter-pair { margin-bottom: 8mm; }
+.chapter-pair h2 { break-after: avoid; }
+.reference-columns { font-size: 9.2pt; line-height: 1.22; column-gap: 5mm; }
+.reference-columns .card { padding: 2.5mm 3mm; margin-bottom: 2.5mm; break-inside: auto; }
+.reference-columns h3 { font-size: 12pt; margin: 2mm 0 1mm; }
+.reference-columns table { font-size: 8.3pt; line-height: 1.08; break-inside: auto; }
+.reference-columns td, .reference-columns th { padding: .55mm .65mm; }
+.reference-columns .small { font-size: 8.2pt; }
+@media screen { .compact-columns, .reference-columns { columns: 1; } }
+
 .center { text-align: center; }
 
 /* Разделы текут непрерывно; отдельный page break используется только для cover. */
@@ -94,19 +120,19 @@ table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 td, th { padding: 1.15mm 1.1mm; vertical-align: top; overflow-wrap: anywhere; }
 th { color: #e8c56b; text-align: left; font-weight: normal; border-bottom: 1px solid rgba(232,197,107,.35); }
 td.label { color: #a99fc9; width: 42%; }
-table.data-table { font-size: 8.6pt; line-height: 1.22; }
+table.data-table { font-size: 10.2pt; line-height: 1.35; }
 table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,255,255,.12); }
 .card, .ticket { break-inside: avoid; }
 
 @media screen {
-  body { font-size: 12pt; line-height: 1.55; padding: 12px; }
+  body { font-size: 13pt; line-height: 1.58; padding: 12px; }
   .section { margin: 0 auto 28px; max-width: 760px; }
   .cover { padding-top: 28px; min-height: 0; }
   h1 { font-size: 27pt; }
-  h2 { font-size: 19pt; }
+  h2 { font-size: 22pt; }
   .card { padding: 16px; border-radius: 14px; }
   td, th { padding: 7px 5px; }
-  table.data-table { font-size: 10.5pt; line-height: 1.35; }
+  table.data-table { font-size: 11.5pt; line-height: 1.45; }
   .overview-grid { grid-template-columns: 1fr; }
   .closing-grid { grid-template-columns: 1fr; }
   .wheel svg { max-width: 100%; height: auto; }
@@ -115,7 +141,7 @@ table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,25
 @media print {
   body { overflow-wrap: normal; }
   .cover { page-break-after: always; }
-  .overview-grid, .card, table, .ticket { break-inside: avoid; }
+  .overview-grid, .card, table, .ticket, .pull-quote { break-inside: avoid; }
   tr { break-inside: avoid; }
 }
 
@@ -135,7 +161,15 @@ table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,25
   color: #e8c56b;
   margin: 4mm 0;
 }
-.disclaimer { color: #6f6494; font-size: 8.5pt; margin-top: 10mm; }
+.aspect-legend { display: flex; flex-wrap: wrap; gap: 2mm 3mm; align-items: center; justify-content: center; margin-top: 2mm; }
+.aspect-chip { font-size: 8.5pt; white-space: nowrap; }
+.aspect-соединение { color: #e8c56b; }
+.aspect-оппозиция { color: #e88f8f; }
+.aspect-трин { color: #9edfc8; }
+.aspect-квадрат { color: #b69cf4; }
+.aspect-секстиль { color: #83c8ef; }
+.closing-grid a, .project-link { color: #e8c56b; text-decoration: none; overflow-wrap: anywhere; }
+  .disclaimer { color: #c8b9e8; font-size: 11pt; line-height: 1.45; margin-top: 7mm; }
 """
 
 SIGN_GLYPHS = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"]
@@ -212,6 +246,7 @@ def wheel_svg(chart: dict, size: int = 330) -> str:
             f'fill="#a99fc9" font-size="8" text-anchor="middle">{house.get("n")}</text>')
 
     used: list[tuple[float, float]] = []
+    point_positions: dict[str, tuple[float, float]] = {}
     wheel_points = list(chart.get("planets") or [])
     wheel_points.extend(
         node for node in (chart.get("nodes") or [])
@@ -228,6 +263,7 @@ def wheel_svg(chart: dict, size: int = 330) -> str:
         used.append((deg, radius))
         a = math.radians(deg - 90)
         px, py = cx + radius * math.cos(a), cy + radius * math.sin(a)
+        point_positions[planet.get("name", "")] = (px, py)
         glyph = PLANET_GLYPHS.get(planet.get("name", ""), "•")
         parts.append(
             f'<circle cx="{px:.1f}" cy="{py:.1f}" r="9" '
@@ -238,12 +274,32 @@ def wheel_svg(chart: dict, size: int = 330) -> str:
             parts.append(f'<text x="{px + 8:.1f}" y="{py - 6:.1f}" fill="#e88f8f" '
                          f'font-size="7">R</text>')
 
+    aspect_colors = {
+        "соединение": ("#e8c56b", "", 1.8),
+        "оппозиция": ("#e88f8f", "5 3", 1.1),
+        "трин": ("#9edfc8", "2 3", 1.2),
+        "квадрат": ("#b69cf4", "1 3", 1.4),
+        "секстиль": ("#83c8ef", "7 3", 1.1),
+    }
+    for aspect in (chart.get("aspects") or [])[:12]:
+        p1 = point_positions.get(aspect.get("p1", ""))
+        p2 = point_positions.get(aspect.get("p2", ""))
+        if not p1 or not p2:
+            continue
+        color, dash, width = aspect_colors.get(aspect.get("aspect"), ("#8f86aa", "2 4", .8))
+        dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
+        parts.append(
+            f'<line x1="{p1[0]:.1f}" y1="{p1[1]:.1f}" x2="{p2[0]:.1f}" y2="{p2[1]:.1f}" '
+            f'stroke="{color}" stroke-width="{width}" opacity=".85"{dash_attr}/>')
+
     if not (chart.get("planets") or []) and chart.get("sun"):
         parts.append(
             f'<text x="{cx}" y="{cy + 14}" fill="#e8c56b" font-size="40" '
             f'text-anchor="middle">{esc(chart["sun"].get("symbol", "☉"))}</text>')
 
+    contract_version = (chart.get("calculation") or {}).get("contract_version", "")
     return (f'<svg viewBox="0 0 {size} {size}" width="{size}" height="{size}" '
+            f'role="img" aria-label="OracleAI natal chart wheel" data-contract-version="{esc(contract_version)}" '
             f'xmlns="http://www.w3.org/2000/svg">{"".join(parts)}</svg>')
 
 

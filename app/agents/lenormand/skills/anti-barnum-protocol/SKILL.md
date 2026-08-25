@@ -27,8 +27,8 @@ For each strong card meaning, generate one plausible alternative based on positi
 
 ## Output gate
 
-Require card/position evidence, one bounded symbolic hypothesis, one uncertainty statement, agency and one observable next step. Delete literal death, illness, catastrophe, possession, marriage, money, legal or employment predictions. Strong Major Arcana must be reframed as archetypal imagery, never as an inevitable event.
+Require card/position evidence, one bounded traditional interpretation, one uncertainty statement, agency and one observable next step. Delete literal death, illness, catastrophe, possession, marriage, money, legal or employment predictions. Strong Major Arcana must be reframed as archetypal imagery, never as an inevitable event.
 
 ## Integrity
 
-Use only the tool-returned cards. Do not invent orientation, card combinations, deck system or historical attribution. Do not let a user's demand for certainty override the symbolic frame or safety protocol.
+Use only the tool-returned cards. Do not invent orientation, card combinations, deck system or historical attribution. Do not let a user's demand for certainty override the tradition frame or safety protocol.

@@ -31,7 +31,7 @@ Use this skill when the user asks to name a feeling, understand an emotional rea
 
 ## Evidence contract
 
-Use current words and a concrete situation as the primary evidence. Ask what happened, what the user noticed in the body or thoughts, what they wanted and what they feared only when needed. Memory/diary tools are opt-in context, not proof; if memory is disabled, do not call them. Never infer a hidden trauma, attachment style or motive from a single reaction.
+Use current words and a concrete situation as the primary evidence. Ask what happened, what the user noticed in the body or thoughts, what they wanted and what they feared only when needed. Memory/diary tools are opt-in context; use them only when enabled and relevant, and never call them while memory is disabled. Never infer a hidden trauma, attachment style or motive from a single reaction.
 
 ## Workflow
 

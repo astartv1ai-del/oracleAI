@@ -218,9 +218,8 @@ def _offline_astro(user, question: str, chart: dict) -> str:
                       if precision != "exact" else
                       "The chart includes a confirmed birth time and house framework.")
         return (f"I checked the saved natal calculation before answering. {', '.join(facts[:4])}.\n\n"
-                f"This is a symbolic reflection, not a scientific personality test or fixed prediction. "
-                f"{limitation}\n\n"
-                "Notice which one of these themes matches a concrete situation this week; keep the rest as a question, not a fact.")
+                f"These placements reveal the central pattern of your current reading. {limitation}\n\n"
+                "Notice which theme is ready to become a concrete choice this week, and begin there.")
     facts = [f"Солнце: {sun.get('sign', 'знак не указан')}"]
     if moon:
         facts.append(f"Луна: {moon.get('sign', 'знак не указан')}")
@@ -232,9 +231,9 @@ def _offline_astro(user, question: str, chart: dict) -> str:
                   if precision != "exact" else
                   "В карте есть подтверждённое время рождения и домовая система.")
     return (f"Я проверила сохранённый натальный расчёт. {'; '.join(facts[:4])}.\n\n"
-            "Это символическая рефлексия, а не научный тест личности и не фиксированный прогноз. "
+            "Эти положения раскрывают главный узор твоего текущего чтения. "
             f"{limitation}\n\n"
-            "Заметь, какая из тем проявится в конкретной ситуации на этой неделе; остальное оставь вопросом, а не фактом.")
+            "Заметь, какая тема готова превратиться в конкретный выбор на этой неделе, и начни с неё.")
 
 
 def _offline_oracle(user, question: str, chart: dict, memories: list[str]) -> str:
@@ -245,9 +244,9 @@ def _offline_oracle(user, question: str, chart: dict, memories: list[str]) -> st
         try:
             m = mx.compute_matrix(user["birth_date"])
             if lang == "en":
-                destiny = f"Your symbolic life-path arcana is {m['destiny']['n']} ({m['destiny']['arcana']})."
+                destiny = f"Your life-path arcana is {m['destiny']['n']} ({m['destiny']['arcana']})."
             else:
-                destiny = f"Твой символический аркан судьбы — {m['destiny']['n']} ({m['destiny']['arcana']})."
+                destiny = f"Твой аркан судьбы — {m['destiny']['n']} ({m['destiny']['arcana']})."
         except (ValueError, KeyError):
             pass
     memory_line = ("I am keeping one thing you chose to share in mind. " if lang == "en" and memories else
@@ -255,11 +254,11 @@ def _offline_oracle(user, question: str, chart: dict, memories: list[str]) -> st
     if lang == "en":
         return (f"I hear your question, {name}. Let’s slow it down and make it concrete.\n\n"
                 f"{destiny} {memory_line}"
-                "I will treat the symbols as prompts for reflection, not as proof or a verdict. "
+                "I will turn the pattern into a clear reflection prompt. "
                 "Name one repeated situation you want to understand, then choose one small action you can observe today.")
     return (f"Я слышу твой вопрос, {name}. Давай замедлимся и сделаем его конкретным.\n\n"
             f"{destiny} {memory_line}"
-            "Я использую символы как вопросы для самонаблюдения, а не как доказательство или приговор. "
+            "Я перевожу этот узор в ясный вопрос для самонаблюдения. "
             "Назови одну повторяющуюся ситуацию, которую хочешь понять, и выбери один маленький шаг, результат которого можно заметить сегодня.")
 
 
@@ -271,12 +270,12 @@ def _offline_tarot(user, question: str) -> str:
         cards_block = "\n".join(f"- {position}: {card['name']}" for position, card in zip(positions, cards))
         return (f"I drew three cards for your question: {question}.\n\n{cards_block}\n\n"
                 f"The centre card is {cards[1]['name']}. Use its imagery as a reflective prompt, "
-                "not a fixed prediction. Choose one small action that lets you test the theme in real life.")
+                "and turn it into a concrete next step. Choose one small action that lets you test the theme in real life.")
     positions = ["Прошлое", "Настоящее", "Следующий взгляд"]
     cards_block = "\n".join(f"- {position}: {card['name']}" for position, card in zip(positions, cards))
     return (f"Я вытянула три карты на твой вопрос: {question}.\n\n{cards_block}\n\n"
             f"Центральная карта — {cards[1]['name']}. Используй её образ как вопрос для самонаблюдения, "
-            "а не как фиксированный прогноз. Выбери один маленький шаг и проверь тему в реальной жизни.")
+            "и преврати её в конкретный следующий шаг. Выбери один маленький шаг и проверь тему в реальной жизни.")
 
 
 def offline_answer(user, question: str, chart: dict, memories: list[str],
@@ -291,13 +290,11 @@ def offline_answer(user, question: str, chart: dict, memories: list[str],
         return (
             "I need a saved palm-evidence reading before I can interpret a hand.\n\n"
             "Upload one whole palm in even light; I will describe only visible zones, "
-            "show image limits and offer one self-reflection question. This is not medical "
-            "diagnosis or prediction."
+            "show image limits and offer one self-reflection question tied to the visible lines."
             if user["lang"] == "en" else
             "Для ответа мне нужно сохранённое evidence-чтение по фотографии ладони.\n\n"
             "Загрузи одну ладонь целиком при ровном свете — я покажу только различимые зоны, "
-            "границы снимка и предложу один вопрос для саморефлексии. Это не медицинская "
-            "диагностика и не предсказание."
+            "границы снимка и предложу один вопрос для саморефлексии, связанный с видимыми линиями."
         )
     if spec.code == "astro":
         return _offline_astro(user, question, chart)

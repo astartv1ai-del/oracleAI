@@ -23,7 +23,7 @@ Replace `Марс делает тебя агрессивной` with `в тра�
 
 ## Counter-hypothesis test
 
-For each strong interpretation, add one non-astrological explanation: biography, current context, habit, chance or the user's own stated preference. Ask what observation would support or contradict the symbolic hypothesis. Do not select the most dramatic interpretation merely because it sounds insightful.
+For each strong interpretation, add one non-astrological explanation: biography, current context, habit, chance or the user's own stated preference. Ask what observation would support or contradict the traditional interpretation. Do not select the most dramatic interpretation merely because it sounds insightful.
 
 ## Output gate
 
@@ -31,4 +31,4 @@ Require: precision status, two to four relevant facts, bounded traditional inter
 
 ## Source discipline
 
-Do not invent an aspect, orb, house cusp, transit date or planetary position. If calculators disagree, report a data-quality conflict and ask for corrected birth data. A calculated fact is not evidence that the symbolic interpretation is scientifically true.
+Do not invent an aspect, orb, house cusp, transit date or planetary position. If calculators disagree, report a data-quality conflict and ask for corrected birth data. A calculated fact is not evidence that the traditional interpretation is scientifically true.

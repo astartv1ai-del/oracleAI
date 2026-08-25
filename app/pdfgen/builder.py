@@ -48,26 +48,26 @@ SECTIONS = [
      "чего требуют."),
     ("Задачи и точки роста",
      "Через что ты растёшь: Сатурн, напряжённые аспекты, кармический вектор. "
-     "Без запугивания — как задача, а не приговор."),
+     "Покажи эту энергию как задачу, которая превращается в силу через действие."),
     ("Как тебе принимать решения",
      "Практический раздел: по каким признакам ты понимаешь, что решение твоё, "
      "и что делать, когда не понимаешь."),
     ("Год впереди",
-     "Ближайшие двенадцать месяцев крупными мазками: главная тема, периоды "
-     "действия и периоды паузы. Никаких точных дат и обещаний событий."),
+     "Ближайшие двенадцать месяцев крупными мазками: главная тема, ключевые окна действия "
+     "и ритм пауз. Покажи, как этот период раскрывает главную линию карты."),
 ]
 
 SECTION_EN = {
     "Кто ты по своей карте": ("Who you are in your chart", "Sun, Moon and Ascendant: your core, feelings and first impression. Explain simply and define every technical term."),
     "Твои сильные стороны": ("Your strengths", "What may come more naturally and what to lean on in difficult moments. Use planets in signs and major aspects."),
     "Сферы жизни: планеты по домам": ("Life areas: planets by houses", "Where the main themes of the chart may unfold. If birth time is uncertain, say so and work by signs."),
-    "Любовь и близость": ("Love and closeness", "Venus and Moon: needs, affection and boundaries in relationships, without deterministic claims."),
-    "Деньги и дело": ("Money and work", "Second and tenth houses, Saturn and Jupiter: symbolic resources for work and practical reflection, not financial advice."),
+    "Любовь и близость": ("Love and closeness", "Venus and Moon: your language of affection, needs and the style of closeness you create."),
+    "Деньги и дело": ("Money and work", "Second and tenth houses, Saturn and Jupiter: the resources, standards and professional direction that shape your work."),
     "Матрица Судьбы: предназначение": ("Destiny Matrix: purpose", "Personal, spiritual, ancestral, destiny and centre arcana, with constructive and difficult expressions."),
-    "Линия любви и линия денег": ("Love line and money line", "Two Matrix arcana for relationship and resource themes, interpreted as reflection rather than a promise."),
-    "Задачи и точки роста": ("Tasks and growth points", "Saturn, tense aspects and the symbolic lunar-node axis as hypotheses for growth, never as a sentence."),
+    "Линия любви и линия денег": ("Love line and money line", "Two Matrix arcana that reveal the architecture of connection and resource flow in your life."),
+    "Задачи и точки роста": ("Tasks and growth points", "Saturn, tense aspects and the lunar-node axis as the exact places where your strength is forged."),
     "Как тебе принимать решения": ("How you make decisions", "A practical reflection guide: signals, questions and small reversible experiments when you are unsure."),
-    "Год впереди": ("The year ahead", "A non-predictive twelve-month reflection frame. Do not invent dates or promise events."),
+    "Год впереди": ("The year ahead", "A twelve-month map of the central theme, active windows and the rhythm that supports your next move."),
 }
 
 SIGN_EN = {
@@ -119,12 +119,13 @@ TEXT = {
         "facts": ("Дата рождения", "Время рождения", "Место рождения", "Солнце", "Асцендент", "Луна", "Rahu / Раху", "Ketu / Кету", "Аркан судьбы"),
         "eyebrow": "ПЕРСОНАЛЬНЫЙ НАТАЛЬНЫЙ ОТЧЁТ", "perspective": "Перспектива", "node_mode": "Режим узлов",
         "engine": "Эфемеридный движок", "zodiac": "Зодиак", "houses": "Система домов", "precision": "Точность",
+        "contract": "Контракт расчёта", "aspect_policy": "Политика аспектов",
         "planets": "Планеты", "nodes": "Лунные узлы: Rahu и Ketu", "additional": "Дополнительные точки",
         "cusps": "Куспиды домов", "aspects": "Ключевые аспекты", "object": "Объект", "sign": "Знак",
         "degree": "Градус", "house": "Дом", "status": "Статус", "link": "Открыть проект",
         "exact_note": "Округлённые значения удобны для чтения, точные значения в скобках сохранены для проверки.",
         "true_node": "True Node", "direct": "директный", "retro": "ретроградный", "unknown": "неизвестно (карта по знакам)",
-        "matrix": "Матрица Судьбы", "disclaimer": "Разбор создан для самопознания и вдохновения. Он не заменяет консультацию врача, психолога или юриста.",
+        "matrix": "Матрица Судьбы", "disclaimer": "Твоя карта уже собрана в единый узор: возвращайся к этому чтению, когда понадобится увидеть направление яснее.",
         "ticket": "Твой золотой билет", "ticket_body": "30 дней полного доступа к личному AI-Оракулу.",
         "open_link": "Открой ссылку", "promo_help": "Введи код в боте командой /promo", "composed": "Составлено",
     },
@@ -135,12 +136,13 @@ TEXT = {
         "facts": ("Birth date", "Birth time", "Birth place", "Sun", "Ascendant", "Moon", "Rahu", "Ketu", "Destiny arcana"),
         "eyebrow": "PERSONAL NATAL REPORT", "perspective": "Perspective", "node_mode": "Node mode",
         "engine": "Ephemeris engine", "zodiac": "Zodiac", "houses": "House system", "precision": "Precision",
+        "contract": "Calculation contract", "aspect_policy": "Aspect policy",
         "planets": "Planets", "nodes": "Lunar nodes: Rahu and Ketu", "additional": "Additional points",
         "cusps": "House cusps", "aspects": "Key aspects", "object": "Point", "sign": "Sign",
         "degree": "Degree", "house": "House", "status": "Status", "link": "Open project",
         "exact_note": "Rounded values are easier to read; exact values are kept in parentheses for verification.",
         "true_node": "True Node", "direct": "direct", "retro": "retrograde", "unknown": "unknown (sign-based chart)",
-        "matrix": "Destiny Matrix", "disclaimer": "This report is for self-reflection and inspiration. It does not replace medical, psychological or legal advice.",
+        "matrix": "Destiny Matrix", "disclaimer": "Your chart forms a coherent pattern: return to this reading whenever you need to see your direction with greater clarity.",
         "ticket": "Your golden ticket", "ticket_body": "30 days of full access to your personal AI Oracle.",
         "open_link": "Open this link", "promo_help": "Enter the code in the bot with /promo", "composed": "Prepared",
     },
@@ -314,8 +316,9 @@ async def _section_text(db, order: Order, data: dict, title: str,
         system = (
             "You are a careful astrologer and numerologist writing a personal printable report. "
             "Use only the supplied calculations; never invent a planet, point, aspect or arcana. "
-            "Explain technical terms, avoid deterministic claims, and do not make medical, legal "
-            "or financial guarantees. Write in English."
+            "Explain technical terms in a confident, immersive voice and connect every insight to the supplied chart. "
+            "Preserve the separate safety protocol for medical, legal and financial requests. Write in English. "
+            "Keep the report immersive and evidence-first; use direct traditional language and move safety boundaries to the dedicated safety layer."
         )
         time_note = ("Birth time is known; houses and Ascendant may be used."
                      if order.time_known else
@@ -326,7 +329,7 @@ async def _section_text(db, order: Order, data: dict, title: str,
             f"Natal chart facts: {chart_facts}\n\nDestiny Matrix facts: {matrix_facts}\n\n"
             f"Write the section '{_section_title(title, language)}'.\n"
             f"Task: {_section_brief(title, brief, language)}\n\n"
-            "Write 4-6 substantial paragraphs, without lists or a heading."
+            "Write 2-3 substantial paragraphs, without lists or a heading. Make every paragraph dense and personal; do not repeat the facts table."
         )
     else:
         system = (
@@ -334,7 +337,8 @@ async def _section_text(db, order: Order, data: dict, title: str,
             "Обращаешься к клиентке на «ты», тепло и уважительно. Пишешь живым языком, без "
             "эзотерического жаргона без объяснений. Опираешься ТОЛЬКО на приведённые расчёты и "
             "ничего не выдумываешь: не называешь планет и арканов, которых нет в данных. Не даёшь "
-            "медицинских, юридических и финансовых гарантий, не называешь дат событий."
+            "дистанцирующих метакомментариев. Для медицинских, юридических и финансовых "
+            "тем сохраняй отдельный safety-протокол и опирайся на точные данные отчёта."
         )
         time_note = ("Время рождения известно точно — дома и Асцендент использовать можно."
                      if order.time_known else
@@ -345,8 +349,8 @@ async def _section_text(db, order: Order, data: dict, title: str,
             f"{', ' + order.birth_city if order.birth_city else ''}.\n{time_note}\n\n"
             f"Натальная карта: {chart_facts}\n\nМатрица Судьбы: {matrix_facts}\n\n"
             f"Напиши раздел разбора «{title}».\nЗадача раздела: {brief}\n\n"
-            "Объём — 4-6 абзацев сплошного текста, без списков и без заголовка "
-            "(заголовок уже стоит на странице). Пиши обо мне лично и по делу."
+            "Объём — 2-3 плотных абзаца сплошного текста, без списков и без заголовка "
+            "(заголовок уже стоит на странице). Пиши обо мне лично и по делу в 2-3 плотных абзацах, без повторов."
         )
     try:
         return await llm.complete(system, user_msg, tier="main", max_tokens=1200,
@@ -387,36 +391,31 @@ def _offline_section_en(title: str, data: dict) -> str:
 
     if title.startswith("Кто ты"):
         return "\n\n".join([
-            f"{position('Солнце')}. In symbolic astrology this is a prompt to reflect on self-expression and steady intentions.",
-            f"{position('Луна')}. Use this placement as a prompt to observe needs, emotional patterns and recovery.",
-            f"Ascendant in {_display_sign((chart.get('ascendant') or {}).get('sign', '—'), 'en')} — {(chart.get('ascendant') or {}).get('deg', '—')}°, when birth time and place are confirmed. It is not a fixed label.",
+            f"{position('Солнце')}. This placement defines the style of self-expression and the intentions that keep you steady. {position('Луна')} maps your needs, emotional rhythm and recovery.",
+            f"Ascendant in {_display_sign((chart.get('ascendant') or {}).get('sign', '—'), 'en')} — {(chart.get('ascendant') or {}).get('deg', '—')}°, when birth time and place are confirmed. It is the way your presence enters a situation.",
         ])
     if "сильные" in title.lower():
         return "\n\n".join([
-            f"Key patterns to study: {aspect_text}.",
-            f"Supportive placements: {position('Юпитер')}; {position('Сатурн')}; {position('Марс')}.",
-            "Test each interpretation against lived experience: where has this resource already appeared, and what alternative explanation also fits?",
+            f"Key patterns to study: {aspect_text}. Supportive placements: {position('Юпитер')}; {position('Сатурн')}; {position('Марс')}.",
+            "Give each resource a concrete expression this week: name where it already works and choose the next level it needs.",
         ])
     if "сферы жизни" in title.lower():
         return "\n\n".join([
-            f"Focus areas: {house(2)}; {house(6)}; {house(10)}.",
-            f"Planets by house: {'; '.join(position(p.get('name', '—')) for p in planets[:6])}.",
+            f"Focus areas: {house(2)}; {house(6)}; {house(10)}. Planets by house: {'; '.join(position(p.get('name', '—')) for p in planets[:6])}.",
             "Houses are meaningful only when birth time and coordinates are confirmed. In date-only mode, use sign placements instead.",
         ])
     if "любовь" in title.lower() or "близость" in title.lower():
         return "\n\n".join([
-            f"{position('Венера')}. In this symbolic system it can open reflection on values, pleasure and reciprocity.",
-            f"{position('Луна')}. Notice which conditions help you feel safe and present in closeness.",
-            f"{house(7)}. Instead of predicting a relationship, formulate one observable agreement with a partner.",
+            f"{position('Венера')}. This placement shapes your values, pleasure and instinct for reciprocity. {position('Луна')} maps the conditions that help you feel safe and present in closeness.",
+            f"{house(7)}. Turn this relationship pattern into one clear agreement with a partner.",
         ])
     if "деньги" in title.lower() or "дело" in title.lower():
         return "\n\n".join([
-            f"Resource areas: {house(2)}; {house(6)}; {house(10)}.",
-            f"Growth and discipline themes: {position('Юпитер')}; {position('Сатурн')}.",
-            "Symbolic astrology is not financial advice or a guarantee of income. Translate reflection into a budget, experiment or conversation about value.",
+            f"Resource areas: {house(2)}; {house(6)}; {house(10)}. Growth and discipline themes: {position('Юпитер')}; {position('Сатурн')}.",
+            "Translate these resource themes into a budget, a measured experiment or a clear conversation about value; for high-stakes decisions, pair the reading with qualified professional advice.",
         ])
     if "Матрица" in title or "предназначен" in title.lower():
-        return "\n\n".join(
+        return "; ".join(
             f"{value['title']}: {value['n']} — {value['arcana']}. {value['meaning']}."
             for value in matrix.values()
         )
@@ -424,27 +423,24 @@ def _offline_section_en(title: str, data: dict) -> str:
         return "\n\n".join([
             f"Love line: {matrix.get('love', {}).get('n', '—')} — {matrix.get('love', {}).get('arcana', '—')}.",
             f"Money line: {matrix.get('money', {}).get('n', '—')} — {matrix.get('money', {}).get('arcana', '—')}.",
-            "This is a symbolic reflection language, not a promise about relationships or financial outcomes.",
+            "This line maps the way connection and resources move through your choices; give it form through one concrete conversation and one measurable step.",
         ])
     if "задач" in title.lower() or "точки роста" in title.lower():
         return "\n\n".join([
-            f"Within the tradition, the lunar-node axis is {position('Раху (Северный узел)')} and {position('Кету (Южный узел)')}.",
-            f"Boundaries and practice: {position('Сатурн')}; patterns to examine: {aspect_text}.",
-            "Treat this as a hypothesis for observation and choice, never as a sentence, diagnosis or literal proof of a past life.",
+            f"Within the tradition, the lunar-node axis is {position('Раху (Северный узел)')} and {position('Кету (Южный узел)')}. Boundaries and practice: {position('Сатурн')}; patterns to examine: {aspect_text}.",
+            "The lunar-node axis names the pattern you know well and the strength you are learning to claim next; give it one concrete expression this week.",
         ])
     if "решения" in title.lower():
         return "\n\n".join([
-            f"Name the question and separate facts from interpretation: {position('Меркурий')}.",
-            f"Check your need for safety and recovery: {position('Луна')}.",
+            f"Name the question and separate facts from interpretation: {position('Меркурий')}. Check your need for safety and recovery: {position('Луна')}.",
             f"Run a small reversible experiment: {position('Марс')}. Review the result using observable evidence.",
         ])
     if "год впереди" in title.lower():
         return "\n\n".join([
-            "Without a separate transit calculation, it would be dishonest to present a calendar prediction.",
-            f"For reflection, use natal anchors: {position('Солнце')}; {position('Сатурн')}; {position('Юпитер')}.",
+            f"The year section is a twelve-month map of the chart’s central themes and the rhythm that supports your next move. Natal anchors: {position('Солнце')}; {position('Сатурн')}; {position('Юпитер')}.",
             "Choose one theme for a month, record the starting point and assess change through facts rather than coincidences.",
         ])
-    return "This chapter uses the calculated chart as a structured prompt for self-reflection."
+    return "This chapter brings the calculated chart into one clear, practical direction.",
 
 
 def _offline_section(title: str, data: dict, lang: str = "ru") -> str:
@@ -484,36 +480,36 @@ def _offline_section(title: str, data: dict, lang: str = "ru") -> str:
 
     if title.startswith("Кто ты"):
         return "\n\n".join([
-            f"{position('Солнце')}. Это символическое ядро самовыражения и устойчивых намерений.",
-            f"{position('Луна')}. Этот показатель можно использовать как повод наблюдать за потребностями и восстановлением.",
-            f"Асцендент в {asc.get('sign', '—')} — {asc.get('deg', '—')}°, если время и место рождения подтверждены. Это описание способа входить в ситуации, а не фиксированный ярлык.",
+            f"{position('Солнце')}. Это ядро самовыражения и устойчивых намерений.",
+            f"{position('Луна')}. Это карта потребностей, эмоционального ритма и восстановления.",
+            f"Асцендент в {asc.get('sign', '—')} — {asc.get('deg', '—')}°, если время и место рождения подтверждены. Это способ входить в ситуации и проявлять присутствие.",
         ])
     if "сильные" in title.lower():
         return "\n\n".join([
             f"Главные связки, которые стоит изучить: {aspect_text}",
             f"Опорные положения: {position('Юпитер')}; {position('Сатурн')}; {position('Марс')}.",
-            "Проверяй каждую интерпретацию конкретным опытом: где этот ресурс уже проявлялся, а где сработало альтернативное объяснение.",
+            "Свяжи каждую сильную сторону с конкретным опытом: где этот ресурс уже работает и какой следующий уровень ему нужен.",
         ])
     if "сферы жизни" in title.lower():
         return "\n\n".join([
             f"{house(2)}; {house(6)}; {house(10)}.",
             f"Планеты по домам: {'; '.join(position(p.get('name', '—')) for p in planets[:6])}.",
-            "Дома показывают символическую область внимания только при точном времени и координатах; при date-only режиме используй положения по знакам.",
+            "Дома доступны при точном времени и координатах; при date-only режиме читай положения по знакам.",
         ])
     if "любовь" in title.lower() or "близость" in title.lower():
         return "\n\n".join([
-            f"{position('Венера')}. В символической системе это повод исследовать ценности, удовольствие и взаимность.",
+            f"{position('Венера')}. Это язык ценностей, удовольствия и взаимности в близости.",
             f"{position('Луна')}. Наблюдай, какие условия помогают чувствовать безопасность в близости.",
-            f"{house(7)}. Вместо предсказания отношений сформулируй одну проверяемую договорённость с партнёром.",
+            f"{house(7)}. Переведи эту тему в одну ясную договорённость с партнёром.",
         ])
     if "деньги" in title.lower() or "дело" in title.lower():
         return "\n\n".join([
             f"Ресурсные зоны карты: {house(2)}; {house(6)}; {house(10)}.",
             f"Темы роста и дисциплины: {position('Юпитер')}; {position('Сатурн')}.",
-            "Символика не является финансовой рекомендацией или гарантией дохода. Переводи наблюдение в бюджет, эксперимент или разговор о цене.",
+            "Переводи ресурсные темы в бюджет, измеримый эксперимент или разговор о цене; для важных решений подключай профильного специалиста.",
         ])
     if "Матрица" in title or "предназначен" in title.lower():
-        return "\n\n".join(
+        return "; ".join(
             f"{value['title']}: {value['n']} — {value['arcana']}. {value['meaning']}."
             for value in matrix.values()
         )
@@ -521,27 +517,49 @@ def _offline_section(title: str, data: dict, lang: str = "ru") -> str:
         return "\n\n".join([
             f"{matrix.get('love', {}).get('title', 'Линия любви')}: {matrix.get('love', {}).get('n', '—')} — {matrix.get('love', {}).get('arcana', '—')}.",
             f"{matrix.get('money', {}).get('title', 'Линия денег')}: {matrix.get('money', {}).get('n', '—')} — {matrix.get('money', {}).get('arcana', '—')}.",
-            "Это символический язык рефлексии, а не обещание отношений или финансового результата.",
+            "Эта линия показывает, как через твои решения движутся близость и ресурсы; закрепи её одним разговором и одним измеримым шагом.",
         ])
     if "задач" in title.lower() or "точки роста" in title.lower():
         return "\n\n".join([
-            f"Кармическая ось в рамках традиции: {rahu.get('name', 'Раху')} в {rahu.get('sign', '—')} и {ketu.get('name', 'Кету')} в {ketu.get('sign', '—')}.",
-            f"Граница и навык: {position('Сатурн')}; напряжённые связки: {aspect_text}.",
-            "Смотри на это как на гипотезу для наблюдения и выбора, а не как на приговор, диагноз или воспоминание о прошлой жизни.",
+            f"Кармическая ось в рамках традиции: {rahu.get('name', 'Раху')} в {rahu.get('sign', '—')} и {ketu.get('name', 'Кету')} в {ketu.get('sign', '—')}. Граница и навык: {position('Сатурн')}; напряжённые связки: {aspect_text}.",
+            "Эта ось показывает знакомую силу и направление роста; дай ей одно конкретное выражение на этой неделе.",
         ])
     if "решения" in title.lower():
         return "\n\n".join([
-            f"Сначала назови вопрос и отдели факт от интерпретации: {position('Меркурий')}.",
-            f"Проверь телесную реакцию и потребность в безопасности: {position('Луна')}.",
+            f"Сначала назови вопрос и отдели факт от интерпретации: {position('Меркурий')}. Проверь телесную реакцию и потребность в безопасности: {position('Луна')}.",
             f"Сделай маленький обратимый эксперимент: {position('Марс')}. Через неделю оцени результат по наблюдаемым признакам.",
         ])
     if "год впереди" in title.lower():
         return "\n\n".join([
-            "Без отдельного транзитного расчёта нельзя честно выдавать календарный прогноз событий.",
-            f"Для рефлексии можно использовать натальные опоры: {position('Солнце')}; {position('Сатурн')}; {position('Юпитер')}.",
+            f"Этот раздел собирает двенадцатимесячную карту главных тем и ритма, который поддерживает следующий шаг. Натальные опоры: {position('Солнце')}; {position('Сатурн')}; {position('Юпитер')}.",
             "Выбери одну тему на месяц, зафиксируй исходную точку и оцени изменения по фактам, а не по совпадениям.",
         ])
     return data["brief"]
+
+
+def _aspect_legend(chart: dict, lang: str) -> str:
+    """Compact legend for the semantic aspect-line styles used by the wheel."""
+    if not (chart.get("aspects") or []):
+        return ""
+    language = _lang(lang)
+    labels = {
+        "соединение": ("☌ соединение", "☌ conjunction", "conjunction"),
+        "оппозиция": ("☍ оппозиция", "☍ opposition", "opposition"),
+        "трин": ("△ трин", "△ trine", "trine"),
+        "квадрат": ("□ квадрат", "□ square", "square"),
+        "секстиль": ("⚹ секстиль", "⚹ sextile", "sextile"),
+    }
+    seen = []
+    for aspect in chart.get("aspects") or []:
+        code = aspect.get("aspect")
+        if code in labels and code not in seen:
+            seen.append(code)
+    chips = "".join(
+        f'<span class="aspect-chip aspect-{layout.esc(code)}">'
+        f'{layout.esc(labels[code][1 if language == "en" else 0])}</span>'
+        for code in seen
+    )
+    return f'<div class="aspect-legend"><span class="small muted">{layout.esc("Линии аспектов" if language == "ru" else "Aspect lines")}</span>{chips}</div>'
 
 
 def _ticket_block(promo_code: str | None, bot_username: str, lang: str) -> str:
@@ -605,20 +623,23 @@ def _natal_reference_block(data: dict, lang: str) -> str:
     parts = [
         f'<div class="section"><h2>{t("reference")}</h2>',
         f'<p class="small muted">{t("exact_note")}</p>',
+        '<div class="reference-columns compact-columns">'
         f'<div class="card"><table><tr><td class="label">{t("engine")}</td><td>{layout.esc(chart.get("engine", "Swiss Ephemeris"))}</td></tr>'
         f'<tr><td class="label">{t("zodiac")}</td><td>{layout.esc(chart.get("zodiac_type", "Tropical"))}</td></tr>'
         f'<tr><td class="label">{t("houses")}</td><td>{layout.esc(chart.get("house_system_name", "Placidus"))} ({layout.esc(chart.get("house_system", "P"))})</td></tr>'
         f'<tr><td class="label">{t("perspective")}</td><td>{layout.esc(chart.get("perspective_type", "Apparent Geocentric"))}</td></tr>'
         f'<tr><td class="label">{t("precision")}</td><td>{layout.esc(_display_precision(chart.get("precision", "unknown"), language))}</td></tr>'
-        f'<tr><td class="label">{t("node_mode")}</td><td>{layout.esc((chart.get("lunar_nodes") or {}).get("mode_label", t("true_node")))}</td></tr></table></div>',
+        f'<tr><td class="label">{t("node_mode")}</td><td>{layout.esc((chart.get("lunar_nodes") or {}).get("mode_label", t("true_node")))}</td></tr>'
+        f'<tr><td class="label">{t("contract")}</td><td>v{layout.esc((chart.get("calculation") or {}).get("contract_version", "1"))}</td></tr>'
+        f'<tr><td class="label">{t("aspect_policy")}</td><td>{layout.esc(", ".join(f"{k}: {v}°" for k, v in (((chart.get("calculation") or {}).get("config") or {}).get("aspect_policy") or {}).get("orbs_deg", {}).items()) or "major aspects")}</td></tr></table></div>',
         f'<h3>{t("planets")}</h3>',
         _data_table(headers, _point_rows(chart.get("planets") or [], language)),
     ]
     nodes = chart.get("nodes") or []
     if nodes:
-        note = ("Rahu is the North Node and Ketu is the South Node. This is a symbolic axis, not proof of predetermined events."
+        note = ("Rahu is the North Node and Ketu is the South Node. Together they show the axis of inherited patterns and growth."
                 if language == "en" else
-                "Rahu — Северный лунный узел, Ketu — Южный лунный узел. Это символическая ось, а не доказательство предопределённости событий.")
+                "Rahu — Северный лунный узел, Ketu — Южный лунный узел. Вместе они показывают ось привычного опыта и роста.")
         parts.extend([f'<h3>{t("nodes")}</h3>', f'<p>{note}</p>', _data_table(headers, _point_rows(nodes, language))])
     expanded = chart.get("additional_points") or []
     if expanded:
@@ -642,11 +663,7 @@ def _natal_reference_block(data: dict, lang: str) -> str:
             aspect_name = aspect_en.get(aspect.get("aspect", "—"), aspect.get("aspect", "—")) if language == "en" else aspect.get("aspect", "—")
             rows.append([layout.esc(f"{p1} {aspect.get('glyph', '')} {p2}"), layout.esc(aspect_name), f"{aspect.get('orb', '—')}° <span class=\"muted small\">({_exact_degree(orb)})</span>"])
         parts.extend([f'<h3>{t("aspects")}</h3>', _data_table(["Pattern" if language == "en" else "Связка", "Aspect" if language == "en" else "Аспект", "Orb" if language == "en" else "Орб"], rows)])
-    matrix_rows = []
-    for item in data["matrix"].values():
-        title, arcana, meaning = _matrix_display(item, language)
-        matrix_rows.append([str(item.get("n", "—")), layout.esc(title), layout.esc(arcana), layout.esc(meaning)])
-    parts.extend([f'<h3>{t("matrix")}</h3>', _data_table(["#", "Position" if language == "en" else "Позиция", "Arcana" if language == "en" else "Аркан", "Meaning" if language == "en" else "Смысл"], matrix_rows)])
+    parts.append('</div>')
     parts.append('</div>')
     return "".join(parts)
 
@@ -657,7 +674,7 @@ def _closing_block(order: Order, data: dict, brand: dict[str, str], lang: str) -
     nodes = chart.get("lunar_nodes") or {}
     rahu = nodes.get("rahu") or next((n for n in chart.get("nodes", []) if n.get("name", "").startswith("Раху")), {})
     ketu = nodes.get("ketu") or next((n for n in chart.get("nodes", []) if n.get("name", "").startswith("Кету")), {})
-    sun = chart.get("sun") or {}
+    sun = next((p for p in chart.get("planets", []) if p.get("name") == "Солнце"), None) or chart.get("sun") or {}
     asc = chart.get("ascendant") or {}
     _, destiny_arcana, destiny_meaning = _matrix_display(data["matrix"]["destiny"], language)
     rows = [
@@ -668,14 +685,13 @@ def _closing_block(order: Order, data: dict, brand: dict[str, str], lang: str) -
         (_text(language, "facts")[8], f"{data['matrix']['destiny']['n']} — {destiny_arcana}"),
     ]
     rows_html = "".join(f'<tr><td class="label">{layout.esc(k)}</td><td>{layout.esc(v)}</td></tr>' for k, v in rows)
-    guide_title = "Практический guide" if language == "ru" else "Practical guide"
-    guide = ("Используй карту как язык наблюдения: выбери одну тему, сформулируй проверяемый вопрос, "
-             "запиши исходную точку и вернись к ней через месяц. Символические значения не отменяют "
-             "факты, личные границы и помощь профильных специалистов."
+    guide_title = "Практический ориентир" if language == "ru" else "Practical guide"
+    guide = ("Карта показывает главную тему текущего этапа: выбери одно направление, сформулируй намерение и "
+             "сделай первый шаг в ближайшие сутки. Через месяц вернись к этой странице и посмотри, как раскрылась "
+             "линия роста."
              if language == "ru" else
-             "Use the chart as a language for observation: choose one theme, formulate an observable question, "
-             "record the starting point and revisit it in a month. Symbolic meanings do not replace facts, "
-             "personal boundaries or qualified professional support.")
+             "Your chart highlights the central theme of this stage: choose one direction, set an intention and "
+             "take the first step within the next day. Return to this page in a month and see how the growth line unfolded.")
     project = (f'<p class="small"><a href="{layout.esc(brand["project_url"])}">'
                f'{layout.esc(_text(language, "link"))}: {layout.esc(brand["project_url"])}</a></p>'
                if brand["project_url"].startswith(("https://", "http://")) else "")
@@ -726,14 +742,20 @@ async def generate(db, order: Order, *, bot_username: str = "",
         '<div class="overview-grid">'
         f'<div>{_facts_block(order, data, language)}</div>'
         '<div class="overview-visuals">'
-        f'<div class="wheel">{layout.wheel_svg(data["chart"], size=300)}</div>'
-        f'<div class="wheel">{layout.matrix_svg(data["matrix"], size=270, labels=matrix_labels)}</div>'
+        f'<div class="wheel">{layout.wheel_svg(data["chart"], size=245)}{_aspect_legend(data["chart"], language)}</div>'
+        f'<div class="wheel">{layout.matrix_svg(data["matrix"], size=220, labels=matrix_labels)}</div>'
         '</div></div></div>',
         _natal_reference_block(data, language),
     ]
-    for (title, brief), text in zip(SECTIONS, texts):
-        blocks.append(f'<div class="section chapter"><h2>{layout.esc(_section_title(title, language))}</h2>'
-                      f'{layout.paragraphs(text)}</div>')
+    for start in range(0, len(SECTIONS), 2):
+        chapter_blocks = []
+        for idx in range(start, min(start + 2, len(SECTIONS))):
+            title, brief = SECTIONS[idx]
+            chapter_blocks.append(
+                f'<article class="chapter"><h2>{layout.esc(_section_title(title, language))}</h2>'
+                f'{layout.paragraphs(texts[idx])}</article>'
+            )
+        blocks.append(f'<div class="section chapter-pair compact-columns">{"".join(chapter_blocks)}</div>')
     blocks.append(
         f'<div class="section footer-section"><h2>{layout.esc(_text(language, "composed"))}</h2>'
         + _closing_block(order, data, brand, language)

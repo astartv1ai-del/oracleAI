@@ -1,0 +1,26 @@
+=== /home/ubuntu/oracleAI-sample-natal-report-ru.pdf
+p1: О РА К УЛ П Е Р С О Н А Л Ь Н Ы Й Н АТА Л Ь Н Ы Й О Т Ч Ё Т  Полный отчёт натальной карт�
+
+p2: Карта в цифрах Дата рождения  21.06.1990  Время  14:30  ♓ ♈ ♒ ♉ ♂  R  Место  5  ☊R ♄ 4R R ♅♆ 
+
+p3: Объект  Знак  Градус  Дом  Статус  Дом  Знак  Долгота куспида  13.6°  Дом 3  ретроград
+
+p4: Кто ты по своей карте  Твои сильные стороны  Солнце в Близнецы, 29.8°, 9 дом. Это ядр
+
+p5: Деньги и дело Ресурсные зоны карты: 2-й дом в Скорпион (12.3°); 6-й дом в Рыбы (26.9°); 10-�
+
+p6: Как тебе принимать решения  Год впереди Этот раздел собирает двенадцатимесячн�
+
+=== /home/ubuntu/oracleAI-sample-natal-report-en.pdf
+p1: ORACLEAI P E R S O N A L N ATA L R E P O RT  Full natal chart and Destiny Matrix report A personal AI astrologer that knows you  Anna 21.06.1990 
+
+p2: Your chart in numbers Birth date  21.06.1990  Birth time  14:30  Birth place  Казань  Sun  ♊  ♓ ♈ ♒ ♉ ♂  R  5  ☊R ♄ 4R R �
+
+p3: Point  Sign  Degree  House  Status  House  Sign  Cusp longitude  ♇ Pluto  Scorpio  15.3°  House 2  retrograde  2  Scorpio  12.3° (222.3328°)
+
+p4: Who you are in your chart  Your strengths Key patterns to study: Jupiter □ Ascendant — квадрат (orb 0.1°); Saturn ☍ Midheaven —  
+
+p5: Money and work  Destiny Matrix: purpose  Resource areas: House 2 in Scorpio (12.3°);  Личный аркан (характер): 21 — Мир.
+
+p6: How you make decisions  The year ahead  Name the question and separate facts from  The year section is a twelve-month map of the  interpretation:
+

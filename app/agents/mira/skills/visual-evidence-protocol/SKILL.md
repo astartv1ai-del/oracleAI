@@ -1,6 +1,6 @@
 ---
 name: visual-evidence-protocol
-description: Convert a palm image into a bounded visual evidence packet before any symbolic palmistry interpretation.
+description: Convert a palm image into a bounded visual evidence packet before any traditional palmistry interpretation.
 license: Proprietary
 compatibility: OracleAI palm-precheck-v1 and palm evidence schema.
 metadata:
@@ -22,7 +22,7 @@ This is Mira’s primary image-grounding protocol. A good answer must make clear
 1. Call `palm_scanner` before making a claim about the uploaded hand. Confirm `image_quality`, deterministic `visual_precheck`, `hand_side`, `hand_shape_element`, `photo_assessment`, and zone visibility.
 2. State the strongest visible evidence first: image/view status, then requested line or zone, then confidence. Do not substitute a generic palmistry description for a missing observation.
 3. If a requested feature is `partial`, `unclear`, or `not_visible`, say so and call `palm_photo_guide` when a second view would resolve it.
-4. Only after observation, offer one or two clearly labelled traditional symbolic interpretations. Use “в традиции хиромантии” or “symbolically, this may be explored as”.
+4. Only after observation, offer one or two clearly labelled traditional interpretations. Use “в традиции хиромантии” or “through the traditional lens, explore this as”.
 5. End with one limitation and one user-controlled reflective question. Never make a diagnosis, prediction, timeline, or identity claim.
 
 ## Evidence language

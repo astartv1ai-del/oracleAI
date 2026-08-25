@@ -24,7 +24,7 @@
     const preview = this._palmPreview ? `<div class="palm-preview"><img src="${esc(this._palmPreview)}" alt="Предпросмотр выбранной ладони"><button type="button" class="palm-preview__clear" data-act="tool-fn" data-fn="featurePalm">Изменить</button></div>` : '';
     return `<section class="palm-result" aria-live="polite">
       <div class="w-title">✋ Чтение ладони</div>
-      <p class="w-sub">Я опишу только то, что действительно видно на фото, и превращу символы в вопросы к себе.</p>
+      <p class="w-sub">Я опишу видимые зоны на фото и свяжу их с вопросами, которые важны именно тебе.</p>
       ${preview}
       ${palmGuide()}
       <div class="palm-upload-actions" role="group" aria-label="Источник фотографии">
@@ -41,7 +41,7 @@
       </div>
       <input id="palm-camera" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" data-palm-input>
       <input id="palm-gallery" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" data-palm-input>
-      <p class="palm-disclaimer">Это символическое чтение для саморефлексии, не медицинская диагностика и не предсказание.</p>
+      <p class="palm-disclaimer">Мира читает только различимые линии и зоны: чем яснее кадр, тем глубже разбор.</p>
     </section>`;
   };
 
@@ -108,7 +108,7 @@
       ${detailRows(result) ? `<details class="palm-details"><summary>Показать карту зон и техник <span>⌄</span></summary><div class="palm-detail-list">${detailRows(result)}</div></details>` : ''}
       ${limitations.length ? `<div class="palm-limitations"><b>Границы чтения</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}
       ${prompts.length ? `<div class="palm-prompts"><b>Вопросы к себе</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
-      <p class="palm-disclaimer">Линия жизни не показывает продолжительность жизни. Это символическая рефлексия, а не диагноз и не гарантия событий.</p>
+      <p class="palm-disclaimer">Линия жизни раскрывается через форму, непрерывность и ритм ресурса; здоровье и длительность жизни не считываются по линиям.</p>
       <div class="palm-actions">
         ${needs
           ? '<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Переснять фото</button>'

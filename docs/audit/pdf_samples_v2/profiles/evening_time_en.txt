@@ -1,0 +1,277 @@
+                                     ORACLEAI
+
+                             P E R S O N A L N ATA L R E P O RT
+
+
+
+
+           Full natal chart and Destiny Matrix
+                          report
+                     A personal AI astrologer that knows you
+
+
+
+
+                                         Elena
+                             17.02.2001 · Санкт-Петербург
+
+                                 Prepared 25.08.2026
+
+
+
+                   Open project: https://github.com/astartv1ai-del/oracleAI
+
+
+
+
+OracleAI                                   ✦1✦                                Personal natal report
+Your chart in numbers
+
+    Birth date             17.02.2001
+
+    Birth time             21:10
+                                                                                         ♓
+                                                                                        ♒ ♉♈     ☉
+                                                                                                 R
+                                                                                                  ☿       6     7
+                                                                                                                    ♀
+                                                                                                                     8
+                                                                                               ♆ ♅
+                                                                                                    5                    9♄ ♃
+    Birth place            Санкт-Петербург                                          ♑♐     ☋
+                                                                                                                                     ♊♋
+                                                                                           ☽ 4                                10
+
+    Sun                    ♒      Aquarius · air                                           ♇                                       ☊
+                                                                                            ♂ 3                          11
+
+    Ascendant              Libra 0.4°                                                                     2     1   12
+
+
+
+    Moon
+
+    Rahu
+                           Sagittarius 28.6°
+
+                           Cancer 14.8°
+                                                                                       ♏                ♎♍                         ♌
+    Ketu                   Capricorn 14.8°                                  Aspect lines □ square ⚹ sextile ☍ opposition △ trine
+                                                                                                        ☌ conjunction
+    Destiny arcana         22 — The Fool
+                                                                                                               17
+                                                                                                  Personal arcana (character)
+                                                                                         7                                          2
+                                                                                     Money line                           Spiritual arcana
+                                                                                                               8
+
+                                                                                        12                                          3
+                                                                                     Love line                                Ancestral line
+                                                                                                               22
+                                                                                                         Purpose line
+
+
+
+
+Natal chart: full calculation
+Rounded values are easier to read; exact values are kept in parentheses for verification.
+
+  Ephemeris engine         Swiss Ephemeris via Kerykeion
+                                                                        Point       Sign                Degree           House                 Status
+  Zodiac                   Tropical                                     ☿ Mercury Aquarius              19.2°            House 5               retrograde
+  House system             Placidus (P)                                                                 (19.1512°)
+  Perspective              Apparent Geocentric
+  Precision                exact                                        ♀ Venus     Aries               11.2°            House 7               direct
+  Node mode                True Node                                                                    (11.2135°)
+  Calculation contract     v1                                           ♂ Mars      Sagittarius 1.5°                     House 3               direct
+  Aspect policy            conjunction: 8.0°, opposition: 8.0°,
+                                                                                                        (1.5221°)
+                           trine: 8.0°, square: 7.0°, sextile: 6.0°
+                                                                        ♃ Jupiter   Gemini              2.1°             House 9               direct
+Planets                                                                                                 (2.1024°)
+
+Point         Sign       Degree          House            Status        ♄ Saturn    Taurus              24.6°            House 9               direct
+                                                                                                        (24.5854°)
+☉ Sun         Aquarius   29.1°           House 5          direct
+                         (29.1471°)                                     ♅ Uranus Aquarius               21.3°            House 5               direct
+                                                                                                        (21.2944°)
+☽ Moon        Sagittarius 28.6°          House 3          direct
+                         (28.6003°)
+
+
+OracleAI                                                              ✦2✦                                                          Personal natal report
+Point        Sign         Degree        House        Status          House             Sign         Cusp longitude
+♆ Neptune Aquarius        7.1°          House 4      direct          2                 Libra        22.1° (202.1376°)
+                          (7.1012°)                                  3                 Scorpio      21.5° (231.5214°)
+♇ Pluto      Sagittarius 15.1°          House 3      direct          4                 Capricorn    0.5° (270.5434°)
+                          (15.0521°)
+                                                                     5                 Aquarius     9.5° (309.4519°)
+Lunar nodes: Rahu and Ketu                                           6                 Pisces       8.7° (338.7127°)
+Rahu is the North Node and Ketu is the South Node. Together they
+                                                                     7                 Aries        0.4° (0.3691°)
+show the axis of inherited patterns and growth.
+                                                                     8                 Aries        22.1° (22.1376°)
+Point        Sign         Degree        House        Status
+                                                                     9                 Taurus       21.5° (51.5214°)
+☊ Rahu       Cancer       14.8°         House 10     direct
+                                                                     10                Cancer       0.5° (90.5434°)
+(North                    (14.7592°)
+Node)                                                                11                Leo          9.5° (129.4519°)
+
+☋ Ketu       Capricorn 14.8°            House 4      direct          12                Virgo        8.7° (158.7127°)
+(South                    (14.7592°)
+                                                                     Key aspects
+Node)
+                                                                     Pattern           Aspect       Orb
+⚸ Lilith     Capricorn 29.9°            House 4      direct
+(Black                    (29.9473°)
+                                                                     Ascendant □       square       0.2° (0.1743°)
+Moon)                                                                Midheaven
+                                                                     Sun ⚹ Moon        sextile      0.5° (0.5468°)
+Additional points
+                                                                     Mars ☍ Jupiter    opposition   0.6° (0.5804°)
+Point        Sign         Degree        House        Status
+                                                                     Mars ⚹ Ascendant sextile       1.2° (1.1530°)
+⚷ Chiron     Sagittarius 27.1°          House 3      direct
+                          (27.0876°)                                 Sun △ Midheaven trine          1.4° (1.3963°)
+
+⚵ Juno       Pisces       29.5°         House 6      direct          Jupiter △         trine        1.7° (1.7334°)
+                          (29.5475°)                                 Ascendant
+
+⚳ Ceres      Capricorn 4.7°             House 4      direct          Moon □ Ascendant square        1.8° (1.7687°)
+                          (4.6825°)                                  Moon ☍            opposition   1.9° (1.9431°)
+⚶ Vesta      Pisces       18.8°         House 6      direct          Midheaven
+                          (18.8043°)                                 Mercury ☌ Uranus conjunction   2.1° (2.1433°)
+⚴ Pallas     Sagittarius 8.8°           House 3      direct          Sun □ Mars        square       2.4° (2.3750°)
+                          (8.8467°)
+                                                                     Sun □ Jupiter     square       3.0° (2.9553°)
+House cusps                                                          Saturn □ Uranus   square       3.3° (3.2910°)
+House                 Sign                  Cusp longitude
+1                     Libra                 0.4° (180.3691°)
+
+
+
+
+OracleAI                                                           ✦3✦                              Personal natal report
+Who you are in your                                   Your strengths
+chart                                                 Key patterns to study: Ascendant □ Midheaven —
+
+Sun in Aquarius, 29.1°, house 5. This placement       квадрат (orb 0.2°); Sun ⚹ Moon — секстиль
+
+defines the style of self-expression and the          (orb 0.5°); Mars ☍ Jupiter — оппозиция (orb
+
+intentions that keep you steady. Moon in              0.6°); Mars ⚹ Ascendant — секстиль (orb 1.2°);
+Sagittarius, 28.6°, house 3 maps your needs,          Sun △ Midheaven — трин (orb 1.4°). Supportive
+emotional rhythm and recovery.                        placements: Jupiter in Gemini, 2.1°, house 9;
+                                                      Saturn in Taurus, 24.6°, house 9; Mars in
+Ascendant in Libra — 0.4°, when birth time and        Sagittarius, 1.5°, house 3.
+place are confirmed. It is the way your presence
+enters a situation.                                   Give each resource a concrete expression this
+                                                      week: name where it already works and choose
+                                                      the next level it needs.
+
+
+
+Life areas: planets by                                Love and closeness
+houses                                                Venus in Aries, 11.2°, house 7. This placement
+                                                      shapes your values, pleasure and instinct for
+Focus areas: House 2 in Libra (22.1°); House 6 in
+                                                      reciprocity. Moon in Sagittarius, 28.6°, house 3
+Pisces (8.7°); House 10 in Cancer (0.5°). Planets
+                                                      maps the conditions that help you feel safe and
+by house: Sun in Aquarius, 29.1°, house 5; Moon
+                                                      present in closeness.
+in Sagittarius, 28.6°, house 3; Mercury in
+Aquarius, 19.2°, house 5, retrograde; Venus in        House 7 in Aries (0.4°). Turn this relationship
+Aries, 11.2°, house 7; Mars in Sagittarius, 1.5°,     pattern into one clear agreement with a partner.
+house 3; Jupiter in Gemini, 2.1°, house 9.
+
+Houses are meaningful only when birth time and
+coordinates are confirmed. In date-only mode, use
+sign placements instead.
+
+
+
+
+OracleAI                                            ✦4✦                                 Personal natal report
+Money and work                                       Destiny Matrix: purpose
+Resource areas: House 2 in Libra (22.1°); House      Личный аркан (характер): 17 — Звезда.
+6 in Pisces (8.7°); House 10 in Cancer (0.5°).       надежда, вдохновение, дары вселенной.;
+Growth and discipline themes: Jupiter in Gemini,     Духовный аркан: 2 — Жрица. интуиция,
+2.1°, house 9; Saturn in Taurus, 24.6°, house 9.     тайные знания, внутренний голос.; Родовая
+                                                     линия: 3 — Императрица. изобилие,
+Translate these resource themes into a budget, a
+                                                     творчество, женская сила.; Линия
+measured experiment or a clear conversation
+                                                     предназначения: 22 — Шут. свобода, доверие
+about value; for high-stakes decisions, pair the
+                                                     миру, новый путь.; Центр матрицы: 8 —
+reading with qualified professional advice.
+                                                     Справедливость. равновесие, честность,
+                                                     причина-следствие.; Линия любви: 12 —
+                                                     Повешенный. смена угла зрения, жертва ради
+                                                     роста.; Линия денег: 7 — Колесница.
+                                                     движение, победа, контроль пути.
+
+
+
+Love line and money line                             Tasks and growth points
+Love line: 12 — Повешенный.                          Within the tradition, the lunar-node axis is Rahu
+                                                     (North Node) in Cancer, 14.8°, house 10 and Ketu
+Money line: 7 — Колесница.
+                                                     (South Node) in Capricorn, 14.8°, house 4.
+This line maps the way connection and resources      Boundaries and practice: Saturn in Taurus, 24.6°,
+move through your choices; give it form through      house 9; patterns to examine: Ascendant □
+one concrete conversation and one measurable         Midheaven — квадрат (orb 0.2°); Sun ⚹ Moon
+step.                                                — секстиль (orb 0.5°); Mars ☍ Jupiter —
+                                                     оппозиция (orb 0.6°); Mars ⚹ Ascendant —
+                                                     секстиль (orb 1.2°); Sun △ Midheaven — трин
+                                                     (orb 1.4°).
+
+                                                     The lunar-node axis names the pattern you know
+                                                     well and the strength you are learning to claim
+                                                     next; give it one concrete expression this week.
+
+
+
+
+OracleAI                                           ✦5✦                                 Personal natal report
+How you make decisions                                        The year ahead
+Name the question and separate facts from                     The year section is a twelve-month map of the
+interpretation: Mercury in Aquarius, 19.2°, house             chart’s central themes and the rhythm that
+5, retrograde. Check your need for safety and                 supports your next move. Natal anchors: Sun in
+recovery: Moon in Sagittarius, 28.6°, house 3.                Aquarius, 29.1°, house 5; Saturn in Taurus, 24.6°,
+                                                              house 9; Jupiter in Gemini, 2.1°, house 9.
+Run a small reversible experiment: Mars in
+Sagittarius, 1.5°, house 3. Review the result using           Choose one theme for a month, record the starting
+observable evidence.                                          point and assess change through facts rather than
+                                                              coincidences.
+
+
+
+Prepared
+
+   Key placements                                               Practical guide
+    Rahu                 Cancer 14.8°                           Your chart highlights the central theme of
+                                                                this stage: choose one direction, set an
+    Ketu                 Capricorn 14.8°
+                                                                intention and take the first step within the
+    Sun                  Aquarius 29.1°                         next day. Return to this page in a month and
+    Ascendant            Libra 0.4°                             see how the growth line unfolded.
+
+    Destiny arcana       22 — The Fool                          freedom, trust and a new path
+
+                                                                Open project: https://github.com/astartv1ai-del/
+                                                                oracleAI
+
+
+
+
+Your chart forms a coherent pattern: return to this reading whenever you need to see your direction with greater
+clarity.
+
+
+
+
+OracleAI                                                ✦6✦                                          Personal natal report
+

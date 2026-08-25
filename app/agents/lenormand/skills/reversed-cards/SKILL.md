@@ -46,4 +46,4 @@ Do not say a reversed card proves depression, betrayal, illness, death, catastro
 
 ## Output shape
 
-Return: **Card evidence**, **position-sensitive reversal hypotheses**, **counter-hypothesis**, **limitation**, and **one observable next step**. Mark symbolic language explicitly and preserve the user's agency. If the question is high-stakes, follow the global safety protocol rather than elaborating the spread.
+Return: **Card evidence**, **position-sensitive reversal hypotheses**, **counter-hypothesis**, **limitation**, and **one observable next step**. Name the tradition-based interpretation clearly and preserve the user's agency. If the question is high-stakes, follow the global safety protocol rather than elaborating the spread.

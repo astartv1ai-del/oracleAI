@@ -140,3 +140,44 @@ SQLite — транзакционный источник данных для п�
 [4]: [app/config.py](../app/config.py) — выбор и fallback-цепочка LLM-провайдеров.
 [5]: [app/data/schema.py](../app/data/schema.py) и [app/data/migrations.py](../app/data/migrations.py) — DDL и изменение существующих схем.
 [6]: [docs/INTERPRETATION_QUALITY_STANDARD.md](INTERPRETATION_QUALITY_STANDARD.md) и [app/core/interpretation.py](../app/core/interpretation.py) — контракт evidence-first, calibration и guardrails.
+
+
+## Audit baseline — 2026-08-25
+
+Read-only checkout confirmed the documented Python monolith structure: FastAPI and aiogram share domain services and SQLite/WAL; the Mini App is unbundled Vanilla JavaScript with ordered modules under `miniapp/js/` and CSS layers under `miniapp/css/`. The natal path is `app/api/routers/chart.py` → `app/core/astro.py` → `app/core/agent.py`/`app/core/interpretation.py` → `miniapp/js/04-nativity.js` or `app/pdfgen/builder.py`.
+
+The calculation source of truth is currently Kerykeion 5.12.9 over Swiss Ephemeris. Production conventions are explicit: Tropical zodiac, Placidus `P`, Apparent Geocentric perspective and True Node mode. The API exposes `natal_schema_version: 2`, precision modes, exact and rounded values, houses/angles only when time, coordinates and timezone are confirmed, plus nodes and additional points when supported by the installed library. The calculation contract is not yet extracted into a separate `CalculationConfig`/canonical DTO, and aspect policy/orbs are not represented as a first-class versioned object.
+
+The fixed natal interpretation already follows an evidence-first pattern with grounding and coverage gates, but the public result remains Markdown text with eight sections rather than strict JSON Schema. Follow-up free chat receives a chart brief through the selected agent runtime; a dedicated chart-context follow-up contract and tests for “no invented placement” remain to be implemented.
+
+The frontend wheel is manually generated SVG with animated groups, planet/node glyphs and aspect lines. It is responsive through a `viewBox` and size scaling, but the current implementation uses fixed radial geometry, shows only a subset of aspects, does not perform deterministic collision avoidance for close planets, has limited semantic labeling, and does not yet expose a complete legend or distinct style policy for all aspect types. The PDF builder is a separate HTML template rendered by WeasyPrint; it already has RU/EN copy tables and evidence-based sections, but the requested premium page architecture, print QA and renderer decision are incomplete.
+
+Agent routing is explicit selection plus skill narrowing, not a central free-text intent classifier. The current registry contains four agents: Лилит (`oracle`), Урания (`astro`), Мадам Ленорман (`tarot`) and Мира (`chiromant`). The complete routing matrix and UI/tool presentation audit remain open.
+
+### Baseline commands
+
+`pytest -q` passed after installing the pinned development dependencies. `python3 -m scripts.selfcheck` completed successfully; the live LLM probe was skipped because `SELF_CHECK_LIVE=1` was not enabled, while the configured proxy returned empty responses during the self-check's optional provider calls and the product correctly used offline fallbacks. The sandbox did not contain Telegram bot credentials or a production `WEBAPP_URL`, so external Telegram flows were not exercised.
+
+
+## Implementation iteration — canonical chart contract and interpretation
+
+`app/core/chart_contract.py` now defines a versioned calculation metadata contract with explicit Tropical/Placidus/Apparent Geocentric/True Node conventions, active points, major-aspect angles and per-type orbs. `app/core/astro.py` attaches this contract to both full and lite results, preserves exact values beside rounded UI values, suppresses technical noon as confirmed birth time, and filters returned major aspects against the declared orb policy. The API exposes a backward-compatible `calculation` object alongside the existing `natal_schema_version: 2` fields.
+
+`miniapp/js/04-nativity.js` now renders a canonical-data-driven SVG with sign glyphs/names, true house cusp arcs, semantic aspect styles, node labels, zero-degree-safe geometry, deterministic radial lanes for close points, `title`/ARIA labels, responsive `viewBox`, and existing animation/reduced-motion hooks. The CSS module adds the semantic layer tokens and motion fallback.
+
+`app/core/chart_interpretation.py` defines a strict structured contract for personality synthesis, Rahu/Ketu, strengths, weaknesses, purpose, relationships, career/money, aspects, periods and synthesis. The canonical chart path requests JSON-only output, validates shape/lengths and evidence constraints, caches the structured payload, and renders backward-compatible rich text. Legacy charts without the new calculation metadata remain on the previous text path until migrated.
+
+
+## Implementation iteration — deterministic routing and specialist handoff
+
+`app/core/agents/routing.py` provides a bounded RU/EN/code-switched classifier based on explainable domain terms. It distinguishes hard specialist conflicts from soft Oracle context, keeps ambiguous/off-topic questions on the default agent, and exposes confidence/candidates/reason. `app/services/chat.py` applies the route only when the requested agent is the default; explicit agent paths remain authoritative. API responses now expose `requested_agent`, final `agent`, and applied routing metadata. The Mini App consumes that metadata to show a localized handoff badge and switch the active header to the specialist thread.
+
+The routing matrix contains 24 cases and passes 24/24. Existing specialist benchmarks remain separate evidence for skill selection, Vedic routing, Mira/Lenormand routing and persona quality. This design avoids an additional LLM intent call and therefore does not add latency or a new failure mode to the paid chat path.
+
+## Current release iteration — ToV, PDF and visual layer — 2026-08-25
+
+Active user-facing and prompt surfaces use a confident evidence-first voice: a deterministic placement, drawn card, observed palm feature or calculated relationship signal is connected to a clear interpretation and a practical next step. Generic rationalizing language is not part of ordinary output. The shared runtime still applies `app/core/safety.py`, high-stakes boundaries, privacy/age/crisis protections and grounding rules; data availability is communicated as a calculation fact, such as date-only mode when birth time is absent.
+
+The PDF layer remains WeasyPrint HTML→PDF. `layout.py` defines body `12.4pt` / `1.56` line-height, H2 `24pt`, H3 `17pt`, and compact reference/chapter columns. `builder.py` composes the cover, wheel/matrix overview, full calculation reference, five paired thematic blocks and closing. Three deterministic profiles in RU/EN produced six valid pages per document; the six-page result is accepted because readability and complete reference content take priority over shrinking the main text.
+
+The Mini App natal wheel remains the project’s own SVG renderer in `miniapp/js/04-nativity.js`. It consumes the canonical chart contract directly and owns collision lanes, semantic aspect styles, accessible labels, responsive viewBox and reduced-motion behavior. AstroChart 3.0.2 and Kerykeion 5.12.9 renderers were executed as external references; neither is loaded by the product runtime. See [ADR-006/007](DECISIONS.md) and [ToV/PDF/renderer report](audit/TOV_PDF_RENDERER_REPORT_2026-08-25.md).

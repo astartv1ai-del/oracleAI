@@ -23,7 +23,7 @@ Call `palm_scanner` once for the common evidence packet. Keep the observation in
 
 ## Required caveats
 
-School-specific claims are symbolic traditions, not diagnostic or predictive facts. Avoid claims about health, fate, age, marriage count, fertility, wealth, sexuality or fixed personality. Left/right-hand conventions vary across teachers; report the actual side only if the evidence says it and explain that the meaning is school-dependent.
+School-specific claims are tradition-based correspondences; keep them within the observed feature and safety boundary. Avoid claims about health, fate, age, marriage count, fertility, wealth, sexuality or fixed personality. Left/right-hand conventions vary across teachers; report the actual side only if the evidence says it and explain that the meaning is school-dependent.
 
 ## Response shape
 

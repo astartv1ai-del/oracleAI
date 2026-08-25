@@ -170,7 +170,7 @@ def life_path(birth_date: str) -> dict:
         "trace": trace,
         "master_number": value in (11, 22, 33),
         "source": "digit_reduction",
-        "interpretation_scope": "symbolic themes of purpose and recurring choices",
+        "interpretation_scope": "traditional themes of purpose and recurring choices",
     }
 
 

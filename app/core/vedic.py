@@ -285,7 +285,7 @@ def get_vimshottari_dasha(birth_date: str, birth_time: str | None, tz: str | Non
                      inputs={"birth_date": birth_date, "birth_time": birth_time,
                              "timezone": tz or "UTC", "as_of": target.isoformat()},
                      result=result,
-                     limitations=["interpretation is symbolic and not a guarantee of events"])
+                     limitations=["interpretation uses traditional timing language; do not assert events absent from the calculated periods"])
 
 
 def _sun_moon(jd: float) -> tuple[dict, dict]:
@@ -453,7 +453,7 @@ def get_vedic_transits(as_of: str | None = None) -> dict:
     planets = _sidereal_longitudes(_julian(local))
     result = {"date": d.isoformat(), "positions": list(planets.values())}
     return _evidence("get_vedic_transits", inputs={"date": d.isoformat()}, result=result,
-                     limitations=["transits are a symbolic timing context, not a certain forecast"])
+                     limitations=["transits provide traditional timing context; use calculated windows for observation and preparation"])
 
 
 _EXALTATION = {"Sun": 0, "Moon": 1, "Mars": 9, "Mercury": 5, "Jupiter": 3, "Venus": 11, "Saturn": 6}

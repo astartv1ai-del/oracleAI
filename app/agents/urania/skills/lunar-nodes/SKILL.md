@@ -15,7 +15,7 @@ tags:
   - date_only
 metadata:
   oracleai_agent: urania
-  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+  oracleai_domain: traditional Western astrology grounded in calculated chart evidence
   oracleai_loading: on_demand
   oracleai_output_contract: agent_response.v1
 ---
@@ -24,7 +24,7 @@ metadata:
 
 ## Purpose
 
-Use this skill when the user asks about the lunar nodes, Rahu, Ketu, karmic symbolism, growth direction, inherited patterns or the node axis in a natal chart. Treat the calculation as a fact under declared conventions and the meaning as a traditional symbolic correspondence. Never turn the axis into proof of a past life, a fixed destiny or a moral ranking.
+Use this skill when the user asks about the lunar nodes, Rahu, Ketu, karmic symbolism, growth direction, inherited patterns or the node axis in a natal chart. Treat the calculation as a fact under declared conventions and the meaning as a traditional traditional correspondence. Never turn the axis into proof of a past life, a fixed destiny or a moral ranking.
 
 ## Evidence contract
 
@@ -50,4 +50,4 @@ Avoid “you must”, “your mission is”, “past-life debt”, “bad karma�
 
 ## Output shape
 
-Return four compact blocks: **Calculated axis**, **Traditional symbolic reading**, **Alternative explanation**, **One observable question/step**. Every concrete claim must point to a returned node fact; every interpretation must be marked as traditional or hypothetical. If evidence is missing, ask one precise clarification instead of filling the gap.
+Return four compact blocks: **Calculated axis**, **Traditional traditional reading**, **Alternative explanation**, **One observable question/step**. Every concrete claim must point to a returned node fact; every interpretation must be marked as traditional or hypothetical. If evidence is missing, ask one precise clarification instead of filling the gap.

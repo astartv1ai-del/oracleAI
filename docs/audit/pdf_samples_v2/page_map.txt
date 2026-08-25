@@ -1,0 +1,36 @@
+=== /home/ubuntu/oracleAI-sample-natal-report-ru.pdf
+p1: О РА К УЛ П Е Р С О Н А Л Ь Н Ы Й Н АТА Л Ь Н Ы Й О Т Ч Ё Т  Полный отчёт натальной карты и Матрицы Судьбы Л
+
+p2: Карта в цифрах Дата рождения  21.06.1990  Время  14:30  ♓ ♈ ♒ ♉ ♂  рождения Место  R  Казань  ♑ ♐  рождения С
+
+p3: Эфемеридный  Swiss Ephemeris via  Планеты  движок  Kerykeion  Объект  Знак  Зодиак  Tropical  ☉ Солнце  Близнецы 29.8° До
+
+p4: Объект  Знак  Градус  Дом  Статус  Водолей ☊ Раху (Северны й узел)  7.8° Дом 4 (7.8129°)  ретроград ный  ☋ Ке
+
+p5: Матрица Судьбы #  Позиция  Аркан  Смысл  21  Личный аркан (характер)  Мир  целостность , завершение бол�
+
+p6: Кто ты по своей карте  Твои сильные стороны  Солнце в Близнецы, 29.8°, 9 дом. Это ядро  Главные связки, к
+
+p7: Деньги и дело Ресурсные зоны карты: 2-й дом в Скорпион (12.3°); 6-й дом в Рыбы (26.9°); 10-й дом в Рак (24.1°). Тем
+
+p8: Линия любви и линия денег  Задачи и точки роста Кармическая ось в рамках традиции: Раху (Северный у�
+
+p9: Составлено Ключевые позиции  Практический ориентир  Rahu / Раху  Водолей 7.8°  Карта показывает главну
+
+=== /home/ubuntu/oracleAI-sample-natal-report-en.pdf
+p1: ORACLEAI P E R S O N A L N ATA L R E P O RT  Full natal chart and Destiny Matrix report A personal AI astrologer that knows you  Anna 21.06.1990 · Казань  Prepared 25.08.202
+
+p2: Your chart in numbers Birth date  21.06.1990  Birth time  14:30  Birth place Sun Ascendant  ♓ ♈ ♒ ♉ ♂  R  Казань  ♊  ♑ ♐  Gemini · air  Libra 17.3°  Moon  G
+
+p3: Ephemeris  Swiss Ephemeris via  Planets  engine  Kerykeion  Point  Sign  Degree  Zodiac  Tropical  ☉ Sun  Gemini  direct  House system  Placidus (P)  29.8° House 9 (29.7993° ) 
+
+p4: Point  Sign  Degree  House  Status  ☊ Rahu (North Node)  Aquarius  7.8° House 4 (7.8129°)  retrograde  ☋ Ketu (South Node)  Leo  7.8° House 10 (7.8129°)  retrograde  ⚸ Li
+
+p5: Destiny Matrix #  Position  Arcana  Meaning  21  Personal arcana (character)  The World  wholeness and completion of a larger cycle  6  Spiritual arcana  The Lovers  heart-led choi
+
+p6: Who you are in your chart  Your strengths Key patterns to study: Jupiter □ Ascendant — квадрат (orb 0.1°); Saturn ☍ Midheaven —  Sun in Gemini, 29.8°, house 9. Thi
+
+p7: Money and work  Destiny Matrix: purpose  Resource areas: House 2 in Scorpio (12.3°);  Личный аркан (характер): 21 — Мир.  House 6 in Pisces (26.9°); House
+
+p8: How you make decisions  The year ahead  Name the question and separate facts from  The year section is a twelve-month map of the  interpretation: Mercury in Gemini, 16.7°, house  
+

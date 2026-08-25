@@ -79,6 +79,16 @@
     return `<div class="message-proof" aria-label="${esc(mode)}"><span class="message-proof__mode">✦ ${esc(mode)}</span>${used.length ? `<span class="message-proof__tools">${used.map(item => esc(item)).join(' · ')}</span>` : ''}</div>`;
   };
 
+  app.routingHtml = function(routing) {
+    if (!routing || !routing.auto_route || !routing.agent) return '';
+    const en = oracleLang() === 'en';
+    const pool = this.agents && this.agents.length ? this.agents : AGENT_FALLBACK;
+    const target = pool.find(item => item.code === routing.agent);
+    const name = target ? (target.name || target.code) : routing.agent;
+    const label = en ? `Handed to ${name}` : `Передала вопрос ${name}`;
+    return `<div class="message-route" role="status" aria-label="${esc(label)}">↗ ${esc(label)}</div>`;
+  };
+
   // Ошибки остаются отдельными бережными состояниями, без технического текста.
   app.chatRecoveryHtml = function(kind) {
     const history = kind === 'history';
@@ -236,14 +246,14 @@
     // rich() его экранировал бы, поэтому рендерим как есть в .msg.assistant
     const body = messages.map(m =>
       m.widget ? `<div class="msg assistant">${m.widget}</div>`
-        : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${richMd(m.text)}${m.proof ? this.proofHtml(m.proof) : ''}</div>`).join('');
+        : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${richMd(m.text)}${m.routing ? this.routingHtml(m.routing) : ''}${m.proof ? this.proofHtml(m.proof) : ''}</div>`).join('');
 
     // Первый экран чата — короткая, персональная точка входа вместо универсального hero-текста.
     const introGuides = {
       oracle: { kicker: 'ТВОЁ ПРОСТРАНСТВО ДЛЯ ЯСНОСТИ', title: 'Начни с того, что сейчас важнее всего', text: 'Можно написать одну мысль, чувство или вопрос — вместе найдём бережный ориентир.' },
       astro: { kicker: 'АСТРОЛОГИЧЕСКИЙ ОРИЕНТИР', title: 'Посмотри на свой ритм через карту', text: 'Собери натальную карту или задай вопрос о ближайшем периоде — только на основе доступных данных.' },
-      tarot: { kicker: 'РАСКЛАД БЕЗ КАТЕГОРИЧНЫХ ОТВЕТОВ', title: 'Сформулируй вопрос к картам', text: 'Выберем схему и спокойно посмотрим на ситуацию с разных сторон.' },
-      chiromant: { kicker: 'БЕРЕЖНОЕ ЧТЕНИЕ ЛАДОНИ', title: 'Сначала — что действительно видно', text: 'Пришли фото ладони: Мира отделит наблюдение от символической гипотезы и покажет границы точности.' }
+      tarot: { kicker: 'РАСКЛАД ПО СЮЖЕТУ ВОПРОСА', title: 'Сформулируй вопрос к картам', text: 'Выберем схему и спокойно посмотрим на ситуацию с разных сторон.' },
+      chiromant: { kicker: 'БЕРЕЖНОЕ ЧТЕНИЕ ЛАДОНИ', title: 'Сначала — что действительно видно', text: 'Пришли фото ладони: Мира разберёт видимые зоны и свяжет их с твоим вопросом.' }
     };
     const introGuide = introGuides[a.code] || introGuides.oracle;
     const introHtml = messages.length <= 1 ? `
@@ -589,7 +599,12 @@
       const r = await this.chatPost(val);
       haptic('success');
       vb([10, 40, 14]);
-      this.chat.messages.push({ role: 'assistant', text: r.answer, proof: r.proof || null });
+      if (r.routing && r.routing.auto_route && r.agent && r.agent !== a.code) {
+        this.chat.key = r.agent;
+        this.chat.spec = this.normalizeAgent(r.agent, r.agent);
+        await this.refreshSessions();
+      }
+      this.chat.messages.push({ role: 'assistant', text: r.answer, routing: r.routing || null, proof: r.proof || null });
     } catch (e) {
       this.chat.messages.push({ role: 'assistant', widget: this.chatRecoveryHtml('reply') });
     }

@@ -1,0 +1,92 @@
+{"profile": "known_time", "lang": "ru", "time_known": true, "pages": 6, "pdf_bytes": 138860, "html_bytes": 35978, "text_chars": 18892, "marker_hits": [], "pdf": "docs/audit/pdf_samples_v2/profiles/known_time_ru.pdf", "text": "docs/audit/pdf_samples_v2/profiles/known_time_ru.txt"}
+{"profile": "known_time", "lang": "en", "time_known": true, "pages": 6, "pdf_bytes": 136536, "html_bytes": 31916, "text_chars": 19069, "marker_hits": [], "pdf": "docs/audit/pdf_samples_v2/profiles/known_time_en.pdf", "text": "docs/audit/pdf_samples_v2/profiles/known_time_en.txt"}
+{"profile": "date_only", "lang": "ru", "time_known": false, "pages": 6, "pdf_bytes": 132187, "html_bytes": 30974, "text_chars": 15799, "marker_hits": [], "pdf": "docs/audit/pdf_samples_v2/profiles/date_only_ru.pdf", "text": "docs/audit/pdf_samples_v2/profiles/date_only_ru.txt"}
+{"profile": "date_only", "lang": "en", "time_known": false, "pages": 6, "pdf_bytes": 129971, "html_bytes": 27145, "text_chars": 16294, "marker_hits": [], "pdf": "docs/audit/pdf_samples_v2/profiles/date_only_en.pdf", "text": "docs/audit/pdf_samples_v2/profiles/date_only_en.txt"}
+{"profile": "evening_time", "lang": "ru", "time_known": true, "pages": 6, "pdf_bytes": 138507, "html_bytes": 35534, "text_chars": 18553, "marker_hits": [], "pdf": "docs/audit/pdf_samples_v2/profiles/evening_time_ru.pdf", "text": "docs/audit/pdf_samples_v2/profiles/evening_time_ru.txt"}
+{"profile": "evening_time", "lang": "en", "time_known": true, "pages": 6, "pdf_bytes": 136286, "html_bytes": 31567, "text_chars": 17942, "marker_hits": [], "pdf": "docs/audit/pdf_samples_v2/profiles/evening_time_en.pdf", "text": "docs/audit/pdf_samples_v2/profiles/evening_time_en.txt"}
+{
+  "profiles": 3,
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "documents": 6,
+  "all_pdf": true,
+  "all_marker_free": true,
+  "min_pages": 6,
+  "max_pages": 6,
+  "results": [
+    {
+      "profile": "known_time",
+      "lang": "ru",
+      "time_known": true,
+      "pages": 6,
+      "pdf_bytes": 138860,
+      "html_bytes": 35978,
+      "text_chars": 18892,
+      "marker_hits": [],
+      "pdf": "docs/audit/pdf_samples_v2/profiles/known_time_ru.pdf",
+      "text": "docs/audit/pdf_samples_v2/profiles/known_time_ru.txt"
+    },
+    {
+      "profile": "known_time",
+      "lang": "en",
+      "time_known": true,
+      "pages": 6,
+      "pdf_bytes": 136536,
+      "html_bytes": 31916,
+      "text_chars": 19069,
+      "marker_hits": [],
+      "pdf": "docs/audit/pdf_samples_v2/profiles/known_time_en.pdf",
+      "text": "docs/audit/pdf_samples_v2/profiles/known_time_en.txt"
+    },
+    {
+      "profile": "date_only",
+      "lang": "ru",
+      "time_known": false,
+      "pages": 6,
+      "pdf_bytes": 132187,
+      "html_bytes": 30974,
+      "text_chars": 15799,
+      "marker_hits": [],
+      "pdf": "docs/audit/pdf_samples_v2/profiles/date_only_ru.pdf",
+      "text": "docs/audit/pdf_samples_v2/profiles/date_only_ru.txt"
+    },
+    {
+      "profile": "date_only",
+      "lang": "en",
+      "time_known": false,
+      "pages": 6,
+      "pdf_bytes": 129971,
+      "html_bytes": 27145,
+      "text_chars": 16294,
+      "marker_hits": [],
+      "pdf": "docs/audit/pdf_samples_v2/profiles/date_only_en.pdf",
+      "text": "docs/audit/pdf_samples_v2/profiles/date_only_en.txt"
+    },
+    {
+      "profile": "evening_time",
+      "lang": "ru",
+      "time_known": true,
+      "pages": 6,
+      "pdf_bytes": 138507,
+      "html_bytes": 35534,
+      "text_chars": 18553,
+      "marker_hits": [],
+      "pdf": "docs/audit/pdf_samples_v2/profiles/evening_time_ru.pdf",
+      "text": "docs/audit/pdf_samples_v2/profiles/evening_time_ru.txt"
+    },
+    {
+      "profile": "evening_time",
+      "lang": "en",
+      "time_known": true,
+      "pages": 6,
+      "pdf_bytes": 136286,
+      "html_bytes": 31567,
+      "text_chars": 17942,
+      "marker_hits": [],
+      "pdf": "docs/audit/pdf_samples_v2/profiles/evening_time_en.pdf",
+      "text": "docs/audit/pdf_samples_v2/profiles/evening_time_en.txt"
+    }
+  ]
+}

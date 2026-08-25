@@ -12,7 +12,7 @@
     { code: 'chiron_sign', icon: '⚷', title: 'Хирон', sub: 'уязвимость и ресурс', prompt: 'Как бережно исследовать тему моего Хирона?' },
     { code: 'juno_sign', icon: '⚭', title: 'Джуно', sub: 'доверие и союз', prompt: 'Что мой знак Джуно говорит о доверии и договорённостях?' },
     { code: 'asteroid_sign', icon: '✦', title: 'Астероиды', sub: 'забота и фокус', prompt: 'Что показывают мои Ceres, Vesta и Pallas?' },
-    { code: 'north_node_sign', icon: '☊', title: 'Северный узел', sub: 'направление роста', prompt: 'Как исследовать направление моего Северного узла без фатализма?' },
+    { code: 'north_node_sign', icon: '☊', title: 'Северный узел', sub: 'направление роста', prompt: 'Как раскрывается направление моего Северного узла и какой шаг ведёт меня вперёд?' },
     { code: 'south_node_sign', icon: '☋', title: 'Южный узел', sub: 'знакомые стратегии', prompt: 'Какие привычные стратегии показывает мой Южный узел?' },
     { code: 'uranus_sign', icon: '♅', title: 'Уран', sub: 'свобода и перемены', prompt: 'Как мой Уран связан со свободой и нестандартностью?' },
     { code: 'neptune_sign', icon: '♆', title: 'Нептун', sub: 'воображение и идеалы', prompt: 'Где мой Нептун просит яснее видеть границы?' },
@@ -35,7 +35,7 @@
         </div>`).join('')}</div>`;
     }
     if (result.value != null) {
-      return `<div class="placement-number"><span>${esc(result.value)}</span><div><b>Твоё число жизненного пути</b><small>${result.master_number ? 'Мастер-число · не сводим его дальше' : 'Символическая редукция даты рождения'}</small></div></div>`;
+      return `<div class="placement-number"><span>${esc(result.value)}</span><div><b>Твоё число жизненного пути</b><small>${result.master_number ? 'Мастер-число · не сводим его дальше' : 'Редукция даты рождения'}</small></div></div>`;
     }
     if (result.animal) {
       return `<div class="placement-zodiac"><span>${esc(result.animal)}</span><div><b>${esc(result.element)} · ${esc(result.lunar_year)}</b><small>${result.boundary_adjusted ? 'Дата попала до китайского Нового года' : 'Год определён по лунно-солнечному календарю'}</small></div></div>`;
@@ -66,7 +66,7 @@
       <div class="placement-hero">
         <div class="placement-hero__eyebrow">ОРИЕНТИРЫ ТВОЕЙ КАРТЫ</div>
         <div class="placement-hero__title"><span>✦</span><div><h2>Не одна карта —<br><em>много способов</em> понять себя</h2><p>Выбери одну точку. Сначала — точный факт, затем — спокойный разговор с Уранией.</p></div></div>
-        <div class="placement-trust"><span>◈</span> расчёт отдельно · интерпретация отдельно <span>·</span> без фатальных обещаний</div>
+        <div class="placement-trust"><span>◈</span> расчёт отдельно · интерпретация отдельно <span>·</span> ясный вектор роста</div>
       </div>
       <div class="placement-result-card">
         <div class="placement-result-card__top"><div><span class="placement-result-card__kicker">СЕЙЧАС СМОТРИМ</span><h3>${esc(item.icon)} ${esc(item.title)}</h3><p>${esc(item.sub)}</p></div><span class="placement-result-card__badge">${state.result ? (state.result.precision === 'exact' ? 'точно' : 'ориентир') : 'готово'}</span></div>

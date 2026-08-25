@@ -1,0 +1,256 @@
+                                     ORACLEAI
+
+                             P E R S O N A L N ATA L R E P O RT
+
+
+
+
+           Full natal chart and Destiny Matrix
+                          report
+                     A personal AI astrologer that knows you
+
+
+
+
+                                         Maria
+                                   03.11.1987 · Москва
+
+                                 Prepared 25.08.2026
+
+
+
+                   Open project: https://github.com/astartv1ai-del/oracleAI
+
+
+
+
+OracleAI                                   ✦1✦                                Personal natal report
+Your chart in numbers
+
+    Birth date             03.11.1987
+
+    Birth time             unknown (sign-based
+                                                                                         ♓
+                                                                                        ♒ ♉♈                   ☊☽ ♃ R
+                                                                                                                      R
+
+
+
+
+                           chart)                                                  ♑♐                                             ♊♋
+                                                                                           ♆
+    Birth place            Москва                                                          ♄
+                                                                                               ♅
+
+                                                                                             ♀
+    Sun                    ♏     Scorpio · water                                                    ♇
+                                                                                                   ☉ R
+                                                                                                     ☿♂           R
+                                                                                                             ☋
+    Moon                   Aries 11.2°                                                ♏                                         ♌
+    Rahu
+
+    Ketu
+                           Aries 2.0°
+
+                           Libra 2.0°
+                                                                                                      ♎♍
+                                                                                 Aspect lines ☌ conjunction △ trine ⚹ sextile
+
+    Destiny arcana         21 — The World
+                                                                                                              3
+                                                                                                  Personal arcana (character)
+                                                                                        10                                      11
+                                                                                     Money line                            Spiritual arcana
+                                                                                                              6
+
+                                                                                         6                                       7
+                                                                                      Love line                             Ancestral line
+                                                                                                             21
+                                                                                                         Purpose line
+
+
+
+
+Natal chart: full calculation
+Rounded values are easier to read; exact values are kept in parentheses for verification.
+
+  Ephemeris engine        Swiss Ephemeris via Kerykeion
+                                                                       Point        Sign               Degree             House               Status
+  Zodiac                  Tropical                                     ☿ Mercury Libra                 28.2°              —                   retrograde
+  House system            Placidus (P)                                                                 (28.2325°)
+  Perspective             Apparent Geocentric
+  Precision               date only                                    ♀ Venus      Scorpio            29.3°              —                   direct
+  Node mode               True Node                                                                    (29.2706°)
+  Calculation contract    v1                                           ♂ Mars       Libra              16.5°              —                   direct
+  Aspect policy           conjunction: 8.0°, opposition: 8.0°,
+                                                                                                       (16.4897°)
+                          trine: 8.0°, square: 7.0°, sextile: 6.0°
+                                                                       ♃ Jupiter    Aries              22.6°              —                   retrograde
+Planets                                                                                                (22.6112°)
+
+Point         Sign       Degree         House            Status        ♄ Saturn     Sagittarius 18.8°                     —                   direct
+                                                                                                       (18.7889°)
+☉ Sun         Scorpio    10.4°          —                direct
+                         (10.4026°)                                    ♅ Uranus Sagittarius 24.3°                         —                   direct
+                                                                                                       (24.3151°)
+☽ Moon        Aries      11.2°          —                direct
+                         (11.1694°)                                    ♆ Neptune Capricorn 5.8°                           —                   direct
+                                                                                                       (5.8256°)
+
+
+
+OracleAI                                                             ✦2✦                                                        Personal natal report
+Point        Sign         Degree        House        Status          Point         Sign       Degree       House        Status
+♇ Pluto      Scorpio      9.9°          —            direct          ⚵ Juno        Aquarius   24.5°        —            direct
+                          (9.9236°)                                                           (24.4731°)
+
+Lunar nodes: Rahu and Ketu                                           ⚳ Ceres       Capricorn 8.1°          —            direct
+                                                                                              (8.1356°)
+Rahu is the North Node and Ketu is the South Node. Together they
+show the axis of inherited patterns and growth.                      ⚶ Vesta       Leo        5.5°         —            direct
+                                                                                              (5.4595°)
+Point        Sign         Degree        House        Status
+                                                                     ⚴ Pallas      Sagittarius 14.7°       —            direct
+☊ Rahu       Aries        2.0°          —            retrograde                               (14.6890°)
+(North                    (1.9622°)
+Node)                                                                Key aspects
+☋ Ketu       Libra        2.0°          —            retrograde      Pattern              Aspect               Orb
+(South                    (1.9622°)                                  Sun ☌ Pluto          conjunction          0.5° (0.4791°)
+Node)
+                                                                     Jupiter △ Uranus     trine                1.7° (1.7039°)
+⚸ Lilith     Leo          22.5°         —            direct
+(Black                    (22.5454°)
+                                                                     Mars ⚹ Saturn        sextile              2.3° (2.2992°)
+Moon)                                                                Jupiter △ Saturn     trine                3.8° (3.8222°)
+
+Additional points                                                    Mercury ⚹ Uranus sextile                  3.9° (3.9174°)
+
+Point        Sign         Degree        House        Status          Neptune ⚹ Pluto      sextile              4.1° (4.0979°)
+
+⚷ Chiron     Gemini       28.4°         —            retrograde
+                          (28.3663°)
+
+
+
+
+Who you are in your                                                  Your strengths
+chart                                                                Key patterns to study: Sun ☌ Pluto —
+                                                                     соединение (orb 0.5°); Jupiter △ Uranus — трин
+Sun in Scorpio, 10.4°. This placement defines the
+style of self-expression and the intentions that                     (orb 1.7°); Mars ⚹ Saturn — секстиль (orb 2.3°);
+
+keep you steady. Moon in Aries, 11.2° maps your                      Jupiter △ Saturn — трин (orb 3.8°); Mercury ⚹
+needs, emotional rhythm and recovery.                                Uranus — секстиль (orb 3.9°). Supportive
+                                                                     placements: Jupiter in Aries, 22.6°, retrograde;
+Ascendant in — — —°, when birth time and                             Saturn in Sagittarius, 18.8°; Mars in Libra, 16.5°.
+place are confirmed. It is the way your presence
+enters a situation.                                                  Give each resource a concrete expression this
+                                                                     week: name where it already works and choose
+                                                                     the next level it needs.
+
+
+
+
+OracleAI                                                           ✦3✦                                         Personal natal report
+Life areas: planets by                                  Love and closeness
+houses                                                  Venus in Scorpio, 29.3°. This placement shapes
+                                                        your values, pleasure and instinct for reciprocity.
+Focus areas: House 2 is unavailable without
+                                                        Moon in Aries, 11.2° maps the conditions that
+confirmed birth time and coordinates; House 6 is
+                                                        help you feel safe and present in closeness.
+unavailable without confirmed birth time and
+coordinates; House 10 is unavailable without            House 7 is unavailable without confirmed birth
+confirmed birth time and coordinates. Planets by        time and coordinates. Turn this relationship
+house: Sun in Scorpio, 10.4°; Moon in Aries,            pattern into one clear agreement with a partner.
+11.2°; Mercury in Libra, 28.2°, retrograde; Venus
+in Scorpio, 29.3°; Mars in Libra, 16.5°; Jupiter in
+Aries, 22.6°, retrograde.
+
+Houses are meaningful only when birth time and
+coordinates are confirmed. In date-only mode, use
+sign placements instead.
+
+
+
+Money and work                                          Destiny Matrix: purpose
+Resource areas: House 2 is unavailable without          Личный аркан (характер): 3 — Императрица.
+confirmed birth time and coordinates; House 6 is        изобилие, творчество, женская сила.;
+unavailable without confirmed birth time and            Духовный аркан: 11 — Сила. мягкая сила,
+coordinates; House 10 is unavailable without            укрощение страстей.; Родовая линия: 7 —
+confirmed birth time and coordinates. Growth and        Колесница. движение, победа, контроль пути.;
+discipline themes: Jupiter in Aries, 22.6°,             Линия предназначения: 21 — Мир.
+retrograde; Saturn in Sagittarius, 18.8°.               целостность, завершение большого цикла.;
+                                                        Центр матрицы: 6 — Влюблённые. выбор
+Translate these resource themes into a budget, a
+                                                        сердца, союзы, гармония.; Линия любви: 6 —
+measured experiment or a clear conversation
+                                                        Влюблённые. выбор сердца, союзы, гармония.;
+about value; for high-stakes decisions, pair the
+                                                        Линия денег: 10 — Колесо Фортуны.
+reading with qualified professional advice.
+                                                        судьбоносные повороты, удача.
+
+
+
+
+OracleAI                                              ✦4✦                                  Personal natal report
+Love line and money line                              Tasks and growth points
+Love line: 6 — Влюблённые.                            Within the tradition, the lunar-node axis is Rahu
+                                                      (North Node) in Aries, 2.0°, retrograde and Ketu
+Money line: 10 — Колесо Фортуны.
+                                                      (South Node) in Libra, 2.0°, retrograde.
+This line maps the way connection and resources       Boundaries and practice: Saturn in Sagittarius,
+move through your choices; give it form through       18.8°; patterns to examine: Sun ☌ Pluto —
+one concrete conversation and one measurable          соединение (orb 0.5°); Jupiter △ Uranus — трин
+step.                                                 (orb 1.7°); Mars ⚹ Saturn — секстиль (orb 2.3°);
+                                                      Jupiter △ Saturn — трин (orb 3.8°); Mercury ⚹
+                                                      Uranus — секстиль (orb 3.9°).
+
+                                                      The lunar-node axis names the pattern you know
+                                                      well and the strength you are learning to claim
+                                                      next; give it one concrete expression this week.
+
+
+
+How you make decisions                                The year ahead
+Name the question and separate facts from             The year section is a twelve-month map of the
+interpretation: Mercury in Libra, 28.2°,              chart’s central themes and the rhythm that
+retrograde. Check your need for safety and            supports your next move. Natal anchors: Sun in
+recovery: Moon in Aries, 11.2°.                       Scorpio, 10.4°; Saturn in Sagittarius, 18.8°;
+                                                      Jupiter in Aries, 22.6°, retrograde.
+Run a small reversible experiment: Mars in Libra,
+16.5°. Review the result using observable             Choose one theme for a month, record the starting
+evidence.                                             point and assess change through facts rather than
+                                                      coincidences.
+
+
+
+
+OracleAI                                            ✦5✦                                  Personal natal report
+Prepared
+
+   Key placements                                               Practical guide
+    Rahu                 Aries 2.0°                             Your chart highlights the central theme of
+                                                                this stage: choose one direction, set an
+    Ketu                 Libra 2.0°
+                                                                intention and take the first step within the
+    Sun                  Scorpio 10.4°                          next day. Return to this page in a month and
+    Ascendant            unknown (sign-based                    see how the growth line unfolded.
+                         chart)                                 wholeness and completion of a larger cycle
+
+    Destiny arcana       21 — The World                         Open project: https://github.com/astartv1ai-del/
+                                                                oracleAI
+
+
+
+
+Your chart forms a coherent pattern: return to this reading whenever you need to see your direction with greater
+clarity.
+
+
+
+
+OracleAI                                                ✦6✦                                          Personal natal report
+

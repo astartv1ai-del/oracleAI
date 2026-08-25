@@ -206,3 +206,82 @@
 - Каждое пользовательское, API-, security- или deployment-изменение добавляется сюда в том же pull request.
 - Дата релиза заполняется при выпуске; не используйте «сегодня» задним числом.
 - Для breaking changes добавляйте раздел migration / rollback и ссылку на соответствующий документ в `docs/`.
+
+
+## 2026-08-25 — OracleAI natal/agent modernization audit baseline
+
+### Added
+
+- Created `docs/TASKS.md` as the synchronized phase backlog and `docs/AGENTS.md` as the current agent/tool/routing map.
+- Created `docs/DECISIONS.md` with ADRs for the single Kerykeion/Swiss Ephemeris calculation source, evidence-first interpretation, PDF renderer decision gate, agent-routing baseline and audit environment.
+- Recorded the audited runtime flow and known gaps in `docs/ARCHITECTURE.md`.
+
+### Changed
+
+- Confirmed the current production calculation path as Kerykeion 5.12.9 over Swiss Ephemeris with explicit Tropical/Placidus/Apparent Geocentric/True Node conventions.
+- Confirmed that the current agent system uses explicit selection plus skill narrowing rather than a central free-text intent classifier.
+- Confirmed that the current PDF path is WeasyPrint-based HTML rendering and that the Mini App wheel is manually generated SVG.
+
+### Verification
+
+- `pytest -q` passed in the audit environment.
+- `python3 -m scripts.selfcheck` completed successfully with live LLM probing skipped and offline fallback behavior observed.
+- No production Telegram credentials or `WEBAPP_URL` were present in the sandbox; external Telegram flows were not exercised.
+
+
+## 2026-08-25 — Canonical natal contract, SVG wheel and structured interpretation
+
+### Added
+
+- Added `app/core/chart_contract.py` with versioned calculation metadata, explicit conventions, active-point inventory, major-aspect angles and configurable per-type orbs.
+- Full and date-only chart results now expose canonical input metadata, precision mode, engine/source metadata and angular-data availability while retaining legacy schema fields.
+- Added `app/core/chart_interpretation.py` with JSON-only prompt contract, bounded section lengths, schema validation, evidence checks and rich-text compatibility rendering.
+- Added deterministic contract tests and a Node SVG smoke fixture covering zero-degree points, clustered planets, nodes, houses and aspects.
+
+### Changed
+
+- Natal aspect output is filtered against the declared major-aspect orb policy and date-only metadata no longer presents technical noon as a confirmed birth time.
+- Rebuilt the Mini App natal wheel with semantic sign/house/aspect layers, deterministic collision lanes, accessible labels, responsive viewBox geometry and reduced-motion support.
+- Canonical charts prefer structured JSON interpretation; legacy charts without calculation metadata continue to use the existing Markdown path.
+
+### Verification
+
+- Chart, interpretation, API, guardrail and natal-section regression tests pass.
+- `node --check miniapp/js/04-nativity.js`, the SVG smoke test and `scripts/check_design_contract.py` pass.
+
+
+## 2026-08-25 — Deterministic agent routing and release QA
+
+### Added
+
+- Added `app/core/agents/routing.py` with explainable multilingual domain scoring, confidence, candidate list, hard-domain ambiguity policy and safe default fallback.
+- Added `scripts/benchmark_agent_routing.py` and `tests/test_agent_routing.py` with a 24-case RU/EN/code-switched matrix.
+- Added API routing metadata (`requested_agent`, final `agent`, `routing`) and a Mini App handoff badge that updates the active specialist header after a safe auto-route.
+- Added routing benchmark artifacts for skill, Vedic, Mira/Lenormand and agent-quality checks under `docs/audit/`.
+
+### Verification
+
+- Full API suite passes, including default-chat auto-routing and explicit-agent precedence.
+- All 465 collected tests pass; all Mini App JavaScript files pass `node --check`; `git diff --check` and the design-contract checker pass.
+- The deterministic agent-routing matrix passes 24/24 cases, including ambiguous hard-domain and off-topic fallback cases.
+- Operational self-check passes with only the documented live-LLM and unset deployment-environment skips.
+
+## 2026-08-25 — Confident ToV, dense PDF and renderer decision
+
+### Changed
+
+- Reworked active RU/EN user-facing copy, agent SYSTEM contracts, file-backed skills, offline fallbacks, Mini App chart/diary/palm/placements copy and PDF prompts toward a confident, immersive evidence-first voice. Generic rationalizing language was removed from ordinary interpretation flows; mandatory crisis, age, privacy, medical/legal/financial and data-grounding boundaries remain enforced.
+- Increased PDF typography to body `12.4pt` with line-height `1.56`, H2 `24pt`, H3 `17pt`; paired thematic chapters into two columns, retained wheel/matrix visual anchors, and removed a redundant matrix table.
+- Tested `@astrodraw/astrochart` 3.0.2 in Node/jsdom and Kerykeion 5.12.9 classic/modern through the real chart-data pipeline. The product keeps its own canonical-data-driven SVG wheel; external outputs are documented references rather than additional production runtimes.
+
+### Added
+
+- Added `scripts/qa_pdf_profiles.py` and deterministic profile artifacts under `docs/audit/pdf_samples_v2/profiles/`.
+- Added ADR-006/007 and visual QA notes covering renderer selection, typography, page density, data-only charts, and the remaining safety-only language.
+- Added `docs/audit/TOV_PDF_RENDERER_REPORT_2026-08-25.md` with before/after examples, counts, source links, renderer metrics, PDF profile results and release evidence.
+
+### Verification
+
+- Full pytest suite: **465 passed**; Mini App JavaScript syntax, Python compileall, `git diff --check`, design-contract checker and operational selfcheck passed.
+- Routing/quality benchmarks remained green: agent routing 24/24, skill routing 20/20, Vedic routing 10/10, Mira/Lenormand routing 20/20.
+- Three deterministic profiles in both languages produced **6/6 valid PDFs**, all six pages each, with no audited ToV markers; representative generated pages passed visual inspection without clipping or accidental blank pages.

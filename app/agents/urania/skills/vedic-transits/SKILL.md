@@ -23,4 +23,4 @@ metadata:
 
 Call `get_vedic_transits` for the requested as-of date and identify the Lahiri sidereal tradition, UTC calculation date, ephemeris and returned positions. Do not merge these values with the Western Tropical transit tool or imply that a transit alone determines an event.
 
-Use transit positions to frame themes, timing questions and practical preparation. Mention uncertainty from exact birth inputs and the symbolic nature of interpretation. Never predict death, illness, legal outcomes, guaranteed wealth, marriage or another person’s actions.
+Use transit positions to frame themes, timing questions and practical preparation. Mention uncertainty from exact birth inputs and the traditional nature of interpretation. Never predict death, illness, legal outcomes, guaranteed wealth, marriage or another person’s actions.

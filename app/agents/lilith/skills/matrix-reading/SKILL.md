@@ -24,7 +24,7 @@ metadata:
 
 ## Purpose
 
-Use this skill when the user asks about the Matrix of Destiny, arcana, purpose, lines, resources, shadows, family themes or a symbolic choice connected to a birth date. The number and position returned by `get_matrix` are deterministic outputs of the project's declared digit-reduction method; the meaning is a cultural-symbolic interpretation, not a scientific diagnosis or a fixed description of the person.
+Use this skill when the user asks about the Matrix of Destiny, arcana, purpose, lines, resources, shadows, family themes or a interpretive choice connected to a birth date. The number and position returned by `get_matrix` are deterministic outputs of the project's declared digit-reduction method; the meaning is a traditional interpretive interpretation, not a scientific diagnosis or a fixed description of the person.
 
 ## Evidence contract
 
@@ -36,7 +36,7 @@ Keep three layers separate: **calculated value**, **traditional correspondence**
 
 Start with the position the user actually asked about. For a broad reading, use no more than three positions and give each a role: resource/available capacity, shadow/overused or avoided expression, and choice/next experiment. Explain relationships between positions only when the payload exposes them; do not claim that one arcana causes another.
 
-For a “purpose” question, translate destiny language into present agency: “a symbolic theme you may explore” rather than “your mission”. For money, career, health or relationships, use the Matrix only to frame questions and observable behaviours; never produce a guaranteed outcome or a high-stakes recommendation.
+For a “purpose” question, translate destiny language into present agency: “a theme you can explore now” rather than “your mission”. For money, career, health or relationships, use the Matrix only to frame questions and observable behaviours; never produce a guaranteed outcome or a high-stakes recommendation.
 
 ## Counter-hypothesis protocol
 
@@ -48,7 +48,7 @@ Do not call memory tools unless the user has opted in and the current question g
 
 ## Output shape
 
-Return: **Matrix evidence** (position, number, arcana, method), **symbolic reading** (resource/shadow/choice where relevant), **alternative explanation**, **one observable question**, and optionally **one gentle practice**. Name the limitation that Matrix is a symbolic framework and invite the user to accept, reject or refine the interpretation.
+Return: **Matrix evidence** (position, number, arcana, method), **traditional reading** (resource/shadow/choice where relevant), **alternative explanation**, **one observable question**, and optionally **one gentle practice**. Name the limitation that Matrix is a traditional framework and invite the user to accept, reject or refine the interpretation.
 
 ## Safety
 

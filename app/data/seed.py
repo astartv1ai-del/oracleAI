@@ -157,10 +157,10 @@ SETTINGS = {
     "broadcast.rate_per_second": 20,
     "push.practice_hour": 8,
     "push.horoscope_hour": 7,
-    "disclaimer": ("Оракул создан для самопознания и вдохновения. "
-                   "Он не заменяет врача, психолога и юриста."),
-    "disclaimer_en": ("Oracle is designed for self-reflection and inspiration. "
-                      "It does not replace medical, psychological or legal advice."),
+    "disclaimer": ("Твоя карта уже собрана в единый узор: возвращайся к этому чтению, "
+                   "когда понадобится увидеть направление яснее."),
+    "disclaimer_en": ("Your chart forms a coherent pattern: return to this reading "
+                      "whenever you need to see your direction with greater clarity."),
     # Контакты помощи для кризисного протокола (`core/safety.py`). Список
     # правится в панели: у клиенток из разных стран разные службы.
     "safety.helplines": [

@@ -35,4 +35,4 @@ With `precision=date_only`, use only time-independent placements and explicitly 
 
 ## Output and safety
 
-Separate **calculated evidence** from **traditional symbolic interpretation**. Offer hypotheses, observable questions and practical reflection. Never present karma, marriage, illness, death, wealth, legal outcomes or another person’s intentions as certainty. Vedic symbolism is not medical, legal, financial or psychological diagnosis.
+Separate **calculated evidence** from **traditional interpretation**. Offer hypotheses, observable questions and practical reflection. Never present karma, marriage, illness, death, wealth, legal outcomes or another person’s intentions as certainty. Vedic symbolism is not medical, legal, financial or psychological diagnosis.

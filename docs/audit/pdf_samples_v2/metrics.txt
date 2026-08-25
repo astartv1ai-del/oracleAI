@@ -1,0 +1,8 @@
+--- /home/ubuntu/oracleAI-sample-natal-report-ru.pdf
+Pages:           9
+Page size:       595.276 x 841.89 pts (A4)
+File size:       141966 bytes
+--- /home/ubuntu/oracleAI-sample-natal-report-en.pdf
+Pages:           8
+Page size:       595.276 x 841.89 pts (A4)
+File size:       138971 bytes

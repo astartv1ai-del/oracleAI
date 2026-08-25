@@ -85,3 +85,45 @@
 /* ============================================================================
    v5: Спидометр любви (совместимость, scores) + интерактив натальной карты
    ============================================================================ */
+
+/* v4.20 — canonical natal wheel: semantic layers, readable labels and aspect legend */
+.n-wheel-ring { fill: rgba(8, 7, 24, .34); stroke: rgba(230,193,120,.28); stroke-width: 1; }
+.n-zodiac-ring { fill: none; stroke: rgba(167,139,250,.24); stroke-width: 1; stroke-dasharray: 4 4; }
+.n-aspect-ring { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 1; }
+.n-sign-glyph { fill: var(--champagne-300, #ffd98f); font: 15px Cinzel, Georgia, serif; }
+.n-sign-name { fill: var(--text-muted, #a49cc8); font: 6px Arial, sans-serif; }
+.n-house path { fill: none; stroke: rgba(167,139,250,.28); stroke-width: .9; }
+.n-house line { stroke: rgba(167,139,250,.14); stroke-width: .7; }
+.n-house-number { fill: var(--text-muted, #a49cc8); font: 7px Arial, sans-serif; }
+.n-planet-orb { fill: rgba(24,22,48,.92); stroke: var(--gold, #e6c178); stroke-width: 1.35; filter: url(#oracle-wheel-glow); }
+.n-planet-glyph { fill: var(--gold-bright, #ffd98f); font: 14px Cinzel, Georgia, serif; font-weight: 700; }
+.n-planet-label { fill: var(--text-muted, #a49cc8); font: 6px Arial, sans-serif; }
+.n-retro { fill: #ff7b86; font: 8px Arial, sans-serif; font-weight: 700; }
+.n-node circle { fill: rgba(24,22,48,.82); stroke: var(--violet, #a78bfa); stroke-width: 1.2; }
+.n-node text { fill: var(--violet, #a78bfa); font: 10px Cinzel, Georgia, serif; font-weight: 700; }
+.n-aspect { fill: none; opacity: .9; }
+.n-angle { fill: var(--violet, #a78bfa); font: 8px Arial, sans-serif; letter-spacing: 1px; }
+.n-sun-core { fill: rgba(230,193,120,.1); stroke: var(--gold, #e6c178); stroke-width: 1.5; }
+.n-sun-glyph { fill: var(--gold-bright, #ffd98f); font: 23px Cinzel, Georgia, serif; }
+.n-sun-sign { fill: var(--text-muted, #a49cc8); font: 10px Arial, sans-serif; }
+@media (prefers-reduced-motion: reduce) {
+  .n-wheel .n-in { animation: none !important; }
+}
+
+
+/* Explainable specialist handoff from the default Oracle chat. */
+.message-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(225,214,255,.11);
+  color: var(--champagne-300, #f5d48b);
+  font-size: 10px;
+  line-height: 1.25;
+  letter-spacing: .03em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .message-route { transition: none; }
+}

@@ -20,7 +20,7 @@ license: Proprietary
 compatibility: OracleAI file-backed agent harness.
 metadata:
   oracleai_agent: urania
-  oracleai_domain: symbolic Western astrology grounded in calculated chart evidence
+  oracleai_domain: traditional Western astrology grounded in calculated chart evidence
   oracleai_loading: on_demand
   oracleai_output_contract: agent_response.v1
 ---
@@ -29,7 +29,7 @@ metadata:
 
 ## Purpose
 
-Use this skill for questions about the New Moon, Full Moon, waxing/waning phases, lunar cycles, weekly planning, a moon journal or observation tracking (`лунные фазы`, `дневник наблюдений`, `неделя`, `journal`, `weekly tracking`). The phase is a calculated astronomical timestamp/context; the symbolic association is a reflective planning lens, not a forecast of mood, fertility or events.
+Use this skill for questions about the New Moon, Full Moon, waxing/waning phases, lunar cycles, weekly planning, a moon journal or observation tracking (`лунные фазы`, `дневник наблюдений`, `неделя`, `journal`, `weekly tracking`). The phase is a calculated astronomical timestamp/context; the traditional association is a reflective planning lens, not a forecast of mood, fertility or events.
 
 ## Evidence contract
 
@@ -49,4 +49,4 @@ Do not promise that a phase will cause a relationship event, money result, ferti
 
 ## Output contract
 
-Return: **Calculated phase/window**, **symbolic planning lens**, **journal template**, **counter-hypothesis**, and **one observable step**. Explicitly label the phase as calculated and the meaning as traditional/symbolic. If the user asks for a guaranteed prediction, refuse that part and offer an observation-based alternative.
+Return: **Calculated phase/window**, **traditional planning lens**, **journal template**, **counter-hypothesis**, and **one observable step**. Explicitly label the phase as calculated and the meaning as traditional/traditional. If the user asks for a guaranteed prediction, refuse that part and offer an observation-based alternative.

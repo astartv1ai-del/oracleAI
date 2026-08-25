@@ -44,7 +44,7 @@ def test_reading_ledger_has_positions_orientation_and_combinations():
     assert all(item["orientation"] in ("upright", "reversed") for item in ledger["entries"])
     assert len(ledger["adjacent_combinations"]) == 2
     assert len(ledger["checksum"]) == 16
-    assert "not certainty" in ledger["interpretation_boundary"]
+    assert "traditional language" in ledger["interpretation_boundary"]
 
 
 def test_reading_ledger_classifies_explicit_symbolic_combination():

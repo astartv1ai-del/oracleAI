@@ -21,7 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import users as users_repo
-from . import agents, astro, interpretation, llm, memory, skills, tarot
+from . import agents, astro, chart_interpretation, interpretation, llm, memory, skills, tarot
 from .agents.base import language_and_gender_guidance
 from .stable import stable_seed
 
@@ -92,7 +92,7 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
             mems = await memory.recall(db, user["tg_id"], question or "", limit=3)
             who_block = ""
             if summary:
-                who_block += f"Контекст пользователя (не факт расклада): {summary}\n"
+                who_block += f"Контекст пользователя (сводка; факты расклада бери только из draw_tarot): {summary}\n"
             if mems:
                 who_block += f"Релевантный контекст: {'; '.join(mems)}\n"
             user_msg = (
@@ -518,39 +518,38 @@ def _full_chart_fallback(chart: dict, *, time_known: bool) -> str:
     house2 = _chart_house(chart, 2)
     sections = [
         "**1. Ядро личности и маска**\n"
-        f"{_placement_line('Солнце', sun)}. Это символическая опора самоощущения и способа проявлять волю. "
+        f"{_placement_line('Солнце', sun)}. Это внутренняя опора самоощущения и способа проявлять волю. "
         f"{_placement_line('Луна', moon)} — тема эмоционального ритма и внутреннего комфорта. "
         + (f"{_placement_line('Асцендент', asc)} показывает первое впечатление и социальную маску. "
            if time_known and asc else "Асцендент и первое впечатление нельзя надёжно разобрать без точного времени рождения. ")
         + "Наблюдение: где внешний образ совпадает с тем, что действительно помогает тебе восстановиться?",
         "**2. Интеллект и общение**\n"
-        f"{_placement_line('Меркурий', mercury)}. В символическом чтении это стиль мышления, формулировок и юмора. "
-        "Проверяй трактовку через реальные разговоры: где тебе нужен факт, а где — образ или интуитивная гипотеза?",
+        f"{_placement_line('Меркурий', mercury)}. Эта позиция показывает стиль мышления, формулировок и юмора. "
+        "Проверяй трактовку через реальные разговоры: где эта настройка помогает тебе точнее слышать себя и собеседника?",
         "**3. Действие и конфликт**\n"
-        f"{_placement_line('Марс', mars)}. Эта позиция описывает символический способ добиваться своего, выдерживать напряжение и обозначать границы. "
+        f"{_placement_line('Марс', mars)}. Эта позиция показывает твой способ добиваться своего, выдерживать напряжение и обозначать границы. "
         "Полезный шаг — заметить, когда напор помогает задаче, а когда короткая пауза делает действие точнее.",
         "**4. Карьера и финансы**\n"
         f"MC: {_placement_line('MC', mc) if mc else 'данные недоступны'}; "
         f"{_placement_line('10-й дом', house10) if house10 else '10-й дом: данные недоступны'}; "
         f"{_placement_line('6-й дом', house6) if house6 else '6-й дом: данные недоступны'}; "
         f"{_placement_line('2-й дом', house2) if house2 else '2-й дом: данные недоступны'}. "
-        "Это не обещание финансовой удачи, а символические темы профессиональной среды, ежедневной работы и отношения к ресурсам. "
+        "Эти положения показывают твой профессиональный стиль, ежедневный ритм и отношение к ресурсам. "
         "Наблюдение: какой один измеримый навык можно укрепить в ближайшие семь дней?",
         "**5. Любовь и язык чувств**\n"
-        f"{_placement_line('Венера', venus)}. В символическом чтении это предпочтения в близости, эстетике и способах проявлять симпатию. "
+        f"{_placement_line('Венера', venus)}. Это твой язык близости, эстетики и способов проявлять симпатию. "
         "Ориентир — не идеальный типаж, а взаимность, ясные договорённости и уважение границ.",
         "**6. Партнёрство**\n"
-        + (f"{_placement_line('7-й дом', house7)}. Это символическая тема серьёзных договорённостей и зеркала в отношениях; "
-           "она не предсказывает брак и не определяет конкретного человека. "
+        + (f"{_placement_line('7-й дом', house7)}. Это зона серьёзных договорённостей и зеркала в отношениях; "
            if time_known and house7 else "7-й дом недоступен без точного времени рождения; не буду выдумывать характеристики партнёра. ")
         + "Наблюдение: какую договорённость в отношениях можно сделать яснее?",
-        "**7. Кармические узлы как символическая рефлексия**\n"
+        "**7. Кармические узлы: привычная сила и вектор роста**\n"
         f"{_placement_line('Кету', ketu)} можно читать как привычный багаж и знакомую стратегию, "
         f"а {_placement_line('Раху', rahu)} — как направление любопытства и роста. "
-        "Это не доказательство буквальной прошлой жизни и не обязательная миссия. "
+        "Здесь встречаются знакомая сила и новый опыт, который раскрывает следующий уровень карты. "
         "Наблюдение: где привычный сценарий уже не помогает, а новый опыт можно попробовать малым шагом?",
         "**8. Синтез**\n"
-        "Карта полезнее всего как язык вопросов к себе, а не как приговор. Сопоставь эмоциональную реакцию Луны, "
+        "Карта собирает твои реакции, способ действия и реальные договорённости в один ясный узор. Сопоставь эмоциональную реакцию Луны, "
         "способ действия Марса и реальные договорённости в отношениях и работе. Выбери один проверяемый шаг, "
         "а через неделю сравни ожидание с наблюдаемым результатом. 🌙",
     ]
@@ -563,6 +562,30 @@ async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
     evidence = interpretation.chart_evidence(chart, time_known=time_known)
     text = ""
     live = False
+
+    # Preferred path: strict structured contract. The legacy Markdown path below
+    # remains a compatibility fallback for providers that cannot return valid JSON.
+    if llm.enabled() and chart.get("calculation"):
+        try:
+            system = await agents.system_for(db, user, agents.get("astro"))
+            candidate = await llm.complete(
+                system,
+                chart_interpretation.prompt(
+                    evidence.as_prompt_block(), await skills.guide(db, "natal")
+                ),
+                tier="main", max_tokens=3200, purpose="chart_interpret_structured",
+                tg_id=user["tg_id"], db=db,
+            )
+            payload = chart_interpretation.parse_json_object(candidate)
+            issues = chart_interpretation.validate_payload(
+                payload, chart=chart, time_known=time_known
+            )
+            if not issues:
+                chart["interpretation_structured"] = payload
+                return chart_interpretation.render_text(payload), True
+            log.info("structured chart interpretation rejected: %s", "; ".join(issues[:8]))
+        except Exception as e:  # noqa: BLE001
+            log.info("structured chart interpretation unavailable: %s", type(e).__name__)
     if llm.enabled():
         try:
             system = await agents.system_for(db, user, agents.get("astro"))
@@ -577,12 +600,12 @@ async def interpret_chart(db, user, chart: dict) -> tuple[str, bool]:
                 "3) действие и конфликты — Марс; "
                 "4) карьера и финансы — MC, 10-й, 6-й и 2-й дома; "
                 "5) любовь — Венера; 6) партнёрство — 7-й дом; "
-                "7) узлы — Кету как символический привычный багаж и Раху как направление роста; "
+                "7) узлы — Кету как знакомый паттерн и Раху как направление роста; "
                 "8) синтез и практический следующий шаг. "
                 "В каждом разделе сначала назови placement-факт из evidence, затем объясни его простыми словами "
                 "и добавь конкретный вопрос для самонаблюдения. Не назначай диагнозов, не обещай финансовую удачу, "
-                "идеального партнёра или события, не называй фатальную судьбу. Узлы не являются доказательством "
-                "буквальной прошлой жизни или обязательной миссии. Если времени рождения нет, честно назови ASC, "
+                "идеального партнёра или события. Покажи пространство выбора и роста; узлы раскрывай через конкретные placements, "
+                "и не превращай их в жёсткий сценарий или обязательную миссию. Если времени рождения нет, честно назови ASC, "
                 "MC и дома недоступными и не выдумывай их."
             )
             feedback = ""
@@ -707,7 +730,7 @@ async def build_report(db, user, kind: str, *, partner_date: str | None = None,
         "report", [data_block],
         limits=(
             "Сохраняй заданные разделы, но не заполняй их шаблонной водой: если факта для раздела нет, честно назови предел расчёта.",
-            "Фразы о предназначении, деньгах, любви или периодах — символические гипотезы и варианты действия, а не прогноз или гарантия.",
+            "Фразы о предназначении, деньгах, любви или периодах связывай с конкретными фактами и вариантами действия; не добавляй неподтверждённых событий.",
         ),
     )
     body = ""

@@ -1,7 +1,7 @@
 ---
 name: deck-variation
 version: 1.0.0
-description: Identify deck-specific visual and symbolic differences before applying meanings.
+description: Identify deck-specific visual and traditional differences before applying meanings.
 depends_on:
   - anti-barnum-protocol
 requires_tools: draw_tarot
@@ -19,7 +19,7 @@ metadata:
 
 ## Purpose
 
-Identify deck-specific visual and symbolic differences before applying meanings. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
+Identify deck-specific visual and traditional differences before applying meanings. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
 
 ## Evidence contract
 
@@ -39,7 +39,7 @@ Do not silently map an unfamiliar deck to RWS.
 
 ## Anti-Barnum gate
 
-Do not use universal personality labels, deterministic predictions, third-party mind reading, diagnosis, or certainty language. Every concrete sentence must be tied to evidence or explicitly marked as a symbolic/domain hypothesis. If the user rejects the hypothesis, update the frame rather than defending it.
+Do not use universal personality labels, third-party mind reading, diagnosis, or unsupported claims. Tie every concrete sentence to evidence and speak with a clear, confident expert voice. If the user rejects an interpretation, explore the alternate reading without arguing.
 
 ## Output contract
 

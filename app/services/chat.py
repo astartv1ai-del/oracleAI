@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 
 from ..core import agent as agent_core
 from ..core import agents, safety, tarot
+from ..core.agents.routing import DEFAULT_AGENT, route_agent
 from ..repo import analytics as analytics_repo
 from ..repo import billing as billing_repo
 from ..repo import dialog, readings, users
@@ -82,6 +83,15 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     question = (text or "").strip()[:MAX_QUESTION_LEN]
     if not question:
         raise ValueError("пустой вопрос")
+    safety_level, safety_category = safety.classify(question)
+    routing = route_agent(question)
+    requested_agent = agent
+    if agent == DEFAULT_AGENT and safety_level != safety.CRISIS and routing.auto_route:
+        agent = routing.agent
+    routing_payload = routing.as_dict()
+    routing_payload["auto_route"] = bool(requested_agent == DEFAULT_AGENT and agent != requested_agent)
+    if requested_agent != DEFAULT_AGENT:
+        routing_payload["reason"] = "explicit agent selection wins"
     spec = agents.get(agent)
     if thread_id is not None:
         thread = await dialog.get_thread(db, thread_id, user["tg_id"])
@@ -93,7 +103,7 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
 
     # Кризисный протокол — до всего остального. Ответ собирает код, модель не
     # зовём вовсе, лимит не тратим: брать вопрос за деньги в такой момент нельзя.
-    level, category = safety.classify(question)
+    level, category = safety_level, safety_category
     if level == safety.CRISIS:
         result = await _crisis_answer(db, user, question, category, agent, surface)
         await analytics.track_once(
@@ -153,6 +163,8 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     return {
         "answer": answer,
         "agent": spec.code,
+        "requested_agent": requested_agent,
+        "routing": routing_payload,
         "agent_profile": spec.as_dict(user),
         "proof": _proof_payload(spec, user, tools_used=tool_trace,
                                 mode="deterministic" if tool_trace else "offline"),

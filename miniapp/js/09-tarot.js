@@ -184,7 +184,7 @@
         const orientation = c.reversed ? ' · перевёрнутая' : ' · прямая';
         return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}${esc(orientation)}</span>`;
       }).join('')}</div>
-      <div class="tarot-proof"><b>Доказательная карточка</b><span>Колода: ${esc(ledger.deck_id || 'RWS')}</span><span>Ledger: ${esc(ledger.version || 'не указан')} · checksum ${esc(ledger.checksum || '—')}</span>${pairs.length ? `<div class="tarot-proof__pairs">${pairs.map(pair => `<span>${esc(pair.left)} + ${esc(pair.right)} · ${esc(pair.rule)}</span>`).join('')}</div>` : ''}<small>Это подтверждает состав и порядок расклада, но не делает символическое толкование фактом.</small></div>`;
+      <div class="tarot-proof"><b>Доказательная карточка</b><span>Колода: ${esc(ledger.deck_id || 'RWS')}</span><span>Ledger: ${esc(ledger.version || 'не указан')} · checksum ${esc(ledger.checksum || '—')}</span>${pairs.length ? `<div class="tarot-proof__pairs">${pairs.map(pair => `<span>${esc(pair.left)} + ${esc(pair.right)} · ${esc(pair.rule)}</span>`).join('')}</div>` : ''}<small>Это подтверждает состав и порядок расклада; теперь раскрой его сюжет через позиции и свой вопрос.</small></div>`;
     w.appendChild(thread);
     const b = document.createElement('button');
     b.className = 'btn btn-primary tarot-interpret-btn';

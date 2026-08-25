@@ -42,7 +42,8 @@ def test_chart_sections_cover_required_user_topics() -> None:
     assert set(sections) == {"identity", "mind_career", "relationships", "nodes"}
     labels = {item["label"] for section in sections.values() for item in section["items"]}
     assert {"Солнце", "Луна", "Асцендент", "Меркурий", "Марс", "Карьера", "Финансы", "Венера", "7-й дом", "Кету · Южный узел", "Раху · Северный узел"} <= labels
-    assert "буквальную прошлую жизнь" in sections["nodes"]["intro"]
+    assert "привычную силу" in sections["nodes"]["intro"]
+    assert "направление роста" in sections["nodes"]["intro"]
     assert sections["mind_career"]["items"][-1]["available"] is True
 
 

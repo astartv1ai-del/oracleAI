@@ -207,7 +207,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
         </div>
         <div class="diary-privacy">Запись остаётся в дневнике. При включённой памяти первые 150 символов могут помочь Оракулу помнить контекст — это можно изменить в «Памяти».</div>
       </div>
-      ${p.reflection ? `<aside class="diary-reflection" aria-live="polite"><span class="diary-reflection__sigil">${esc((p.moon && p.moon.emoji) || '◐')}</span><div><b>Ориентир после записи</b><p>${esc(p.reflection)}</p><small>Это мягкая подсказка по фазе Луны, а не предсказание.</small></div></aside>` : ''}
+      ${p.reflection ? `<aside class="diary-reflection" aria-live="polite"><span class="diary-reflection__sigil">${esc((p.moon && p.moon.emoji) || '◐')}</span><div><b>Ориентир после записи</b><p>${esc(p.reflection)}</p><small>Фаза Луны подсказывает ритм: выбери один шаг и запиши, как он отзывается.</small></div></aside>` : ''}
       ${entries.length ? `<div class="diary-archive"><div class="diary-archive__head"><b>Последние заметки</b><span>только для тебя</span></div><div class="dy-list">
         ${entries.slice(0, 8).map(e => `
           <div class="dy-row"><span class="dy-date">${esc(fmtDay((e.created_at || '').slice(0, 10)))}</span><span class="dy-txt">${esc((e.text || '').slice(0, 140))}</span>${e.mood ? `<span class="dy-row__mood">${esc(e.mood)}</span>` : ''}</div>`).join('')}
@@ -523,8 +523,8 @@ const widgetShell = (p, { title, body, tail = '' }) => {
   };
   app.featureVedicGuna = function() {
     this.doSend(oracleLang() === 'en'
-      ? 'Calculate an Ashtakoot Guna Milan comparison for me and my partner. Show every component and explain that the score is not a relationship verdict.'
-      : 'Рассчитай совместимость Ashtakoot Guna Milan для меня и партнёра. Покажи все компоненты и объясни, что балл не является вердиктом отношений.');
+      ? 'Calculate an Ashtakoot Guna Milan comparison for me and my partner. Show every component and turn the score into clear themes for our conversation.'
+      : 'Рассчитай совместимость Ashtakoot Guna Milan для меня и партнёра. Покажи все компоненты и преврати балл в ясные темы для разговора.');
   };
 
   /* ═══ ИНТЕРАКТИВ НАТАЛЬНОЙ КАРТЫ: тап по планете + фильтр по стихиям ═══ */

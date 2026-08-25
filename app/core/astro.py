@@ -12,6 +12,8 @@ import math
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .chart_contract import ASPECT_ORBS, build_calculation_metadata
+
 log = logging.getLogger("oracle.astro")
 
 SIGNS = [
@@ -142,9 +144,8 @@ def moon_venus_signs(d: date) -> tuple[tuple[str, str] | None,
 
 # ─────────────────────────────── синастрия ────────────────────────────────────
 
-# Орбы синастрии: светилам шире (10°), планетам 6–8° — классика мажорных.
-_SYNASTRY_ORBS = {"conjunction": 8, "opposition": 8, "trine": 8,
-                  "square": 7, "sextile": 6}
+# Орбы синастрии используют ту же явную major-aspect policy.
+_SYNASTRY_ORBS = ASPECT_ORBS
 _ASPECT_ANGLE = {"conjunction": 0.0, "opposition": 180.0, "trine": 120.0,
                  "square": 90.0, "sextile": 60.0}
 _LUMINARY = {"Солнце", "Луна"}
@@ -262,6 +263,13 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
             "aspects": [],
             "note": "Упрощённый расчёт: доступны только данные Солнца; "
                     "дома, ASC, MC и аспекты не определяются.",
+            "calculation": build_calculation_metadata(
+                active_points=ACTIVE_POINTS,
+                input_data={"birth_date": birth_date,
+                            "birth_time": birth_time if time_confirmed else None,
+                            "city": city, "lat": lat, "lon": lon, "tz": tz,
+                            "time_known": time_confirmed},
+                precision="sun_only", angular_data_available=False),
         }
 
 
@@ -288,12 +296,15 @@ def _aspects(subject) -> list[dict]:
             continue
         if a.p1_name not in ASPECT_PLANETS or a.p2_name not in ASPECT_PLANETS:
             continue
+        orbit = abs(float(a.orbit))
+        if orbit > ASPECT_ORBS.get(a.aspect, 0.0):
+            continue
         name, glyph = ASPECT_RU[a.aspect]
         out.append({
             "p1": POINT_RU.get(a.p1_name, a.p1_name),
             "p2": POINT_RU.get(a.p2_name, a.p2_name),
             "aspect": name, "glyph": glyph,
-            "orb": round(abs(a.orbit), 1), "orb_exact": float(abs(a.orbit)),
+            "orb": round(orbit, 1), "orb_exact": orbit,
         })
     out.sort(key=lambda x: x["orb"])
     return out[:12]
@@ -441,6 +452,13 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
         },
         "additional_points": additional_points,
         "note": note,
+        "calculation": build_calculation_metadata(
+            active_points=ACTIVE_POINTS,
+            input_data={"birth_date": d.isoformat(),
+                        "birth_time": (f"{hour:02d}:{minute:02d}" if birth_time and time_confirmed else None),
+                        "city": city, "lat": lat, "lon": lon, "tz": tz,
+                        "time_known": time_confirmed},
+            precision=precision, angular_data_available=angular_data_available),
     }
 
 
@@ -464,10 +482,9 @@ def _chart_point_value(point: dict | None, *, include_house: bool = True) -> str
 
 
 def chart_sections(chart: dict, *, time_known: bool | None = None) -> dict:
-    """Понятная карта смыслов поверх фактических положений.
+    """Понятная карта смыслов, собранная поверх фактических положений.
 
-    Этот слой не делает предсказаний и не утверждает буквальную карму или прошлые
-    жизни. Он отдаёт клиенту проверяемые placements и короткие определения тем,
+    Этот слой отдаёт клиенту проверяемые placements и короткие определения тем,
     чтобы UI и LLM использовали один и тот же источник правды.
     """
     exact = bool(time_known is True and chart.get("precision", "exact") == "exact")
@@ -494,7 +511,7 @@ def chart_sections(chart: dict, *, time_known: bool | None = None) -> dict:
     sections = {
         "identity": {
             "title": "Ядро личности и маска",
-            "intro": "Три точки показывают внутренний центр, эмоциональную настройку и первое впечатление — это язык наблюдения, а не жёсткий ярлык.",
+            "intro": "Три точки показывают внутренний центр, эмоциональную настройку и первое впечатление — это ясный язык наблюдения и самопонимания.",
             "items": [
                 item("ascendant", "Асцендент", asc, "Как человек входит в контакт с миром и какое первое впечатление создаёт.", available=exact),
                 item("sun", "Солнце", sun, "Центр воли, самоощущение, жизненная энергия и то, как человек собирает образ себя."),
@@ -504,12 +521,12 @@ def chart_sections(chart: dict, *, time_known: bool | None = None) -> dict:
         },
         "mind_career": {
             "title": "Интеллект, общение, карьера и деньги",
-            "intro": "Планеты описывают стиль мышления и действия; дома — сферы жизни. Финансовый потенциал не является гарантией дохода и зависит от решений и обстоятельств.",
+            "intro": "Планеты описывают стиль мышления и действия; дома — сферы жизни. Финансовый блок показывает отношение к ресурсам, устойчивости и способу строить доход через конкретные навыки и решения.",
             "items": [
                 item("mercury", "Меркурий", mercury, "Как человек думает, объясняет, шутит, учится и обрабатывает информацию."),
                 item("mars", "Марс", mars, "Как человек действует, защищает границы, проходит препятствия и переживает конфликт."),
                 {"key": "career", "label": "Карьера", "value": (f"MC в {mc.get('sign')} · 10-й дом {tenth.get('sign')}" if exact and mc.get("sign") and tenth else "нужны точные дома"), "sign": (mc.get("sign") if exact else None), "house": 10 if exact and tenth else None, "meaning": "Профессиональная среда, амбиции и способ строить видимый результат.", "available": bool(exact and (mc.get("sign") or tenth))},
-                {"key": "finance", "label": "Финансы", "value": (f"2-й дом {second.get('sign')} · 6-й дом {sixth.get('sign')}" if exact and (second or sixth) else "нужны точные дома"), "sign": (second or {}).get("sign") if exact else None, "house": 2 if exact and second else None, "meaning": "Ресурсы, привычки труда, отношение к ценности и устойчивому заработку — не обещание финансовой удачи.", "available": bool(exact and (second or sixth))},
+                {"key": "finance", "label": "Финансы", "value": (f"2-й дом {second.get('sign')} · 6-й дом {sixth.get('sign')}" if exact and (second or sixth) else "нужны точные дома"), "sign": (second or {}).get("sign") if exact else None, "house": 2 if exact and second else None, "meaning": "Ресурсы, привычки труда, отношение к ценности и устойчивому заработку  — для практических решений опирайся на факты, навыки и обстоятельства.", "available": bool(exact and (second or sixth))},
             ],
             "note": "Без подтверждённого времени показываем планеты в знаках. Карьерные и финансовые дома пока недоступны: нужны точные дома." if not exact else "",
         },
@@ -524,12 +541,12 @@ def chart_sections(chart: dict, *, time_known: bool | None = None) -> dict:
         },
         "nodes": {
             "title": "Кармические узлы: привычное и направление роста",
-            "intro": "Узлы — символический язык для разговора о знакомых сценариях и развитии. Они не доказывают буквальную прошлую жизнь и не предсказывают судьбу.",
+            "intro": "Узлы показывают привычную силу и направление роста: Кету — накопленный сценарий, Раху — новый опыт, который раскрывает следующий уровень карты.",
             "items": [
-                item("ketu", "Кету · Южный узел", ketu, "В традиционной символике — привычный багаж, уже знакомые стратегии и зона комфорта, которую полезно замечать, а не считать грехом или приговором."),
-                item("rahu", "Раху · Северный узел", rahu, "В традиционной символике — направление любопытства и развития: навык, который можно пробовать выращивать маленькими действиями в настоящем."),
+                item("ketu", "Кету · Южный узел", ketu, "Накопленный опыт, знакомые стратегии и зона опоры, которую важно использовать осознанно."),
+                item("rahu", "Раху · Северный узел", rahu, "Направление любопытства и развития: навык, который раскрывается через конкретные действия в настоящем."),
             ],
-            "note": "Используй этот блок как рефлексивную метафору, а не как буквальное описание прошлой жизни или обязательной миссии." if ketu or rahu else "Узлы пока не рассчитаны.",
+            "note": "Соедини привычную силу Кету с новым опытом Раху через один конкретный шаг." if ketu or rahu else "Узлы пока не рассчитаны.",
         },
     }
     return {"version": 1, "exact": exact, "sections": sections}
@@ -747,6 +764,18 @@ def chart_brief(chart: dict, *, time_known: bool | None = None) -> str:
             f"{chart.get('perspective_type', PERSPECTIVE_TYPE)}"
         )
         parts.append(conventions)
+        contract = chart.get("calculation") or {}
+        config = contract.get("config") or {}
+        if contract:
+            node_label = config.get("node_mode_label", "True Node")
+            policy = config.get("aspect_policy") or {}
+            orb_text = ", ".join(
+                f"{name} {value}°" for name, value in (policy.get("orbs_deg") or {}).items()
+            )
+            parts.append(
+                f"Канонический контракт v{contract.get('contract_version', 1)}; "
+                f"узлы: {node_label}; орбы: {orb_text or 'major policy'}"
+            )
         # Старые сохранённые карты не содержат `precision`; при известном времени
         # они считаются точными, а новые date-only карты явно блокируют углы.
         angular_data_available = time_known is True and chart.get("precision", "exact") == "exact"

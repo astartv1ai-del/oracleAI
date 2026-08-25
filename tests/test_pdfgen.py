@@ -48,6 +48,8 @@ async def test_full_natal_report_contains_extended_chart_and_mobile_viewport(mon
     assert "Хирон" in html and "Джуно" in html
     assert "Куспиды домов" in html and "Ключевые аспекты" in html
     assert "Placidus" in html and "Tropical" in html
+    assert "data-contract-version=\"1\"" in html
+    assert "Линии аспектов" in html
     assert "https://github.com/astartv1ai-del/oracleAI" in html
 
 
@@ -74,6 +76,8 @@ async def test_english_natal_report_is_localized(monkeypatch):
     assert "Additional points" in html
     assert "Chiron" in html and "Juno" in html
     assert "Destiny Matrix" in html
+    assert "Aspect lines" in html
+    assert "Calculation contract" in html
     assert "https://github.com/astartv1ai-del/oracleAI" in html
     assert "Натальная карта: полный расчёт" not in html
     assert "Кто ты по своей карте" not in html

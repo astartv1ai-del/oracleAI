@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from ...core import agent as agent_core
 from ...core import astro, geo, memory
+from ...core.chart_contract import public_calculation_contract
 from ...core.matrix import compute_matrix
 from ...core.observability import log_event
 from ...repo import billing, readings, users
@@ -89,6 +90,7 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
         "lunar_nodes": _canonical_lunar_nodes(data),
         "additional_points": data.get("additional_points", []),
         "note": data.get("note"),
+        "calculation": public_calculation_contract(data),
         "sections": astro.chart_sections(data, time_known=known),
         "birth": {
             "date": user["birth_date"] if birth_date is _UNSET else birth_date,
@@ -237,7 +239,7 @@ async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
                    chart, mode=chart.get("mode", "full"), precision=chart.get("precision", "exact"),
                    time_known=bool(user["birth_time_known"]), cache_hit=False, live=bool(live),
                    status="ok", user_state="live_interpretation")
-    return {"text": text}
+    return {"text": text, "structured": chart.get("interpretation_structured")}
 
 
 @router.get("/matrix")

@@ -1,0 +1,157 @@
+{
+  "birth": {
+    "date": "1990-06-21",
+    "time": "14:30",
+    "lat": 55.79,
+    "lon": 49.12,
+    "tz": "Europe/Moscow"
+  },
+  "house_system_oracleai": "Placidus",
+  "zodiac_type_oracleai": "Tropical",
+  "perspective_oracleai": "Apparent Geocentric",
+  "engines": [
+    "oracleai",
+    "kerykeion",
+    "swisseph"
+  ],
+  "houses": {
+    "ASC": {
+      "kerykeion": 197.26256035,
+      "swisseph": 197.26256035,
+      "difference_arcsec": 0.0
+    },
+    "MC": {
+      "kerykeion": 114.09213231,
+      "swisseph": 114.09213231,
+      "difference_arcsec": 0.0
+    },
+    "H1": {
+      "kerykeion": 197.26256035,
+      "swisseph": 197.26256035,
+      "difference_arcsec": 0.0
+    },
+    "H2": {
+      "kerykeion": 222.33282627,
+      "swisseph": 222.33282627,
+      "difference_arcsec": 0.0
+    },
+    "H3": {
+      "kerykeion": 254.72461993,
+      "swisseph": 254.72461993,
+      "difference_arcsec": 0.0
+    },
+    "H4": {
+      "kerykeion": 294.09213231,
+      "swisseph": 294.09213231,
+      "difference_arcsec": 0.0
+    },
+    "H5": {
+      "kerykeion": 329.7236284,
+      "swisseph": 329.7236284,
+      "difference_arcsec": 0.0
+    },
+    "H6": {
+      "kerykeion": 356.92877912,
+      "swisseph": 356.92877912,
+      "difference_arcsec": 0.0
+    },
+    "H7": {
+      "kerykeion": 17.26256035,
+      "swisseph": 17.26256035,
+      "difference_arcsec": 0.0
+    },
+    "H8": {
+      "kerykeion": 42.33282627,
+      "swisseph": 42.33282627,
+      "difference_arcsec": 0.0
+    },
+    "H9": {
+      "kerykeion": 74.72461993,
+      "swisseph": 74.72461993,
+      "difference_arcsec": 0.0
+    },
+    "H10": {
+      "kerykeion": 114.09213231,
+      "swisseph": 114.09213231,
+      "difference_arcsec": 0.0
+    },
+    "H11": {
+      "kerykeion": 149.7236284,
+      "swisseph": 149.7236284,
+      "difference_arcsec": 0.0
+    },
+    "H12": {
+      "kerykeion": 176.92877912,
+      "swisseph": 176.92877912,
+      "difference_arcsec": 0.0
+    }
+  },
+  "comparison": {
+    "Sun": {
+      "oracleai": 89.79926399,
+      "kerykeion": 89.79926399,
+      "swisseph": 89.79926399,
+      "max_difference_arcsec": 0.0
+    },
+    "Moon": {
+      "oracleai": 70.82459749,
+      "kerykeion": 70.82459749,
+      "swisseph": 70.82459749,
+      "max_difference_arcsec": 0.0
+    },
+    "Mercury": {
+      "oracleai": 76.65874185,
+      "kerykeion": 76.65874185,
+      "swisseph": 76.65874185,
+      "max_difference_arcsec": 0.0
+    },
+    "Venus": {
+      "oracleai": 55.77571815,
+      "kerykeion": 55.77571815,
+      "swisseph": 55.77571815,
+      "max_difference_arcsec": 0.0
+    },
+    "Mars": {
+      "oracleai": 15.28886419,
+      "kerykeion": 15.28886419,
+      "swisseph": 15.28886419,
+      "max_difference_arcsec": 0.0
+    },
+    "Jupiter": {
+      "oracleai": 107.18512398,
+      "kerykeion": 107.18512398,
+      "swisseph": 107.18512398,
+      "max_difference_arcsec": 0.0
+    },
+    "Saturn": {
+      "oracleai": 293.66703844,
+      "kerykeion": 293.66703844,
+      "swisseph": 293.66703844,
+      "max_difference_arcsec": 0.0
+    },
+    "Uranus": {
+      "oracleai": 277.93058167,
+      "kerykeion": 277.93058167,
+      "swisseph": 277.93058167,
+      "max_difference_arcsec": 0.0
+    },
+    "Neptune": {
+      "oracleai": 283.56539298,
+      "kerykeion": 283.56539298,
+      "swisseph": 283.56539298,
+      "max_difference_arcsec": 0.0
+    },
+    "Pluto": {
+      "oracleai": 225.28887273,
+      "kerykeion": 225.28887273,
+      "swisseph": 225.28887273,
+      "max_difference_arcsec": 0.0
+    }
+  },
+  "errors": {
+    "flatlib": "ModuleNotFoundError: No module named 'flatlib'"
+  },
+  "oracleai_house_count": 12,
+  "oracleai_aspect_count": 12,
+  "generated_at": "2026-08-25T01:25:59"
+}

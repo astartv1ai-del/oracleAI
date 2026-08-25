@@ -25,7 +25,7 @@ For relationship, children and travel lines, require the folded-edge or appropri
 
 ## Interpretation bridge
 
-After the topology, select one traditional symbolic association that matches the observed feature and label it as tradition, not fact. Offer a counter-hypothesis when the line is partial, for example lighting, focus, crease overlap or perspective. Keep the user’s question central and avoid listing every line when one was requested.
+After the topology, select one traditional association that matches the observed feature and label it as tradition, grounded observation. Offer a counter-hypothesis when the line is partial, for example lighting, focus, crease overlap or perspective. Keep the user’s question central and avoid listing every line when one was requested.
 
 ## Safety
 

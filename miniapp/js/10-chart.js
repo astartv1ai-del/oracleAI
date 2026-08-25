@@ -77,7 +77,7 @@
     return `<section class="chart-insights" aria-label="Понятный разбор натальной карты">
       <div class="chart-insights__kicker">КАК ЧИТАТЬ КАРТУ</div>
       <h3 class="chart-insights__title">Не только колесо — четыре смысловых слоя</h3>
-      <p class="chart-insights__copy">Сначала смотри на факт размещения, затем на объяснение. Это символический инструмент самонаблюдения, а не диагноз и не приговор.</p>
+      <p class="chart-insights__copy">Сначала смотри на факт размещения, затем на объяснение и следующий шаг — так карта раскрывается ясно и лично.</p>
       ${order.map((key, i) => this.chartSectionHtml(map[key], i === 0)).join('')}
     </section>`;
   };
@@ -135,7 +135,7 @@
         <div class="chart-takeaway">
           <span class="chart-takeaway__label">ТВОЯ ОТПРАВНАЯ ТОЧКА</span>
           <p>${takeaway}</p>
-          <small>Это ориентир для личного исследования, а не готовый ярлык.</small>
+          <small>Это твоя отправная точка: выбери один инсайт и проверь его действием.</small>
         </div>
         ${this.chartSectionsHtml(c.sections)}
       </section>
