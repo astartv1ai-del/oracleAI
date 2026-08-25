@@ -130,7 +130,7 @@ FLAGS = [
     ("daily_horoscopes", 1, 100, "Ежедневные гороскопы по 12 знакам"),
     ("horoscope_channels", 0, 100, "Автопостинг гороскопов в каналы-спутники"),
     ("audio_forecast", 1, 100, "Озвучка утреннего прогноза (тариф «Консьерж»)"),
-    ("practice_reminders", 1, 100, "Напоминания о практиках"),
+    ("practice_reminders", 1, 100, "Напоминания о практиках и мантрах"),
     ("share_cards", 1, 100, "Картинки-карточки раскладов для сторис"),
 ]
 
@@ -293,7 +293,7 @@ async def _seed_content(db) -> int:
             (kind, code, title, body, _now(), _now()))
         n += cur.rowcount or 0
 
-    # Практики: структура (шаги, программа, знаки) уезжает в meta_json,
+    # Практики и мантры: структура (шаги, программа, знаки) уезжает в meta_json,
     # чтобы админка правила их так же, как расклады и персон.
     from ..core import practices as pr
     for code, item in pr.PRACTICES.items():

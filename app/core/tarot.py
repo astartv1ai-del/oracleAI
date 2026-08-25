@@ -9,8 +9,6 @@ import json
 import random
 import secrets
 
-from . import tarot_decks
-
 # Старшие арканы. meaning — архетип с ресурсом и тенью (живая формулировка,
 # читается фронтом и ботом как есть). short — короткая подпись для чипов UI.
 # advice — практический шаг: что сделать, если выпала эта карта. Тень не
@@ -195,8 +193,6 @@ _RANK_NUM = {"Туз": "01", "Двойка": "02", "Тройка": "03", "Чет
              "Шестёрка": "06", "Семёрка": "07", "Восьмёрка": "08", "Девятка": "09",
              "Десятка": "10", "Паж": "11", "Рыцарь": "12", "Королева": "13", "Король": "14"}
 
-DEFAULT_DECK_ID = "rws-78-geldard-v1"
-
 
 def full_deck() -> list[dict]:
     deck = [
@@ -328,29 +324,6 @@ SPREADS: dict[str, dict] = {
 
 DEFAULT_SPREAD = "three"
 
-LENORMAND_SPREADS: dict[str, dict] = {
-    "one": {
-        "title": "Одна карта · Lenormand", "positions": ["Фокус"], "tier": "included",
-        "emoji": "◇", "hint": "Один символ для ясного фокуса",
-        "guide": "Одна карта показывает центральный символ вопроса; это не гарантированный прогноз.",
-    },
-    "three": {
-        "title": "Три карты · Lenormand", "positions": ["Ситуация", "Динамика", "Совет"],
-        "tier": "included", "emoji": "◇◇◇", "hint": "Связка из трёх символов",
-        "guide": "Читаем слева направо: контекст, движение и практический фокус.",
-    },
-    "line5": {
-        "title": "Линия пяти · Lenormand", "positions": ["Фон", "Что ведёт", "Центр", "Что мешает", "Следующий шаг"],
-        "tier": "included", "emoji": "◇◇◇◇◇", "hint": "Контекст, центр и ближайшее действие",
-        "guide": "Линейная связка: центральная карта — ось, соседние пары уточняют направление.",
-    },
-    "relationship": {
-        "title": "Связь · Lenormand", "positions": ["Ты", "Другой человек", "Между вами", "Ресурс", "Граница"],
-        "tier": "included", "emoji": "♡", "hint": "Динамика контакта без чтения мыслей",
-        "guide": "Расклад описывает символическую динамику контакта, но не доказывает намерения другого человека.",
-    },
-}
-
 
 def spread(code: str) -> dict:
     """Расклад по коду с безопасным значением по умолчанию."""
@@ -358,82 +331,36 @@ def spread(code: str) -> dict:
     return {**item, "code": code if code in SPREADS else DEFAULT_SPREAD}
 
 
-def spreads_for(deck_id: str | None = None) -> dict[str, dict]:
-    selected = deck_metadata(deck_id)
-    return LENORMAND_SPREADS if selected["deck_id"] == "lenormand-36-game-of-hope-v1" else SPREADS
-
-
-def spread_for(code: str, deck_id: str | None = None) -> dict:
-    catalog = spreads_for(deck_id)
-    fallback = "three" if "three" in catalog else next(iter(catalog))
-    item = catalog.get(code) or catalog[fallback]
-    return {**item, "code": code if code in catalog else fallback}
-
-
-def spread_by_title(title: str, deck_id: str | None = None) -> dict:
+def spread_by_title(title: str) -> dict:
     """Обратный поиск: старые записи в БД хранили только название расклада."""
-    for code, item in spreads_for(deck_id).items():
+    for code, item in SPREADS.items():
         if item["title"] == title:
             return {**item, "code": code}
-    return spread_for("three", deck_id)
+    return spread(DEFAULT_SPREAD)
 
 
 _RNG = secrets.SystemRandom()
 
 
-def deck_metadata(deck_id: str | None = None) -> dict:
-    return tarot_decks.metadata(deck_id or DEFAULT_DECK_ID)
+def draw(n: int = 3, *, seed: str | None = None) -> list[dict]:
+    """n разных карт в случайном порядке; optional seed is for reproducible tests.
 
-
-def available_decks() -> list[dict]:
-    return [deck_metadata(deck_id) for deck_id in tarot_decks.DECK_METADATA]
-
-
-def deck_cards(deck_id: str | None = None) -> list[dict]:
-    selected = deck_metadata(deck_id)
-    return tarot_decks.cards_for(selected["deck_id"], DECK)
-
-
-def draw(n: int = 3, *, seed: str | None = None,
-         deck_id: str = DEFAULT_DECK_ID) -> list[dict]:
-    """Draw distinct cards from a selected deck; optional seed is for tests.
-
-    The identity, card count and image namespace are selected together. Legacy
-    callers that omit ``deck_id`` continue to receive the project’s RWS deck.
+    Порядок важен: карты ложатся на позиции расклада (Прошлое/Настоящее/Будущее),
+    поэтому берём sample, а не set — у множества порядок обхода определяется
+    слотом хеша, и первая карта оказывалась привязана к её месту в колоде.
     """
-    selected = deck_metadata(deck_id)
-    actual_id = selected["deck_id"]
-    deck = deck_cards(actual_id)
     cards = []
     rng = random.Random(seed) if seed is not None else _RNG
-    for card in rng.sample(deck, min(n, len(deck))):
+    for card in rng.sample(DECK, min(n, len(DECK))):
         card = dict(card)
-        card["deck_id"] = actual_id
-        # Petit Lenormand is upright-only in this adapter; RWS/Marseille support reversals.
-        card["reversed"] = bool(rng.getrandbits(1)) if selected["supports_reversals"] else False
+        # честная тасовка: каждая карта ложится прямо или перевёрнуто ~50/50
+        card["reversed"] = bool(rng.getrandbits(1))
         cards.append(card)
     return cards
 
 
-def _lenormand_combination_rule(left: dict, right: dict) -> str:
-    pair = {left.get("slug") or left.get("img"), right.get("slug") or right.get("img")}
-    if {"heart", "ring"} <= pair:
-        return "bond_and_commitment"
-    if {"ship", "anchor"} <= pair:
-        return "movement_and_stability"
-    if {"clouds", "sun"} <= pair:
-        return "uncertainty_to_clarity"
-    if {"mice", "anchor"} <= pair:
-        return "resource_erosion_and_hold"
-    if {"crossroads", "key"} <= pair:
-        return "choice_and_solution"
-    return "adjacent_symbols_read_together"
-
-
-def _combination_rule(left: dict, right: dict, *, deck_id: str = DEFAULT_DECK_ID) -> str:
+def _combination_rule(left: dict, right: dict) -> str:
     """Return a bounded symbolic cue, never a prediction or factual claim."""
-    if deck_id == "lenormand-36-game-of-hope-v1":
-        return _lenormand_combination_rule(left, right)
     names = {str(left.get("name", "")), str(right.get("name", ""))}
     if {"Смерть", "Башня"} <= names:
         return "transformational_pressure"
@@ -451,12 +378,9 @@ def _combination_rule(left: dict, right: dict, *, deck_id: str = DEFAULT_DECK_ID
 
 
 def reading_ledger(cards: list[dict], spread_code: str = "three",
-                   positions: list[str] | None = None,
-                   deck_id: str | None = None) -> dict:
+                   positions: list[str] | None = None) -> dict:
     """Create user-safe deterministic evidence for a draw and its interpretation."""
-    selected_id = deck_id or next((card.get("deck_id") for card in cards if card.get("deck_id")), DEFAULT_DECK_ID)
-    selected = deck_metadata(selected_id)
-    item = spread_for(spread_code, selected["deck_id"])
+    item = spread(spread_code)
     positions = (positions or item["positions"])[:len(cards)]
     entries = []
     for index, card in enumerate(cards):
@@ -465,32 +389,26 @@ def reading_ledger(cards: list[dict], spread_code: str = "three",
             "position": positions[index] if index < len(positions) else f"Карта {index + 1}",
             "card_id": card.get("img") or card.get("name"),
             "name": card.get("name"),
-            "name_en": card.get("name_en"),
             "arcana": card.get("arcana"),
             "suit": card.get("suit"),
-            "reversed": bool(card.get("reversed")) if selected["supports_reversals"] else False,
-            "orientation": "reversed" if card.get("reversed") and selected["supports_reversals"] else "upright",
+            "reversed": bool(card.get("reversed")),
+            "orientation": "reversed" if card.get("reversed") else "upright",
         })
     combinations = []
     for left, right in zip(cards, cards[1:]):
         combinations.append({
             "left": left.get("name"), "right": right.get("name"),
-            "rule": _combination_rule(left, right, deck_id=selected["deck_id"]),
+            "rule": _combination_rule(left, right),
             "type": "adjacent_pair",
         })
-    canonical = json.dumps({"deck_id": selected["deck_id"], "spread": spread_code,
+    canonical = json.dumps({"deck_id": "rws-78-v1", "spread": spread_code,
                             "entries": entries}, ensure_ascii=False,
                            sort_keys=True, separators=(",", ":"))
     return {
         "version": "tarot-ledger-v1",
-        "deck_id": selected["deck_id"],
-        "tradition": selected["tradition"],
-        "deck_label": selected["label"],
-        "card_count": selected["card_count"],
-        "asset_root": selected["asset_root"],
-        "supports_reversals": selected["supports_reversals"],
-        "source_url": selected["source_url"],
-        "spread": item["code"],
+        "deck_id": "rws-78-v1",
+        "tradition": "Rider-Waite-Smith",
+        "spread": spread_code if spread_code in SPREADS else DEFAULT_SPREAD,
         "entries": entries,
         "adjacent_combinations": combinations,
         "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16],

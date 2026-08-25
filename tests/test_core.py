@@ -2,9 +2,6 @@
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
-
-import pytest
 
 from app.core import astro, tarot
 from app.core.matrix import compute_matrix
@@ -41,7 +38,7 @@ def test_seeded_draw_is_reproducible_for_golden_fixtures():
 def test_reading_ledger_has_positions_orientation_and_combinations():
     cards = tarot.draw(3, seed="ledger-fixture")
     ledger = tarot.reading_ledger(cards, "three")
-    assert ledger["deck_id"] == "rws-78-geldard-v1"
+    assert ledger["deck_id"] == "rws-78-v1"
     assert ledger["version"] == "tarot-ledger-v1"
     assert [item["position"] for item in ledger["entries"]] == tarot.SPREADS["three"]["positions"]
     assert all(item["orientation"] in ("upright", "reversed") for item in ledger["entries"])
@@ -55,34 +52,6 @@ def test_reading_ledger_classifies_explicit_symbolic_combination():
              for name in ("Смерть", "Башня")]
     ledger = tarot.reading_ledger(cards, "three")
     assert ledger["adjacent_combinations"][0]["rule"] == "transformational_pressure"
-
-
-def test_lenormand_is_a_real_36_card_upright_only_adapter():
-    cards = tarot.draw(36, seed="lenormand-golden", deck_id="lenormand-36-game-of-hope-v1")
-    assert len(cards) == 36
-    assert len({card["slug"] for card in cards}) == 36
-    assert all(card["deck_id"] == "lenormand-36-game-of-hope-v1" for card in cards)
-    assert all(card["reversed"] is False for card in cards)
-    assert tarot.spread_for("line5", "lenormand-36-game-of-hope-v1")["positions"]
-    heart = next(card for card in cards if card["slug"] == "heart")
-    ring = next(card for card in cards if card["slug"] == "ring")
-    ledger = tarot.reading_ledger([heart, ring], "line5", deck_id="lenormand-36-game-of-hope-v1")
-    assert ledger["adjacent_combinations"][0]["rule"] == "bond_and_commitment"
-
-
-def test_marseille_adapter_has_separate_identity_and_assets():
-    cards = tarot.draw(3, seed="marseille-golden", deck_id="marseille-78-conver-v1")
-    assert len(cards) == 3
-    assert all(card["deck_id"] == "marseille-78-conver-v1" for card in cards)
-    assert all(card["reversed"] in (True, False) for card in cards)
-    root = Path(__file__).parents[1] / "miniapp" / "img" / "marseille"
-    assert len(list(root.glob("*.jpg"))) == 78
-
-
-def test_deck_ids_are_strict_with_legacy_rws_alias():
-    assert tarot.deck_metadata("rws-78-v1")["deck_id"] == "rws-78-geldard-v1"
-    with pytest.raises(ValueError):
-        tarot.deck_metadata("not-a-real-deck")
 
 
 def test_tarot_spreads_have_positions_and_guide():

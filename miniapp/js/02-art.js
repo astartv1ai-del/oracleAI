@@ -39,7 +39,6 @@ let moonGradSeq = 0;
 let spdSeq = 0;
 function moonSvg(emoji, cls) {
   const gid = 'mg' + (++moonGradSeq);
-  const fid = gid + '-glow';
   const ph = MOON_DISC[emoji] || { lit: 0.5, right: true };
   const r = 45, lit = Math.max(0, Math.min(1, ph.lit));
   let d;
@@ -50,17 +49,13 @@ function moonSvg(emoji, cls) {
     d = `M0,-${r} A${r} ${r} 0 0 1 0,${r} L0,${r} A${ex} ${r} 0 0 1 0,-${r} Z`;
   }
   const flip = ph.right ? '' : ' scale(-1,1)';
-  return `<svg viewBox="0 0 100 100" class="moon-symbol ${cls || ''}" aria-hidden="true" focusable="false"><defs>
-    <radialGradient id="${gid}" cx="38%" cy="30%" r="82%">
-      <stop offset="0%" stop-color="#fff8df"/><stop offset="42%" stop-color="#e8d3a0"/>
-      <stop offset="78%" stop-color="#c0a878"/><stop offset="100%" stop-color="#8f7b58"/>
-    </radialGradient>
-    <filter id="${fid}" x="-55%" y="-55%" width="210%" height="210%"><feGaussianBlur stdDeviation="3.2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  </defs>
-  <circle class="moon-symbol__halo" cx="50" cy="50" r="46.5" fill="rgba(231,202,145,.06)"/>
-  <circle class="moon-symbol__shadow" cx="50" cy="50" r="${r}" fill="#151a28" stroke="rgba(231,202,145,.38)" stroke-width="1.6"/>
-  ${d ? `<g transform="translate(50,50)${flip}" filter="url(#${fid})"><path d="${d}" fill="url(#${gid})"/></g>` : ''}
-  <circle class="moon-symbol__rim" cx="50" cy="50" r="${r - 1}" fill="none" stroke="rgba(255,248,223,.22)" stroke-width=".8"/></svg>`;
+  return `<svg viewBox="0 0 100 100" class="${cls || ''}" aria-hidden="true"><defs>
+    <radialGradient id="${gid}" cx="45%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#f8edcf"/><stop offset="55%" stop-color="#ddc795"/>
+      <stop offset="100%" stop-color="#a9966a"/>
+    </radialGradient></defs>
+    <circle cx="50" cy="50" r="${r}" fill="#1d1838" stroke="rgba(230,193,120,.35)" stroke-width="2"/>
+    ${d ? `<g transform="translate(50,50)${flip}"><path d="${d}" fill="url(#${gid})"/></g>` : ''}</svg>`;
 }
 
 /* Карьерные окна: тип действия по имени лунной фазы (данные — код, трактовка — LLM).

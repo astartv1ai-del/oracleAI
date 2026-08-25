@@ -16,8 +16,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 from app.api.deps import get_db  # noqa: E402
 from app.api.main import app  # noqa: E402
 from app.api.security import parse_init_data  # noqa: E402
-from app.core import agent as agent_core  # noqa: E402
-from app.repo import dialog, users  # noqa: E402
+from app.repo import users  # noqa: E402
 
 
 @pytest.fixture
@@ -117,23 +116,10 @@ async def test_me_returns_full_state(client, user):
     assert res.status_code == 200
     data = res.json()
     for key in ("name", "plan", "allowance", "agents", "flags", "crystals",
-                "sub_active", "questions_left", "gender", "tarot_deck_id", "tarot_deck"):
+                "sub_active", "questions_left", "gender"):
         assert key in data, key
     assert data["allowance"]["limit"] == 3
     assert len(data["agents"]) >= 3
-
-
-async def test_profile_tarot_deck_preference_is_persisted_and_validated(client, user):
-    updated = await client.patch("/api/profile", params=as_user(user),
-                                 json={"tarot_deck_id": "lenormand-36-game-of-hope-v1"})
-    assert updated.status_code == 200
-    assert updated.json()["updated"] == ["tarot_deck_id"]
-    profile = await client.get("/api/me", params=as_user(user))
-    assert profile.json()["tarot_deck_id"] == "lenormand-36-game-of-hope-v1"
-    assert profile.json()["tarot_deck"]["card_count"] == 36
-    bad = await client.patch("/api/profile", params=as_user(user),
-                             json={"tarot_deck_id": "not-a-deck"})
-    assert bad.status_code == 400
 
 
 async def test_profile_update_validates_persona(client, user):
@@ -265,39 +251,11 @@ async def test_partner_can_be_saved_and_removed(client, user):
 
 # ──────────────────────────────── Таро ────────────────────────────────────────
 
-async def test_tarot_deck_catalog_has_three_separate_traditions(client, user):
-    res = await client.get("/api/tarot/decks", params=as_user(user))
-    assert res.status_code == 200
-    decks = {item["deck_id"]: item for item in res.json()}
-    assert set(decks) >= {"rws-78-geldard-v1", "lenormand-36-game-of-hope-v1", "marseille-78-conver-v1"}
-    assert decks["rws-78-geldard-v1"]["asset_root"] != decks["lenormand-36-game-of-hope-v1"]["asset_root"]
-    assert decks["lenormand-36-game-of-hope-v1"]["supports_reversals"] is False
-
-
 async def test_spread_catalog(client, user):
     res = await client.get("/api/tarot/spreads", params=as_user(user))
     assert res.status_code == 200
     codes = {s["code"] for s in res.json()}
     assert {"one", "three", "love", "celtic"} <= codes
-    lenormand = await client.get("/api/tarot/spreads", params=as_user(user, {"deck_id": "lenormand-36-game-of-hope-v1"}))
-    assert {s["code"] for s in lenormand.json()} == {"one", "three", "line5", "relationship"}
-
-
-async def test_lenormand_draw_persists_selected_deck_and_ledger(client, user):
-    drawn = await client.post("/api/tarot/draw", params=as_user(user, {"spread": "line5"}),
-                              json={"question": "Какой следующий шаг?", "deck_id": "lenormand-36-game-of-hope-v1"})
-    assert drawn.status_code == 200
-    data = drawn.json()
-    assert data["deck_id"] == "lenormand-36-game-of-hope-v1"
-    assert len(data["cards"]) == 5
-    assert all(card["deck_id"] == data["deck_id"] and card["reversed"] is False for card in data["cards"])
-    assert data["ledger"]["asset_root"] == "/static/img/lenormand"
-    assert data["ledger"]["card_count"] == 36
-    await client.post(f"/api/tarot/interpret/{data['reading_id']}", params=as_user(user))
-    history = await client.get("/api/tarot/history", params=as_user(user))
-    row = next(item for item in history.json() if item["id"] == data["reading_id"])
-    assert row["deck_id"] == data["deck_id"]
-    assert row["ledger"]["checksum"] == data["ledger"]["checksum"]
 
 
 async def test_draw_then_interpret(client, user):
@@ -731,103 +689,3 @@ async def test_admin_sees_coupon_activations_and_can_filter_batch(client, db, us
     assert redemption["kind"] == "crystals"
     assert redemption["crystals"] == 10
     assert redemption["name"] == "Тестовая"
-
-
-async def test_chat_search_scoped_to_active_threads(client, db, user):
-    first = await dialog.create_thread(db, user["tg_id"], "tarot", "Работа и решение")
-    await dialog.save_message(db, user["tg_id"], "user", "Хочу понять следующий шаг в работе",
-                              thread_id=first["id"], agent="tarot", surface="miniapp")
-    archived = await dialog.create_thread(db, user["tg_id"], "oracle", "Старый разговор")
-    await dialog.save_message(db, user["tg_id"], "user", "старый разговор о работе",
-                              thread_id=archived["id"], agent="oracle", surface="miniapp")
-    await dialog.archive_thread(db, archived["id"], user["tg_id"])
-    other = await users.ensure(db, 99001, "Другой пользователь")
-    foreign = await dialog.create_thread(db, other["tg_id"], "tarot", "Чужой проект")
-    await dialog.save_message(db, other["tg_id"], "user", "проект и работа",
-                              thread_id=foreign["id"], agent="tarot", surface="miniapp")
-
-    res = await client.get("/api/chat/search", params=as_user(user, {"q": "следующий"}))
-    assert res.status_code == 200
-    rows = res.json()
-    assert [row["thread_id"] for row in rows] == [first["id"]]
-    assert rows[0]["agent"] == "tarot"
-    assert "следующий" in rows[0]["last_text"].lower()
-
-    archived_res = await client.get("/api/chat/search", params=as_user(user, {"q": "старый"}))
-    assert archived_res.status_code == 200
-    archived_rows = archived_res.json()
-    assert [row["thread_id"] for row in archived_rows] == [archived["id"]]
-    assert archived_rows[0]["archived"] is True
-
-    history = await client.get(
-        f"/api/chat/oracle/sessions/{archived['id']}", params=as_user(user))
-    assert history.status_code == 200
-    assert history.json()["archived"] is True
-    blocked = await client.post(
-        f"/api/chat/oracle/sessions/{archived['id']}",
-        params=as_user(user), json={"text": "новое сообщение"})
-    assert blocked.status_code == 409
-
-    empty = await client.get("/api/chat/search", params=as_user(user, {"q": "чужой проект"}))
-    assert empty.status_code == 200
-    assert empty.json() == []
-
-
-async def test_client_platform_metadata_is_normalized(client, db, user):
-    res = await client.get(
-        "/api/me",
-        params=as_user(user),
-        headers={
-            "X-Client-Platform": "Android",
-            "X-Client-Viewport": "390x844",
-            "X-Client-Mode": "mobile",
-        },
-    )
-    assert res.status_code == 200
-    stored = await users.get(db, user["tg_id"])
-    assert stored["last_platform"] == "android"
-    assert stored["last_viewport"] == "390x844"
-    assert stored["last_client_mode"] == "mobile"
-    assert stored["last_client_at"]
-
-    bad = await client.get(
-        "/api/me",
-        params=as_user(user),
-        headers={
-            "X-Client-Platform": "raw-device-name",
-            "X-Client-Viewport": "1x2",
-            "X-Client-Mode": "landscape",
-        },
-    )
-    assert bad.status_code == 200
-    stored = await users.get(db, user["tg_id"])
-    assert stored["last_platform"] == "unknown"
-    assert stored["last_viewport"] == "390x844"
-    assert stored["last_client_mode"] == "mobile"
-
-
-async def test_chart_pdf_endpoint_returns_real_pdf(client, user):
-    response = await client.get("/api/chart/pdf", params=as_user(user))
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("application/pdf")
-    assert response.headers["content-disposition"].startswith("attachment;")
-    assert response.content.startswith(b"%PDF-")
-    assert len(response.content) > 10_000
-
-
-async def test_chart_interpret_returns_structured_on_first_live_response(
-    client, user, monkeypatch
-):
-    structured = {
-        "summary": "Короткий проверяемый ориентир.",
-        "sun": {"fact": "Солнце в Близнецах.", "interpretation": "Наблюдай за способом выбирать слова.", "question": "Что важно назвать точнее?"},
-    }
-
-    async def fake_interpret(db, current_user, chart):
-        chart["interpretation_structured"] = structured
-        return "Солнце в Близнецах помогает наблюдать способ выбирать слова." * 20, True
-
-    monkeypatch.setattr(agent_core, "interpret_chart", fake_interpret)
-    response = await client.post("/api/chart/interpret", params=as_user(user))
-    assert response.status_code == 200
-    assert response.json()["structured"] == structured

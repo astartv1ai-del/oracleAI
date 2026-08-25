@@ -10,8 +10,7 @@ from ..data.session import transaction, utcnow
 
 
 async def start_reading(db, tg_id: int, spread: str, question: str, cards: list,
-                        *, surface: str = "bot", paid_with: str = "daily",
-                        deck_id: str = "rws-78-geldard-v1", ledger: dict | None = None) -> int:
+                        *, surface: str = "bot", paid_with: str = "daily") -> int:
     """Кладёт расклад без трактовки и отдаёт id.
 
     Разделение на два шага нужно клиенту: Mini App сначала показывает анимацию
@@ -20,10 +19,9 @@ async def start_reading(db, tg_id: int, spread: str, question: str, cards: list,
     """
     async with transaction(db):
         cur = await db.execute(
-            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, deck_id, ledger_json, answer, "
-            "surface, paid_with, created_at) VALUES(?,?,?,?,?,?,'',?,?,?)",
-            (tg_id, spread, question, json.dumps(cards, ensure_ascii=False), deck_id,
-             json.dumps(ledger, ensure_ascii=False) if ledger else None,
+            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, answer, "
+            "surface, paid_with, created_at) VALUES(?,?,?,?,'',?,?,?)",
+            (tg_id, spread, question, json.dumps(cards, ensure_ascii=False),
              surface, paid_with, utcnow()))
         reading_id = cur.lastrowid
     return reading_id
@@ -31,14 +29,12 @@ async def start_reading(db, tg_id: int, spread: str, question: str, cards: list,
 
 async def save_reading(db, tg_id: int, spread: str, question: str, cards: list,
                        answer: str, *, surface: str = "bot",
-                       paid_with: str = "daily", deck_id: str = "rws-78-geldard-v1",
-                       ledger: dict | None = None) -> int:
+                       paid_with: str = "daily") -> int:
     async with transaction(db):
         cur = await db.execute(
-            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, deck_id, ledger_json, answer, "
-            "surface, paid_with, created_at) VALUES(?,?,?,?,?,?,?, ?,?,?)",
-            (tg_id, spread, question, json.dumps(cards, ensure_ascii=False), deck_id,
-             json.dumps(ledger, ensure_ascii=False) if ledger else None, answer,
+            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, answer, "
+            "surface, paid_with, created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (tg_id, spread, question, json.dumps(cards, ensure_ascii=False), answer,
              surface, paid_with, utcnow()))
         reading_id = cur.lastrowid
     return reading_id
@@ -69,7 +65,7 @@ async def set_outcome(db, reading_id: int, tg_id: int, outcome: str) -> bool:
 
 async def recent_readings(db, tg_id: int, limit: int = 20) -> list[dict]:
     cur = await db.execute(
-        "SELECT id, spread, question, cards_json, deck_id, ledger_json, answer, outcome, created_at "
+        "SELECT id, spread, question, cards_json, answer, outcome, created_at "
         "FROM tarot_readings WHERE tg_id=? AND answer<>'' ORDER BY id DESC LIMIT ?",
         (tg_id, limit))
     from ..core import tarot
@@ -77,15 +73,10 @@ async def recent_readings(db, tg_id: int, limit: int = 20) -> list[dict]:
     result = []
     for r in await cur.fetchall():
         cards = json.loads(r["cards_json"] or "[]")
-        deck_id = r["deck_id"] or next((c.get("deck_id") for c in cards if c.get("deck_id")), tarot.DEFAULT_DECK_ID)
-        try:
-            ledger = json.loads(r["ledger_json"] or "")
-        except (TypeError, ValueError):
-            ledger = tarot.reading_ledger(cards, r["spread"] or "three", deck_id=deck_id)
         result.append({"id": r["id"], "spread": r["spread"], "question": r["question"],
                        "answer": r["answer"], "outcome": r["outcome"],
                        "created_at": r["created_at"], "cards": cards,
-                       "deck_id": deck_id, "ledger": ledger})
+                       "ledger": tarot.reading_ledger(cards, r["spread"] or "three")})
     return result
 
 

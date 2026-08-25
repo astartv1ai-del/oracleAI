@@ -34,7 +34,7 @@ COMMANDS = [
     BotCommand(command="start", description="Начать / вернуться в меню"),
     BotCommand(command="today", description="Прогноз дня"),
     BotCommand(command="horoscope", description="Гороскоп на сегодня"),
-    BotCommand(command="practice", description="Практики"),
+    BotCommand(command="practice", description="Практики и мантры"),
     BotCommand(command="moon", description="Лунная неделя"),
     BotCommand(command="promo", description="Ввести промокод"),
     BotCommand(command="admin", description="Панель управления (для команды)"),

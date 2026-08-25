@@ -48,7 +48,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
           <div class="dc-card${p.flipped ? ' flipped' : ''}" data-act="day-flip" title="Тапни — раскроется смысл">
             <div class="dc-card-inner">
               <div class="dc-face dc-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></div>
-              <div class="dc-face dc-front"><img src="${tarotAssetUrl(card, card)}" alt="${esc(card.name || '')}" loading="lazy"></div>
+              <div class="dc-face dc-front"><img src="/static/img/tarot/${esc(card.img)}.jpg" alt="${esc(card.name || '')}" loading="lazy"></div>
             </div>
           </div>
           <div class="dc-card-txt">
@@ -141,7 +141,7 @@ const widgetShell = (p, { title, body, tail = '' }) => {
     const items = p.items || [];
     return widgetShell(p, {
       title: t => 'Ритуалы поддержки' + (t.loading ? '' : ' · ' + items.length),
-      body: `<div class="ritual-intro"><span class="ritual-intro__sigil">✦</span><div><b>Небольшие действия для опоры</b><small>Выбери одну программу и возвращайся к её шагу в удобном темпе.</small></div></div>` + items.map(it => {
+      body: `<div class="ritual-intro"><span class="ritual-intro__sigil">✦</span><div><b>Маленькие действия вместо абстрактных мантр</b><small>Выбери одну программу и возвращайся к её шагу в удобном темпе.</small></div></div>` + items.map(it => {
       const st = it.status;
       const active = st === 'active';
       const done = st === 'completed';

@@ -708,8 +708,6 @@ async def generate(db, order: Order, *, bot_username: str = "",
                   f'{layout.esc(_text(language, "link"))}: {layout.esc(safe_url)}</a>'
                   if safe_url else "")
     born = _human_date(order.birth_date)
-    if order.birth_time:
-        born += f" · {order.birth_time}"
     if order.birth_city:
         born += f" · {order.birth_city}"
     blocks = [
@@ -717,11 +715,9 @@ async def generate(db, order: Order, *, bot_username: str = "",
         f'<div class="brand-mark">{layout.brand_mark_svg()}</div>'
         f'<div class="brand">{layout.esc(brand["name"])}</div>'
         f'<div class="eyebrow">{layout.esc(_text(language, "eyebrow"))}</div>'
-                 f'<h1>{layout.esc(cover_title)}</h1>'
-         f'<p class="sub">{layout.esc(brand["tagline"])}</p>'
-         f'<div class="cover-wheel">{layout.wheel_svg(data["chart"], size=300)}</div>'
-         f'<div class="who">{layout.esc(order.name)}</div>'
-
+        f'<h1>{layout.esc(cover_title)}</h1>'
+        f'<p class="sub">{layout.esc(brand["tagline"])}</p>'
+        f'<div class="who">{layout.esc(order.name)}</div>'
         f'<div class="born">{layout.esc(born)}</div>'
         f'<p class="sub small">{layout.esc(_text(language, "composed"))} {date.today().strftime("%d.%m.%Y")}</p>'
         f'{cover_link}'

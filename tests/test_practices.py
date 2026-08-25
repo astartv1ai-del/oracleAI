@@ -1,4 +1,4 @@
-"""Практики: каталог, программа по дням, стрик и завершение.
+"""Практики и мантры: каталог, программа по дням, стрик, завершение.
 
 Раздел держится на непрерывности: «21 день подряд» должно означать ровно это.
 Поэтому проверяем не только счётчики, но и то, что повторная отметка за сутки
@@ -16,7 +16,7 @@ from app.services import practices as practices_svc
 # ─────────────────────────────── каталог ──────────────────────────────────────
 
 def test_catalog_is_not_empty():
-    assert len(catalog.PRACTICES) >= 8, "раздел практик почти пустой"
+    assert len(catalog.PRACTICES) >= 10, "раздел практик почти пустой"
 
 
 @pytest.mark.parametrize("code", sorted(catalog.PRACTICES))
@@ -51,25 +51,16 @@ def test_every_practice_has_fit():
 
 def test_heavy_practices_have_referral():
     """Тяжёлые запросы мягко ведут к специалисту, а не к практике."""
-    for code in ("love_release",):
+    for code in ("mantra_shiva", "love_release"):
         assert catalog.PRACTICES[code].get("referral"), \
             f"{code}: нет направления к специалисту"
 
 
-async def test_legacy_practice_overrides_are_filtered(db, user):
-    """Старые admin rows не могут вернуть удалённую feature в API."""
-    from app.repo import content
-    await content.upsert_content(
-        db, "practice", "mantra_legacy", title="Legacy", body="legacy",
-        meta={"category": "energy", "steps": ["legacy"], "signs": ["legacy"], "days": 7})
-    await content.upsert_content(
-        db, "practice", "legacy_energy", title="Legacy category", body="legacy",
-        meta={"category": "mantra", "steps": ["legacy"], "signs": ["legacy"], "days": 7})
-    items = await practices_svc.list_for_user(db, user)
-    codes = {item["code"] for item in items}
-    assert "mantra_legacy" not in codes
-    assert "legacy_energy" not in codes
-    assert all(item["category"] != "mantra" for item in items)
+def test_mantras_have_text():
+    """У мантры обязан быть текст — иначе её нечего повторять."""
+    for code, item in catalog.PRACTICES.items():
+        if item["category"] == "mantra":
+            assert item.get("text"), f"{code}: мантра без текста"
 
 
 # ──────────────────────────── прогресс клиентки ───────────────────────────────
@@ -143,12 +134,12 @@ async def test_program_finishes_at_last_day(db, user):
 
 
 async def test_stop_closes_program(db, user):
-    await practices_svc.start(db, user, "energy_clean")
-    assert await practices_svc.stop(db, user, "energy_clean")
-    assert not await readings.active_practice(db, user["tg_id"], "energy_clean")
+    await practices_svc.start(db, user, "mantra_gayatri")
+    assert await practices_svc.stop(db, user, "mantra_gayatri")
+    assert not await readings.active_practice(db, user["tg_id"], "mantra_gayatri")
 
     items = await practices_svc.list_for_user(db, user)
-    item = next(p for p in items if p["code"] == "energy_clean")
+    item = next(p for p in items if p["code"] == "mantra_gayatri")
     assert item["finished"]
 
 
@@ -203,7 +194,7 @@ async def test_progress_card_after_finish(db, user):
 async def test_reminder_targets_skip_marked_today(db, user):
     from app.repo import readings as readings_repo
 
-    await practices_svc.start(db, user, "energy_clean")
+    await practices_svc.start(db, user, "mantra_shiva")
     today = users.user_today(user)
     targets = await readings_repo.practice_reminder_targets(db, today)
     assert targets, "начатая практика не попала в напоминания"

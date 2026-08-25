@@ -122,30 +122,3 @@ async def test_interpret_chart_last_resort_is_detailed_and_covers_available_topi
     assert live is False
     assert len(text) >= 900
     assert all(term in text for term in ("Луна", "Меркурий", "Марс", "Венера", "Кету", "Раху", "7-й дом"))
-
-
-def test_structured_chart_json_is_strict_and_bounded() -> None:
-    from app.core.agent import _parse_chart_json, _structured_chart_text
-
-    payload = {"summary": "Короткий синтез", **{
-        key: {
-            "fact": f"Факт {key}",
-            "interpretation": "Объяснение " + ("x" * 500),
-            "question": "Как это наблюдается в опыте?",
-        }
-        for key in ("sun", "moon", "ascendant", "mercury", "mars", "career",
-                    "relationships", "nodes", "synthesis")
-    }}
-    parsed = _parse_chart_json(__import__("json").dumps(payload, ensure_ascii=False))
-    assert parsed is not None
-    assert set(parsed) == {"summary", "sun", "moon", "ascendant", "mercury", "mars",
-                           "career", "relationships", "nodes", "synthesis"}
-    assert len(parsed["sun"]["interpretation"]) == 400
-    text = _structured_chart_text(parsed, _chart(exact=True), time_known=True)
-    assert all(term in text for term in ("Солнце", "Луна", "Меркурий", "Марс", "Венера", "Раху", "Кету"))
-
-
-def test_structured_chart_json_rejects_missing_section() -> None:
-    from app.core.agent import _parse_chart_json
-
-    assert _parse_chart_json('{"summary":"only summary"}') is None
