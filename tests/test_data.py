@@ -236,8 +236,13 @@ async def test_g13_missing_indexes_exist(db):
     DAU/WAU по событиям, учёт LLM."""
     cur = await db.execute("SELECT name FROM sqlite_master WHERE type='index'")
     indexes = {row[0] for row in await cur.fetchall()}
-    for required in ("idx_pay_order", "idx_promo_red", "idx_ref_invitee",
-                     "idx_events_created", "idx_usage_created"):
+    for required in (
+        "idx_pay_order", "idx_promo_red", "idx_ref_invitee",
+        "idx_events_created", "idx_usage_created",
+        "idx_msg_user", "idx_msg_thread", "idx_msg_user_id",
+        "idx_msg_user_thread_id", "idx_msg_user_question_id",
+        "idx_thread_user", "idx_thread_user_agent", "idx_thread_user_recent",
+    ):
         assert required in indexes, required
 
 

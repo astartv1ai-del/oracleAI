@@ -487,10 +487,17 @@ CREATE TABLE IF NOT EXISTS broadcast_targets (
 """
 
 INDEXES = """
-CREATE INDEX IF NOT EXISTS idx_msg_user      ON messages(tg_id, is_question, created_at);
-CREATE INDEX IF NOT EXISTS idx_msg_created   ON messages(created_at);
-CREATE INDEX IF NOT EXISTS idx_msg_thread    ON messages(thread_id, id);
-CREATE INDEX IF NOT EXISTS idx_thread_user   ON threads(tg_id, archived, last_at);
+CREATE INDEX IF NOT EXISTS idx_msg_user            ON messages(tg_id, is_question, created_at);
+CREATE INDEX IF NOT EXISTS idx_msg_created         ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_msg_thread          ON messages(thread_id, id);
+CREATE INDEX IF NOT EXISTS idx_msg_user_id          ON messages(tg_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_msg_user_thread_id   ON messages(tg_id, thread_id, id);
+CREATE INDEX IF NOT EXISTS idx_msg_user_question_id ON messages(tg_id, is_question, id DESC);
+CREATE INDEX IF NOT EXISTS idx_thread_user         ON threads(tg_id, archived, last_at);
+CREATE INDEX IF NOT EXISTS idx_thread_user_agent   ON threads(tg_id, agent, archived, id DESC);
+CREATE INDEX IF NOT EXISTS idx_thread_user_recent  ON threads(
+    tg_id, archived, COALESCE(last_at, created_at) DESC, id DESC
+);
 CREATE INDEX IF NOT EXISTS idx_reports_user  ON reports(tg_id, kind);
 CREATE INDEX IF NOT EXISTS idx_mem_user      ON memories(tg_id);
 CREATE INDEX IF NOT EXISTS idx_diary_user    ON diary(tg_id, created_at);
