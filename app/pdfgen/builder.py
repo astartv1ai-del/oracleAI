@@ -641,20 +641,9 @@ def _natal_reference_block(data: dict, lang: str) -> str:
         return _text(language, key)
 
     headers = [t("object"), t("sign"), t("degree"), t("house"), t("status")]
-    config_rows = (
-        f'<table><tr><td class="label">{t("engine")}</td><td>{layout.esc(chart.get("engine", "Swiss Ephemeris"))}</td></tr>'
-        f'<tr><td class="label">{t("zodiac")}</td><td>{layout.esc(chart.get("zodiac_type", "Tropical"))}</td></tr>'
-        f'<tr><td class="label">{t("houses")}</td><td>{layout.esc(chart.get("house_system_name", "Placidus"))} ({layout.esc(chart.get("house_system", "P"))})</td></tr>'
-        f'<tr><td class="label">{t("perspective")}</td><td>{layout.esc(chart.get("perspective_type", "Apparent Geocentric"))}</td></tr>'
-        f'<tr><td class="label">{t("precision")}</td><td>{layout.esc(_display_precision(chart.get("precision", "unknown"), language))}</td></tr>'
-        f'<tr><td class="label">{t("node_mode")}</td><td>{layout.esc((chart.get("lunar_nodes") or {}).get("mode_label", t("true_node")))}</td></tr>'
-        f'<tr><td class="label">{t("contract")}</td><td>v{layout.esc((chart.get("calculation") or {}).get("contract_version", "1"))}</td></tr>'
-        f'<tr><td class="label">{t("aspect_policy")}</td><td>{layout.esc(", ".join(f"{k}: {v}°" for k, v in (((chart.get("calculation") or {}).get("config") or {}).get("aspect_policy") or {}).get("orbs_deg", {}).items()) or "major aspects")}</td></tr></table>'
-    )
     parts = [
         f'<div class="section reference-section"><h2>{t("reference")}</h2>',
-        f'<p class="small muted">{t("exact_note")}</p>',
-        f'<div class="card reference-config">{config_rows}</div>',
+        f'<p class="reference-lead">{"Положения планет, лунные узлы, дома и аспекты собраны в отдельных разделах для спокойного и удобного чтения." if language == "ru" else "Planet placements, lunar nodes, houses and aspects are arranged in separate sections for calm, easy reading."}</p>',
         '</div>',
     ]
 

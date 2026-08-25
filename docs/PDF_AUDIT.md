@@ -22,7 +22,7 @@ The Matrix remains a separate visual track and is not placed beside the natal ch
 
 ## Real synthetic evidence
 
-The local WeasyPrint path generated RU and EN PDFs from fixed synthetic fixtures. The latest RU artifact is a valid A4 PDF with 10 pages. `pdftotext` found `Натальная карта`, `Куспиды домов`, `Ключевые аспекты` and `Матрица Судьбы`. The latest dedicated natal page is `docs/audit/chart_engine_smoke/pdf_pages/user_fix/ru-03.png`; it was visually inspected after switching to classic dark rendering, and the technical pipeline caption is absent. The latest house page is `docs/audit/chart_engine_smoke/pdf_pages/user_fix/ru-06.png`; all 12 houses fit on one dedicated page with larger typography and generous row spacing, without the former dense composition.
+The local WeasyPrint path generated RU and EN PDFs from fixed synthetic fixtures. The latest RU artifact is a valid A4 PDF with 9 pages after removing the customer-facing calculation metadata block. `pdftotext` found `Натальная карта`, `Куспиды домов`, `Ключевые аспекты` and `Матрица Судьбы`. The latest dedicated natal page is `docs/audit/chart_engine_smoke/pdf_pages/key_placement/ru-03.png`; it was visually inspected after switching to classic dark rendering, and the technical pipeline caption is absent. The latest house page is `docs/audit/chart_engine_smoke/pdf_pages/fixed_layout/ru-06.png`; all 12 houses fit on one dedicated page with readable typography and the angular-point panel. The final complete-page contact sheet is `docs/audit/chart_engine_smoke/pdf_pages/final_clean/contact_sheet.png`.
 
 ## Remaining evidence
 

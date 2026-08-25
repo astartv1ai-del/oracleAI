@@ -47,7 +47,12 @@ async def test_full_natal_report_contains_extended_chart_and_mobile_viewport(mon
     assert "Раху" in html and "Кету" in html
     assert "Хирон" in html and "Джуно" in html
     assert "Куспиды домов" in html and "Ключевые аспекты" in html
-    assert "Placidus" in html and "Tropical" in html
+    assert "Swiss Ephemeris" not in html
+    assert "Kerykeion" not in html
+    assert "Placidus" not in html
+    assert "Tropical" not in html
+    assert "Apparent Geocentric" not in html
+    assert "contract-version" not in html
     assert 'class="natal-print-image"' in html
     assert 'data:image/png;base64,' in html
     assert 'width="2400" height="2400"' in html
@@ -90,7 +95,12 @@ async def test_english_natal_report_is_localized(monkeypatch):
     assert 'data:image/png;base64,' in html
     assert 'width="2400" height="2400"' in html
     assert "data-contract-version=\"1\"" not in html
-    assert "Calculation contract" in html
+    assert "Calculation contract" not in html
+    assert "Swiss Ephemeris" not in html
+    assert "Kerykeion" not in html
+    assert "Placidus" not in html
+    assert "Tropical" not in html
+    assert "Apparent Geocentric" not in html
     assert "Three core anchors" in html
     assert "Sun" in html and "Moon" in html and "Ascendant" in html
     assert "Print image rendered by the mature chart engine" not in html

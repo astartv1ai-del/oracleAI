@@ -13,7 +13,7 @@
 | PNG/WebP output | **PASS** | Adapter contract asserts PNG signature, WebP RIFF/WEBP signature and expected dimensions |
 | Unknown-time correctness | **PASS** | Typed `insufficient_precision`; no fake wheel generated |
 | API auth/ownership | **PASS locally** | `tests/test_api.py -k chart_image`: private headers, ETag/304, PNG/WebP, allowlist and date-only state |
-| PDF HTML/real artifact | **PASS locally** | `tests/test_pdfgen.py` plus synthetic WeasyPrint RU/EN PDFs: 2400×2400 classic-dark natal PNG, no technical pipeline caption, valid A4 PDF, latest RU output 10 pages, dedicated larger-type house page visually inspected at `audit/chart_engine_smoke/pdf_pages/user_fix/ru-06.png` |
+| PDF HTML/real artifact | **PASS locally** | `tests/test_pdfgen.py` plus synthetic WeasyPrint RU/EN PDFs: 2400×2400 classic-dark natal PNG, no technical pipeline caption or calculation metadata, valid A4 PDF, latest RU output 9 pages, dedicated house page and complete-page contact sheet visually inspected at `audit/chart_engine_smoke/pdf_pages/fixed_layout/ru-06.png` and `audit/chart_engine_smoke/pdf_pages/final_clean/contact_sheet.png` |
 | Selfcheck | **PASS locally** | `scripts/selfcheck.py` completed; live LLM probe remained disabled/offline as prior status records |
 | JavaScript syntax | **PASS locally** | `node --check` across remaining Mini App modules |
 | Legacy natal renderer removal | **PASS in product/test source grep** | No `nativitySvg` or `wheel_svg` symbols remain under `miniapp/`, `app/`, `scripts/` or `tests/`; historical ADR/docs references are intentional |
