@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -71,15 +72,12 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
                     (max(1, round(width * scale)), max(1, round(height * scale))),
                     Image.Resampling.LANCZOS,
                 )
-            image_data = detector_frame.tobytes()
-            detector_width, detector_height = detector_frame.size
     except Exception:
         return _empty("invalid_image", ["image_decode_failed"], model_path=str(path))
     if not path.exists():
         return _empty("model_missing", ["mediapipe_model_missing"], model_path=str(path))
     try:
         import mediapipe as mp  # type: ignore[import-not-found]
-        import numpy as np  # type: ignore[import-not-found]
         from mediapipe.tasks import python  # type: ignore[import-not-found]
         from mediapipe.tasks.python import vision  # type: ignore[import-not-found]
     except Exception:
@@ -96,21 +94,23 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
         )
         detected = None
         last_runtime_error: Exception | None = None
-        for _attempt in range(DETECTOR_ATTEMPTS):
-            try:
-                array = np.frombuffer(image_data, dtype=np.uint8).reshape(
-                    (detector_height, detector_width, 3)
-                )
-                # The MediaPipe binding keeps a native pointer to this buffer;
-                # use a private contiguous copy so its lifetime is unambiguous.
-                array = np.ascontiguousarray(array)
-                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=array)
-                with vision.HandLandmarker.create_from_options(options) as landmarker:
-                    detected = landmarker.detect(mp_image)
-                break
-            except (RuntimeError, ValueError, TypeError) as exc:
-                last_runtime_error = exc
-                continue
+        # `mp.Image(data=numpy_array)` intermittently raises inside the Python
+        # binding on hosted runners and then emits an unsafe __del__ warning.
+        # Feeding a temporary JPEG through the supported file constructor avoids
+        # that native-buffer lifetime issue. The file is unlinked immediately by
+        # the context manager; raw image bytes are never persisted by the app.
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as detector_file:
+            detector_frame.save(detector_file, format="JPEG", quality=92, optimize=True)
+            detector_file.flush()
+            for _attempt in range(DETECTOR_ATTEMPTS):
+                try:
+                    mp_image = mp.Image.create_from_file(detector_file.name)
+                    with vision.HandLandmarker.create_from_options(options) as landmarker:
+                        detected = landmarker.detect(mp_image)
+                    break
+                except (RuntimeError, ValueError, TypeError) as exc:
+                    last_runtime_error = exc
+                    continue
         if detected is None:
             raise last_runtime_error or RuntimeError("mediapipe detection failed")
         hands: list[dict[str, Any]] = []
