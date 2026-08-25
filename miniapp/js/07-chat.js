@@ -453,6 +453,21 @@
           <div class="chat-widget">${p.html || (p.loading ? '<div class="typing"><span></span><span></span><span></span></div>' : '')}</div>
         </div>`;
 
+      case 'synastry-select':
+        return `<div class="msg assistant"><div class="chat-widget">${p.loading ? '<div class="typing"><span></span><span></span><span></span></div>' : (p.error ? `<div class="s-err">${esc(p.error)}</div>` : '') + (this.synastrySelectHtml ? this.synastrySelectHtml(p.partners || []) : '')}</div></div>`;
+
+      case 'synastry-loading':
+        return `<div class="msg assistant"><div class="chat-widget"><div class="typing"><span></span><span></span><span></span></div><p class="product-muted">Собираю две точные карты и ищу межпланетные связи…</p></div></div>`;
+
+      case 'synastry-result':
+        return `<div class="msg assistant">${p.data && this.synastryProductHtml ? this.synastryProductHtml(p.data) : `<div class="chat-widget"><div class="s-err">${esc(p.error || 'Синастрия пока недоступна.')}</div></div>`}</div>`;
+
+      case 'transits-loading':
+        return `<div class="msg assistant"><div class="chat-widget"><div class="typing"><span></span><span></span><span></span></div><p class="product-muted">Сверяю сегодняшнее небо с твоей натальной картой…</p></div></div>`;
+
+      case 'transits-result':
+        return `<div class="msg assistant">${p.data && this.transitProductHtml ? this.transitProductHtml(p.data) : `<div class="chat-widget"><div class="s-err">${esc(p.error || 'Транзиты пока недоступны.')}</div></div>`}</div>`;
+
       case 'compat':
         return `<div class="msg assistant compat-message">
           <section class="chat-widget compat-flow" aria-label="Проверка совместимости">

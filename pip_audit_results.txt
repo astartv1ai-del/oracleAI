@@ -1,2 +1,0 @@
-No known vulnerabilities found
-PIPAUDIT_EXIT=0

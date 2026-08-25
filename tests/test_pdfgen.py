@@ -45,6 +45,7 @@ async def test_full_natal_report_contains_extended_chart_and_mobile_viewport(mon
 
     assert 'name="viewport"' in html
     assert "Раху" in html and "Кету" in html
+    assert "Лилит" in html and "Чёрная Луна" in html
     assert "Хирон" in html and "Джуно" in html
     assert "Куспиды домов" in html and "Ключевые аспекты" in html
     assert "Swiss Ephemeris" not in html
@@ -98,6 +99,7 @@ async def test_english_natal_report_is_localized(monkeypatch):
     assert 'width="2400" height="2400"' in html
     assert "data-contract-version=\"1\"" not in html
     assert "Calculation contract" not in html
+    assert "Lilith" in html and "Black Moon" in html
     assert "Swiss Ephemeris" not in html
     assert "Kerykeion" not in html
     assert "Placidus" not in html

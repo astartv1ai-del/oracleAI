@@ -21,7 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import users as users_repo
-from . import agents, astro, chart_interpretation, interpretation, llm, memory, skills, tarot
+from . import agents, astro, chart_interpretation, chart_products, interpretation, llm, memory, skills, tarot
 from .agents.base import language_and_gender_guidance
 from .stable import stable_seed
 
@@ -302,6 +302,10 @@ async def _synastry_data(db, user, partner_date: str) -> str | None:
         pchart = json.loads(partner["chart_json"] or "{}") if partner["chart_json"] else {}
         if pchart.get("mode") != "full" or not pchart.get("planets"):
             return None
+        product = chart_products.build_synastry_contract(
+            chart, pchart, partner_id=int(partner["id"]),
+            partner_label=str(partner["name"] or "Партнёр"),
+        )
         aspects = astro.synastry_aspects(chart["planets"], pchart["planets"])
         lines = [
             "Карта пользователя:",
@@ -320,6 +324,11 @@ async def _synastry_data(db, user, partner_date: str) -> str | None:
                 lines.append(f"Вклад аспектов в балл пары: {bonus:+d}")
         else:
             lines.append("(орбных аспектов между картами не найдено)")
+        lines.extend([
+            "",
+            "[Детерминированный synastry contract — трактуй только эти значения]",
+            json.dumps(product, ensure_ascii=False, indent=2),
+        ])
         return "\n".join(lines)
     except (TypeError, ValueError):
         return None

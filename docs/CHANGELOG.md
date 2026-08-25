@@ -1,293 +1,43 @@
-# Changelog
+# OracleAI — changelog
 
-Все заметные изменения OracleAI документируются в этом файле. Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), а версии следуют семантике: `MAJOR.MINOR.PATCH`.
-
-Типы записей:
-
-| Тип | Значение |
-|---|---|
-| **Added** | Новая пользовательская или эксплуатационная возможность. |
-| **Changed** | Изменённое поведение, дизайн или контракт. |
-| **Fixed** | Исправление дефекта. |
-| **Security** | Изменение защиты, приватности или безопасного поведения. |
-| **Deprecated / Removed** | Переходный или удалённый функционал. |
+Все заметные изменения пользовательского продукта, API и эксплуатационных контрактов фиксируются здесь. Временные аудиты и машинные snapshots в changelog не перечисляются как ссылки на файлы.
 
 ## Unreleased
 
 ### Added
 
-- v88 Mini App readability layer: clearer guide outcomes, stronger secondary text sizing, compact first-action hero hierarchy and cache-busted asset delivery.
-- Purpose-level LLM workflow budgets now cover agent, complete and vision paths with shared deadline and estimated cost guards across retries and provider fallback.
-- Centralized `friendlyError` mapping keeps Telegram auth, provider, HTML and JSON details out of user-facing Mini App states.
-- Production baseline: structured JSONL logs with PII redaction, request/release IDs, Sentry environment/release tagging and operational alert checker for 5xx, webhook failures, LLM fallback rate and backup freshness.
-- Encrypted SQLite backup/restore helpers with checksum, integrity checks, retention and off-site compose upload.
-- Privacy-safe activation dictionary and server-owned milestones for age-gate completion, first ritual, first question and D1/D7 voluntary return; admin dashboard now exposes cohort activation funnel.
-- Public RU/EN Privacy Policy and Terms routes with explicit 16+ wording and deletion/support placeholders for legal review.
-- Added `LAUNCH_GOVERNANCE.md` with controlled-beta default, P0/P1 launch gates, ownership, SLO placeholders, evidence requirements and no-go rules.
-- Added `PRODUCTION_READINESS_AND_LAUNCH_PLAN.md` covering product, LLM, device QA, privacy, infrastructure, payments, analytics and rollout readiness.
+- Добавлены versioned JSON-контракты для полной натальной карты, synastry и transit product paths.
+- Добавлены owner-scoped маршруты `POST /api/synastry` и `POST /api/transits` с явными precision-gates.
+- Mini App получил отдельные journeys «Полная синастрия» и «Транзиты»; Astrologer agent получает deterministic evidence для этих путей.
+- Добавлена спецификация будущих `composite_schema_version=1` и `returns_schema_version=1` без включения этих возможностей в production runtime.
+- Репозиторий очищен от исторических audit snapshots, AI handoff-файлов, generated inventories и одноразовых research artifacts.
 
 ### Changed
 
-- GitHub Actions now requires ruff, Python/JavaScript syntax checks, migration-focused tests, cache-busting policy, full pytest, dependency audit, golden-set evaluator smoke and selfcheck.
-- Synthetic 140-case LLM golden set and deterministic scoring cover grounding, safety, language, next step, calibration and latency, including Palm quality, evidence, prompt-injection and safety cases before provider/prompt release.
-- Palm vision now sends a strict JSON Schema response contract to compatible providers; CI runs a deterministic production-readiness gate and uploads privacy-safe evaluation evidence.
-- Chat sessions receive a generic category title after the first meaningful question without copying personal text; tool palette now explains required data, duration and result before launch.
-- Design component inventory and viewport/accessibility matrix are now checked by a deterministic token/import/reduced-motion contract gate in CI.
-- Tool preflight metadata now uses a one-column mobile sheet so required data, duration and result remain readable at 360–430 px; assets bumped to v83 after visual smoke.
-- Added read-only SQLite/WAL health report, deterministic schema manifest, scale-trigger matrix and migration rehearsal runbook; no storage rewrite is enabled before measured thresholds.
-- Added a read-only monetization baseline, versioned unit-economics contract and assumptions CSV for cash-constrained, validated-growth and large-team scenarios; no live prices, subscriptions or balances changed.
-- Added server-owned monetization milestones for crystal-pack checkout/paid, crystal spend and low balance, plus dashboard gross/estimated KPI for paid ARPPU, repeat purchase, refunds, SKU mix and provider-purpose cost; net revenue/contribution remain null until reviewed settlement inputs exist.
-- Added `MONETIZATION_RESEARCH_PACK.md` with verified competitive anchors, 1 490/4 990/9 990 ₽ price architecture, AI COGS routing, Stars/net-realization boundary, payroll scenarios, break-even, FX/LLM/conversion sensitivity, LTV/CAC gates and phased rollout recommendations.
-- Updated `MONETIZATION_ASSUMPTIONS.csv` to version `2026-08-13.v2` with source/status-tagged price hypotheses, estimated model inputs and unchanged settlement/tax/refund required-input rows; assumptions validator now recognizes `estimated` and research-backed `hypothesis` inputs.
+- Полная exact natal карта сохранена как canonical path: 10 традиционных планет, 12 домов, ASC/MC, Rahu/Ketu, Lilith, Chiron/Juno/Ceres/Vesta/Pallas, мажорные аспекты и precision-aware ограничения.
+- Натальный визуал остаётся в Mode P: серверный Kerykeion → transient SVG → raster PNG/WebP; raw SVG не покидает серверный render pipeline.
+- Документация сокращена до текущих product, architecture, API, design, security, deployment, agent, chart-contract и launch-governance источников правды.
 
 ### Security
 
-- Backup production mode fails closed without a dedicated encryption key; structured logs and Sentry scrub secrets, query parameters and Telegram identifiers.
-- Mini App assets bumped to v82 after the chat/tool UI contract change.
+- Синастрия использует только owner-scoped `partner_id`; birth data не принимаются через GET URL и не появляются в публичных cache keys.
+- Unknown-time natal charts не получают выдуманные дома, ASC, MC или колесо.
+- Transit day snapshots явно маркируются как дневные и не выдаются за точный момент Луны.
 
-## [2.0.0] — 2026-08-12
+## 2.0.0 — 2026-08-12
 
 ### Added
 
-- Ежедневный микро-ритуал на экране «Сегодня» с коротким завершаемым действием.
-- Сезонный блок и клиентский механизм variant/exposure для измерения вариантов без передачи текста личного запроса.
-- Переключатель языка RU/EN в профиле, словарь интерфейса, языковая настройка runtime проводников и публичный англоязычный лендинг.
-- Управляемая настройка памяти с понятным consent-UI, серверным отказом записи при выключенной памяти и удалением отдельных фактов.
-- Age-gate 16+ в Mini App и связанное серверное поле согласия.
-- Свайп-навигация на Pointer Events, дополняющая нижнюю навигацию.
-- SVG-сигилы для навигации и компактный picker ритуалов/инструментов.
-- Актуальный профессиональный комплект документации: продукт, архитектура, API, дизайн, безопасность, деплой, contribution guide и этот changelog.
+- Ежедневный микро-ритуал, age-gate 16+, RU/EN Mini App, opt-in memory, дневник, Tarot, Matrix, palm evidence flow, аналитика и controlled-beta documentation.
 
 ### Changed
 
-- Полностью переработан визуальный язык Mini App для аудитории 16–35: иерархия экрана «Сегодня», хаб проводников, профиль, чат, карточки и анимации.
-- Нормализованы пользовательские имена проводников: Лилит, Урания и Мадам Ленорман.
-- Переработан сценарий совместимости и сопутствующие клиентские состояния.
-- Базовый стандарт ответа проводника задаёт структуру: наблюдаемые факты → интерпретация → варианты следующего действия.
-- Публичные RU/EN-лендинги получили метаданные и dynamic canonical по `WEBAPP_URL`.
-- Основной знак бренда заменён на `oracle-mark.png` во всех продуктовых поверхностях.
-- Клиентские asset-версии обновлены для корректной доставки обновлённого интерфейса в Telegram WebView.
-
-### Fixed
-
-- Исправлена совместимость кода profile/runtime/diary с `sqlite3.Row`: обращения к полям больше не используют несуществующий `.get()`.
-- Расширен allowlist обновляемых полей профиля для age confirmation, privacy memory и языка.
+- Mini App перестроен вокруг чата с отдельными проводниками, explicit tool actions, accessibility states и responsive dark visual system.
 
 ### Security
 
-- Введена серверная проверка 16+ до продолжения пользовательского сценария.
-- Когда память выключена, сервис чата прекращает фоновую экстракцию фактов, runtime не добавляет сохранённую память в контекст, а дневниковые записи не передаются проводнику.
-- Приватные настройки применяются в backend, а не только скрываются в интерфейсе.
+- Server-side privacy and memory-off boundaries, safety routing and high-stakes disclaimers стали частью общего runtime-контракта.
 
-### Removed
+## Release policy
 
-- Удалены прежние документы, промежуточные дизайн-аудиты, roadmap-материалы и экспортированные корневые документы, не соответствующие актуальному продукту.
-- Старый SVG-знак выведен из пользовательских ссылок в пользу выбранного растрового логотипа.
-
-## [Unreleased]
-
-### v82 — Server-managed English copy
-
-**Fixed.** Server-managed copy now selects English fallbacks or administrator-provided `title_en` and `body_en` overrides without duplicating content rows. FAQ accepts an explicit language and returns localized titles and bodies; paywall and scheduled notification flows now select both text and actionable buttons in the profile language. New regressions prevent legacy Russian copy from leaking into the English experience.
-
-### v81 — Stability audit and load verification
-
-**Added.** Регрессионные тесты подтверждают независимый RU/EN-кэш прогнозов, безопасную миграцию старого кэша и изоляцию конкурентных запросов по event loop. HTTP-сценарий Locust получил уникальные идентификаторы виртуальных пользователей, агрегированные метрики маршрутов и реалистичный профиль 1 000 одновременных сессий при целевом потоке около 50 RPS. Генератор нагрузки поддерживает режим только активных профилей, исключающий намеренные блокировки из проверки доступности.
-
-**Fixed.** Ключ кэша `forecasts` расширен до `(tg_id, day, lang)` с транзакционной миграцией существующих SQLite-баз; аудиоверсия прогноза обновляет только запись соответствующего языка. Внутрипроцессные замки прогноза привязаны к event loop и больше не могут вызывать ошибку после смены цикла. Англоязычный резервный прогноз и голосовая подпись больше не содержат русский текст.
-
-### v80 — RU/EN interface and forecast isolation
-
-**Added.** Локализованы экран «Сегодня», профиль, история раскладов, память, полная карта, уведомления и календарные сокращения Mini App. В кэш ежедневных прогнозов добавлен язык, а подсказка следующего действия на домашнем экране выбирается на RU или EN.
-
-**Changed.** Версия статических ассетов синхронизирована до `v=80` во входной странице, CSS-агрегаторе и архитектурной проверке.
-
-### v79 — Static asset delivery
-
-**Fixed.** Обновлена версия cache-busting, чтобы Telegram WebView гарантированно получил исправленные клиентские тексты и интерфейс после релиза.
-
-### v78 — Gender-neutral product copy
-
-**Fixed.** Гендерно-зависимые и нейтральные формулировки исправлены в клиентских модулях, Telegram-сценариях, реферальных сообщениях, каталоге практик и fallback-ответах. Совместимость перестала передавать HTML-разметку в контекст интерпретации.
-
-### Added
-
-- Добавлен необязательный шаг выбора пола в Telegram-онбординге после имени: женщина, мужчина или пропуск. Значение хранится как `f`, `m` либо `NULL`, поэтому существующие профили и пользователи, не желающие указывать пол, продолжают работать без миграции данных вручную.
-- В настройках профиля Mini App добавлен доступный выбор и изменение пола с немедленным сохранением через API.
-- Добавлены проверки API, SQLite-миграции, Telegram FSM и системного контекста агентов для женского, мужского, нейтрального и английского сценариев.
-
-### Changed
-
-- Русскоязычный онбординг, резервные тексты и fixed-сценарии агентов используют корректные формы по выбранному полу; при пропуске применяется нейтральная формулировка.
-- Англоязычный онбординг и системные инструкции агентов используют нейтральное обращение без гендерных предположений.
-- API профиля возвращает и валидированно обновляет `gender`; SQLite-схема и миграции поддерживают это поле для новых и действующих баз.
-- Клиентские asset-версии и CSS-агрегатор синхронизированы до `v=77`, чтобы Telegram WebView получил новую логику настроек целиком.
-
-### Fixed
-
-- Сводки памяти, резервный ответ модели, офлайн-Таро и совместимость больше не навязывают пользователю женские формы или пол партнёра.
-
-### Added
-
-- Добавлен «Астро-дневник»: короткий check-in настроения, необязательная приватная заметка и немедленный бережный лунный ориентир после сохранения.
-- Добавлена личная фраза-опора в ежедневном ритуале: существующие практики получили ясное назначение и человеческие точки входа вместо абстрактных «мантр».
-- Добавлена изолированная политика bounded context для свободных диалогов: недавние реплики сохраняются, ранние пользовательские темы сжимаются детерминированно, а текущий вопрос не дублируется в LLM-вызове.
-- Добавлены регрессионные тесты bounded-контекста, изоляции тредов и недублирования текущего сообщения.
-- Добавлен приватный архив памяти с поиском, читаемыми карточками и возможностью пользоваться собственными фактами во время паузы фонового запоминания.
-- Добавлены SVG-сигилы ролей проводников, единый векторный знак OracleAI в шапке и на age-gate, а также визуальный журнал проверки логотипа.
-- Добавлены документы `docs/architecture/LLM_CONTEXT_POLICY.md` и `docs/design/RITUAL_CHAT_EXPERIENCE_SPEC_2026-08.md`, описывающие состав prompt, границы контекста и контракт нового ритуального интерфейса.
-
-### Changed
-
-- Чат перестроен вокруг ясной навигации: каталог «Мои чаты», явное действие «Новый», компактная панель инструментов и быстрые действия конкретного проводника находятся в предсказуемых местах.
-- Дневник и прежние размытые мантры переосмыслены как ежедневная связка «отметить состояние → получить фразу-опору → выбрать маленький шаг».
-- Длинные факты памяти форматируются как приватные карточки; переключатель паузы больше не перекрывает содержание и не скрывает собственный архив пользовательницы.
-- Переработаны подписи быстрых функций Лилит, иконки у аватаров и визуальная иерархия каталога проводников без emoji-маркеров ролей.
-- Логотип переведён с проблемного растрового знака на компактный SVG, устойчивый к малому размеру и тёмной космической подложке.
-- Клиентские asset-версии и CSS-агрегатор синхронизированы до `v=76`, чтобы Telegram WebView получил новый интерфейс целиком.
-
-### Fixed
-
-- CTA «Получить мой знак дня» больше не перекрывает текст стартового hero-блока: контейнер резервирует место под действие на мобильной ширине.
-- Панель инструментов больше не создаёт высокий пустой лист: функции сгруппированы и показаны в компактной сетке.
-- Сохранение дневниковой заметки возвращает клиенту фактический лунный ориентир и сразу отражает выбранное состояние в карточке.
-
-### Security
-
-- Сжатие истории не использует модель и не добавляет скрытых выводов: в summary попадают только ранние пользовательские темы, тогда как системные инструкции, evidence и долгосрочная память остаются отдельными контролируемыми блоками.
-
-### Added
-
-- Для ежедневного ритуала добавлены личный прогресс, мгновенное подтверждение завершения в один тап и спокойные тексты микро-практик.
-- Для результата совместимости добавлены интерактивные сферы отношений, раскрываемые пояснения и управляемый подробный бережный разбор.
-- Для натальной карты добавлены first-run подсказка, ритуальное состояние расчёта со звёздным ореолом, состояние загрузки в кнопке и мягкая подсказка по исследованию колеса.
-- Для Таро добавлены личный вопрос с бережными вариантами формулировок, понятный прогресс ритуала, последовательное открытие карт и итоговая нить расклада с действием «Собрать личный смысл».
-- Для чата добавлены быстрый выбор проводника, доступный нижний drawer инструментов, компактный трёхшаговый гайд первого входа и предсказуемые жесты вызова панели.
-- Добавлен журнал решения по повторному введению локальных космических ассетов: `docs/audit/BACKGROUND_REINTRODUCTION_2026-08.md`.
-- Добавлен evidence-first pipeline в `app/core/interpretation.py`: закрытые блоки фактов для натала, Таро, совместимости, отчётов и monthly-сценариев, а также детерминированные guardrails против неподтверждённых карт, планет, домов и аспектов.
-- Добавлены регрессионные тесты качества интерпретаций и контрастная browser smoke-проверка раскрываемых деталей карты и нити расклада Таро.
-- Введены общие motion-токены (`--motion-quick`, `--motion-base`, `--motion-slow`, `--ease-ritual`) и семантический адаптер тактильной обратной связи для единообразного отклика интерактивных сценариев.
-
-### Changed
-
-- Возвращена атмосферная основа Mini App: локальные изображения `bg-cosmos.jpg` и `bg-cosmos-2.jpg`, созвездия, туманности и силуэт Лилит снова видимы за интерфейсом, при этом header, навигация и контентные поверхности сохраняют контрастные glass-слои.
-- Натальная карта теперь собирается как короткий интерактивный ритуал: форма появляется плавно, центральное Солнце и планеты проявляются последовательно, плашка выбранной планеты раскрывается без резкого появления, а активный фильтр стихии отвечает свечением.
-- Чат перестроен вокруг основного действия: многострочный composer поддерживает `Enter` для отправки и `Shift+Enter` для переноса строки, инструменты доступны также свайпом влево или вверх, а переключение проводника закрывает drawer и сохраняет контекст диалога.
-- `chart-takeaway` получил более личный и эмоционально бережный тон, не добавляя неподтверждённых астрологических фактов.
-- Клиентские asset-версии и CSS-агрегатор синхронизированы до `v=75` для корректной доставки космического фона, motion-улучшений карты, Таро, совместимости, ежедневного ритуала и обновлённого чата в Telegram WebView.
-- Каждый CSS-импорт в агрегаторе получил единый параметр версии `v=75`; это исключает частичный кэш базовых токенов и финального дизайн-слоя в Telegram WebView.
-- После сквозного product-аудита обновлены домашний экран, личные разделы и чаты проводников: у каждого проводника есть компактный индивидуальный вводный блок, а пустые, загрузочные и восстановительные состояния используют один спокойный, понятный паттерн.
-- Форма натальной карты стала самостоятельной: включает подписи полей, обязательную дату рождения, город и явно необязательное время с коротким объяснением точности результата.
-- Клиентские asset-версии и CSS-агрегатор синхронизированы до `v=69`, поэтому финальный дизайн-слой корректно доставляется в Telegram WebView.
-- Все LLM-сценарии используют общий evidence-first контракт и скрытый план синтеза вместо выдачи необоснованных перечислений.
-- При неизвестном времени рождения API, бот, PDF и интерфейс переходят в честный date-only режим: скрывают ASC, MC и дома, но сохраняют доступные планеты, знаки и аспекты.
-- Карточка натальной карты теперь сначала даёт короткий ориентир, а подробные планеты и аспекты открываются по запросу; завершённый расклад Таро показывает связку позиций как единую нить.
-- Версия frontend-ассетов повышена до `v=64` для гарантированной доставки обновлённых JS и CSS в Telegram WebView.
-- Проведён безопасный архитектурный рефакторинг модульного монолита без изменения публичных URL, JSON-контрактов, лимитов или кодов ошибок.
-- Сценарии совместимости вынесены из HTTP-роутера в `app.services.compatibility`; общие HTTP-адаптеры и DTO распределены по `app/api/common/` и `app/api/contracts/`.
-- Mini App получил единый `app.state`, совместимый facade `window.app`, data-driven command registry и тонкий DOM event layer.
-- Добавлены автоматические architectural guardrails для запрета импортов между API-роутерами и проверки порядка frontend runtime-модулей.
-
-### Fixed
-
-- Отметка ежедневной практики теперь сразу обновляет домашний ритуал и его прогресс без лишней перезагрузки экрана.
-- Домашний экран больше не остаётся в технической загрузке при временной недоступности данных: пользователь получает полезный ориентир и быстрый выбор проводника.
-- Ошибки загрузки истории чата и временные ошибки ответа проводника разделены; для пользовательницы исчезли технические причины и бесполезные предложения перезагрузить диалог.
-- Явно очищенное время рождения больше не наследует прежнее значение профиля: карта сразу и честно переходит в date-only режим без ложных ASC, MC и домов.
-- История, память, уведомления и карточки профиля больше не показывают пустые метрики, дублирующиеся заголовки или технический текст вместо объяснения и следующего действия.
-- Добавлены автоматические регрессии для даты рождения в форме карты и явного сброса времени рождения.
-
-### Security
-
-- В интерпретационный контур добавлена проверка grounding: LLM не получает права дополнять расчёты несуществующими фактами и не строит выводы по домам, когда время рождения не известно.
-
-### Planned documentation discipline
-
-- Каждое пользовательское, API-, security- или deployment-изменение добавляется сюда в том же pull request.
-- Дата релиза заполняется при выпуске; не используйте «сегодня» задним числом.
-- Для breaking changes добавляйте раздел migration / rollback и ссылку на соответствующий документ в `docs/`.
-
-
-## 2026-08-25 — OracleAI natal/agent modernization audit baseline
-
-### Added
-
-- Created `docs/TASKS.md` as the synchronized phase backlog and `docs/AGENTS.md` as the current agent/tool/routing map.
-- Created `docs/DECISIONS.md` with ADRs for the single Kerykeion/Swiss Ephemeris calculation source, evidence-first interpretation, PDF renderer decision gate, agent-routing baseline and audit environment.
-- Recorded the audited runtime flow and known gaps in `docs/ARCHITECTURE.md`.
-
-### Changed
-
-- Confirmed the current production calculation path as Kerykeion 5.12.9 over Swiss Ephemeris with explicit Tropical/Placidus/Apparent Geocentric/True Node conventions.
-- Confirmed that the current agent system uses explicit selection plus skill narrowing rather than a central free-text intent classifier.
-- Confirmed that the current PDF path is WeasyPrint-based HTML rendering and that the Mini App wheel is manually generated SVG.
-
-### Verification
-
-- `pytest -q` passed in the audit environment.
-- `python3 -m scripts.selfcheck` completed successfully with live LLM probing skipped and offline fallback behavior observed.
-- No production Telegram credentials or `WEBAPP_URL` were present in the sandbox; external Telegram flows were not exercised.
-
-
-## 2026-08-25 — Canonical natal contract, SVG wheel and structured interpretation
-
-### Added
-
-- Added `app/core/chart_contract.py` with versioned calculation metadata, explicit conventions, active-point inventory, major-aspect angles and configurable per-type orbs.
-- Full and date-only chart results now expose canonical input metadata, precision mode, engine/source metadata and angular-data availability while retaining legacy schema fields.
-- Added `app/core/chart_interpretation.py` with JSON-only prompt contract, bounded section lengths, schema validation, evidence checks and rich-text compatibility rendering.
-- Added deterministic contract tests and a Node SVG smoke fixture covering zero-degree points, clustered planets, nodes, houses and aspects.
-
-### Changed
-
-- Natal aspect output is filtered against the declared major-aspect orb policy and date-only metadata no longer presents technical noon as a confirmed birth time.
-- Rebuilt the Mini App natal wheel with semantic sign/house/aspect layers, deterministic collision lanes, accessible labels, responsive viewBox geometry and reduced-motion support.
-- Canonical charts prefer structured JSON interpretation; legacy charts without calculation metadata continue to use the existing Markdown path.
-
-### Verification
-
-- Chart, interpretation, API, guardrail and natal-section regression tests pass.
-- `node --check miniapp/js/04-nativity.js`, the SVG smoke test and `scripts/check_design_contract.py` pass.
-
-
-## 2026-08-25 — Deterministic agent routing and release QA
-
-### Added
-
-- Added `app/core/agents/routing.py` with explainable multilingual domain scoring, confidence, candidate list, hard-domain ambiguity policy and safe default fallback.
-- Added `scripts/benchmark_agent_routing.py` and `tests/test_agent_routing.py` with a 24-case RU/EN/code-switched matrix.
-- Added API routing metadata (`requested_agent`, final `agent`, `routing`) and a Mini App handoff badge that updates the active specialist header after a safe auto-route.
-- Added routing benchmark artifacts for skill, Vedic, Mira/Lenormand and agent-quality checks under `docs/audit/`.
-
-### Verification
-
-- Full API suite passes, including default-chat auto-routing and explicit-agent precedence.
-- All 465 collected tests pass; all Mini App JavaScript files pass `node --check`; `git diff --check` and the design-contract checker pass.
-- The deterministic agent-routing matrix passes 24/24 cases, including ambiguous hard-domain and off-topic fallback cases.
-- Operational self-check passes with only the documented live-LLM and unset deployment-environment skips.
-
-## 2026-08-25 — Confident ToV, dense PDF and renderer decision
-
-### Changed
-
-- Reworked active RU/EN user-facing copy, agent SYSTEM contracts, file-backed skills, offline fallbacks, Mini App chart/diary/palm/placements copy and PDF prompts toward a confident, immersive evidence-first voice. Generic rationalizing language was removed from ordinary interpretation flows; mandatory crisis, age, privacy, medical/legal/financial and data-grounding boundaries remain enforced.
-- Increased PDF typography to body `12.4pt` with line-height `1.56`, H2 `24pt`, H3 `17pt`; paired thematic chapters into two columns, retained wheel/matrix visual anchors, and removed a redundant matrix table.
-- Tested `@astrodraw/astrochart` 3.0.2 in Node/jsdom and Kerykeion 5.12.9 classic/modern through the real chart-data pipeline. The product keeps its own canonical-data-driven SVG wheel; external outputs are documented references rather than additional production runtimes.
-
-### Added
-
-- Added `scripts/qa_pdf_profiles.py` and deterministic profile artifacts under `docs/audit/pdf_samples_v2/profiles/`.
-- Added ADR-006/007 and visual QA notes covering renderer selection, typography, page density, data-only charts, and the remaining safety-only language.
-- Added `docs/audit/TOV_PDF_RENDERER_REPORT_2026-08-25.md` with before/after examples, counts, source links, renderer metrics, PDF profile results and release evidence.
-
-### Verification
-
-- Full pytest suite: **465 passed**; Mini App JavaScript syntax, Python compileall, `git diff --check`, design-contract checker and operational selfcheck passed.
-- Routing/quality benchmarks remained green: agent routing 24/24, skill routing 20/20, Vedic routing 10/10, Mira/Lenormand routing 20/20.
-- Three deterministic profiles in both languages produced **6/6 valid PDFs**, all six pages each, with no audited ToV markers; representative generated pages passed visual inspection without clipping or accidental blank pages.
-
-### v89 — Scheduler ownership and operational status — 2026-08-25
-
-**Added.** The scheduler now persists a `main` lease in `scheduler_leases`, atomically admits one owner across bot processes, recovers after a stale lease expires, records run/failure status and bounded error context, and preserves per-delivery idempotency. `scripts/ops_alerts.py` now exposes scheduler freshness/failure signals and raises privacy-safe alerts for missing, stale or failed scheduler runs.
-
-**Tests.** Added cross-connection concurrency, stale-owner recovery, failure-accounting and operations-alert regressions. Focused scheduler/operations tests pass; the full suite passes locally. Production alert routing, off-site backup, live provider, device and payment evidence remain external launch gates.
+Перед каждым release необходимо обновить этот файл, соответствующие canonical docs и тесты. Public launch не считается готовым только на основании локальных тестов: остаются внешние проверки production deployment, real Telegram devices, live LLM/provider quality, privacy/legal review, payments и Kerykeion/Swiss Ephemeris licensing.

@@ -40,6 +40,9 @@ jobs:
           find miniapp/js admin -type f -name '*.js' -print0 \
             | xargs -0 -r -n1 node --check
 
+      - name: Repository hygiene
+        run: python scripts/check_repository_hygiene.py
+
       - name: Cache-busting policy
         run: python scripts/check_cache_busting.py
 

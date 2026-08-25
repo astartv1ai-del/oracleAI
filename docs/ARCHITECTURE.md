@@ -1,189 +1,114 @@
-# Архитектура OracleAI
+# OracleAI — архитектура
 
-OracleAI построен как единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют один SQLite-файл в WAL-режиме и общие сервисы; это устраняет расхождение бизнес-правил между ботом и веб-интерфейсом.[1]
+OracleAI — единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют общие сервисы, SQLite/WAL, safety boundaries, calculation contracts и provider fallback.
+
+## Топология
 
 ```mermaid
 flowchart TB
-    U[Пользовательница в Telegram] --> B[aiogram-бот]
+    U[Telegram user] --> B[aiogram bot]
     U --> W[Telegram Mini App]
     W --> F[FastAPI]
-    W --> L[Публичные лендинги RU / EN]
-    B --> S[Сервисы продукта]
+    B --> S[Domain services]
     F --> S
-    S --> A[Проводники и расчёты]
-    S --> R[Репозитории]
+    S --> A[Agents and deterministic calculations]
+    S --> R[Repositories]
     R --> D[(SQLite / WAL)]
-    A --> P{LLM provider chain}
-    P --> C[Custom OpenAI-compatible]
-    P --> AN[Anthropic]
-    P --> O[OpenAI]
-    P --> OFF[Offline templates]
-    F --> ADM[Админ-панель]
+    A --> P[LLM provider chain]
+    P --> O[Offline fallback]
+    F --> ADM[Admin surface]
 ```
 
-## Границы компонентов
-
-| Компонент | Ответственность | Ключевые каталоги |
+| Слой | Ответственность | Основные пути |
 |---|---|---|
-| Telegram-бот | Онбординг, сообщения, уведомления, платежные сценарии и задачи бота. | `app/bot/` |
-| Mini App | Мобильный интерфейс: «Сегодня», проводники, чат, профиль, инструменты. | `miniapp/` |
-| HTTP API | Авторизация запроса, валидация входных данных, лимиты, JSON-контракты и статика. | `app/api/` |
-| Доменные сервисы | Чат, лимиты, практики, аналитика, платежи, рефералы, планировщик. | `app/services/` |
-| Ядро | Проводники, астрологические и карточные вычисления, evidence-first grounding, safety и LLM runtime. | `app/core/`, включая `interpretation.py` |
-| Репозитории | SQL-доступ и маппинг строк БД без логики интерфейса. | `app/repo/` |
-| Данные | DDL, миграции, начальное наполнение и SQLite-сессии. | `app/data/` |
-| Операции | Docker Compose, reverse proxy, бэкапы и selfcheck. | `infra/`, `scripts/` |
+| Telegram bot | Онбординг, сообщения, уведомления и Telegram-сценарии | `app/bot/` |
+| Mini App | «Сегодня», проводники, чат, профиль и product tools | `miniapp/` |
+| HTTP API | Авторизация, validation, rate limits, JSON contracts и static delivery | `app/api/` |
+| Domain services | Chat, limits, practices, analytics, payments, referrals, scheduler | `app/services/` |
+| Core | Agents, deterministic astrology/card calculations, evidence, safety and LLM runtime | `app/core/` |
+| Repositories | SQL access and row mapping | `app/repo/` |
+| Data | Schema, migrations, seed and sessions | `app/data/` |
+| Operations | Docker Compose, Caddy, backup/restore and health checks | `infra/`, `scripts/` |
 
-## Серверный поток запроса
+## Request flow
 
-FastAPI создаёт соединение с БД на lifecycle-старте, применяет миграции через слой данных и монтирует Mini App на `/static`, а публичные стили — на `/public`.[2] Все роутеры из реестра включаются в единое приложение; API по умолчанию кэшироваться не должен, а статические ассеты получают короткий TTL.[2]
+FastAPI создаёт DB-сессию на lifecycle-старте, применяет migrations и подключает Mini App/static routes. API routers являются транспортными адаптерами: они проверяют identity и входные данные, вызывают service/core layer и возвращают contract-shaped responses. API не должен принимать PII в URL, а клиент не дублирует server-side access, privacy или entitlement rules.
 
 ```mermaid
 sequenceDiagram
     participant T as Telegram WebView
     participant M as Mini App JS
     participant A as FastAPI router
-    participant D as Dependencies
-    participant S as Service / Core
+    participant D as Auth/dependencies
+    participant C as Core/service
     participant R as Repository
     participant DB as SQLite
 
-    T->>M: initData + viewport
-    M->>A: fetch /api/*
-    A->>D: Telegram identity / rate limit
-    D-->>A: current user + DB session
-    A->>S: product action
-    S->>R: read / write
+    T->>M: initData and viewport
+    M->>A: authenticated /api request
+    A->>D: identity and limits
+    D-->>A: current user
+    A->>C: product action
+    C->>R: read/write
     R->>DB: SQL
     DB-->>R: sqlite3.Row
-    R-->>S: domain data
-    S-->>A: response model
+    R-->>C: domain data
+    C-->>A: response contract
     A-->>M: JSON
 ```
 
-## Frontend
+## Chart architecture
 
-Frontend намеренно не использует сборщик: `miniapp/index.html` подключает нумерованные JavaScript-модули и единый `styles.css`, который формирует каскад из CSS-слоёв. Порядок файлов — часть архитектуры: базовые токены и shell идут раньше экранных стилей, а `15-ritual-redesign.css` является финальным визуальным слоем.[3]
+`app/core/astro.py` — канонический calculation source. `app/core/chart_contract.py` фиксирует natal conventions and precision metadata. `app/core/chart_products.py` строит отдельные synastry/transit contracts; их public shapes описаны в [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md). Future composite/returns semantics находятся в [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) и пока не enabled.
+
+Натальный exact path включает planets, houses, angles, nodes, Lilith, additional points, major aspects и retrograde flags. При неизвестном времени используются только поддержанные date-only facts; дома, ASC, MC и natal wheel не подставляются.
+
+Натальный visual использует Mode P: server-side Kerykeion ChartDrawer создаёт transient SVG, который немедленно преобразуется `resvg_py` в PNG/WebP. Raw SVG не сохраняется и не выходит в API, Mini App, share flow или PDF. Подробности находятся в [CHART_ENGINE_DECISION.md](CHART_ENGINE_DECISION.md) и [CHART_ENGINE_LICENSING.md](CHART_ENGINE_LICENSING.md).
+
+## Frontend modules
+
+Frontend намеренно не использует bundler: `miniapp/index.html` подключает нумерованные JavaScript-модули и CSS aggregator. Порядок загрузки является частью контракта.
 
 | Набор | Роль |
 |---|---|
-| `00-runtime.js` | Единый mutable state и legacy-facade для безопасной постепенной миграции. |
-| `01-utils.js` | Общие утилиты, словарь RU/EN, variant/exposure для экспериментов. |
-| `02-art.js` – `04-nativity.js` | Визуальные ассеты, статические данные и натальные вычисления на клиенте. |
-| `05-app.js` | Bootstrap, shell, age-gate, navigation и viewport. |
-| `06-home.js` – `12-misc.js` | Экраны «Сегодня», чат, виджеты, Таро, карта, совместимость, профиль. |
-| `13-events.js` | Тонкий DOM transport: click/keydown/input → action registry. |
-| `14-gestures.js` | Pointer Events и свайп-навигация. |
-| `15-actions.js` | Data-driven registry для `data-act`, без гигантского switch в event layer. |
-| `00-tokens.css` – `15-ritual-redesign.css` | Токены, layout, экранные компоненты и финальный визуальный слой. |
+| `miniapp/js/00-runtime.js`–`02-api.js` | State, utilities, localization and authenticated API helpers |
+| `miniapp/js/03-data.js`–`05-app.js` | Tool catalog, application bootstrap, shell and navigation |
+| `miniapp/js/06-home.js`–`13-palm.js` | Home, chat, cards, natal/profile and domain widgets |
+| `miniapp/js/14-products.js` | Structured synastry and transit product journeys |
+| `miniapp/js/15-actions.js` | Delegated `data-act` action registry |
+| `miniapp/js/16-placements.js` | Placement and chart detail rendering |
+| `miniapp/css/` and `miniapp/styles.css` | Tokens, layout, widget and final visual layers |
 
-Клиент вызывает API через общий слой `02-api.js`; интерфейс не должен дублировать серверные правила приватности, лимитов или доступа. Он может показывать состояние оптимистично, но сервер остаётся окончательным источником разрешений.
+Новые UI actions добавляются через `data-act` и `15-actions.js`; отдельные карточки не создают собственные глобальные listeners. Общий `api()`/`apiBlob()` слой сохраняет auth headers и error mapping.
 
-### Новые правила frontend-модулей
+## Agents and evidence
 
-`window.app` остаётся временным публичным фасадом для существующих экранов, но изменяемые данные находятся в `app.state`. Новые функции не должны создавать собственные глобальные поля или слушатели на отдельных карточках: действие объявляется через `data-act`, а его mapping добавляется в `15-actions.js`. DOM-события, view-логика и состояние таким образом имеют разные точки изменения.
+Пользовательские поверхности не обращаются к LLM напрямую. Agent runtime получает profile, language, bounded memory, deterministic chart/product evidence и разрешённые skills. `app/core/interpretation.py` отделяет facts from interpretation, а safety/grounding checks блокируют invented placements, cards, medical claims, guarantees and third-party mind reading. LLM не вычисляет эфемериды или product contracts.
 
-На backend API-роутеры являются транспортными адаптерами. DTO находятся в `app/api/contracts/`, общие HTTP-помощники — в `app/api/common/`, прикладные сценарии — в `app/services/`, доменные вычисления — в `app/core/`. Роутеры не импортируют друг друга. Например, `/api/compat` и `/api/compat/full` используют `app/services/compatibility.py`, а `/api/share/compat.png` использует общий validator и публичный domain API skills.
-
-## Доменный слой и проводники
-
-Пользовательские поверхности не обращаются к LLM напрямую. Runtime проводников получает профиль, языковое предпочтение, безопасный контекст и только разрешённую память, затем выбирает доступного провайдера. Цепочка провайдеров собирается из custom-совместимого API, Anthropic и OpenAI; если провайдеров нет, продукт предоставляет офлайн-ответ вместо аварийного завершения.[4]
-
-Три клиентских проводника формируют разные точки входа в продукт: **Лилит** — общий бережный диалог, **Урания** — астрологические инсайты, **Мадам Ленорман** — карточные сценарии. Их тон и ответы обязаны оставаться интерпретацией для саморефлексии, а не обещанием результата или профессиональной консультацией.
-
-### Evidence-first интерпретации
-
-`app/core/interpretation.py` отделяет **детерминированно рассчитанные факты** от текста модели. Перед каждым LLM-сценарием оркестратор собирает закрытый evidence block и передаёт его вместе с вопросом и разрешённым контекстом. После генерации grounding-проверка отклоняет текст, который выдаёт несуществующие карты, планеты, дома или аспекты. Это правило действует для натала, Таро, совместимости, отчётов и monthly-сценариев.[6]
-
-| Сценарий | Разрешённые факты | Ограничение точности |
+| Домен | Основной evidence source | Ограничение |
 |---|---|---|
-| Натальная карта | Вычисленные планеты, знаки, аспекты; дома и углы только при известном времени. | При `time_known=false` интерфейс, API, бот и PDF используют date-only режим без ASC, MC и домов. |
-| Таро | Вытянутые карты, их позиции, ориентация, вопрос и схема расклада. | Нельзя добавлять невыпавшие карты, точные сроки или намерения третьих лиц. |
-| Совместимость и отчёты | Детерминированные расчёты, разрешённые синастрические факты, контекст запроса. | Нельзя обещать исход отношений или подменять интерпретацией профессиональную консультацию. |
+| Natal | `astro.compute_chart`, chart contract | Houses/angles только при exact time, coordinates and timezone |
+| Synastry | Owner-scoped saved partner and `synastry_schema_version=1` | Both charts must be exact; no birth data in URLs |
+| Transit | `transit_schema_version=1` and explicit snapshot date/time | Day snapshots are not false lunar instants; transit houses are not included |
+| Tarot | Saved drawn cards, position and orientation | No invented cards, timing or guarantees |
+| Palm | Vision observations with quality/confidence | No diagnosis or high-stakes claims |
+| Memory/diary | SQLite with consent and bounded context | Memory-off is enforced server-side |
 
-Frontend сохраняет это различие в подаче: карточка карты показывает краткий вывод перед раскрываемыми фактами, а завершённый расклад отображает связи позиций через «нить расклада». Клиент не рассчитывает и не изобретает дополнительные факты, а отображает контракт API.[3]
+## Data and migrations
 
-## Данные и миграции
+SQLite stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. DDL is defined in `app/data/schema.py`; changes to existing tables use `app/data/migrations.py`. Code must access `sqlite3.Row` by key/index and not call `.get()`.
 
-SQLite — транзакционный источник данных для пользователей, диалогов, памяти, дневников, раскладов, практик, платежей, аналитики, контента и административных действий. Полный DDL находится в `schema.py`; добавление колонок к живым таблицам выполняется через `migrations.py`, поскольку `CREATE TABLE IF NOT EXISTS` не изменяет существующую схему.[5]
+## Operations and trust boundaries
 
-| Группа таблиц | Примеры | Назначение |
-|---|---|---|
-| Профиль | `users`, `profile_summaries`, `memories` | Идентичность Telegram, предпочтения, согласия и память. |
-| История | `threads`, `messages`, `diary`, `forecasts`, `reports` | Диалог и персональные материалы. |
-| Практики | `tarot_readings`, `partners`, `practices` | Карты, совместимость и ежедневные действия. |
-| Коммерция | `plans`, `orders`, `payments`, `entitlements` | Тарифы, покупки и права доступа. |
-| Наблюдаемость | `events`, `llm_usage`, `safety_events` | Продуктовая аналитика, стоимость и safety-аудит. |
-| Управление | `settings`, `content_items`, `feature_flags`, `admin_audit` | Контент, флаги и действия администрации. |
+Telegram `initData`, browser input, API payloads, LLM output and SQLite records are separate trust zones. Server-side validation, owner authorization, rate limits, escaping, privacy guards and safe error mapping are mandatory. `scripts/selfcheck.py`, `scripts/release_gate.py`, CI and the tests directory provide automated checks; generated output belongs outside the source tree.
 
-При работе с результатами SQLite нужно использовать доступ по ключу или индексу (`row["field"]`), а не метод `.get()`: возвращается `sqlite3.Row`, который не реализует словарный `.get()`.
-
-## Границы доверия
-
-| Зона | Доверенная информация | Обязательная защита |
-|---|---|---|
-| Telegram | Подписанная `initData`, Telegram ID. | Проверка подписи вне development-режима. |
-| Browser / WebView | Любой текст, состояния формы и local storage. | Серверная валидация Pydantic, лимиты, экранирование. |
-| API | Запрос с вычисленным пользователем. | Проверка доступа, rate limit и безопасные ошибки. |
-| LLM | Интерпретация, не источник истины о пользователе. | Ограниченный контекст, privacy guard, safety-политики. |
-| SQLite | Персональные данные и продуктовая история. | WAL, резервные копии, ограничение доступа к файлу, миграции. |
-
-## Observability и деградация
-
-`/api/health` возвращает состояние базы, доступность и цепочку LLM-провайдеров. Middleware добавляет `X-Response-Time`, логирует медленные и серверные ошибки, отправляет исключения в Sentry при наличии `SENTRY_DSN` и не показывает стек пользователю.[2] При неготовой LLM-цепочке API и бот продолжают отвечать офлайн-сценариями.[4]
+Public launch remains gated by external production evidence: deployment/image validation, real Telegram device QA, live provider quality, privacy/legal review, payment certification, backup/restore drill and licensing approval.
 
 ## References
 
-[1]: [app/api/main.py](../app/api/main.py) — общий API-процесс и комментарий о двух поверхностях.
-[2]: [app/api/main.py](../app/api/main.py) — lifecycle, security headers, cache control и статическая раздача.
-[3]: [miniapp/js/](../miniapp/js/) и [miniapp/css/](../miniapp/css/) — модульная архитектура клиентского интерфейса.
-[4]: [app/config.py](../app/config.py) — выбор и fallback-цепочка LLM-провайдеров.
-[5]: [app/data/schema.py](../app/data/schema.py) и [app/data/migrations.py](../app/data/migrations.py) — DDL и изменение существующих схем.
-[6]: [docs/INTERPRETATION_QUALITY_STANDARD.md](INTERPRETATION_QUALITY_STANDARD.md) и [app/core/interpretation.py](../app/core/interpretation.py) — контракт evidence-first, calibration и guardrails.
-
-
-## Audit baseline — 2026-08-25
-
-Read-only checkout confirmed the documented Python monolith structure: FastAPI and aiogram share domain services and SQLite/WAL; the Mini App is unbundled Vanilla JavaScript with ordered modules under `miniapp/js/` and CSS layers under `miniapp/css/`. The natal path is `app/api/routers/chart.py` → `app/core/astro.py` → `app/core/agent.py`/`app/core/interpretation.py` → `miniapp/js/04-nativity.js` or `app/pdfgen/builder.py`.
-
-The calculation source of truth is currently Kerykeion 5.12.9 over Swiss Ephemeris. Production conventions are explicit: Tropical zodiac, Placidus `P`, Apparent Geocentric perspective and True Node mode. The API exposes `natal_schema_version: 2`, precision modes, exact and rounded values, houses/angles only when time, coordinates and timezone are confirmed, plus nodes and additional points when supported by the installed library. The calculation contract is not yet extracted into a separate `CalculationConfig`/canonical DTO, and aspect policy/orbs are not represented as a first-class versioned object.
-
-The fixed natal interpretation already follows an evidence-first pattern with grounding and coverage gates, but the public result remains Markdown text with eight sections rather than strict JSON Schema. Follow-up free chat receives a chart brief through the selected agent runtime; a dedicated chart-context follow-up contract and tests for “no invented placement” remain to be implemented.
-
-The frontend wheel is manually generated SVG with animated groups, planet/node glyphs and aspect lines. It is responsive through a `viewBox` and size scaling, but the current implementation uses fixed radial geometry, shows only a subset of aspects, does not perform deterministic collision avoidance for close planets, has limited semantic labeling, and does not yet expose a complete legend or distinct style policy for all aspect types. The PDF builder is a separate HTML template rendered by WeasyPrint; it already has RU/EN copy tables and evidence-based sections, but the requested premium page architecture, print QA and renderer decision are incomplete.
-
-Agent routing is explicit selection plus skill narrowing, not a central free-text intent classifier. The current registry contains four agents: Лилит (`oracle`), Урания (`astro`), Мадам Ленорман (`tarot`) and Мира (`chiromant`). The complete routing matrix and UI/tool presentation audit remain open.
-
-### Baseline commands
-
-`pytest -q` passed after installing the pinned development dependencies. `python3 -m scripts.selfcheck` completed successfully; the live LLM probe was skipped because `SELF_CHECK_LIVE=1` was not enabled, while the configured proxy returned empty responses during the self-check's optional provider calls and the product correctly used offline fallbacks. The sandbox did not contain Telegram bot credentials or a production `WEBAPP_URL`, so external Telegram flows were not exercised.
-
-
-## Implementation iteration — canonical chart contract and interpretation
-
-`app/core/chart_contract.py` now defines a versioned calculation metadata contract with explicit Tropical/Placidus/Apparent Geocentric/True Node conventions, active points, major-aspect angles and per-type orbs. `app/core/astro.py` attaches this contract to both full and lite results, preserves exact values beside rounded UI values, suppresses technical noon as confirmed birth time, and filters returned major aspects against the declared orb policy. The API exposes a backward-compatible `calculation` object alongside the existing `natal_schema_version: 2` fields.
-
-`miniapp/js/04-nativity.js` now renders a canonical-data-driven SVG with sign glyphs/names, true house cusp arcs, semantic aspect styles, node labels, zero-degree-safe geometry, deterministic radial lanes for close points, `title`/ARIA labels, responsive `viewBox`, and existing animation/reduced-motion hooks. The CSS module adds the semantic layer tokens and motion fallback.
-
-`app/core/chart_interpretation.py` defines a strict structured contract for personality synthesis, Rahu/Ketu, strengths, weaknesses, purpose, relationships, career/money, aspects, periods and synthesis. The canonical chart path requests JSON-only output, validates shape/lengths and evidence constraints, caches the structured payload, and renders backward-compatible rich text. Legacy charts without the new calculation metadata remain on the previous text path until migrated.
-
-
-## Implementation iteration — deterministic routing and specialist handoff
-
-`app/core/agents/routing.py` provides a bounded RU/EN/code-switched classifier based on explainable domain terms. It distinguishes hard specialist conflicts from soft Oracle context, keeps ambiguous/off-topic questions on the default agent, and exposes confidence/candidates/reason. `app/services/chat.py` applies the route only when the requested agent is the default; explicit agent paths remain authoritative. API responses now expose `requested_agent`, final `agent`, and applied routing metadata. The Mini App consumes that metadata to show a localized handoff badge and switch the active header to the specialist thread.
-
-The routing matrix contains 24 cases and passes 24/24. Existing specialist benchmarks remain separate evidence for skill selection, Vedic routing, Mira/Lenormand routing and persona quality. This design avoids an additional LLM intent call and therefore does not add latency or a new failure mode to the paid chat path.
-
-## Current release iteration — ToV, PDF and visual layer — 2026-08-25
-
-Active user-facing and prompt surfaces use a confident evidence-first voice: a deterministic placement, drawn card, observed palm feature or calculated relationship signal is connected to a clear interpretation and a practical next step. Generic rationalizing language is not part of ordinary output. The shared runtime still applies `app/core/safety.py`, high-stakes boundaries, privacy/age/crisis protections and grounding rules; data availability is communicated as a calculation fact, such as date-only mode when birth time is absent.
-
-The PDF layer remains WeasyPrint HTML→PDF. `layout.py` defines body `12.4pt` / `1.56` line-height, H2 `24pt`, H3 `17pt`, and compact reference/chapter columns. `builder.py` composes the cover, wheel/matrix overview, full calculation reference, five paired thematic blocks and closing. Three deterministic profiles in RU/EN produced six valid pages per document; the six-page result is accepted because readability and complete reference content take priority over shrinking the main text.
-
-The Mini App natal wheel remains the project’s own SVG renderer in `miniapp/js/04-nativity.js`. It consumes the canonical chart contract directly and owns collision lanes, semantic aspect styles, accessible labels, responsive viewBox and reduced-motion behavior. AstroChart 3.0.2 and Kerykeion 5.12.9 renderers were executed as external references; neither is loaded by the product runtime. See [ADR-006/007](DECISIONS.md) and [ToV/PDF/renderer report](audit/TOV_PDF_RENDERER_REPORT_2026-08-25.md).
-
-## Operational iteration — scheduler ownership and status — 2026-08-25
-
-The bot scheduler now uses the `scheduler_leases` table as a persistent single-owner lease. A process claims the `main` lease atomically, renews ownership per tick lifecycle, and records `ok` or `error` completion without exposing the process owner token. A stale lease expires after three tick intervals, allowing restart recovery while preventing two bot processes from dispatching the same scheduled work concurrently. Existing per-delivery claims remain the idempotency boundary for individual notifications.
-
-`scripts/ops_alerts.py` now reads only scheduler status, last-finished age, failure count and a bounded error message. It emits `scheduler_last_run_failed`, `scheduler_status_missing` or `scheduler_stale` alerts without reading or printing chat, diary, memory or webhook payloads. The local fixture suite proves concurrent ownership, stale-lease recovery, failure accounting and alert parsing; production alert routing and off-site operational ownership remain open launch gates.
+[1]: [app/api/main.py](../app/api/main.py) — application lifecycle and static/API mounting.
+[2]: [app/core/astro.py](../app/core/astro.py) — canonical astrology calculations.
+[3]: [app/core/chart_contract.py](../app/core/chart_contract.py) — natal calculation contract.
+[4]: [app/core/chart_products.py](../app/core/chart_products.py) — synastry/transit product contracts.
+[5]: [app/core/interpretation.py](../app/core/interpretation.py) — evidence-first interpretation and guardrails.
+[6]: [app/data/schema.py](../app/data/schema.py) and [app/data/migrations.py](../app/data/migrations.py) — data schema and migrations.

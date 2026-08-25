@@ -1,6 +1,6 @@
 # OracleAI — карта агентов и инструментов
 
-Дата baseline: **2026-08-25**. Полный аудит продолжается; этот документ отражает фактически найденный registry/runtime и помечает незавершённые проверки.
+Дата обновления: **2026-08-26**. Документ описывает текущий registry/runtime и активные product-contract boundaries.
 
 ## Как выбирается агент сейчас
 
@@ -36,25 +36,8 @@
 | Память/дневник | `recall_memory`, `recall_diary`, `save_memory` | SQLite с consent и bounded context | Записывать только явные долговременные факты; приватность обязательна |
 | Практики | `suggest_practice` | Каталог практик и safety rules | Предлагать конкретный безопасный шаг; при high-stakes темах действуют специальные границы и направление к специалисту |
 
-## QA-матрица routing (verified)
+## Текущие product-contract boundaries
 
-`docs/audit/agent_routing_2026-08-25.json` содержит 24 кейса с фактическим агентом, confidence, candidates, reason и `auto_route`. Матрица покрывает RU, EN, code-switching, specialist terms, typo-adjacent phrasing, ambiguity and off-topic fallback. Все 24/24 кейса пройдены; hard-domain conflicts остаются в default Oracle, а single-domain signals безопасно передаются специалисту.
+Натальный путь использует canonical chart contract и передаёт агенту `astro.chart_brief`. Структурная синастрия доступна через `synastry_schema_version=1` только для двух owner-scoped exact charts. Структурные транзиты доступны через `transit_schema_version=1` с честной маркировкой `day` или `instant`; агент получает те же deterministic evidence данные. Подробные поля и ограничения описаны в [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md).
 
-| Класс | Пример | Ожидаемое поведение |
-|---|---|---|
-| RU natal | «Что значит мой Сатурн в 10 доме?» | `astro`, `get_chart`, ответ с конкретным placement |
-| RU nodes | «Куда мне расти по Раху и что привычно по Кету?» | `astro` или осознанный handoff из `oracle`, только факты карты |
-| RU relationship | «Разбери отношения по Венере и 7 дому» | `astro`, дома только при точном времени |
-| RU tarot | «Разложи карты на мой вопрос» | `tarot`, сначала `draw_tarot` |
-| RU practice | «Подбери практику, чтобы успокоиться» | `oracle`, один безопасный шаг |
-| RU palm | «Прочитай ладонь по фотографии» | `chiromant`, quality/evidence first |
-| EN natal | “What does my Saturn in the 10th house mean?” | `astro`, concrete chart context |
-| EN tarot | “Do a tarot reading about my decision” | `tarot`, draw only |
-| Code-switching | «Расскажи про my Venus и отношения» | выбранный агент должен сохранить chart grounding и язык пользователя |
-| Typo/slang | «что значт мой асц?» | нормализовать или попросить уточнить, не уходить в generic answer |
-| Ambiguous | «Что мне делать с жизнью и любовью?» | уточнить/разделить домены, не смешивать инструменты без основания |
-| Off-topic | «Помоги написать SQL-запрос» | вежливый fallback/ограничение, не выдавать астрологию за ответ |
-
-## Что проверить дальше
-
-Следующий release gate должен проверить live/API persistence routing metadata, UI behavior after browser navigation, и отсутствие расхождения между auto-routed first message и subsequent explicit session messages. Specialist skill benchmarks уже сохранены в `docs/audit/skill_routing_2026-08-25.json`, `vedic_routing_2026-08-25.json`, `mira_lenormand_routing_2026-08-25.json` и `agent_quality_2026-08-25.json`; file-backed profiles и разные голоса проходят отдельный quality checker.
+Composite и planetary returns пока не являются enabled skills или API paths. Их будущие входы, precision-gates, calculations и acceptance tests описаны в [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md).

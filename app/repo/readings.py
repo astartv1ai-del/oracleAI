@@ -127,9 +127,21 @@ async def add_partner(db, tg_id: int, name: str, birth_date: str, *,
 
 async def list_partners(db, tg_id: int) -> list[dict]:
     cur = await db.execute(
-        "SELECT id, name, relation, birth_date, birth_city FROM partners "
+        "SELECT id, name, relation, birth_date, birth_city, chart_json FROM partners "
         "WHERE tg_id=? ORDER BY id DESC", (tg_id,))
-    return [dict(r) for r in await cur.fetchall()]
+    result = []
+    for row in await cur.fetchall():
+        item = dict(row)
+        try:
+            chart = json.loads(item.pop("chart_json") or "{}")
+        except (TypeError, ValueError):
+            chart = {}
+        item["synastry_ready"] = bool(
+            chart.get("mode") == "full" and chart.get("precision") == "exact"
+            and chart.get("planets")
+        )
+        result.append(item)
+    return result
 
 
 async def get_partner(db, partner_id: int, tg_id: int):

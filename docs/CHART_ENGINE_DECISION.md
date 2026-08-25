@@ -12,7 +12,7 @@ OracleAI использует **Mode P**: серверный `Kerykeion 5.12.9 C
 
 ## Почему это решение принято
 
-Первоначальный smoke-проход показал, что Kerykeion modern SVG с CSS variables при прямом rasterization давал визуально чёрный артефакт в resvg. Повторный проход с публичным `remove_css_variables=True` дал корректный raster с читаемыми знаками, glyphs, домами и аспектами. Из шести сравнительных вариантов выбран `A — Classic dark · clean` как наиболее читаемый и наименее перегруженный. Артефакты сохранены в `docs/audit/chart_engine_smoke/known_time.png` и `dense_stellium.png`; оба имеют размер 1200×1200, проходят PNG/WebP signature checks и не содержат scripts или внешних ссылок.
+При переходе на Mode P была выбрана конфигурация `Classic dark · clean` как наиболее читаемая и наименее перегруженная. Решение закреплено в production-коде и проверяется детерминированными тестами на raster signature, размеры, приватность и отсутствие raw SVG.
 
 Выбор зрелого engine отменяет прежнее решение поддерживать собственный natal-wheel renderer. В коде удалены `miniapp/js/04-nativity.js`, `nativitySvg()` и `app/pdfgen/layout.py::wheel_svg()`. `matrix_svg()` и отдельная compatibility visual остаются самостоятельными продуктами и не используются для natal chart geometry.
 
@@ -46,4 +46,3 @@ Technical migration is implemented, but public commercial release is not declare
 [5]: https://github.com/baseplate-admin/resvg-py "resvg-py source repository"  
 [6]: https://www.astro.com/swisseph/ "Swiss Ephemeris official licensing page"  
 [7]: ../app/core/chart_rendering.py "OracleAI chart rasterization adapter"  
-[8]: audit/chart_engine_research_2026-08-25.md "Candidate research and official-source notes"

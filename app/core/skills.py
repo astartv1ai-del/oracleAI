@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import date, datetime, timedelta
@@ -24,7 +25,7 @@ from ..repo import content as content_repo
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import palm as palm_repo
-from . import astro, memory, palm, placements, tarot, vedic
+from . import astro, chart_products, memory, palm, placements, tarot, vedic
 from .matrix import compute_matrix, matrix_brief
 
 log = logging.getLogger("oracle.skills")
@@ -629,7 +630,6 @@ async def _run_get_chart(db, user, args) -> str:
 
 
 async def _run_get_transits(db, user, args) -> str:
-    sky = astro.today_sky()
     try:
         chart = json.loads(user["chart_json"] or "{}")
     except (TypeError, ValueError):
@@ -638,17 +638,46 @@ async def _run_get_transits(db, user, args) -> str:
     # Реальное небо из эфемерид, а не только «лунная фаза»: знаки Луны и Венеры
     # меняются медленно и дают контекст для трактовки чувств и ценностей.
     extras = []
-    moon, venus = astro.moon_venus_signs(date.today())
+    as_of = date.today()
+    clock = None
+    raw_date = str((args or {}).get("as_of") or "").strip()
+    raw_time = str((args or {}).get("time") or "").strip()
+    if raw_date:
+        try:
+            as_of = date.fromisoformat(raw_date)
+        except ValueError:
+            return "нужна дата транзита в формате YYYY-MM-DD"
+    if raw_time:
+        try:
+            clock = datetime.strptime(raw_time, "%H:%M").time()
+        except ValueError:
+            return "время транзита указывается в формате ЧЧ:ММ"
+    moon, venus = astro.moon_venus_signs(as_of)
     if moon:
         extras.append(f"Луна в {moon[0]} ({moon[1]}) — как сегодня отзывается душа")
     if venus:
         extras.append(f"Венера в {venus[0]} ({venus[1]}) — что сейчас притягивает в любви")
+    sky = astro.today_sky(as_of)
     sky_line = (f"Луна: {sky['moon']['emoji']} {sky['moon']['name']} "
                 f"({sky['moon']['advice']}), лунный день ~{sky['moon']['day']}")
     if extras:
         sky_line += "; " + "; ".join(extras)
-    return (f"{await guide(db, 'transit')}\n\nСегодня: сезон Солнца в "
-            f"{sky['sun_season']['sign']}, {sky_line}. Её Солнце: {sun}.")
+    structured = ""
+    if chart.get("planets"):
+        try:
+            contract = await asyncio.to_thread(
+                chart_products.build_transit_contract, chart,
+                as_of=as_of, clock=clock,
+            )
+            structured = ("\n\n[Детерминированное transit evidence — трактуй только эти значения]\n"
+                          + json.dumps(contract, ensure_ascii=False, indent=2))
+        except (chart_products.ChartProductError, ValueError):
+            structured = "\n\nСтруктурные транзиты недоступны: сохранённой карты с планетами нет."
+        except Exception as exc:  # noqa: BLE001
+            log.debug("structured transit evidence unavailable: %s", type(exc).__name__)
+    return (f"{await guide(db, 'transit')}\n\nНа дату {as_of.isoformat()}: сезон Солнца в "
+            f"{sky['sun_season']['sign']}, {sky_line}. Её Солнце: {sun}."
+            f"{structured}")
 
 
 async def _run_moon_week(db, user, args) -> str:
@@ -1129,9 +1158,13 @@ SKILLS: dict[str, dict] = {
         "run": _run_get_transits,
         "schema": {
             "name": "get_transits",
-            "description": ("Небо сегодня: фаза Луны, лунный день, сезон Солнца. "
-                            "Зови для прогнозов на день/«как сегодня действовать»."),
-            "input_schema": {"type": "object", "properties": {}},
+            "description": ("Структурированный снимок транзитов к сохранённым натальным планетам "
+                             "плюс контекст дня. Зови для вопроса о текущем небе или укажи дату "
+                             "в формате YYYY-MM-DD; без времени точность снимка — день."),
+            "input_schema": {"type": "object", "properties": {
+                "as_of": {"type": "string", "description": "Дата YYYY-MM-DD, по умолчанию сегодня"},
+                "time": {"type": "string", "description": "UTC-время HH:MM, необязательно"},
+            }},
         },
     },
     "get_moon_week": {

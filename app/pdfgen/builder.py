@@ -322,6 +322,10 @@ def _facts_block(order: Order, data: dict, lang: str) -> str:
         rows.append((labels[6], f"{_display_sign(rahu.get('sign', '—'), language)} {rahu.get('deg', '—')}°"))
     if ketu:
         rows.append((labels[7], f"{_display_sign(ketu.get('sign', '—'), language)} {ketu.get('deg', '—')}°"))
+    lilith = next((n for n in chart.get("nodes", []) if n.get("name", "").startswith("Лилит")), None)
+    if lilith:
+        lilith_label = "Лилит · Чёрная Луна" if language == "ru" else "Lilith · Black Moon"
+        rows.append((lilith_label, f"{_display_sign(lilith.get('sign', '—'), language)} {lilith.get('deg', '—')}°"))
     _, destiny_arcana, _ = _matrix_display(data["matrix"]["destiny"], language)
     rows.append((labels[8], f"{data['matrix']['destiny']['n']} — {destiny_arcana}"))
 

@@ -1,1 +1,0 @@
-design contract ok: tokens, import order, reduced motion, component inventory

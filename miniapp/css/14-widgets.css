@@ -146,3 +146,40 @@
 
 /* таро: перевёрнутая карта повёрнута на 180° у лица */
 .tcard-front.rev img { transform: rotate(180deg); }
+
+
+/* ── Структурные продукты: синастрия и транзиты ── */
+.chart-product { padding: 16px; }
+.product-meta { color: var(--text-faint); font-size: 11px; letter-spacing: .35px; margin-top: 4px; }
+.product-muted { color: var(--text-faint); font-size: 12px; line-height: 1.5; margin: 9px 0 0; }
+.product-subtitle { color: var(--gold-bright); font-size: 11px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; margin: 14px 0 6px; }
+.product-subtitle--spaced { margin-top: 18px; }
+.product-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 13px; }
+.product-point { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: 11.5px; line-height: 1.35; padding: 6px 0; }
+.product-point span:last-child { color: var(--text); text-align: right; white-space: nowrap; }
+.product-aspects { display: grid; gap: 5px; }
+.product-aspect { background: rgba(255,255,255,.035); border: 1px solid var(--border); border-radius: 9px; color: var(--text-dim); font-size: 12px; line-height: 1.35; padding: 8px 9px; }
+.product-aspect strong { color: var(--text); }
+.product-aspect__glyph { color: var(--gold-bright); font-size: 15px; padding: 0 2px; }
+.product-partners { display: grid; gap: 7px; margin-top: 14px; }
+.product-partner { align-items: flex-start; background: rgba(255,255,255,.035); border: 1px solid var(--border); border-radius: 10px; color: var(--text); display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; text-align: left; width: 100%; }
+.product-partner:active { border-color: var(--gold); }
+.product-partner__name { font-size: 13px; font-weight: 700; }
+.product-date-row { align-items: end; display: flex; gap: 8px; margin-top: 15px; }
+.product-date-row label { color: var(--text-faint); display: flex; flex: 1; flex-direction: column; font-size: 11px; gap: 5px; }
+.product-date-row input { background: rgba(255,255,255,.06); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font: inherit; min-height: 36px; padding: 6px 8px; width: 100%; }
+.product-date-row .btn { flex: none; min-height: 36px; }
+.product-empty { padding: 4px 0; }
+@media (max-width: 380px) {
+  .product-columns { gap: 7px; }
+  .product-point { font-size: 10.5px; }
+  .product-date-row { align-items: stretch; flex-direction: column; }
+  .product-date-row .btn { width: 100%; }
+}
+
+.product-form-grid { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 9px; }
+.product-form-grid .ipt { min-width: 0; }
+.product-partner.is-disabled { cursor: not-allowed; opacity: .62; }
+@media (max-width: 380px) {
+  .product-form-grid { grid-template-columns: 1fr; }
+}

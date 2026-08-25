@@ -16,10 +16,11 @@
 | [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
 | [LAUNCH_GOVERNANCE.md](LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
 | [PRODUCTION_READINESS_AND_LAUNCH_PLAN.md](PRODUCTION_READINESS_AND_LAUNCH_PLAN.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |
-| [PRODUCTION_READINESS_EVIDENCE.md](PRODUCTION_READINESS_EVIDENCE.md) | Release owner, QA, operations | Чтобы сверить последний automated evidence pass и оставшиеся blockers. |
-| [CHIROMANT_INTEGRATION_REPORT.md](CHIROMANT_INTEGRATION_REPORT.md) | QA, AI, product, operations | Чтобы сверить результаты интеграционного тестирования Миры и известные ограничения. |
+| [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) | Product, astrology, backend, QA | Чтобы реализовать будущие composite и planetary returns без неявных precision-правил. |
 | [DESIGN_COMPONENT_INVENTORY.md](DESIGN_COMPONENT_INVENTORY.md) | Design, frontend, QA | Чтобы сохранять состояния компонентов, accessibility и visual regression matrix. |
 | [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять SQLite/WAL triggers и репетировать migration без production риска. |
+| [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md) | Frontend, backend, agent, QA | Чтобы вызывать текущие natal, synastry и transit contracts одинаково. |
+| [CHART_TYPE_CAPABILITIES.md](CHART_TYPE_CAPABILITIES.md) | Product, astrology, release owner | Чтобы отличать enabled product paths от upstream capabilities. |
 | [MONETIZATION_BASELINE.md](MONETIZATION_BASELINE.md) | Product, billing, finance | Чтобы сверить текущие планы, SKU, платёжные пути и открытые gaps без PII. |
 | [MONETIZATION_UNIT_ECONOMICS.md](MONETIZATION_UNIT_ECONOMICS.md) | Product, finance, operations | Чтобы считать net revenue, variable COGS, contribution, ARPPU, CAC и break-even по сценариям. |
 | [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
@@ -71,7 +72,7 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 
 ## Версионирование документации
 
-Новая версия продукта отражается в [CHANGELOG.md](CHANGELOG.md). Не копируйте в `docs/` временные аудиты, выгрузки, персональные данные, скриншоты с идентификаторами Telegram или секреты. Для исследовательских материалов используйте отдельный защищённый рабочий контур, а в репозитории оставляйте только утверждённые решения.
+Новая версия продукта отражается в [CHANGELOG.md](CHANGELOG.md). В репозитории хранятся только текущие контракты, решения, инструкции и policy-документы. Временные аудиты, выгрузки, персональные данные, скриншоты с идентификаторами Telegram, terminal dumps и секреты хранятся вне source tree. Исследовательские материалы попадают в репозиторий только после отдельного утверждения и превращения в действующее решение.
 
 ## References
 
