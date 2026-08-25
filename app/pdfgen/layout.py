@@ -121,10 +121,18 @@ p { margin: 0 0 3.2mm; }
 .natal-print-figure { margin: 0; text-align: center; break-inside: avoid; }
 .natal-print-image { display: block; width: 100%; max-width: 180mm; height: auto; margin: 0 auto; background: #0c0a1d; }
 .natal-print-figure figcaption { margin-top: 2mm; }
-.natal-key-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 6mm 0 0; padding: 4mm 3mm; border-top: 1px solid rgba(232,197,107,.38); border-bottom: 1px solid rgba(232,197,107,.24); background: rgba(255,255,255,.035); }
-.natal-key-cell { min-width: 0; text-align: center; }
-.natal-key-cell span { display: block; color: #a99fc9; font-size: 8.5pt; line-height: 1.25; }
-.natal-key-cell b { display: block; margin-top: 1.5mm; color: #f4efff; font-size: 11pt; font-weight: normal; overflow-wrap: anywhere; }
+.natal-key-strip { margin: 6mm 0 0; padding: 4mm 3mm 3mm; border-top: 1px solid rgba(232,197,107,.5); border-bottom: 1px solid rgba(232,197,107,.24); background: linear-gradient(115deg, rgba(232,197,107,.08), rgba(185,166,255,.06) 52%, rgba(123,224,197,.05)); }
+.natal-key-strip__title { color: #e8c56b; font-size: 8pt; letter-spacing: 1.4px; text-align: center; text-transform: uppercase; }
+.natal-key-primary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-top: 3mm; }
+.natal-key-card { min-width: 0; padding: 2mm 2mm 2.5mm; border-right: 1px solid rgba(232,197,107,.22); text-align: center; }
+.natal-key-card:last-child { border-right: none; }
+.natal-key-card strong { display: block; color: #f4d88b; font-size: 18pt; font-weight: normal; line-height: 1; }
+.natal-key-card:nth-child(2) strong { color: #b9a6ff; }
+.natal-key-card:nth-child(3) strong { color: #7be0c5; font-size: 13pt; line-height: 1.4; }
+.natal-key-card span { display: block; margin-top: 1mm; color: #c8b9e8; font-size: 8pt; line-height: 1.2; text-transform: uppercase; }
+.natal-key-card b { display: block; margin-top: 1.2mm; color: #f4efff; font-size: 11pt; font-weight: normal; overflow-wrap: anywhere; }
+.natal-key-secondary { display: flex; justify-content: center; gap: 3mm; margin-top: 2mm; padding-top: 2mm; border-top: 1px dotted rgba(255,255,255,.16); color: #a99fc9; font-size: 7.8pt; }
+.natal-key-secondary b { color: #e8c56b; font-weight: normal; }
 .natal-print-state { border: 1px solid rgba(232, 197, 107, .35); padding: 6mm; color: #c8b9e8; }
 .closing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 5mm; }
 .closing-grid .card { margin-bottom: 0; }
@@ -176,7 +184,7 @@ table.data-table td, table.data-table th { border-bottom: 1px dotted rgba(255,25
   table.data-table { font-size: 11.5pt; line-height: 1.45; }
   .overview-grid { grid-template-columns: 1fr; }
   .facts-constellation { min-height: 0; }
-  .natal-key-strip { grid-template-columns: repeat(2, 1fr); }
+  .natal-key-primary { grid-template-columns: repeat(3, 1fr); }
   .house-angle-grid { grid-template-columns: repeat(2, 1fr); }
   .facts-placements { grid-template-columns: repeat(3, 1fr); }
   .matrix-visual { min-height: 0; }

@@ -752,14 +752,21 @@ def _natal_key_strip(data: dict, language: str) -> str:
     asc = chart.get("ascendant") or {}
     nodes = chart.get("lunar_nodes") or {}
     rahu = nodes.get("rahu") or next((n for n in chart.get("nodes") or [] if n.get("name", "").startswith("Раху")), {})
-    items = [
-        (("Солнце" if language == "ru" else "Sun"), f'{_display_sign(sun.get("sign", "—"), language)} {sun.get("deg", "—")}°'),
-        (("Луна" if language == "ru" else "Moon"), f'{_display_sign(moon.get("sign", "—"), language)} {moon.get("deg", "—")}°'),
-        (("Асцендент" if language == "ru" else "Ascendant"), f'{_display_sign(asc.get("sign", "—"), language)} {asc.get("deg", "—")}°' if asc else _text(language, "unknown")),
-        (("Раху" if language == "ru" else "Rahu"), f'{_display_sign(rahu.get("sign", "—"), language)} {rahu.get("deg", "—")}°'),
+    primary = [
+        ("☉", ("Солнце" if language == "ru" else "Sun"), f'{_display_sign(sun.get("sign", "—"), language)} {sun.get("deg", "—")}°'),
+        ("☾", ("Луна" if language == "ru" else "Moon"), f'{_display_sign(moon.get("sign", "—"), language)} {moon.get("deg", "—")}°'),
+        ("As", ("Асцендент" if language == "ru" else "Ascendant"), f'{_display_sign(asc.get("sign", "—"), language)} {asc.get("deg", "—")}°' if asc else _text(language, "unknown")),
     ]
-    cells = "".join(f'<div class="natal-key-cell"><span>{layout.esc(label)}</span><b>{layout.esc(value)}</b></div>' for label, value in items)
-    return f'<div class="natal-key-strip">{cells}</div>'
+    primary_cells = "".join(
+        f'<div class="natal-key-card"><strong>{layout.esc(glyph)}</strong><span>{layout.esc(label)}</span><b>{layout.esc(value)}</b></div>'
+        for glyph, label, value in primary
+    )
+    node_label = "Раху · северный узел" if language == "ru" else "Rahu · north node"
+    node_value = f'{_display_sign(rahu.get("sign", "—"), language)} {rahu.get("deg", "—")}°'
+    return (f'<div class="natal-key-strip"><div class="natal-key-strip__title">'
+            f'{layout.esc("Три главные опоры" if language == "ru" else "Three core anchors")}</div>'
+            f'<div class="natal-key-primary">{primary_cells}</div>'
+            f'<div class="natal-key-secondary"><span>{layout.esc(node_label)}</span><b>{layout.esc(node_value)}</b></div></div>')
 
 
 async def _natal_print_block(data: dict, order: Order, language: str) -> str:
