@@ -14,6 +14,8 @@ from typing import Any
 
 from PIL import Image
 
+from . import palm_vision
+
 ADAPTER_VERSION = "mediapipe-hand-landmarker-v1"
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "hand_landmarker.task"
 MAX_DETECTION_SIDE = 1280
@@ -74,6 +76,17 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
                 )
     except Exception:
         return _empty("invalid_image", ["image_decode_failed"], model_path=str(path))
+
+    # Do not invoke the native detector for a frame that is objectively too flat
+    # and soft to support a reliable hand decision. Besides being cheaper, this
+    # avoids a MediaPipe 0.10.35 binding failure observed on hosted runners for
+    # the same class of macro-texture frames. This is a capture-quality gate, not
+    # a claim that the pixels prove absence of a hand.
+    precheck = palm_vision.analyze(image_bytes)
+    precheck_issues = set(precheck.get("issues") or [])
+    if {"low_contrast_or_flat_light", "soft_or_blurred_edges"} <= precheck_issues:
+        return _empty("no_hand", ["hand_not_detected"], model_path=str(path))
+
     if not path.exists():
         return _empty("model_missing", ["mediapipe_model_missing"], model_path=str(path))
     try:
