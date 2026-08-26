@@ -263,6 +263,9 @@ async def test_draw_then_interpret(client, user):
     assert drawn.status_code == 200
     data = drawn.json()
     assert len(data["cards"]) == 3
+    assert data["ledger"]["replay"]["version"] == "tarot-replay-v1"
+    assert data["ledger"]["replay"]["mode"] == "immutable_cards"
+    assert len(data["ledger"]["checksum"]) == 16
 
     answer = await client.post(f"/api/tarot/interpret/{data['reading_id']}",
                                params=as_user(user))

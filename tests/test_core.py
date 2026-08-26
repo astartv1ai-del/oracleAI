@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
+
 from app.core import astro, tarot
 from app.core.matrix import compute_matrix
 from app.core.skills import _compat
@@ -361,3 +363,23 @@ def test_invalid_timezone_is_rejected_explicitly():
         assert "IANA" in str(exc)
     else:
         raise AssertionError("invalid timezone must not silently fall back")
+
+
+
+def test_replay_ledger_reconstructs_immutable_draw_without_redraw():
+    cards = tarot.draw(3, seed="replay-fixture")
+    original = tarot.reading_ledger(cards, "three")
+
+    replayed = tarot.replay_ledger(cards, "three", original["checksum"])
+
+    assert replayed == original
+    assert replayed["replay"]["version"] == "tarot-replay-v1"
+    assert replayed["replay"]["mode"] == "immutable_cards"
+
+
+
+def test_replay_ledger_rejects_tampered_checksum():
+    cards = tarot.draw(1, seed="replay-tamper")
+
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        tarot.replay_ledger(cards, "one", "tampered")

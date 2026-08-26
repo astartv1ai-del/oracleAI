@@ -29,6 +29,8 @@ A report is a **premium editorial artifact**, not a raw HTML dump. It combines a
 
 Every release candidate should generate and render at least: RU exact-time, EN exact-time, RU date-only, EN date-only, long name, long city, edge coordinates, many aspects, minimal content and maximal content. Inspect for clipping, overflow, broken glyphs, blank pages, orphan headings, unbalanced density, chart overlap, inconsistent language and missing limitations.
 
+The reproducible local harness is `python -m scripts.pdf_matrix --out /tmp/oracleai-pdf-matrix`. It uses deterministic fixture coordinates, writes HTML/PDF artifacts and `summary.json` outside the source tree, and fails when language, long-name rendering, exact/date-only truth-state, headings or common placeholder tokens violate the contract. The harness is a deterministic preflight, not a replacement for production font, browser viewport or manual visual sign-off.
+
 ## Privacy and immutability
 
 Generated reports are owner-scoped. Share artifacts expose only the intended visual payload. Historical reports must retain the calculation snapshot and must not silently change when a profile is edited. Regeneration creates a new immutable report version; the previous version remains readable through history.

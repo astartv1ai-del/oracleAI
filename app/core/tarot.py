@@ -323,6 +323,13 @@ SPREADS: dict[str, dict] = {
 }
 
 DEFAULT_SPREAD = "three"
+TAROT_REPLAY_CONTRACT = {
+    "version": "tarot-replay-v1",
+    "mode": "immutable_cards",
+    "source": "server_persisted_cards_json",
+    "deterministic": True,
+    "note": "Replay rebuilds the ledger from persisted card IDs, positions and orientations; it never redraws cards.",
+}
 
 
 def spread(code: str) -> dict:
@@ -413,7 +420,22 @@ def reading_ledger(cards: list[dict], spread_code: str = "three",
         "adjacent_combinations": combinations,
         "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16],
         "interpretation_boundary": "Cards and positions are calculated evidence; meanings are read through the spread's traditional language and position.",
+        "replay": {**TAROT_REPLAY_CONTRACT, "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]},
     }
+
+
+def replay_ledger(cards: list[dict], spread_code: str, expected_checksum: str | None = None) -> dict:
+    """Rebuild a draw ledger without drawing again and verify its checksum.
+
+    The database stores the drawn cards before interpretation. A replay therefore
+    must be a pure reconstruction from that immutable evidence, not a new call to
+    the random generator. The optional checksum lets callers detect tampering or
+    accidental changes to a historical payload.
+    """
+    ledger = reading_ledger(cards, spread_code)
+    if expected_checksum is not None and ledger["checksum"] != expected_checksum:
+        raise ValueError("tarot ledger checksum mismatch")
+    return ledger
 
 
 def cards_text(cards: list[dict], positions: list[str] | None = None) -> str:

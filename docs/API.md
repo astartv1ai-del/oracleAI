@@ -119,6 +119,8 @@ POST /api/profile
 | `GET` | `/api/reports/{kind}` | Получить отчёт заданного типа. |
 | `POST` | `/api/reports/{kind}` | Создать AI-отчёт; `?refresh=true` принудительно создаёт новую immutable history version. |
 
+`POST /api/tarot/draw` возвращает `ledger.replay` с контрактом `tarot-replay-v1`. Replay всегда восстанавливается из server-side `cards_json`, позиций и ориентаций уже вытянутых карт; повторная вытяжка не выполняется. Поле `ledger.checksum` позволяет обнаружить изменение исторического payload, а `tarot.replay_ledger(cards, spread, expected_checksum)` отклоняет несовпадение checksum.
+
 ### Натальный контракт v2
 
 `GET /api/chart` и `POST /api/chart` сохраняют legacy-поля `nodes`, `planets`, `houses` и `aspects`, но дополнительно возвращают `natal_schema_version: 2`, вычислительные conventions (`engine`, `zodiac_type`, `house_system`, `house_system_name`, `perspective_type`), canonical `lunar_nodes` и `additional_points`. В `lunar_nodes` северный узел называется **Rahu / Раху**, южный — **Ketu / Кету**; текущая продуктовая настройка `mode: "true"` означает True Node. `nodes` остаётся для совместимости и также содержит Лилит.

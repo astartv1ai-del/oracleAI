@@ -15,6 +15,8 @@
 - Добавлен owner-scoped `GET /api/history`: единый мета-архив отчётов, Tarot, palm readings и chat sessions с actionable deep links без выдачи содержимого личных записей.
 - Список памяти теперь отдаёт только inspectable поля; embedding BLOB и имя embedding-модели остаются внутренними. Recall-cache сбрасывается после ручного/AI сохранения, усиления и удаления факта.
 - Tarot finalization повторно проверяет владельца и не позволяет перезаписать уже сохранённую интерпретацию; malformed upload size headers для palm получают явный 400.
+- Добавлен формальный `tarot-replay-v1`: ledger восстанавливается из сохранённых карт, позиций и ориентаций, а checksum защищает исторический payload от незаметного изменения.
+- Добавлен `scripts.pdf_matrix` для локального PDF preflight: 6 детерминированных RU/EN exact/date-only, long-field и edge-latitude кейсов с внешними HTML/PDF артефактами и `summary.json`.
 
 
 ### Changed
