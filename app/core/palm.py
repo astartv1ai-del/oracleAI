@@ -19,6 +19,8 @@ from ..repo import palm as palm_repo
 from . import llm, palm_vision
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_IMAGE_PIXELS = 20_000_000
+MAX_IMAGE_SIDE = 8_000
 MIN_SIDE = 480
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
 
@@ -219,14 +221,24 @@ def _data_url(image: bytes) -> tuple[str, dict]:
         with Image.open(io.BytesIO(image)) as original:
             original.verify()
         with Image.open(io.BytesIO(image)) as original:
+            width, height = original.size
+            if width > MAX_IMAGE_SIDE or height > MAX_IMAGE_SIDE:
+                raise ValueError("размер изображения слишком большой")
+            if width * height > MAX_IMAGE_PIXELS:
+                raise ValueError("разрешение изображения слишком большое")
             normalized = ImageOps.exif_transpose(original).convert("RGB")
             width, height = normalized.size
+            if width > MAX_IMAGE_SIDE or height > MAX_IMAGE_SIDE:
+                raise ValueError("размер изображения слишком большой")
+            if width * height > MAX_IMAGE_PIXELS:
+                raise ValueError("разрешение изображения слишком большое")
             if min(width, height) < MIN_SIDE:
                 raise ValueError(f"минимальная сторона фото — {MIN_SIDE}px")
             out = io.BytesIO()
             normalized.save(out, format="JPEG", quality=90, optimize=True)
-    except UnidentifiedImageError as exc:
-        raise ValueError("не удалось распознать изображение") from exc
+    except (UnidentifiedImageError, Image.DecompressionBombError,
+            Image.DecompressionBombWarning) as exc:
+        raise ValueError("изображение слишком большое или повреждено") from exc
     return "data:image/jpeg;base64," + base64.b64encode(out.getvalue()).decode("ascii"), {
         "sha256": digest, "size": len(image), "width": width, "height": height,
         "visual_precheck": visual_precheck,

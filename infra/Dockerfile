@@ -1,7 +1,7 @@
 # Один образ на оба процесса (бот и API) — они делят код и базу.
 # Команда по умолчанию — бот; API поднимается тем же образом с своим CMD
 # (см. infra/docker-compose.yml).
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm@sha256:0f5b26b9518d002b6173fd61daad821fa340635ebfec5bba471013f9ca114579
 
 # Системные библиотеки: cairo/pango нужны WeasyPrint (PDF-разборы),
 # libjpeg/zlib — Pillow (карточки для сторис). tzdata нужен zoneinfo:

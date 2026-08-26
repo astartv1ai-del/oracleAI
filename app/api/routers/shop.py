@@ -16,7 +16,7 @@ from ...repo import billing as billing_repo
 from ...services import analytics
 from ...services import billing as billing_svc
 from ...services import invoices
-from ..deps import current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, get_db, rate_limit
 
 log = logging.getLogger("oracle.api.shop")
 
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/shop", tags=["shop"])
 
 
 @router.get("")
-async def storefront(user=Depends(current_user), db=Depends(get_db)):
+async def storefront(user=Depends(confirmed_age_user), db=Depends(get_db)):
     await analytics.track(db, analytics.E_SHOP_VIEW, user["tg_id"], surface="miniapp")
     return await billing_svc.storefront(db, user)
 
@@ -35,7 +35,7 @@ class InvoiceIn(BaseModel):
 
 
 @router.post("/invoice", dependencies=[Depends(rate_limit("write"))])
-async def create_invoice(item: InvoiceIn, user=Depends(current_user),
+async def create_invoice(item: InvoiceIn, user=Depends(confirmed_age_user),
                          db=Depends(get_db)):
     """Ссылка на оплату Stars для `openInvoice`."""
     if not item.sku and not item.plan:
@@ -61,7 +61,7 @@ async def create_invoice(item: InvoiceIn, user=Depends(current_user),
 
 
 @router.post("/web-checkout", dependencies=[Depends(rate_limit("write"))])
-async def web_checkout(item: InvoiceIn, user=Depends(current_user),
+async def web_checkout(item: InvoiceIn, user=Depends(confirmed_age_user),
                        db=Depends(get_db)):
     """Ссылка на оплату подписки вне Telegram.
 
@@ -93,7 +93,7 @@ class CryptoIn(BaseModel):
 
 
 @router.post("/crypto-invoice", dependencies=[Depends(rate_limit("write"))])
-async def crypto_invoice(item: CryptoIn, user=Depends(current_user),
+async def crypto_invoice(item: CryptoIn, user=Depends(confirmed_age_user),
                          db=Depends(get_db)):
     """Ссылка на оплату пакета Кристаллов криптой (Crypto Pay)."""
     from ...config import settings
@@ -113,7 +113,7 @@ class CrystalsIn(BaseModel):
 
 
 @router.post("/crystals", dependencies=[Depends(rate_limit("write"))])
-async def buy_with_crystals(item: CrystalsIn, user=Depends(current_user),
+async def buy_with_crystals(item: CrystalsIn, user=Depends(confirmed_age_user),
                             db=Depends(get_db)):
     """Покупка за Кристаллы — мгновенно, без Telegram-инвойса."""
     try:
@@ -130,7 +130,7 @@ class PromoIn(BaseModel):
 
 
 @router.post("/promo", dependencies=[Depends(rate_limit("write"))])
-async def redeem_promo(item: PromoIn, user=Depends(current_user), db=Depends(get_db)):
+async def redeem_promo(item: PromoIn, user=Depends(confirmed_age_user), db=Depends(get_db)):
     result = await billing_svc.redeem_promo(db, user["tg_id"], item.code)
     if not result:
         raise HTTPException(400, "Этот код не отзывается... проверь написание 🌙")
@@ -138,10 +138,10 @@ async def redeem_promo(item: PromoIn, user=Depends(current_user), db=Depends(get
 
 
 @router.get("/orders")
-async def orders(user=Depends(current_user), db=Depends(get_db)):
+async def orders(user=Depends(confirmed_age_user), db=Depends(get_db)):
     return await billing_repo.user_orders(db, user["tg_id"], limit=30)
 
 
 @router.get("/crystals/history")
-async def crystals_history(user=Depends(current_user), db=Depends(get_db)):
+async def crystals_history(user=Depends(confirmed_age_user), db=Depends(get_db)):
     return await billing_repo.crystal_history(db, user["tg_id"], limit=40)

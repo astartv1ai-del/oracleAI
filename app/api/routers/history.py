@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from ..deps import current_user, get_db
+from ..deps import confirmed_age_user, get_db
 from ...repo import dialog, readings
 
 router = APIRouter(prefix="/api", tags=["history"])
@@ -35,7 +35,7 @@ def _entry(kind: str, entry_id: int, title: str, created_at: str | None,
 @router.get("/history")
 async def unified_history(
     limit: int = Query(default=30, ge=1, le=100),
-    user=Depends(current_user),
+    user=Depends(confirmed_age_user),
     db=Depends(get_db),
 ):
     """Return a normalized archive without crossing the authenticated owner scope.

@@ -120,7 +120,7 @@ def _geocode_online(city: str) -> tuple[float, float, str] | None:
         tz = TimezoneFinder().timezone_at(lat=loc.latitude, lng=loc.longitude)
         return loc.latitude, loc.longitude, tz or DEFAULT_TZ
     except Exception as e:  # noqa: BLE001
-        log.info("геокодирование «%s» не удалось: %s", city, e)
+        log.info("геокодирование не удалось: error_type=%s", type(e).__name__)
         return None
 
 
@@ -170,7 +170,7 @@ async def resolve_city_async(city: str, db=None) -> tuple[float | None, float | 
             await _cache_put(db, key, *online, source="nominatim")
         return online
 
-    log.info("город «%s» не распознан — считаю карту без координат", city)
+    log.info("город не распознан — считаю карту без координат")
     return None, None, DEFAULT_TZ
 
 

@@ -20,6 +20,7 @@ from ..repo import admin as admin_repo
 from ..repo import dialog, readings, users
 from ..services import analytics, catalog, chat as chat_svc, referrals
 from .chat import _deny, _send_long
+from .formatting import tg_esc, tg_rich
 from .keyboards import (back_menu, main_menu, reading_kb, spread_offer_kb,
                         spreads_kb)
 
@@ -346,7 +347,7 @@ async def _send_today(target: Message, db, tg_id: int) -> None:
                                       callback_data="horoscope")])
     rows.append([InlineKeyboardButton(text="← Меню", callback_data="menu")])
     await target.answer(
-        f"{text}\n\n"
+        f"{tg_rich(text)}\n\n"
         f"🎴 <b>Карта дня:</b> {card['emoji']} {card['name']} — {card['meaning']}\n"
         f"{sky['moon']['emoji']} {sky['moon']['name']}, "
         f"{sky['moon']['day']}-й лунный день",
@@ -401,7 +402,7 @@ async def compat_start(cb: CallbackQuery, state: FSMContext, db):
     hint = ""
     if saved:
         hint = ("\n\n<i>Уже сохранены: " +
-                ", ".join(f"{p['name']} ({p['birth_date']})" for p in saved[:3]) +
+                ", ".join(f"{tg_esc(p['name'])} ({p['birth_date']})" for p in saved[:3]) +
                 "</i>")
     await state.set_state(Compat.date)
     await cb.message.answer(
@@ -439,7 +440,7 @@ async def compat_date(message: Message, state: FSMContext, db):
     await message.answer(
         f"💞 <b>Спидометр любви</b>\n\n"
         f"Ты — {data['you']['sign']} ({data['you']['element']})\n"
-        f"{name or 'Партнёр'} — {data['partner']['sign']} ({data['partner']['element']})\n\n"
+        f"{tg_esc(name or 'Партнёр')} — {data['partner']['sign']} ({data['partner']['element']})\n\n"
         f"{bar}  <b>{data['score']}/100</b>\n"
         f"<i>{data['verdict']}</i>")
 
@@ -489,7 +490,7 @@ async def diary_menu(cb: CallbackQuery, state: FSMContext, db):
     if entries:
         for entry in entries:
             when = datetime.fromisoformat(entry["created_at"]).strftime("%d.%m")
-            lines.append(f"<i>{when}</i> — {entry['text'][:80]}")
+            lines.append(f"<i>{when}</i> — {tg_esc(entry['text'][:80])}")
     else:
         lines.append("<i>Пока пусто. Первая запись — самая важная.</i>")
     lines.append(f"\n✍️ Напиши, как прошёл твой день — {memory_copy}")

@@ -424,7 +424,7 @@
         <div class="memory-hero__foot"><span>${rows.length} ${esc(rows.length === 1 ? profileT('factCountOne') : rows.length < 5 ? profileT('factCountFew') : profileT('factCountMany'))}</span><span>${esc(profileT('deleteAny'))}</span></div>
       </section>
       ${enabled ? `<div class="mem-add memory-add">
-        <input class="ipt" id="mem-new" placeholder="${esc(profileT('addFactExample'))}" autocomplete="off" maxlength="500"/>
+        <input class="ipt" id="mem-new" aria-label="${esc(profileT('addFact'))}" placeholder="${esc(profileT('addFactExample'))}" autocomplete="off" maxlength="500"/>
         <button class="send-btn" data-act="add-mem" title="${esc(profileT('addFact'))}" aria-label="${esc(profileT('addFact'))}">${sigilIcon('spark')}</button>
       </div>` : ''}
       <div class="memory-archive-head"><b>${esc(profileT('archiveTitle'))}</b><span>${esc(enabled ? profileT('archiveUsed') : profileT('archiveHidden'))}</span></div>

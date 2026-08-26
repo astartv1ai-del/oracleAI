@@ -93,15 +93,24 @@ async def _scalar(db, sql: str, *args):
 
 
 async def prune_analytics(db, days: int = 120) -> int:
-    """События и учёт LLM старее окна — в архив некому, только удалять.
+    """Apply bounded retention to operational and privacy-sensitive logs.
 
-    Дашборд считает DAU/WAU и расходы по rolling-окнам, а вот детальный хвост
-    за месяцы пользы не несёт и раздувает базу. 120 дней между 90 и 180 из ТЗ.
+    Product analytics and LLM cost detail use the requested rolling window.
+    Crisis incidents, provider evidence and admin audit have explicit longer or
+    shorter windows so their retention does not accidentally follow one metric.
     """
-    before = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    windows = {
+        "events": max(1, days),
+        "llm_usage": max(1, days),
+        "safety_events": min(max(1, days), 90),
+        "webhook_events": max(max(1, days), 180),
+        "admin_audit": max(max(1, days), 365),
+    }
     total = 0
     async with transaction(db):
-        for table in ("events", "llm_usage"):
+        for table, table_days in windows.items():
+            before = (datetime.now(timezone.utc)
+                      - timedelta(days=table_days)).isoformat()
             cur = await db.execute(f"DELETE FROM {table} WHERE created_at < ?",
                                    (before,))
             total += cur.rowcount or 0
@@ -440,12 +449,23 @@ async def monetization_kpis(db, days: int = 30) -> dict:
     }
 
 
-async def safety_events(db, days: int = 30, limit: int = 100) -> dict:
-    """Срабатывания кризисного протокола: сводка и последние обращения.
+async def safety_summary(db, days: int = 30, limit: int = 100) -> dict:
+    """Return aggregate safety telemetry without crisis content or identity."""
+    since = _ago(days)
+    cur = await db.execute(
+        "SELECT category, action, COUNT(*) n FROM safety_events "
+        "WHERE created_at>=? GROUP BY category, action ORDER BY n DESC", (since,))
+    summary = [dict(r) for r in await cur.fetchall()]
+    cur = await db.execute(
+        "SELECT category, action, created_at FROM safety_events "
+        "WHERE created_at>=? ORDER BY id DESC LIMIT ?", (since, limit))
+    return {"summary": summary,
+            "recent": [dict(r) for r in await cur.fetchall()],
+            "redacted": True}
 
-    Это не метрика роста — это то, что нужно перечитывать глазами: по ней
-    настраивается фильтр и видно, не блокирует ли он обычные вопросы.
-    """
+
+async def safety_events(db, days: int = 30, limit: int = 100) -> dict:
+    """Restricted safety incidents for an explicitly authorized reviewer."""
     since = _ago(days)
     cur = await db.execute(
         "SELECT category, action, COUNT(*) n FROM safety_events "
@@ -456,7 +476,8 @@ async def safety_events(db, days: int = 30, limit: int = 100) -> dict:
         "FROM safety_events s LEFT JOIN users u ON u.tg_id = s.tg_id "
         "WHERE s.created_at>=? ORDER BY s.id DESC LIMIT ?", (since, limit))
     return {"summary": summary,
-            "recent": [dict(r) for r in await cur.fetchall()]}
+            "recent": [dict(r) for r in await cur.fetchall()],
+            "restricted": True}
 
 
 async def rollup_day(db, day: str | None = None) -> dict:

@@ -50,10 +50,11 @@ HTTP API обслуживает Telegram Mini App, административн�
 | `GET` | `/api/memories` | Список сохранённых фактов без внутренних embedding-полей. | — |
 | `POST` | `/api/memories` | Ручное сохранение факта. | `fact`, `kind` |
 | `DELETE` | `/api/memories/{memory_id}` | Удалить один факт. | — |
+| `POST` | `/api/account/delete` | Анонимизировать текущий аккаунт; повторный вызов идемпотентен. | `confirm: true` |
 | `GET` | `/api/faq` | Контент FAQ. | — |
 | `GET` | `/api/history` | Единый owner-scoped архив отчётов, раскладов, чтений ладони и чатов. | `limit` (1–100) |
 
-`POST /api/profile` принимает только RU и EN для `lang`. При отключённой памяти `GET /api/memories` возвращает пустой список, а создание факта возвращает `409`; это часть серверного privacy-контракта, не только UX.[2]
+`POST /api/profile` принимает только RU и EN для `lang`. При отключённой памяти `GET /api/memories` возвращает пустой список, а создание факта возвращает `409`; это часть серверного privacy-контракта, не только UX.[2] `POST /api/account/delete` требует JSON `{ "confirm": true }`, стирает пользовательскую историю и PII, отключает memory/push/age flags, оставляет только settlement-safe user row и возвращает `already_deleted: true` при повторе.
 
 `GET /api/history` возвращает только метаданные и безопасные action/deep-link поля: тела сообщений, ответы раскладов, тексты отчётов, изображения и embedding-векторы выдаются только отдельными owner-scoped маршрутами. Удаление или архивирование определяется полем `deletion`; общий архив не создаёт новый источник записи и не дублирует domain tables.
 

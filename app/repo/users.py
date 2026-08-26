@@ -117,6 +117,12 @@ def _spawn_last_seen(db, tg_id: int) -> None:
     task.add_done_callback(_touch_tasks.discard)
 
 
+async def drain_touch_tasks() -> None:
+    """Wait for deferred activity writes before closing the database."""
+    if _touch_tasks:
+        await asyncio.gather(*_touch_tasks, return_exceptions=True)
+
+
 # ─────────────────────────── подписка и тариф ────────────────────────────────
 
 def sub_active(user) -> bool:
@@ -181,21 +187,60 @@ async def set_status(db, tg_id: int, status: str) -> None:
 
 
 async def anonymize(db, tg_id: int) -> None:
-    """«Удали мои данные»: чистим PII и историю, счётчики платежей оставляем.
+    """Delete personal content and pseudonymize records retained for accounting.
 
-    Строку не удаляем: на неё ссылаются заказы и платежи, а финансовая история
-    должна оставаться сводимой. Персональные данные при этом стираются.
+    The user row and minimal financial rows remain for reconciliation, but all
+    owner-linked content, safety excerpts, analytics identity and operational
+    targeting are removed. Since legacy databases have no anonymization marker,
+    the operation is intentionally idempotent and safe to repeat.
     """
     async with transaction(db):
         await db.execute(
             "UPDATE users SET name='удалено', username=NULL, birth_date=NULL, "
             "birth_time=NULL, birth_city=NULL, birth_lat=NULL, birth_lon=NULL, "
-            "chart_json=NULL, goal=NULL, status='deleted', deleted_at=?, "
-            "onboarded=0 WHERE tg_id=?", (utcnow(), tg_id))
-        for table in ("messages", "memories", "diary", "forecasts",
-                      "tarot_readings", "partners", "synastry_cache",
-                      "reports", "threads", "user_notes"):
+            "chart_json=NULL, goal=NULL, memory_enabled=0, age_confirmed=0, "
+            "status='deleted', deleted_at=?, onboarded=0, morning_push=0 "
+            "WHERE tg_id=?", (utcnow(), tg_id))
+
+        # Personal content and targeting records have no retention reason after
+        # deletion. Keep the table names static so dynamic SQL cannot be injected.
+        for table in (
+            "messages", "memories", "profile_summaries", "diary", "forecasts",
+            "tarot_readings", "palm_readings", "partners", "synastry_cache",
+            "reports", "threads", "deliveries", "practices", "user_notes",
+            "user_tags", "broadcast_targets", "promo_redemptions",
+        ):
             await db.execute(f"DELETE FROM {table} WHERE tg_id=?", (tg_id,))
+
+        await db.execute(
+            "DELETE FROM referrals WHERE referrer_id=? OR invitee_id=?",
+            (tg_id, tg_id),
+        )
+
+        # Analytics and safety rows contain a direct identity or sensitive
+        # excerpt, so they are deleted rather than retained under a stable ID.
+        await db.execute("DELETE FROM events WHERE tg_id=?", (tg_id,))
+        await db.execute("DELETE FROM safety_events WHERE tg_id=?", (tg_id,))
+        await db.execute("UPDATE llm_usage SET tg_id=NULL WHERE tg_id=?", (tg_id,))
+
+        # Orders/payments/ledger are retained only as an anonymized accounting
+        # trace. Zero is a reserved non-user subject for aggregate reconciliation.
+        for table in ("orders", "payments", "entitlements", "crystal_ledger"):
+            await db.execute(f"UPDATE {table} SET tg_id=0 WHERE tg_id=?", (tg_id,))
+
+        # Remove direct references from retained audit/webhook evidence when the
+        # JSON payload explicitly carries the deleted Telegram id.
+        marker = str(tg_id)
+        await db.execute(
+            "UPDATE admin_audit SET target='deleted-user', payload_json=NULL "
+            "WHERE target=? OR payload_json LIKE ? OR payload_json LIKE ?",
+            (marker, f'%"tg_id":{marker}%', f'%"tg_id": {marker}%'),
+        )
+        await db.execute(
+            "UPDATE webhook_events SET payload=NULL "
+            "WHERE payload LIKE ? OR payload LIKE ?",
+            (f'%"tg_id":{marker}%', f'%"tg_id": {marker}%'),
+        )
 
 
 # ─────────────────────────── выборки и сегменты ──────────────────────────────

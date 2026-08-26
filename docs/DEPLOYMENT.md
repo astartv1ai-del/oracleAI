@@ -60,7 +60,7 @@ chmod 600 .env
 ```bash
 cd /srv/oracleAI
 git fetch --all --tags
-git checkout main
+git checkout <approved-commit-or-tag>
 docker compose -f infra/docker-compose.yml build --pull
 docker compose -f infra/docker-compose.yml up -d
 docker compose -f infra/docker-compose.yml ps

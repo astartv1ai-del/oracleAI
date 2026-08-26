@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,6 +24,28 @@ from ...services import telegram
 from ..deps import current_admin, get_db, rate_limit, require
 
 log = logging.getLogger("oracle.api.admin")
+
+
+def _validate_json_budget(value, *, label: str, max_bytes: int = 64 * 1024,
+                          max_depth: int = 8) -> None:
+    """Reject oversized/deep admin JSON before persisting or auditing it."""
+    def depth(item, level: int = 0) -> int:
+        if level > max_depth:
+            raise HTTPException(422, f"{label}: слишком глубокая структура")
+        if isinstance(item, dict):
+            return max([level] + [depth(v, level + 1) for v in item.values()])
+        if isinstance(item, list):
+            return max([level] + [depth(v, level + 1) for v in item])
+        return level
+
+    depth(value)
+    try:
+        encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(422, f"{label}: невалидный JSON") from exc
+    if len(encoded.encode("utf-8")) > max_bytes:
+        raise HTTPException(413, f"{label}: значение слишком большое")
+
 
 # rate-limit на весь роутер (G24): панель умеет дарить подписки и писать базе —
 # 60 запросов в минуту на админа отсекают перебор и последствия утёкшего ключа
@@ -76,8 +99,16 @@ async def costs(days: int = Query(default=30, ge=1, le=365),
 @router.get("/safety")
 async def safety(days: int = Query(default=30, ge=1, le=365),
                  ctx=Depends(require("users:read")), db=Depends(get_db)):
-    """Срабатывания кризисного протокола — их читают глазами, а не в графике."""
-    return await analytics_repo.safety_events(db, days=days)
+    """Aggregate safety telemetry without crisis text or user identity."""
+    return await analytics_repo.safety_summary(db, days=days)
+
+
+@router.get("/safety/incidents")
+async def safety_incidents(days: int = Query(default=30, ge=1, le=365),
+                           limit: int = Query(default=100, ge=1, le=200),
+                           ctx=Depends(require("safety:read")), db=Depends(get_db)):
+    """Raw crisis excerpts for explicitly authorized safety reviewers only."""
+    return await analytics_repo.safety_events(db, days=days, limit=limit)
 
 
 @router.get("/horoscopes")
@@ -262,6 +293,7 @@ class ContentIn(BaseModel):
 @router.post("/content")
 async def content_save(item: ContentIn, ctx=Depends(require("content:write")),
                        db=Depends(get_db)):
+    _validate_json_budget(item.meta, label="meta")
     await content.upsert_content(
         db, item.kind, item.code, title=item.title, body=item.body,
         meta=item.meta, is_active=item.is_active, sort=item.sort,
@@ -292,6 +324,7 @@ class SettingIn(BaseModel):
 @router.post("/settings")
 async def setting_save(item: SettingIn, ctx=Depends(require("settings:write")),
                        db=Depends(get_db)):
+    _validate_json_budget(item.value, label="setting")
     await content.set_setting(db, item.key, item.value, ctx.tg_id)
     await admin_repo.audit(db, ctx.tg_id, "setting.save", target=item.key,
                            payload={"value": item.value})
@@ -337,6 +370,7 @@ class PlanIn(BaseModel):
 @router.post("/plans")
 async def plan_save(item: PlanIn, ctx=Depends(require("catalog")),
                     db=Depends(get_db)):
+    _validate_json_budget(item.fields, label="plan fields")
     await billing.upsert_plan(db, item.code, **item.fields)
     await admin_repo.audit(db, ctx.tg_id, "plan.save", target=item.code,
                            payload=item.fields)
@@ -356,6 +390,7 @@ class ProductIn(BaseModel):
 @router.post("/products")
 async def product_save(item: ProductIn, ctx=Depends(require("catalog")),
                        db=Depends(get_db)):
+    _validate_json_budget(item.fields, label="product fields")
     await billing.upsert_product(db, item.sku, **item.fields)
     await admin_repo.audit(db, ctx.tg_id, "product.save", target=item.sku,
                            payload=item.fields)

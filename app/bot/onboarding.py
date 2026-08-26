@@ -22,7 +22,8 @@ from ..core.personas import persona_list
 from ..repo import admin as admin_repo
 from ..repo import content, users
 from ..services import analytics, billing, referrals
-from .keyboards import back_menu, gender_kb, main_menu, personas_kb
+from .formatting import tg_esc
+from .keyboards import age_gate_kb, back_menu, gender_kb, main_menu, personas_kb
 
 log = logging.getLogger("oracle.bot.onboarding")
 router = Router()
@@ -64,6 +65,7 @@ def _g(user, feminine: str, masculine: str, neutral: str) -> str:
 
 
 class Onb(StatesGroup):
+    age = State()
     name = State()
     gender = State()
     date = State()
@@ -139,12 +141,20 @@ async def start(message: Message, state: FSMContext, db):
 
 async def _begin(message: Message, state: FSMContext, db):
     user = await users.get(db, message.from_user.id)
+    if not user["age_confirmed"]:
+        await state.set_state(Onb.age)
+        await message.answer(_copy(
+            user,
+            "🔞 OracleAI доступен только с 16 лет. Подтверди, что тебе уже исполнилось 16 лет.",
+            "🔞 OracleAI is available only to people aged 16+. Confirm that you are at least 16.",
+        ), reply_markup=age_gate_kb(_lang(user)))
+        return
     if user["onboarded"]:
         await state.clear()
         await message.answer(_copy(
             user,
-            f"С возвращением, {user['name']} 🌙\nЯ здесь. О чём поговорим?",
-            f"Welcome back, {user['name']} 🌙\nI’m here. What would you like to explore?",
+            f"С возвращением, {tg_esc(user['name'])} 🌙\nЯ здесь. О чём поговорим?",
+            f"Welcome back, {tg_esc(user['name'])} 🌙\nI’m here. What would you like to explore?",
         ), reply_markup=await _menu(db, message.from_user.id))
         return
     await state.set_state(Onb.name)
@@ -154,6 +164,29 @@ async def _begin(message: Message, state: FSMContext, db):
 
 
 # ─────────────────────────────── шаги FSM ─────────────────────────────────────
+
+@router.callback_query(F.data == "age:confirm")
+async def onb_age_confirm(cb: CallbackQuery, state: FSMContext, db):
+    user = await users.get(db, cb.from_user.id)
+    if not user:
+        await cb.answer("Сначала нажми /start", show_alert=True)
+        return
+    await users.update(db, cb.from_user.id, age_confirmed=1)
+    await cb.answer()
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await _begin(cb.message, state, db)
+
+
+@router.callback_query(F.data == "age:decline")
+async def onb_age_decline(cb: CallbackQuery, state: FSMContext, db):
+    await state.clear()
+    await cb.answer()
+    await cb.message.edit_text(_copy(
+        await users.get(db, cb.from_user.id),
+        "Доступ закрыт. Если тебе исполнится 16 лет, снова нажми /start.",
+        "Access closed. If you turn 16 later, press /start again.",
+    ))
+
 
 @router.message(Onb.name, F.text)
 async def onb_name(message: Message, state: FSMContext, db):
@@ -167,9 +200,9 @@ async def onb_name(message: Message, state: FSMContext, db):
     await message.answer(
         _copy(
             user,
-            f"{name}... красивое имя, в нём есть свет. 💫\n\n"
+            f"{tg_esc(name)}... красивое имя, в нём есть свет. 💫\n\n"
             "Чтобы подобрать форму обращения, выбери свой пол. Это можно изменить позже.",
-            f"{name}... a beautiful name with its own light. 💫\n\n"
+            f"{tg_esc(name)}... a beautiful name with its own light. 💫\n\n"
             "Choose how I should address you. You can change this later.",
         ),
         reply_markup=gender_kb(_lang(user)),
@@ -358,12 +391,12 @@ async def onb_oracle_name(message: Message, state: FSMContext, db):
     await analytics.track(db, analytics.E_ONBOARD_DONE, message.from_user.id)
     await message.answer(_copy(
         user,
-        f"✨ Теперь я — <b>{name}</b>, и я знаю твою карту, {user['name']}.\n\n"
+        f"✨ Теперь я — <b>{tg_esc(name)}</b>, и я знаю твою карту, {tg_esc(user['name'])}.\n\n"
         f"У тебя есть <b>{allowance.limit} вопроса в день</b> и "
         f"{users.sub_days_left(user)} дней полного доступа. "
         "Просто напиши мне свой первый вопрос — о любви, деньгах, пути... "
         "Я отвечу по твоим звёздам. 🌙",
-        f"✨ I am now <b>{name}</b>, and I know your chart, {user['name']}.\n\n"
+        f"✨ I am now <b>{tg_esc(name)}</b>, and I know your chart, {tg_esc(user['name'])}.\n\n"
         f"You have <b>{allowance.limit} questions per day</b> and "
         f"{users.sub_days_left(user)} days of full access. "
         "Simply send me your first question — about love, money, or your path... "

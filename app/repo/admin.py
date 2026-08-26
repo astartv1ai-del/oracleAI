@@ -19,10 +19,10 @@ ROLE_LEVEL = {role: i for i, role in enumerate(ROLES)}
 PERMISSIONS = {
     "analyst": {"dashboard", "users:read", "content:read", "settings:read"},
     "support": {"dashboard", "users:read", "users:write", "crm:write",
-                "content:read", "settings:read", "grants"},
+                "content:read", "settings:read"},
     "admin": {"dashboard", "users:read", "users:write", "crm:write",
               "content:read", "content:write", "settings:read", "settings:write",
-              "grants", "promo", "broadcast", "catalog"},
+              "grants", "promo", "broadcast", "catalog", "safety:read"},
     "owner": {"*"},
 }
 

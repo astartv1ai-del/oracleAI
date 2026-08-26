@@ -16,7 +16,7 @@ from ...core import astro, cards, skills
 from ...repo import content, readings, users
 from ...services import analytics, catalog
 from ..common.validation import parse_birth_date
-from ..deps import current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, get_db, rate_limit
 
 log = logging.getLogger("oracle.api.share")
 
@@ -41,7 +41,7 @@ async def _bot_username(db) -> str:
 
 @router.get("/reading/{reading_id}.png",
             dependencies=[Depends(rate_limit("write"))])
-async def reading_png(reading_id: int, user=Depends(current_user),
+async def reading_png(reading_id: int, user=Depends(confirmed_age_user),
                       db=Depends(get_db)):
     """Карточка расклада. Доступна только владелице расклада."""
     row = await readings.get_reading(db, reading_id, user["tg_id"])
@@ -67,7 +67,7 @@ async def reading_png(reading_id: int, user=Depends(current_user),
 
 
 @router.get("/today.png", dependencies=[Depends(rate_limit("write"))])
-async def today_png(user=Depends(current_user), db=Depends(get_db)):
+async def today_png(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Карточка прогноза дня — то, что чаще всего уходит в сторис."""
     chart = users.chart_of(user)
     sun = chart.get("sun") or {}
@@ -85,7 +85,7 @@ async def today_png(user=Depends(current_user), db=Depends(get_db)):
 
 @router.get("/compat.png", dependencies=[Depends(rate_limit("write"))])
 async def compat_png(partner_date: str, partner_name: str = "", relation: str = "love",
-                     user=Depends(current_user), db=Depends(get_db)):
+                     user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Открытка совместимости: два знака, кольцо-шкала, вердикт, сферы.
 
     Балл считается ровно той же формулой, что в /api/compat, — иначе открытка и

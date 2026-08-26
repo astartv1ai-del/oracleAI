@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Measure representative local product operations with synthetic inputs."""
+from __future__ import annotations
+
+import asyncio
+import json
+import statistics
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.core import astro, memory, tarot  # noqa: E402
+from app.data.session import connect  # noqa: E402
+from app.pdfgen import builder  # noqa: E402
+from app.repo import users  # noqa: E402
+
+
+async def timed_async(fn, repeats: int = 3) -> list[float]:
+    values = []
+    for _ in range(repeats):
+        started = time.perf_counter()
+        await fn()
+        values.append((time.perf_counter() - started) * 1000)
+    return values
+
+
+def timed_sync(fn, repeats: int = 5) -> list[float]:
+    values = []
+    for _ in range(repeats):
+        started = time.perf_counter()
+        fn()
+        values.append((time.perf_counter() - started) * 1000)
+    return values
+
+
+def summary(values: list[float]) -> dict:
+    ordered = sorted(values)
+    return {
+        "runs": len(values),
+        "p50_ms": round(statistics.median(values), 2),
+        "p95_ms": round(ordered[max(0, int(len(ordered) * 0.95) - 1)], 2),
+        "max_ms": round(max(values), 2),
+    }
+
+
+async def main() -> int:
+    original_geo = builder.geo.resolve_city_async
+    original_llm = builder.llm.enabled
+
+    async def fake_geo(_city: str):
+        return 55.79, 49.12, "Europe/Moscow"
+
+    builder.geo.resolve_city_async = fake_geo
+    builder.llm.enabled = lambda: False
+    with tempfile.TemporaryDirectory(prefix="oracleai-perf-") as tmp:
+        db = await connect(str(Path(tmp) / "perf.db"), seed=False)
+        try:
+            user = await users.ensure(db, 15001, "Synthetic performance user")
+            for i in range(20):
+                await memory.remember(db, user["tg_id"], f"Synthetic preference number {i}")
+
+            async def memory_op():
+                await memory.recall(db, user["tg_id"], "Synthetic preference", limit=8)
+
+            async def pdf_op():
+                await builder.generate(
+                    None,
+                    builder.Order(name="Synthetic", birth_date="1990-06-21", birth_time="14:30", birth_city="Synthetic City"),
+                    concurrency=1,
+                )
+
+            metrics = {
+                "chart_compute": summary(timed_sync(lambda: astro.compute_chart(
+                    "1990-06-21", "14:30", "Казань", 55.79, 49.12, "Europe/Moscow"), repeats=5)),
+                "tarot_draw": summary(timed_sync(lambda: tarot.reading_ledger(
+                    tarot.draw(5, seed="synthetic-performance"), "three"), repeats=20)),
+                "memory_recall": summary(await timed_async(memory_op, repeats=5)),
+                "pdf_html_generation": summary(await timed_async(pdf_op, repeats=2)),
+            }
+        finally:
+            await db.close()
+            builder.geo.resolve_city_async = original_geo
+            builder.llm.enabled = original_llm
+
+    result = {
+        "synthetic": True,
+        "metrics": metrics,
+        "pass": all(item["runs"] > 0 for item in metrics.values()),
+        "note": "Local directional baseline only; production SLOs require staging traffic and provider instrumentation.",
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result["pass"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))

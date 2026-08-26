@@ -5,14 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...services import analytics
 from ...services import practices as practices_svc
-from ..deps import current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api/practices", tags=["practices"])
 
 
 @router.get("")
 async def catalog(category: str | None = Query(default=None),
-                  user=Depends(current_user), db=Depends(get_db)):
+                  user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Каталог с её прогрессом. Идущие практики — первыми."""
     return {
         "categories": await practices_svc.categories(),
@@ -21,7 +21,7 @@ async def catalog(category: str | None = Query(default=None),
 
 
 @router.get("/{code}")
-async def one(code: str, user=Depends(current_user), db=Depends(get_db)):
+async def one(code: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
     items = await practices_svc.list_for_user(db, user)
     item = next((p for p in items if p["code"] == code), None)
     if not item:
@@ -30,7 +30,7 @@ async def one(code: str, user=Depends(current_user), db=Depends(get_db)):
 
 
 @router.post("/{code}/start", dependencies=[Depends(rate_limit("write"))])
-async def start(code: str, user=Depends(current_user), db=Depends(get_db)):
+async def start(code: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
     try:
         item = await practices_svc.start(db, user, code)
     except LookupError as e:
@@ -41,7 +41,7 @@ async def start(code: str, user=Depends(current_user), db=Depends(get_db)):
 
 
 @router.post("/{code}/done", dependencies=[Depends(rate_limit("write"))])
-async def done(code: str, user=Depends(current_user), db=Depends(get_db)):
+async def done(code: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Отметка дня. Повторная за сутки ничего не меняет — так и отвечаем."""
     try:
         result = await practices_svc.mark_done(db, user, code)
@@ -60,7 +60,7 @@ async def done(code: str, user=Depends(current_user), db=Depends(get_db)):
 
 
 @router.post("/{code}/stop", dependencies=[Depends(rate_limit("write"))])
-async def stop(code: str, user=Depends(current_user), db=Depends(get_db)):
+async def stop(code: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
     stopped = await practices_svc.stop(db, user, code)
     if stopped:
         await analytics.track(db, "practice_stop", user["tg_id"],

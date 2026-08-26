@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from ...core import astro, memory
 from ...repo import dialog, users
 from ...services import analytics
-from ..deps import current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["diary"])
 
@@ -25,7 +25,7 @@ class DiaryIn(BaseModel):
 
 
 @router.get("/diary")
-async def diary_list(user=Depends(current_user), db=Depends(get_db)):
+async def diary_list(user=Depends(confirmed_age_user), db=Depends(get_db)):
     entries = await dialog.get_diary(db, user["tg_id"], limit=60)
     return {"entries": entries,
             "streak": await dialog.diary_streak(db, user["tg_id"])}
@@ -51,7 +51,7 @@ def _entry_reflection(moon: dict, mood: str | None) -> str:
 
 
 @router.post("/diary", dependencies=[Depends(rate_limit("write"))])
-async def diary_add(item: DiaryIn, user=Depends(current_user), db=Depends(get_db)):
+async def diary_add(item: DiaryIn, user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Сохраняет личную заметку и возвращает краткий ориентир текущей лунной фазы."""
     text = item.text.strip()[:1000]
     await dialog.add_diary(db, user["tg_id"], text, mood=item.mood)
@@ -71,7 +71,7 @@ async def diary_add(item: DiaryIn, user=Depends(current_user), db=Depends(get_db
 
 
 @router.get("/diary/prompt")
-async def diary_prompt(user=Depends(current_user), db=Depends(get_db)):
+async def diary_prompt(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Вечерний вопрос от Оракула — чтобы дневник не был пустым полем.
 
     Вопрос зависит от того, писала ли она сегодня и есть ли у неё стрик:
@@ -192,7 +192,7 @@ def _max_streak(days: set[str]) -> int:
 
 @router.get("/diary/summary")
 async def diary_summary(month: str | None = Query(default=None),
-                        user=Depends(current_user), db=Depends(get_db)):
+                        user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Месячная сводка: сколько записей, о чём, что менялось.
 
     Отдаёт факты и структуру для LLM (поле `data_for_prompt`), а не готовый
@@ -266,7 +266,7 @@ async def diary_summary(month: str | None = Query(default=None),
 
 
 @router.get("/diary/{entry_id}")
-async def diary_item(entry_id: int, user=Depends(current_user), db=Depends(get_db)):
+async def diary_item(entry_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Open one diary entry from the unified archive without crossing owners."""
     cur = await db.execute(
         "SELECT id, text, mood, created_at FROM diary WHERE id=? AND tg_id=?",

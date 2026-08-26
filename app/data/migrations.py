@@ -36,7 +36,7 @@ COLUMNS: dict[str, dict[str, str]] = {
         "lang": "TEXT DEFAULT 'ru'",
         "gender": "TEXT DEFAULT NULL",
         "morning_push": "INTEGER DEFAULT 1",
-        "memory_enabled": "INTEGER DEFAULT 1",
+        "memory_enabled": "INTEGER DEFAULT 0",
         "age_confirmed": "INTEGER DEFAULT 0",
         "ref_by": "INTEGER",
         "goal": "TEXT",
@@ -280,6 +280,18 @@ async def _m_reports_append_only(db) -> None:
     await db.commit()
 
 
+async def _m_memory_explicit_opt_in(db) -> None:
+    """Reset legacy implicit memory state until users explicitly opt in again.
+
+    Older installations used DEFAULT 1 and have no consent timestamp, so a
+    privacy-safe migration cannot distinguish explicit consent from a default.
+    Existing users must opt in again rather than silently retaining context.
+    """
+    await db.execute(
+        "UPDATE users SET memory_enabled=0 "
+        "WHERE COALESCE(memory_enabled, 0) <> 0")
+
+
 # (имя, функция). Имя навсегда — по нему стоит отметка о применении.
 DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_07_referrals_from_ref_by", _m_referrals_from_ref_by),
@@ -289,6 +301,7 @@ DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_07_users_sub_level_codes", _m_users_sub_level_codes),
     ("2026_08_forecasts_language_key", _m_forecasts_language_key),
     ("2026_08_reports_append_only", _m_reports_append_only),
+    ("2026_08_memory_explicit_opt_in", _m_memory_explicit_opt_in),
 ]
 
 TRACKER = """

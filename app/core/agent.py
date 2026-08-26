@@ -94,7 +94,7 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
             if summary:
                 who_block += f"Контекст пользователя (сводка; факты расклада бери только из draw_tarot): {summary}\n"
             if mems:
-                who_block += f"Релевантный контекст: {'; '.join(mems)}\n"
+                who_block += f"{memory.prompt_block(mems)}\n"
             user_msg = (
                 f"{await skills.guide(db, 'tarot')}\n\n"
                 f"{evidence.as_prompt_block()}\n\n"

@@ -46,7 +46,8 @@ async def user(db):
                        birth_time="14:30", birth_time_known=1,
                        birth_city="Казань", tz="Europe/Moscow",
                        sub_level="vip",
-                       chart_json=json.dumps(chart, ensure_ascii=False))
+                       chart_json=json.dumps(chart, ensure_ascii=False),
+                       age_confirmed=1, memory_enabled=0)
     assert created["tg_id"] == 1001
     return await users.get(db, 1001)
 
@@ -57,7 +58,8 @@ async def free_user(db):
     from app.repo import users
     await users.ensure(db, 1002, "Без подписки")
     await users.update(db, 1002, onboarded=1, birth_date="1988-01-15",
-                       sub_until="2000-01-01T00:00:00+00:00", sub_level="free")
+                       sub_until="2000-01-01T00:00:00+00:00", sub_level="free",
+                       age_confirmed=1, memory_enabled=0)
     return await users.get(db, 1002)
 
 

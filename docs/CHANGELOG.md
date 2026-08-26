@@ -37,6 +37,9 @@
 - English home fallback переведён в HOME_I18N; добавлены localization regression, Playwright visual/accessibility baseline и финальные per-check quality-gate artifacts.
 - Добавлены `NEXT_STEPS.md`, `UNIFIED_HISTORY.md` и `ORACLEAI_CONTINUATION_REPORT.md`; второй pass фиксирует выполненные локальные рекомендации, внешние launch blockers и незелёный LLM p95 latency gate.
 - Подготовлен research-only документ `MONETIZATION_STRATEGY.md`: Hybrid B, публичные pricing anchors, unit economics, ethical upsell guardrails и owner decisions; код, UI, цены и payment logic на этом этапе не изменялись.
+- Добавлены synthetic memory evaluator, API resilience matrix, PDF golden-case runner, Tarot contract tests, disposable backup/restore drill and directional chart/Tarot/memory/PDF performance benchmark.
+- Account deletion получил confirm-gated idempotent API contract; anonymization clears user history and disables memory, push and age flags. Memory recall cache now respects requested result limits.
+- Playwright visual baseline расширен до chart/history/memory/Tarot states, reduced-motion reference and seeded synthetic data; localized accessible names added for the previously failing inputs and tool controls.
 
 ## 2.0.0 — 2026-08-12
 

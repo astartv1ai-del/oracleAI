@@ -19,7 +19,7 @@ OracleAI обрабатывает личный контекст, поэтому 
 
 ## Возраст 16+
 
-Mini App использует **self-confirmation 16+**, а не верификацию личности или даты рождения. Перед обычным входом пользовательница видит понятную возрастную границу; подтверждение сохраняется в `users.age_confirmed` и возвращается через `GET /api/me`.[1]
+Mini App использует **self-confirmation 16+**, а не верификацию личности или даты рождения. Перед обычным входом пользовательница видит понятную возрастную границу; подтверждение сохраняется в `users.age_confirmed` и проверяется общей server-side dependency на чувствительных API surfaces. До подтверждения `/api/me` возвращает только минимальный pre-consent payload.[1]
 
 | Требование | Реализация | Проверка |
 |---|---|---|
@@ -48,8 +48,8 @@ Server-side privacy guard присутствует в profile router, chat servi
 1. Идентичность Mini App определяется верификацией Telegram `initData` на сервере.
 2. Development-параметр `dev_user` допустим только при `APP_ENV=dev` и `DEV_MODE=1`; production-startup намеренно запрещает этот режим.[3]
 3. API валидирует тела Pydantic-моделями и назначает `read`, `write` или `llm` rate limit по операции.
-4. Все запросы с персональными ресурсами получают пользователя через dependency и проверяют ownership в репозитории/сервисе.
-5. Admin API требует отдельную авторизацию и фиксирует действия в `admin_audit`.[4]
+4. Все запросы с персональными ресурсами получают пользователя через dependency и проверяют ownership в репозитории/сервисе; чувствительные product routes дополнительно требуют server-side `age_confirmed`.
+5. Admin API требует отдельную авторизацию и фиксирует действия в `admin_audit`; raw safety incidents выделены в permission `safety:read`.[4]
 6. Ответы не включают stack trace, секреты конфигурации, внутренние SQL-ошибки или данные другой пользовательницы.
 
 Новый endpoint запрещено выпускать только с проверкой на клиенте: авторизация, ownership, лимит и business rule проверяются на сервере.
@@ -88,7 +88,8 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 * `.env`, production-токены, ключи LLM, webhook secrets и Sentry DSN не коммитятся, не отправляются в чат и не попадают в screenshot.
 * Production-доступ выдаётся персонально, по минимально необходимым правам и отзывается при смене роли.
 * Бэкапы SQLite считаются чувствительными: production backup service fail-closed требует отдельный host key, шифрует snapshot через PBKDF2/соль, создаёт checksum, соблюдает retention и регулярно восстанавливается в изолированном контуре через `scripts/restore_db.sh`.
-* Structured JSONL логи содержат только whitelisted operational fields, request/release IDs и redaction; они не должны содержать целые тексты чатов, дневников, токены, initData, Telegram IDs или webhook payload.
+* Structured JSONL логи содержат только whitelisted operational fields, request/release IDs и redaction; они не должны содержать целые тексты чатов, дневников, города рождения, токены, initData, Telegram IDs или webhook payload.
+* Retention housekeeping удаляет product events/LLM usage через 120 дней, safety incidents через 90 дней, webhook evidence через 180 дней и admin audit через 365 дней; сроки должны быть подтверждены оператором и юристом.
 
 ## Реакция на инцидент
 
@@ -106,9 +107,11 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 - [ ] `APP_ENV=production`, `DEV_MODE=0`.
 - [ ] HTTPS и production-домен настроены.
 - [ ] Secrets отсутствуют в diff, логах и клиентском bundle.
-- [ ] Age-gate отображается, а `age_confirmed` сохраняется для чистого профиля.
-- [ ] Memory-off исключает список, сохранение и агентный контекст.
-- [ ] New API routes имеют auth, ownership, validation и rate limit.
+- [ ] Age-gate отображается, `age_confirmed` сохраняется для чистого профиля, а прямые sensitive API calls до подтверждения получают 403.
+- [ ] Memory default равен 0; memory-off исключает список, сохранение и агентный контекст.
+- [ ] New API routes имеют auth, ownership, server-side age/business rules, validation и rate limit.
+- [ ] `/api/admin/safety` не отдаёт raw excerpts, support не имеет `grants`, а sensitive CRM views разделены по ролям.
+- [ ] Telegram user/AI text escaped; upload body/pixel limits проверены.
 - [ ] Критические действия не доверяют данным браузера.
 - [ ] Webhook signature, `transaction.completed`, server-side order binding и idempotency проверены в sandbox.
 - [ ] Зашифрованный бэкап создан, checksum проверен и restore drill выполнен через `scripts/restore_db.sh`.

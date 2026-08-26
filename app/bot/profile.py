@@ -11,6 +11,7 @@ from ..repo import admin as admin_repo
 from ..repo import billing, dialog, readings, users
 from ..services import analytics, limits, referrals
 from .chat import _send_long
+from .formatting import tg_esc
 from .keyboards import (back_menu, main_menu, personas_kb, profile_kb,
                         report_kb, share_kb)
 
@@ -35,12 +36,12 @@ async def profile(cb: CallbackQuery, db):
     sub_line = (f"{allowance.plan['title']} · осталось "
                 f"{users.sub_days_left(user)} дн." if active else "доступ завершён")
     unit = "сегодня" if allowance.period == "day" else "на неделе"
-    mem_block = ("\n".join(f"• {m}" for m in memories) if memories
+    mem_block = ("\n".join(f"• {tg_esc(m)}" for m in memories) if memories
                  else "<i>я только начинаю узнавать тебя</i>")
 
     lines = [
-        f"👤 <b>{user['name']}</b>",
-        f"🔮 Твой Оракул: {user['oracle_name']}",
+        f"👤 <b>{tg_esc(user['name'])}</b>",
+        f"🔮 Твой Оракул: {tg_esc(user['oracle_name'])}",
         f"💫 Доступ: {sub_line}",
         f"✦ Кристаллы: <b>{user['crystals']}</b>",
         f"💬 Вопросов {unit}: {allowance.left} из {allowance.limit}"
