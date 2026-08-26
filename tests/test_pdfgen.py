@@ -116,3 +116,50 @@ async def test_english_natal_report_is_localized(monkeypatch):
     assert "https://github.com/astartv1ai-del/oracleAI" in html
     assert "Натальная карта: полный расчёт" not in html
     assert "Кто ты по своей карте" not in html
+
+
+@pytest.mark.asyncio
+async def test_date_only_report_omits_house_and_angle_claims(monkeypatch):
+    from app.pdfgen import builder
+
+    async def fake_geo(*_args, **_kwargs):
+        return 55.79, 49.12, "Europe/Moscow"
+
+    monkeypatch.setattr(builder.geo, "resolve_city_async", fake_geo)
+    monkeypatch.setattr(builder.llm, "enabled", lambda: False)
+    order = builder.Order(
+        name="Анна", birth_date="1990-06-21", birth_city="Казань"
+    )
+
+    html = await builder.generate(None, order, concurrency=1)
+
+    assert "Сферы жизни: планеты по знакам" in html
+    assert "Сферы жизни: планеты по домам" not in html
+    assert "Асцендент в —" not in html
+    assert "Планеты по домам:" not in html
+    assert "Ресурсные зоны карты:" not in html
+    assert 'class="natal-print-image"' not in html
+    assert "Изображение колеса не строится" in html
+
+
+@pytest.mark.asyncio
+async def test_english_date_only_report_uses_sign_based_copy(monkeypatch):
+    from app.pdfgen import builder
+
+    async def fake_geo(*_args, **_kwargs):
+        return 55.79, 49.12, "Europe/Moscow"
+
+    monkeypatch.setattr(builder.geo, "resolve_city_async", fake_geo)
+    monkeypatch.setattr(builder.llm, "enabled", lambda: False)
+    order = builder.Order(
+        name="Anna", birth_date="1990-06-21", birth_city="Kazan", lang="en"
+    )
+
+    html = await builder.generate(None, order, concurrency=1)
+
+    assert "Life areas: planets by signs" in html
+    assert "Life areas: planets by houses" not in html
+    assert "Ascendant in —" not in html
+    assert "Planets by house:" not in html
+    assert "Resource areas:" not in html
+    assert "The wheel image is not generated" in html

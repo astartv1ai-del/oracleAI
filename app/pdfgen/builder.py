@@ -69,6 +69,7 @@ SECTION_EN = {
     "Задачи и точки роста": ("Tasks and growth points", "Saturn, tense aspects and the lunar-node axis as the exact places where your strength is forged."),
     "Как тебе принимать решения": ("How you make decisions", "A practical reflection guide: signals, questions and small reversible experiments when you are unsure."),
     "Год впереди": ("The year ahead", "A twelve-month map of the central theme, active windows and the rhythm that supports your next move."),
+    "Сферы жизни: планеты по знакам": ("Life areas: planets by signs", "Where the main themes may be explored through sign placements. Do not use houses or angles when birth time is unconfirmed."),
 }
 
 SIGN_EN = {
@@ -428,11 +429,13 @@ def _offline_section_en(title: str, data: dict) -> str:
     def point(name: str) -> dict:
         return next((item for item in all_points if item.get("name") == name), {})
 
+    date_only = chart.get("precision") != "exact"
+
     def position(name: str) -> str:
         item = point(name)
         if not item:
             return f"{_display_point(name, 'en')}: no data"
-        house = f", house {item['house']}" if item.get("house") else ""
+        house = f", house {item['house']}" if item.get("house") and not date_only else ""
         retro = ", retrograde" if item.get("retro") else ""
         return f"{_display_point(name, 'en')} in {_display_sign(item.get('sign', '—'), 'en')}, {item.get('deg', '—')}°{house}{retro}"
 
@@ -451,7 +454,9 @@ def _offline_section_en(title: str, data: dict) -> str:
     if title.startswith("Кто ты"):
         return "\n\n".join([
             f"{position('Солнце')}. This placement defines the style of self-expression and the intentions that keep you steady. {position('Луна')} maps your needs, emotional rhythm and recovery.",
-            f"Ascendant in {_display_sign((chart.get('ascendant') or {}).get('sign', '—'), 'en')} — {(chart.get('ascendant') or {}).get('deg', '—')}°, when birth time and place are confirmed. It is the way your presence enters a situation.",
+            ("Ascendant is not calculated because the birth time is unconfirmed; this report uses only sign placements, not angles or houses."
+             if date_only else
+             f"Ascendant in {_display_sign((chart.get('ascendant') or {}).get('sign', '—'), 'en')} — {(chart.get('ascendant') or {}).get('deg', '—')}°. It is the way your presence enters a situation."),
         ])
     if "сильные" in title.lower():
         return "\n\n".join([
@@ -459,18 +464,28 @@ def _offline_section_en(title: str, data: dict) -> str:
             "Give each resource a concrete expression this week: name where it already works and choose the next level it needs.",
         ])
     if "сферы жизни" in title.lower():
+        if date_only:
+            sign_positions = "; ".join(position(p.get("name", "—")) for p in planets[:6])
+            return "\n\n".join([
+                f"Sign-based focus areas: {sign_positions}.",
+                "Birth time is unconfirmed, so houses and angles are intentionally omitted. Use these sign placements as reflective themes rather than precise life-area claims.",
+            ])
         return "\n\n".join([
             f"Focus areas: {house(2)}; {house(6)}; {house(10)}. Planets by house: {'; '.join(position(p.get('name', '—')) for p in planets[:6])}.",
-            "Houses are meaningful only when birth time and coordinates are confirmed. In date-only mode, use sign placements instead.",
+            "Houses are meaningful only when birth time and coordinates are confirmed.",
         ])
     if "любовь" in title.lower() or "близость" in title.lower():
         return "\n\n".join([
             f"{position('Венера')}. This placement shapes your values, pleasure and instinct for reciprocity. {position('Луна')} maps the conditions that help you feel safe and present in closeness.",
-            f"{house(7)}. Turn this relationship pattern into one clear agreement with a partner.",
+            ("Birth time is unconfirmed, so this section does not use a seventh-house claim. Turn the sign-based relationship themes into one clear agreement with a partner."
+             if date_only else
+             f"{house(7)}. Turn this relationship pattern into one clear agreement with a partner."),
         ])
     if "деньги" in title.lower() or "дело" in title.lower():
         return "\n\n".join([
-            f"Resource areas: {house(2)}; {house(6)}; {house(10)}. Growth and discipline themes: {position('Юпитер')}; {position('Сатурн')}.",
+            (f"Sign-based resource themes: {position('Юпитер')}; {position('Сатурн')}; {position('Марс')}."
+             if date_only else
+             f"Resource areas: {house(2)}; {house(6)}; {house(10)}. Growth and discipline themes: {position('Юпитер')}; {position('Сатурн')}."),
             "Translate these resource themes into a budget, a measured experiment or a clear conversation about value; for high-stakes decisions, pair the reading with qualified professional advice.",
         ])
     if "Матрица" in title or "предназначен" in title.lower():
@@ -508,6 +523,7 @@ def _offline_section(title: str, data: dict, lang: str = "ru") -> str:
         return _offline_section_en(title, data)
     chart = data["chart"]
     matrix = data["matrix"]
+    date_only = chart.get("precision") != "exact"
     planets = chart.get("planets") or []
     nodes = chart.get("nodes") or []
     all_points = planets + nodes + (chart.get("additional_points") or [])
@@ -519,7 +535,7 @@ def _offline_section(title: str, data: dict, lang: str = "ru") -> str:
         item = point(name)
         if not item:
             return f"{name}: данных нет"
-        house = f", {item['house']} дом" if item.get("house") else ""
+        house = f", {item['house']} дом" if item.get("house") and not date_only else ""
         retro = ", ретроградный" if item.get("retro") else ""
         return f"{name} в {item.get('sign', '—')}, {item.get('deg', '—')}°{house}{retro}"
 
@@ -541,7 +557,9 @@ def _offline_section(title: str, data: dict, lang: str = "ru") -> str:
         return "\n\n".join([
             f"{position('Солнце')}. Это ядро самовыражения и устойчивых намерений.",
             f"{position('Луна')}. Это карта потребностей, эмоционального ритма и восстановления.",
-            f"Асцендент в {asc.get('sign', '—')} — {asc.get('deg', '—')}°, если время и место рождения подтверждены. Это способ входить в ситуации и проявлять присутствие.",
+            ("Асцендент не рассчитывается: подтверждённого времени рождения нет. В этом отчёте используются только положения по знакам, без углов и домов."
+             if date_only else
+             f"Асцендент в {asc.get('sign', '—')} — {asc.get('deg', '—')}°. Это способ входить в ситуации и проявлять присутствие."),
         ])
     if "сильные" in title.lower():
         return "\n\n".join([
@@ -550,22 +568,31 @@ def _offline_section(title: str, data: dict, lang: str = "ru") -> str:
             "Свяжи каждую сильную сторону с конкретным опытом: где этот ресурс уже работает и какой следующий уровень ему нужен.",
         ])
     if "сферы жизни" in title.lower():
+        if date_only:
+            sign_positions = "; ".join(position(p.get("name", "—")) for p in planets[:6])
+            return "\n\n".join([
+                f"Фокус по знакам: {sign_positions}.",
+                "Подтверждённого времени рождения нет, поэтому дома и углы намеренно исключены. Читай эти положения как темы для рефлексии, а не как точные области жизни.",
+            ])
         return "\n\n".join([
             f"{house(2)}; {house(6)}; {house(10)}.",
             f"Планеты по домам: {'; '.join(position(p.get('name', '—')) for p in planets[:6])}.",
-            "Дома доступны при точном времени и координатах; при date-only режиме читай положения по знакам.",
+            "Дома доступны только при точном времени и координатах.",
         ])
     if "любовь" in title.lower() or "близость" in title.lower():
         return "\n\n".join([
             f"{position('Венера')}. Это язык ценностей, удовольствия и взаимности в близости.",
             f"{position('Луна')}. Наблюдай, какие условия помогают чувствовать безопасность в близости.",
-            f"{house(7)}. Переведи эту тему в одну ясную договорённость с партнёром.",
+            ("Подтверждённого времени рождения нет, поэтому 7-й дом не используется. Переведи темы по знакам в одну ясную договорённость с партнёром."
+             if date_only else
+             f"{house(7)}. Переведи эту тему в одну ясную договорённость с партнёром."),
         ])
     if "деньги" in title.lower() or "дело" in title.lower():
         return "\n\n".join([
-            f"Ресурсные зоны карты: {house(2)}; {house(6)}; {house(10)}.",
-            f"Темы роста и дисциплины: {position('Юпитер')}; {position('Сатурн')}.",
-            "Переводи ресурсные темы в бюджет, измеримый эксперимент или разговор о цене; для важных решений подключай профильного специалиста.",
+            (f"Ресурсные темы по знакам: {position('Юпитер')}; {position('Сатурн')}; {position('Марс')}."
+             if date_only else
+             f"Ресурсные зоны карты: {house(2)}; {house(6)}; {house(10)}."),
+            f"Темы роста и дисциплины: {position('Юпитер')}; {position('Сатурн')}. Переводи их в бюджет, измеримый эксперимент или разговор о цене; для важных решений подключай профильного специалиста.",
         ])
     if "Матрица" in title or "предназначен" in title.lower():
         return "; ".join(
@@ -839,11 +866,18 @@ async def generate(db, order: Order, *, bot_username: str = "",
     data = await build_report_data(order)
     semaphore = asyncio.Semaphore(max(1, concurrency))
 
+    sections = [
+        ("Сферы жизни: планеты по знакам", SECTION_EN["Сферы жизни: планеты по знакам"][1])
+        if not order.time_known and title == "Сферы жизни: планеты по домам"
+        else (title, brief)
+        for title, brief in SECTIONS
+    ]
+
     async def one(title: str, brief: str) -> str:
         async with semaphore:
             return await _section_text(db, order, data, title, brief)
 
-    texts = await asyncio.gather(*(one(t, b) for t, b in SECTIONS))
+    texts = await asyncio.gather(*(one(t, b) for t, b in sections))
     project_url = brand["project_url"]
     safe_url = project_url if project_url.startswith(("https://", "http://")) else ""
     matrix_labels = {
@@ -879,10 +913,10 @@ async def generate(db, order: Order, *, bot_username: str = "",
         await _natal_print_block(data, order, language),
         _natal_reference_block(data, language),
     ]
-    for start in range(0, len(SECTIONS), 2):
+    for start in range(0, len(sections), 2):
         chapter_blocks = []
-        for idx in range(start, min(start + 2, len(SECTIONS))):
-            title, brief = SECTIONS[idx]
+        for idx in range(start, min(start + 2, len(sections))):
+            title, brief = sections[idx]
             chapter_blocks.append(
                 f'<article class="chapter"><h2>{layout.esc(_section_title(title, language))}</h2>'
                 f'{layout.paragraphs(texts[idx])}</article>'
