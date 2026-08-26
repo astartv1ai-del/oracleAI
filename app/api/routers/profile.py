@@ -129,6 +129,24 @@ async def experiment_exposure(item: ExperimentExposureIn, user=Depends(current_u
     return {"ok": True}
 
 
+class AccountDeletionIn(BaseModel):
+    """Explicit confirmation prevents accidental irreversible deletion."""
+    confirm: bool = Field(default=False)
+
+
+@router.post("/account/delete", dependencies=[Depends(rate_limit("write"))])
+async def delete_account(item: AccountDeletionIn, user=Depends(current_user), db=Depends(get_db)):
+    """Anonymize the current account while retaining only settlement-safe records."""
+    if not item.confirm:
+        raise HTTPException(400, "для удаления требуется явное подтверждение")
+    already_deleted = user["status"] == "deleted"
+    if not already_deleted:
+        await users.anonymize(db, user["tg_id"])
+        await analytics.track(db, "account_deleted", user["tg_id"],
+                              props={"mode": "anonymized"}, surface="miniapp")
+    return {"ok": True, "already_deleted": already_deleted, "status": "deleted"}
+
+
 class ProfileIn(BaseModel):
     oracle_name: str | None = Field(default=None, max_length=30)
     persona: str | None = None

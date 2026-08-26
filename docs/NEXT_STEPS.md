@@ -62,24 +62,24 @@ This run executes every locally actionable item that can be completed without re
 | P0-001 | Partial | Local owner-scope and redaction checks exist; real Telegram signed initData/WebView staging remains external. |
 | P0-002 | Partial | Existing local billing/idempotency coverage remains; provider sandbox settlement/refund evidence remains external. |
 | P0-003 | Partial, measured | Live `gpt-5-mini` synthetic run: zero critical violations, language 1.0, symbolic next-step 0.9, calibration 0.9; p95 22.14 s misses the 15 s target. |
-| P0-004 | External | Production backup/storage permission and restore drill remain external. |
+| P0-004 | Partial, locally drilled | Disposable Python backup/restore drill passes SQLite integrity, report preservation and owner isolation; production backup/storage permissions and rollback remain external. |
 | P1-001 | Done locally with explicit palm boundary | Unified `/api/history`, exact Tarot/diary routes, profile History UI and owner-isolation tests cover reports, Tarot, sessions and diary. Palm is intentionally absent until palm artifacts are persisted with retention/deletion semantics. |
-| P1-002 | Partial | Existing memory consent/pause/deletion contracts and tests remain; a dedicated contradiction/relevance benchmark is still required. |
-| P1-003 | Done locally for audited cases | RU/EN exact-time and date-only PDF generation, text truth-state checks and visual inspection were completed; broader edge-case matrix remains. |
+| P1-002 | Done locally for synthetic evaluator | Dedicated evaluator covers relevance, irrelevance, pause/no-write, deletion, owner isolation, contradiction detection and prompt-injection-shaped facts; no automatic winner is invented for conflicts. |
+| P1-003 | Done locally for synthetic matrix | Six deterministic RU/EN cases cover exact/date-only, long name, DST-shaped input and high latitude; production font/device pixel review remains external. |
 | P1-004 | External | Independent authoritative calculator comparison remains external. |
-| P1-005 | Documented | Domain boundary and methods contract exist; broader Vedic golden cases remain. |
-| P1-006 | Partial | Tarot history and source contracts exist; canonical Lenormand/replay scope remains deferred. |
+| P1-005 | Done locally for boundary | Lahiri/ayanamsa, date-only behavior, no Western semantic leakage and Vedic capability boundaries are documented and tested; independent calculator comparison remains external. |
+| P1-006 | Done locally for enabled Tarot boundary | 78-card invariants, persisted draw, seeded replay, reversal ledger and unsupported Lenormand fallback are tested; a canonical 36-card Lenormand product remains intentionally disabled. |
 | P1-007 | Done locally | Append-only report history and immutable IDs are implemented and tested. |
-| P1-008 | Partial | Deterministic Playwright baseline covers onboarding/home/chat/profile states; real Telegram device journey remains external. |
-| P1-009 | Partial | Key owner-scope, invalid-state, fallback and runtime checks exist; a route-by-route failure matrix remains. |
+| P1-008 | Done locally for synthetic browser journey | Seeded Playwright baseline covers onboarding, home, chat, profile, chart, history, memory and Tarot at RU/EN mobile widths; Telegram WebView/device and signed-initData journeys remain external. |
+| P1-009 | Improved locally | Negative matrix now covers missing identity, validation, paused memory, owner-scoped 404, rate limit and safe correlated 500; full route inventory, timeout/cancellation and expired-session staging remain. |
 | P1-010 | Partial | Structured redaction and correlation fields exist; deployment dashboards remain external. |
-| P2-001 | Done locally for covered states | RU/EN mobile visual/accessibility harness covers age gate, home, chat and profile at three mobile widths; chart/Tarot/memory/loading/error/reduced-motion expansion remains. |
+| P2-001 | Done locally for covered states | Seeded RU/EN harness covers age gate, home, chat, profile, chart, history, memory and Tarot at three mobile widths plus reduced-motion reference; loading/error and desktop pixel review remain. |
 | P2-002 | Done locally for automated checks | Playwright checks pass for overflow, unnamed focusables, missing image alt and focus-visible styling; manual screen-reader/contrast review remains. |
 | P2-003 | Improved locally | English home fallback was corrected and guarded by regression; broader glossary, pluralization and long PDF typography remain. |
-| P2-004 | External/partial | Existing account lifecycle behavior was not represented as a fully verified user-facing deletion journey. |
+| P2-004 | Done locally for API contract | Confirm-gated idempotent `/api/account/delete` anonymizes PII/history, disables memory/push/age flags and has owner/lifecycle regression tests; production legal/retention sign-off remains external. |
 | P2-005 | Partial | Palm visual states and quality guidance exist; full upload retention/deletion and malicious-file matrix remain. |
 | P2-006 | Documented | PDF system contract exists; product-specific Tarot/synastry template catalog remains. |
-| P2-007 | Measured partially | Live LLM p95 is recorded; representative chart/chat/memory/PDF benchmark matrix remains. |
+| P2-007 | Measured locally | Directional benchmark reports chart, Tarot, memory and offline PDF p50/p95; live LLM p95 remains 22.14 s versus 15 s target and needs staging optimization. |
 | P2-008 | External/partial | Billing logic exists; provider sandbox and visual cancellation/refund journey remain. |
 
 The repository therefore contains no false “all green” claim: local implementation is complete for the rows explicitly marked done, while provider, Telegram, deployment, independent-calculator and production-settlement gates remain visible.

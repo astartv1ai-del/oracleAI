@@ -191,7 +191,8 @@ async def anonymize(db, tg_id: int) -> None:
             "UPDATE users SET name='удалено', username=NULL, birth_date=NULL, "
             "birth_time=NULL, birth_city=NULL, birth_lat=NULL, birth_lon=NULL, "
             "chart_json=NULL, goal=NULL, status='deleted', deleted_at=?, "
-            "onboarded=0 WHERE tg_id=?", (utcnow(), tg_id))
+            "onboarded=0, memory_enabled=0, morning_push=0, age_confirmed=0 "
+            "WHERE tg_id=?", (utcnow(), tg_id))
         for table in ("messages", "memories", "diary", "forecasts",
                       "tarot_readings", "partners", "synastry_cache",
                       "reports", "threads", "user_notes"):
