@@ -234,6 +234,52 @@ async def _m_forecasts_language_key(db) -> None:
     await db.commit()
 
 
+async def _m_reports_append_only(db) -> None:
+    """Preserve regenerated reports as history instead of replacing old rows.
+
+    The legacy table had ``UNIQUE (tg_id, kind, period)`` and ``INSERT OR
+    REPLACE`` therefore deleted the previous calculation/report snapshot. A
+    table rebuild is required because SQLite cannot drop an inline constraint.
+    The migration is idempotent: a table without that unique index is already
+    on the new contract.
+    """
+    cur = await db.execute("PRAGMA index_list(reports)")
+    indexes = await cur.fetchall()
+    unique_report_index = False
+    for index in indexes:
+        if not index[2]:
+            continue
+        name = index[1]
+        info_cur = await db.execute(f"PRAGMA index_info([{name}])")
+        columns = [row[2] for row in await info_cur.fetchall()]
+        if columns == ["tg_id", "kind", "period"]:
+            unique_report_index = True
+            break
+    if not unique_report_index:
+        return
+
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        await db.execute("DROP TABLE IF EXISTS reports_v82")
+        await db.execute(
+            "CREATE TABLE reports_v82 ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "tg_id INTEGER NOT NULL, kind TEXT NOT NULL, period TEXT, "
+            "title TEXT, body TEXT, meta_json TEXT, created_at TEXT)"
+        )
+        await db.execute(
+            "INSERT INTO reports_v82(id, tg_id, kind, period, title, body, meta_json, created_at) "
+            "SELECT id, tg_id, kind, period, title, body, meta_json, created_at FROM reports"
+        )
+        await db.execute("DROP TABLE reports")
+        await db.execute("ALTER TABLE reports_v82 RENAME TO reports")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_reports_user ON reports(tg_id, kind)")
+    except Exception:
+        await db.rollback()
+        raise
+    await db.commit()
+
+
 # (имя, функция). Имя навсегда — по нему стоит отметка о применении.
 DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_07_referrals_from_ref_by", _m_referrals_from_ref_by),
@@ -242,6 +288,7 @@ DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_07_events_day_backfill", _m_events_day_backfill),
     ("2026_07_users_sub_level_codes", _m_users_sub_level_codes),
     ("2026_08_forecasts_language_key", _m_forecasts_language_key),
+    ("2026_08_reports_append_only", _m_reports_append_only),
 ]
 
 TRACKER = """

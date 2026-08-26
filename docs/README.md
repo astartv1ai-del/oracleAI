@@ -26,6 +26,10 @@
 | [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
 | [MONETIZATION_EXTERNAL_SOURCES.md](MONETIZATION_EXTERNAL_SOURCES.md) | Finance, legal, billing | Чтобы проверять официальные platform/payment sources и не подменять settlement data сниппетами. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
+| [DOMAIN_METHODS.md](DOMAIN_METHODS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
+| [PDF_SYSTEM.md](PDF_SYSTEM.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, visual regression и проверочные слои. |
+| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](TASKS.md), [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md), [BASELINE.md](BASELINE.md) | Все владельцы | Surface matrix, backlog, evidence и baseline. |
+| [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 
 ## Локальная среда

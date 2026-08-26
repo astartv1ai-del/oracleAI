@@ -114,7 +114,7 @@ POST /api/profile
 | `DELETE` | `/api/partners/{partner_id}` | Удалить партнёра. |
 | `GET` | `/api/reports` | Список персональных отчётов. |
 | `GET` | `/api/reports/{kind}` | Получить отчёт заданного типа. |
-| `POST` | `/api/reports/{kind}` | Создать AI-отчёт. |
+| `POST` | `/api/reports/{kind}` | Создать AI-отчёт; `?refresh=true` принудительно создаёт новую immutable history version. |
 
 ### Натальный контракт v2
 
@@ -179,6 +179,10 @@ python -m scripts.gen_pdf --name Anna --date 21.06.1990 --time 14:30 \\
 `POST /api/webhooks/paddle` принимается только от доверенного платёжного провайдера и требует проверяемую подпись. Он не предназначен для Mini App и не должен вызываться браузером.[4]
 
 Административный API имеет prefix `/api/admin` и отдельную авторизацию. Он содержит группы `/me`, `/health`, `/dashboard`, `/events`, `/costs`, `/safety`, `/horoscopes`, `/users`, `/content`, `/settings`, `/flags`, `/plans`, `/products`, `/orders`, `/promo`, `/broadcasts`, `/admins` и `/audit`. Полные request/response модели проверяются по OpenAPI в development и исходнику [`admin.py`](../app/api/routers/admin.py); добавление админского endpoint без audit trail недопустимо.
+
+### История и регенерация отчётов
+
+Отчёты хранятся как **append-only history entries**. Обычный `POST /api/reports/{kind}` возвращает последнюю сохранённую версию с `cached: true`; `POST /api/reports/{kind}?refresh=true` после проверки entitlement рассчитывает и добавляет новую версию, не удаляя предыдущую. Ответ содержит `report_id`, а `GET /api/reports/{kind}` всегда читает последнюю версию. Каждая новая версия сохраняет deterministic source и evidence limitations в закрытом `meta_json`, чтобы изменение профиля не меняло уже созданный historical report.
 
 ## Правила изменения контракта
 

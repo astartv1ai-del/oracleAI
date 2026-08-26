@@ -403,16 +403,22 @@ async def reports(user=Depends(current_user), db=Depends(get_db)):
 
 @router.get("/reports/{kind}")
 async def get_report(kind: str, period: str | None = None,
+                     report_id: int | None = Query(default=None, ge=1),
                      user=Depends(current_user), db=Depends(get_db)):
-    row = await readings.get_report(db, user["tg_id"], kind, period)
+    row = (
+        await readings.get_report_by_id(db, user["tg_id"], kind, report_id)
+        if report_id is not None
+        else await readings.get_report(db, user["tg_id"], kind, period)
+    )
     if not row:
         raise HTTPException(404, "такого разбора пока нет")
-    return {"kind": row["kind"], "title": row["title"], "body": row["body"],
-            "period": row["period"], "created_at": row["created_at"]}
+    return {"report_id": row["id"], "kind": row["kind"], "title": row["title"],
+            "body": row["body"], "period": row["period"], "created_at": row["created_at"]}
 
 
 @router.post("/reports/{kind}", dependencies=[Depends(rate_limit("llm"))])
 async def build_report(kind: str, item: ReportIn | None = None,
+                       refresh: bool = Query(default=False),
                        user=Depends(current_user), db=Depends(get_db)):
     """Собирает купленный разбор. Право списывается только после успеха."""
     if kind not in agent_core.REPORTS:
@@ -421,9 +427,9 @@ async def build_report(kind: str, item: ReportIn | None = None,
 
     existing = await readings.get_report(db, user["tg_id"], kind,
                                         item.partner_date if kind == "synastry" else None)
-    if existing and existing["body"]:
+    if existing and existing["body"] and not refresh:
         return {"kind": kind, "title": existing["title"], "body": existing["body"],
-                "cached": True}
+                "cached": True, "report_id": existing["id"]}
 
     if not await billing.available_entitlements(db, user["tg_id"], "report", kind):
         raise HTTPException(402, "этот разбор нужно открыть в лавке 💎")
@@ -432,8 +438,9 @@ async def build_report(kind: str, item: ReportIn | None = None,
     if kind == "synastry" and not partner_date:
         raise HTTPException(400, "для синастрии нужна дата партнёра")
 
-    result = await agent_core.build_report(db, user, kind, partner_date=partner_date,
-                                          partner_name=item.partner_name)
+    result = await agent_core.build_report(
+        db, user, kind, partner_date=partner_date,
+        partner_name=item.partner_name, force=refresh)
     if not await billing.consume_entitlement(db, user["tg_id"], "report", kind):
         # право исчезло между проверкой и списанием (второе устройство) —
         # отчёт уже сохранён, отдаём его, повторно не спишем

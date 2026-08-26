@@ -118,8 +118,9 @@ CREATE TABLE IF NOT EXISTS reports (
     title      TEXT,
     body       TEXT,
     meta_json  TEXT,
-    created_at TEXT,
-    UNIQUE (tg_id, kind, period)
+    created_at TEXT
+    -- Reports are immutable history entries. The latest row for a kind/period
+    -- remains the cache; regeneration appends a new version.
 );
 CREATE TABLE IF NOT EXISTS deliveries (
     tg_id      INTEGER NOT NULL,

@@ -247,7 +247,7 @@
       const rep = await pReps;
       const ready = rep.ready || [];
       if (repEl) repEl.innerHTML = ready.length ? ready.map(r => `
-        <div class="result-card" style="margin-bottom:8px" data-act="report" data-kind="${esc(r.kind)}">
+        <div class="result-card" style="margin-bottom:8px" data-act="report" data-kind="${esc(r.kind)}" data-report-id="${Number(r.id) || 0}">
           <div class="rc-top">
             <span style="font-size:16px">📜</span>
             <div style="flex:1;min-width:0"><div class="rc-title" style="font-size:13px">${esc(r.title)}</div>
@@ -279,9 +279,10 @@
   };
 
 
-  app.openReport = async function(kind) {
+  app.openReport = async function(kind, reportId) {
     try {
-      const r = await api('/api/reports/' + kind);
+      const suffix = Number(reportId) > 0 ? '?report_id=' + encodeURIComponent(Number(reportId)) : '';
+      const r = await api('/api/reports/' + kind + suffix);
       this.showModal(`<h3>${esc(r.title)}</h3><button class="m-close" data-act="modal-close">✕</button><div style="font-size:13.5px;line-height:1.65;margin-top:8px">${rich(r.body)}</div>`);
     } catch (e) { alert(friendlyError(e, 'Это временно. Попробуй ещё раз.')); }
   };

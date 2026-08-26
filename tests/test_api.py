@@ -463,6 +463,31 @@ async def test_report_builds_after_purchase(client, db, user):
     again = await client.post("/api/reports/natal", params=as_user(user), json={})
     assert again.status_code == 200
     assert again.json()["cached"] is True
+    assert again.json()["report_id"] == res.json()["report_id"]
+
+
+async def test_report_refresh_appends_history_version(client, db, user):
+    from app.repo import billing
+
+    await billing.grant_entitlement(db, user["tg_id"], "report", "natal", qty=2)
+    first = await client.post("/api/reports/natal", params=as_user(user), json={})
+    assert first.status_code == 200
+    first_id = first.json()["report_id"]
+
+    refreshed = await client.post(
+        "/api/reports/natal", params={**as_user(user), "refresh": "true"}, json={})
+    assert refreshed.status_code == 200
+    assert refreshed.json()["cached"] is False
+    assert refreshed.json()["report_id"] > first_id
+
+    cur = await db.execute(
+        "SELECT COUNT(*) AS n FROM reports WHERE tg_id=? AND kind=?",
+        (user["tg_id"], "natal"))
+    assert (await cur.fetchone())["n"] == 2
+
+    latest = await client.get("/api/reports/natal", params=as_user(user))
+    assert latest.status_code == 200
+    assert latest.json()["created_at"]
 
 
 # ─────────────────────────── админ-панель ─────────────────────────────────────

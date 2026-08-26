@@ -81,7 +81,7 @@
     'share-reading': (el, data) => call('shareReading', parseInt(data.id, 10)),
     outcome: (el, data) => call('setOutcome', parseInt(data.id, 10), data.val),
     'ref-copy': () => call('refCopy'),
-    report: (el, data) => call('openReport', data.kind),
+    report: (el, data) => call('openReport', data.kind, parseInt(data.reportId, 10)),
     build: () => call('doBuildChart'),
     ask: (el, data) => call('askAgent', data.chat, data.q),
     'all-readings': () => call('openAllReadings'),

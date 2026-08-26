@@ -208,19 +208,28 @@ async def save_forecast(db, tg_id: int, day: str, text: str, *, lang: str = "ru"
 
 
 async def save_report(db, tg_id: int, kind: str, title: str, body: str, *,
-                      period: str | None = None, meta: dict | None = None) -> None:
+                      period: str | None = None, meta: dict | None = None) -> int:
     async with transaction(db):
-        await db.execute(
-            "INSERT OR REPLACE INTO reports(tg_id, kind, period, title, body, "
+        cur = await db.execute(
+            "INSERT INTO reports(tg_id, kind, period, title, body, "
             "meta_json, created_at) VALUES(?,?,?,?,?,?,?)",
             (tg_id, kind, period, title, body,
              json.dumps(meta, ensure_ascii=False) if meta else None, utcnow()))
+        return int(cur.lastrowid)
 
 
 async def get_report(db, tg_id: int, kind: str, period: str | None = None):
     cur = await db.execute(
         "SELECT * FROM reports WHERE tg_id=? AND kind=? AND COALESCE(period,'')=? "
         "ORDER BY id DESC LIMIT 1", (tg_id, kind, period or ""))
+    return await cur.fetchone()
+
+
+async def get_report_by_id(db, tg_id: int, kind: str, report_id: int):
+    """Read one immutable report version without crossing user or kind scope."""
+    cur = await db.execute(
+        "SELECT * FROM reports WHERE id=? AND tg_id=? AND kind=? LIMIT 1",
+        (report_id, tg_id, kind))
     return await cur.fetchone()
 
 

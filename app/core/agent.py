@@ -769,11 +769,17 @@ async def build_report(db, user, kind: str, *, partner_date: str | None = None,
     if len(body.strip()) < 200:
         body = _report_offline(user, spec, data_block)
 
-    await readings_repo.save_report(db, user["tg_id"], kind, spec["title"], body,
-                                    period=period,
-                                    meta={"partner": partner_name or None})
+    report_id = await readings_repo.save_report(
+        db, user["tg_id"], kind, spec["title"], body,
+        period=period,
+        meta={
+            "partner": partner_name or None,
+            "deterministic_source": data_block,
+            "evidence_kind": evidence.kind,
+            "evidence_limits": list(evidence.limits),
+        })
     return {"title": spec["title"], "body": body, "kind": kind, "period": period,
-            "cached": False}
+            "cached": False, "report_id": report_id}
 
 
 async def _report_data(db, user, kind: str, partner_date: str | None,

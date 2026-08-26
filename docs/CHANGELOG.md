@@ -11,6 +11,7 @@
 - Mini App получил отдельные journeys «Полная синастрия», «Транзиты», «Композит пары» и «Солнечный возврат»; Astrologer agent получает deterministic evidence для всех путей.
 - Реализованы circular midpoints для composite и bounded UTC ephemeris search с локальным timestamp для solar return; extended planets, houses, wheels and prediction semantics остаются отдельными gates.
 - Репозиторий очищен от исторических audit snapshots, AI handoff-файлов, generated inventories и одноразовых research artifacts.
+- Добавлены `FULL_PRODUCT_SURFACE.md`, `TASKS.md`, `BASELINE.md`, `DOMAIN_METHODS.md`, `AGENT_ARCHITECTURE.md`, `MEMORY.md`, `PDF_SYSTEM.md`, `TESTING.md`, `COMPETITOR_MATRIX.md` и `TRACEABILITY_MATRIX.md` как рабочие контракты завершения.
 
 ### Changed
 
@@ -23,6 +24,7 @@
 - Синастрия использует только owner-scoped `partner_id`; birth data не принимаются через GET URL и не появляются в публичных cache keys.
 - Unknown-time natal charts не получают выдуманные дома, ASC, MC или колесо.
 - Transit day snapshots явно маркируются как дневные и не выдаются за точный момент Луны.
+- Отчёты переведены на append-only history: `?refresh=true` создаёт новую версию и сохраняет deterministic source/evidence limitations, не удаляя предыдущую.
 
 ## 2.0.0 — 2026-08-12
 
