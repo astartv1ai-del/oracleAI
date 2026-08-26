@@ -26,13 +26,13 @@ flowchart TB
 | HTTP API | Авторизация, validation, rate limits, JSON contracts и static delivery | `app/api/` |
 | Domain services | Chat, limits, practices, analytics, payments, referrals, scheduler | `app/services/` |
 | Core | Agents, deterministic astrology/card calculations, evidence, safety and LLM runtime | `app/core/` |
-| Repositories | SQL access and row mapping | `app/repo/` |
+| Repositories | SQL access, row mapping and unified cross-tool history projections | `app/repo/` |
 | Data | Schema, migrations, seed and sessions | `app/data/` |
 | Operations | Docker Compose, Caddy, backup/restore and health checks | `infra/`, `scripts/` |
 
 ## Request flow
 
-FastAPI создаёт DB-сессию на lifecycle-старте, применяет migrations и подключает Mini App/static routes. API routers являются транспортными адаптерами: они проверяют identity и входные данные, вызывают service/core layer и возвращают contract-shaped responses. API не должен принимать PII в URL, а клиент не дублирует server-side access, privacy или entitlement rules.
+FastAPI создаёт DB-сессию на lifecycle-старте, применяет migrations и подключает Mini App/static routes. API routers являются транспортными адаптерами: они проверяют identity и входные данные, вызывают service/core layer и возвращают contract-shaped responses. API не должен принимать PII в URL, а клиент не дублирует server-side access, privacy или entitlement rules. `GET /api/history` — read-only projection поверх domain tables: он owner-scoped и выдаёт только метаданные/action descriptors, не перенося тексты личных записей, ответы моделей или embedding-векторы в общий архив.
 
 ```mermaid
 sequenceDiagram

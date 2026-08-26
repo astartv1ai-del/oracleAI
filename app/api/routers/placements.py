@@ -76,8 +76,15 @@ async def analyze_palm(request: Request, user=Depends(current_user), db=Depends(
     if content_type not in palm_core.ALLOWED_MIME:
         raise HTTPException(415, "отправь изображение JPEG, PNG или WebP")
     content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > palm_core.MAX_IMAGE_BYTES:
-        raise HTTPException(413, "фото слишком большое; максимум 8 МБ")
+    if content_length:
+        try:
+            declared_size = int(content_length)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(400, "некорректный размер изображения") from exc
+        if declared_size < 0:
+            raise HTTPException(400, "некорректный размер изображения")
+        if declared_size > palm_core.MAX_IMAGE_BYTES:
+            raise HTTPException(413, "фото слишком большое; максимум 8 МБ")
     image = await request.body()
     try:
         result = await palm_core.analyze_and_save(db, user, image)

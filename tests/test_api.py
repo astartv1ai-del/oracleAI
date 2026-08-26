@@ -782,3 +782,41 @@ async def test_date_only_chart_image_is_structured_not_a_fake_wheel(client, db, 
     response = await client.get("/api/chart/image", params=as_user(user))
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "insufficient_precision"
+
+
+async def test_unified_history_is_owner_scoped_and_actionable(client, db, user):
+    from app.repo import dialog, readings
+
+    report_id = await readings.save_report(
+        db, user["tg_id"], "natal", "Мой разбор", "текст", meta={"source": "test"})
+    tarot_id = await readings.start_reading(
+        db, user["tg_id"], "three", "мой вопрос", [{"name": "Шут", "reversed": False}])
+    await readings.finish_reading(db, tarot_id, user["tg_id"], "ответ")
+    thread = await dialog.create_thread(db, user["tg_id"], "oracle", title="Разговор")
+    await dialog.save_message(
+        db, user["tg_id"], "user", "личный вопрос", thread_id=thread["id"], agent="oracle")
+
+    other_report = await readings.save_report(
+        db, 1002, "natal", "чужой разбор", "не должен попасть")
+
+    response = await client.get("/api/history", params=as_user(user))
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert {item["item_id"] for item in items} >= {report_id, tarot_id, thread["id"]}
+    assert all(item["item_id"] != other_report for item in items)
+    assert all("deep_link" in item and "action" in item for item in items)
+    assert not any("личный вопрос" in str(item) for item in items)
+    assert not any("текст" in str(item) for item in items)
+
+
+async def test_palm_rejects_malformed_content_length_without_500(client, user):
+    response = await client.post(
+        "/api/palm",
+        params=as_user(user),
+        headers={"content-type": "image/jpeg", "content-length": "not-a-number"},
+        content=b"not-an-image",
+    )
+
+    assert response.status_code == 400
+    assert "размер" in response.json()["detail"]

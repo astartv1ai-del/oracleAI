@@ -73,3 +73,45 @@ def test_production_config_fails_closed(monkeypatch):
     monkeypatch.delenv("APP_ENV", raising=False)
     with pytest.raises(RuntimeError, match="BOT_TOKEN"):
         _validate_production_config()
+
+
+async def test_memory_listing_never_returns_embedding_payload(db, user):
+    from app.repo import dialog
+
+    await db.execute(
+        "INSERT INTO memories(tg_id, fact, kind, weight, embedding, embed_model, created_at) "
+        "VALUES(?,?,?,?,?,?,?)",
+        (user["tg_id"], "личный факт", "fact", 1, b"private-vector", "test-model", "2026-08-26T00:00:00+00:00"),
+    )
+    await db.commit()
+
+    rows = await dialog.memories_full(db, user["tg_id"])
+
+    assert rows and rows[0]["fact"] == "личный факт"
+    assert "embedding" not in rows[0]
+    assert "embed_model" not in rows[0]
+
+
+async def test_recall_cache_is_invalidated_after_memory_delete(db, user):
+    from app.core import memory
+    from app.repo import dialog
+
+    await memory.remember(db, user["tg_id"], "важный проект")
+    assert "важный проект" in await memory.recall(db, user["tg_id"], "проект")
+    row = (await dialog.memories_full(db, user["tg_id"]))[0]
+
+    assert await dialog.forget_memory(db, row["id"], user["tg_id"])
+    assert "важный проект" not in await memory.recall(db, user["tg_id"], "проект")
+
+
+async def test_tarot_finalization_is_owner_scoped_and_append_only(db):
+    from app.repo import readings
+
+    reading_id = await readings.start_reading(
+        db, 1001, "three", "вопрос", [{"name": "Шут", "reversed": False}])
+
+    assert not await readings.finish_reading(db, reading_id, 1002, "чужой ответ")
+    assert await readings.finish_reading(db, reading_id, 1001, "первый ответ")
+    assert not await readings.finish_reading(db, reading_id, 1001, "перезапись")
+    row = await readings.get_reading(db, reading_id, 1001)
+    assert row["answer"] == "первый ответ"

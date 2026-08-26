@@ -134,10 +134,18 @@ async def history(db, tg_id: int, limit: int = 16, *,
     return [{"role": r["role"], "content": r["text"]} for r in reversed(rows)]
 
 
-async def thread_messages(db, thread_id: int, limit: int = 100) -> list[dict]:
-    cur = await db.execute(
-        "SELECT id, role, text, created_at FROM messages WHERE thread_id=? "
-        "ORDER BY id DESC LIMIT ?", (thread_id, limit))
+async def thread_messages(db, thread_id: int, limit: int = 100,
+                          *, tg_id: int | None = None) -> list[dict]:
+    """Read messages with optional owner scoping for defense in depth."""
+    if tg_id is None:
+        cur = await db.execute(
+            "SELECT id, role, text, created_at FROM messages WHERE thread_id=? "
+            "ORDER BY id DESC LIMIT ?", (thread_id, limit))
+    else:
+        cur = await db.execute(
+            "SELECT id, role, text, created_at FROM messages "
+            "WHERE thread_id=? AND tg_id=? ORDER BY id DESC LIMIT ?",
+            (thread_id, tg_id, limit))
     rows = [dict(r) for r in await cur.fetchall()]
     rows.reverse()
     return rows
@@ -202,12 +210,17 @@ async def save_memory(db, tg_id: int, fact: str, kind: str = "fact",
     if twin is not None:
         async with transaction(db):
             await db.execute(
-                "UPDATE memories SET weight=weight+1 WHERE id=?", (twin,))
+                "UPDATE memories SET weight=weight+1, last_used=? WHERE id=?",
+                (utcnow(), twin))
+        from ..core.memory import invalidate_recall_cache
+        invalidate_recall_cache(tg_id)
         return False
     async with transaction(db):
         await db.execute(
             "INSERT INTO memories(tg_id, fact, kind, weight, created_at) "
             "VALUES(?,?,?,?,?)", (tg_id, fact, kind, weight, utcnow()))
+    from ..core.memory import invalidate_recall_cache
+    invalidate_recall_cache(tg_id)
     return True
 
 
@@ -220,8 +233,10 @@ async def get_memories(db, tg_id: int, limit: int = 20) -> list[str]:
 
 
 async def memories_full(db, tg_id: int, limit: int = 100) -> list[dict]:
+    """Return inspectable memory fields without internal vector payloads."""
     cur = await db.execute(
-        "SELECT * FROM memories WHERE tg_id=? ORDER BY weight DESC, id DESC LIMIT ?",
+        "SELECT id, fact, kind, weight, last_used, created_at FROM memories "
+        "WHERE tg_id=? ORDER BY weight DESC, id DESC LIMIT ?",
         (tg_id, limit))
     return [dict(r) for r in await cur.fetchall()]
 
@@ -239,10 +254,16 @@ async def search_memories(db, tg_id: int, query: str, limit: int = 10) -> list[s
     return hits or await get_memories(db, tg_id, limit)
 
 
-async def forget_memory(db, memory_id: int, tg_id: int) -> None:
+async def forget_memory(db, memory_id: int, tg_id: int) -> bool:
     async with transaction(db):
-        await db.execute("DELETE FROM memories WHERE id=? AND tg_id=?",
-                         (memory_id, tg_id))
+        cur = await db.execute("DELETE FROM memories WHERE id=? AND tg_id=?",
+                               (memory_id, tg_id))
+    deleted = bool(cur.rowcount)
+    if deleted:
+        # Local import avoids a repo/core import cycle while keeping recall fresh.
+        from ..core.memory import invalidate_recall_cache
+        invalidate_recall_cache(tg_id)
+    return deleted
 
 
 # ─────────────────────────────── дневник ──────────────────────────────────────

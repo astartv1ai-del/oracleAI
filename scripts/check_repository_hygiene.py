@@ -23,7 +23,6 @@ FORBIDDEN_PATHS = (
     "ruff_results.txt",
     "docs/FILE_AUDIT.csv",
     "docs/PROJECT_MAP.md",
-    "docs/TRACEABILITY_MATRIX.md",
 )
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)#]+)(?:#[^)]*)?\)")
 

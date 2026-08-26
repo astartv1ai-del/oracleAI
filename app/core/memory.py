@@ -56,6 +56,13 @@ _recall_cache: dict[tuple[int, str], tuple[float, list[str]]] = {}
 EMBED_DIM_LIMIT = 3072
 
 
+def invalidate_recall_cache(tg_id: int) -> None:
+    """Drop cached recalls for one user after a memory mutation."""
+    for key in tuple(_recall_cache):
+        if key[0] == tg_id:
+            _recall_cache.pop(key, None)
+
+
 # ─────────────────────────────── эмбеддинги ───────────────────────────────────
 
 def embed_model() -> str:
@@ -141,13 +148,16 @@ async def _remember_one(db, tg_id: int, fact: str, kind: str,
     exact = await _find_exact(db, tg_id, fact)
     if exact:
         await _bump(db, exact)
+        invalidate_recall_cache(tg_id)
         return False
     if vector:
         twin = await _find_similar(db, tg_id, vector)
         if twin:
             await _bump(db, twin)
+            invalidate_recall_cache(tg_id)
             return False
     await _insert(db, tg_id, fact, kind, vector)
+    invalidate_recall_cache(tg_id)
     return True
 
 

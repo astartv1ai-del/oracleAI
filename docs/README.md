@@ -68,6 +68,7 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 | Вопрос | Авторитетный источник |
 |---|---|
 | Таблицы и индексы | [`app/data/schema.py`](../app/data/schema.py) |
+| Единый архив | [`app/repo/history.py`](../app/repo/history.py), [`app/api/routers/history.py`](../app/api/routers/history.py) |
 | Изменение существующих таблиц | [`app/data/migrations.py`](../app/data/migrations.py) |
 | Маршруты и статическая раздача | [`app/api/main.py`](../app/api/main.py), [`app/api/routers/`](../app/api/routers/) |
 | Runtime-конфигурация | [`app/config.py`](../app/config.py), [`.env.example`](../.env.example) |

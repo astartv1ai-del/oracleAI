@@ -293,7 +293,7 @@ async def interpret(db, user, reading_id: int, *, surface: str = "bot") -> str:
     answer = await agent_core.interpret_reading(db, user, item["title"], cards,
                                                 positions,
                                                 question=row["question"] or None)
-    await readings.finish_reading(db, reading_id, answer)
+    await readings.finish_reading(db, reading_id, user["tg_id"], answer)
     thread = await dialog.ensure_thread(db, user["tg_id"], "tarot")
     await dialog.save_message(db, user["tg_id"], "assistant", answer,
                               thread_id=thread["id"], agent="tarot",
@@ -324,7 +324,8 @@ async def thread_history(db, user, agent: str, limit: int = 60) -> dict:
     spec = agents.get(agent)
     thread = await dialog.ensure_thread(db, user["tg_id"], spec.code,
                                         title=spec.title)
-    messages = await dialog.thread_messages(db, thread["id"], limit=limit)
+    messages = await dialog.thread_messages(
+        db, thread["id"], limit=limit, tg_id=user["tg_id"])
     return {"agent": spec.as_dict(user), "thread_id": thread["id"],
             "messages": messages}
 

@@ -46,10 +46,19 @@ async def get_reading(db, reading_id: int, tg_id: int):
     return await cur.fetchone()
 
 
-async def finish_reading(db, reading_id: int, answer: str) -> None:
+async def finish_reading(db, reading_id: int, tg_id: int, answer: str) -> bool:
+    """Finalize only the owner's pending reading, once.
+
+    The read-before-write flow is intentionally defended again at the write
+    boundary. A repeated interpretation request must not overwrite an existing
+    answer, and an ID from another account must never be writable.
+    """
     async with transaction(db):
-        await db.execute("UPDATE tarot_readings SET answer=? WHERE id=?",
-                         (answer, reading_id))
+        cur = await db.execute(
+            "UPDATE tarot_readings SET answer=? WHERE id=? AND tg_id=? "
+            "AND COALESCE(answer,'')=''",
+            (answer, reading_id, tg_id))
+    return bool(cur.rowcount)
 
 
 async def set_outcome(db, reading_id: int, tg_id: int, outcome: str) -> bool:
