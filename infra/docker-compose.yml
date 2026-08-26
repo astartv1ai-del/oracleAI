@@ -1,9 +1,9 @@
 # Запуск на VPS:  docker compose -f infra/docker-compose.yml up -d --build
 # Домен в Caddyfile + WEBAPP_URL=https://домен в ../.env
 #
-# Процессов ровно два, и это принципиально: планировщик и рассылки живут ТОЛЬКО
-# в процессе бота. Если поднять второй бот, клиентки получат каждое сообщение
-# дважды. API масштабируется свободно — он ничего не рассылает.
+# Bot остаётся единственным владельцем Telegram polling и рассылок. API можно
+# масштабировать отдельно. Тяжёлые LLM-задачи выполняются Celery worker-ами через
+# Redis, а периодические maintenance-задачи запускаются одним Celery Beat.
 
 services:
   bot:
@@ -25,6 +25,52 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "5" }
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes: [ redis_data:/data ]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    command: celery -A app.tasks.celery_app:celery_app worker --loglevel=INFO --queues=llm,maintenance --concurrency=2
+    env_file: ../.env
+    environment:
+      CELERY_ENABLED: "1"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app:celery_app inspect ping -d celery@$$HOSTNAME >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  beat:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    command: celery -A app.tasks.celery_app:celery_app beat --loglevel=INFO
+    env_file: ../.env
+    environment:
+      CELERY_ENABLED: "1"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
   api:
     build: { context: .., dockerfile: infra/Dockerfile }
     security_opt: ["no-new-privileges:true"]
@@ -33,7 +79,12 @@ services:
     command: >
       uvicorn app.api.main:app --host 0.0.0.0 --port 8080 --workers 1
     env_file: ../.env
+    environment:
+      CELERY_ENABLED: "1"
     volumes: [ oracle_data:/opt/oracle/data ]
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     expose: [ "8080" ]
     healthcheck:
@@ -110,5 +161,6 @@ services:
 volumes:
   oracle_data:
   oracle_backups:
+  redis_data:
   caddy_data:
   caddy_config:

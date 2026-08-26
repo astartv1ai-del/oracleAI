@@ -63,6 +63,18 @@ For vector search, verify the extension, vector column type, model name and dime
 
 Rollback is a configuration switch, not a destructive database downgrade. Stop writes, restore the SQLite backup if PostgreSQL verification fails, remove or unset `DATABASE_URL`, and restart the prior release. Do not use Alembic downgrade for the baseline: the baseline downgrade intentionally raises an error rather than dropping production data.
 
+## Celery/Redis rollout after PostgreSQL migration
+
+If the target database was already upgraded to `0001_pg_baseline`, apply the follow-up `0002_task_jobs` revision before enabling background jobs:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://oracle:password@db:5432/oracle alembic upgrade head
+```
+
+This creates the durable `task_jobs` status projection and its user/status indexes. Then deploy Redis, start exactly one Celery Beat instance and one or more workers, and only afterwards set `CELERY_ENABLED=1` for the API. The full queue operation, API contract, retry semantics, and local smoke procedure are documented in [`docs/CELERY_REDIS.md`](CELERY_REDIS.md).
+
+Do not use the Redis result backend as the only record of a user-visible job. Clients poll the PostgreSQL-backed `/api/jobs/{job_id}` endpoint, and the Telegram bot remains the owner of Telegram polling and outbound delivery until delivery idempotency is designed and tested.
+
 ## Current local verification
 
 The repository was verified against a local PostgreSQL 16.15 cluster with pgvector 0.6.0. The migration importer loaded an isolated 1,000-user, 2,000-thread, 70,000-message fixture, produced zero remaining NULL-thread messages, and passed API health/profile/history plus an offline chat POST. The full existing pytest suite and lint also pass; these checks are not a substitute for a production copy rehearsal.

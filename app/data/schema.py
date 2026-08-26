@@ -484,7 +484,22 @@ CREATE TABLE IF NOT EXISTS broadcast_targets (
     claimed_at   TEXT,                        -- момент захвата (G9: атомарный claim)
     PRIMARY KEY (broadcast_id, tg_id)
 );
-"""
+CREATE TABLE IF NOT EXISTS task_jobs (
+    id           TEXT PRIMARY KEY,
+    kind         TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'queued', -- queued|running|succeeded|failed|retry
+    tg_id        INTEGER,
+    payload_json TEXT,
+    result_json  TEXT,
+    error        TEXT,
+    attempts     INTEGER NOT NULL DEFAULT 0,
+    available_at TEXT,
+    started_at   TEXT,
+    finished_at  TEXT,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
+    """
 
 INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_msg_user            ON messages(tg_id, is_question, created_at);
@@ -509,6 +524,8 @@ CREATE INDEX IF NOT EXISTS idx_events_name   ON events(name, day);
 CREATE INDEX IF NOT EXISTS idx_events_user       ON events(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_user_name  ON events(tg_id, name);
 CREATE INDEX IF NOT EXISTS idx_events_day        ON events(day);
+CREATE INDEX IF NOT EXISTS idx_task_jobs_status_available ON task_jobs(status, available_at);
+CREATE INDEX IF NOT EXISTS idx_task_jobs_user_created ON task_jobs(tg_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_created_name
     ON events(created_at, name, tg_id);
 CREATE INDEX IF NOT EXISTS idx_orders_user        ON orders(tg_id, status, created_at);
