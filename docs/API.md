@@ -89,6 +89,7 @@ POST /api/profile
 | `POST` | `/api/chat/{agent}/sessions/{thread_id}` | Сообщение в сессии. |
 | `DELETE` | `/api/chat/{agent}/sessions/{thread_id}` | Архивировать/удалить сессию по контракту роутера. |
 | `GET` | `/api/diary` | Записи дневника. |
+| `GET` | `/api/diary/{entry_id}` | Одна owner-scoped запись дневника для архива. |
 | `POST` | `/api/diary` | Создать запись. |
 | `GET` | `/api/diary/prompt` | Вопрос-подсказка для дневника. |
 | `GET` | `/api/diary/summary` | Краткое резюме дневника. |
@@ -104,6 +105,7 @@ POST /api/profile
 | `POST` | `/api/tarot/draw` | Вытянуть карты. |
 | `POST` | `/api/tarot/interpret/{reading_id}` | Получить AI-интерпретацию расклада. |
 | `GET` | `/api/tarot/history` | История раскладов. |
+| `GET` | `/api/tarot/history/{reading_id}` | Один owner-scoped завершённый расклад. |
 | `GET` | `/api/tarot/stats` | Статистика раскладов. |
 | `POST` | `/api/tarot/outcome/{reading_id}` | Отметить наблюдаемый результат. |
 | `GET` | `/api/chart` | Текущая натальная карта. |
@@ -116,6 +118,7 @@ POST /api/profile
 | `POST` | `/api/partners` | Сохранить партнёра. |
 | `DELETE` | `/api/partners/{partner_id}` | Удалить партнёра. |
 | `GET` | `/api/reports` | Список персональных отчётов. |
+| `GET` | `/api/history` | Нормализованная owner-scoped история отчётов, Tarot, чатов и дневника; raw bodies не включаются. |
 | `GET` | `/api/reports/{kind}` | Получить отчёт заданного типа. |
 | `POST` | `/api/reports/{kind}` | Создать AI-отчёт; `?refresh=true` принудительно создаёт новую immutable history version. |
 
@@ -188,6 +191,10 @@ python -m scripts.gen_pdf --name Anna --date 21.06.1990 --time 14:30 \\
 ### История и регенерация отчётов
 
 Отчёты хранятся как **append-only history entries**. Обычный `POST /api/reports/{kind}` возвращает последнюю сохранённую версию с `cached: true`; `POST /api/reports/{kind}?refresh=true` после проверки entitlement рассчитывает и добавляет новую версию, не удаляя предыдущую. Ответ содержит `report_id`, а `GET /api/reports/{kind}` всегда читает последнюю версию. Каждая новая версия сохраняет deterministic source и evidence limitations в закрытом `meta_json`, чтобы изменение профиля не меняло уже созданный historical report.
+
+### Unified history
+
+`GET /api/history?limit=30` возвращает компактную cross-tool read model с `kind`, source-local `entry_id`, глобально читаемым `source_id`, `created_at`, ограниченным preview и точным `deep_link`. Endpoint не возвращает full report body, полный текст дневника, память, birth data или raw chat history. Все source-specific routes сохраняют собственную owner-фильтрацию и правила удаления; palm analysis намеренно не включён, поскольку в текущем продукте он не хранится как first-class history artifact.
 
 ## Правила изменения контракта
 

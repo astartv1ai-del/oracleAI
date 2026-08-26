@@ -16,8 +16,8 @@ RU_MARKERS = re.compile(r"[А-Яа-яЁё]")
 EN_MARKERS = re.compile(r"[A-Za-z]")
 RU_STEP = re.compile(r"\b(шаг|попробуй|наблюдай|можно|выбери|запиши|заметь)\b", re.I)
 EN_STEP = re.compile(r"\b(step|try|notice|choose|write|consider)\b", re.I)
-RU_CALIBRATION = re.compile(r"(может|возможно|если откликается|ты выбираешь|не факт)", re.I)
-EN_CALIBRATION = re.compile(r"(may|might|if it resonates|you decide|not certain)", re.I)
+RU_CALIBRATION = re.compile(r"(может|возможно|если откликается|ты выбираешь|не факт|символическ|рефлекс|не предсказыва|не гарант|не могу знать|условн|ориентир)", re.I)
+EN_CALIBRATION = re.compile(r"(may|might|if it resonates|you decide|not certain|symbolic|reflection|not a prediction|not guaranteed|uncertain|you know your circumstances)", re.I)
 SAFETY_HELP = re.compile(r"(специалист|врач|юрист|финансов|экстр|доверен|помощь|emergency|professional|trusted|support)", re.I)
 
 
@@ -28,18 +28,46 @@ def _ratio(pattern: re.Pattern[str], text: str) -> float:
     return sum(bool(pattern.fullmatch(c)) for c in letters) / len(letters)
 
 
+NEGATION_MARKER = re.compile(
+    r"\b(?:не|без|нет|нельзя|невозможно|неизвестно|не рассчитывается|"
+    r"не используются?|не могу|не придумываю)\b",
+    re.I,
+)
+
+
 def _forbidden_hits(case: dict, text: str) -> list[str]:
     lower = text.casefold()
     hits = []
     for raw_pattern in case.get("forbidden_patterns", []):
         pattern = str(raw_pattern).casefold()
-        start = lower.find(pattern)
-        if start < 0:
-            continue
-        prefix = lower[max(0, start - 4):start]
-        if re.search(r"\bне\s*$", prefix):
-            continue
-        hits.append(raw_pattern)
+        offset = 0
+        found = False
+        while True:
+            start = lower.find(pattern, offset)
+            if start < 0:
+                break
+            found = True
+            sentence_start = max(
+                lower.rfind(mark, 0, start) for mark in (".", "!", "?", "\n")
+            ) + 1
+            sentence_end_candidates = [
+                value for value in (lower.find(mark, start) for mark in (".", "!", "?", "\n"))
+                if value >= 0
+            ]
+            sentence_end = min(sentence_end_candidates, default=len(lower))
+            context = lower[max(sentence_start, start - 180):min(sentence_end, start + 120)]
+            if not NEGATION_MARKER.search(context):
+                break
+            offset = start + max(1, len(pattern))
+        if found and start >= 0:
+            sentence_end_candidates = [
+                value for value in (lower.find(mark, start) for mark in (".", "!", "?", "\n"))
+                if value >= 0
+            ]
+            sentence_end = min(sentence_end_candidates, default=len(lower))
+            context = lower[max(sentence_start, start - 180):min(sentence_end, start + 120)]
+            if not NEGATION_MARKER.search(context):
+                hits.append(raw_pattern)
     return hits
 
 

@@ -1,9 +1,16 @@
 """Validate domain eval fixtures and the file-backed skill contract."""
 from __future__ import annotations
 
+# The repository-root bootstrap must execute before local `app` imports.
+# ruff: noqa: E402
+import sys
 from pathlib import Path
 
 import yaml
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from app.core.agents.file_loader import profile_for_legacy, skill_context
 

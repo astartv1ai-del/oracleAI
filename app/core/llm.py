@@ -256,6 +256,16 @@ def _openai_token_limit(model: str, max_tokens: int) -> dict[str, int]:
     return {"max_tokens": max(max_tokens, MIN_OPENAI_TOKENS)}
 
 
+def _reasoning_kwargs(model: str) -> dict:
+    """Return provider-correct reasoning controls for GPT-5, if configured."""
+    if not str(model).lower().startswith("gpt-5"):
+        return {}
+    effort = str(getattr(settings, "llm_reasoning_effort", "minimal") or "minimal").lower()
+    if effort not in {"minimal", "low", "medium", "high"}:
+        effort = "minimal"
+    return {"extra_body": {"reasoning": {"effort": effort}}}
+
+
 async def _close_client(client) -> None:
     close = getattr(client, "close", None)
     if not close:
@@ -276,6 +286,7 @@ async def _stream_chat(client, model: str, messages: list[dict], max_tokens: int
     """
     kwargs: dict = {"model": model, "messages": messages, "stream": True}
     kwargs.update(_openai_token_limit(model, max_tokens))
+    kwargs.update(_reasoning_kwargs(model))
     if tools:
         kwargs["tools"] = tools
     # Просим сервер вернуть расход токенов. Многие локальные раннеры и прокси

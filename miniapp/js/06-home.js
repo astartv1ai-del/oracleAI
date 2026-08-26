@@ -35,7 +35,7 @@
             <div class="hero-date">${fmtDate()}</div>
             <div class="hero-ritual-label">${homeT('ritualLabel')}</div>
             <div class="hero-title">${welcome}</div>
-            ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : '<div class="hero-moon-txt">Сегодня можно не искать идеальный ответ.<br><em>Выбери один бережный шаг для себя.</em></div>'}
+            ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : `<div class="hero-moon-txt">${homeT('heroFallbackTitle')}<br><em>${homeT('heroFallbackCopy')}</em></div>`}
           </div>
           <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="${homeT('ritualCta')}"><span>${homeT('ritualCta')}</span><span aria-hidden="true">→</span></button>
         </div>

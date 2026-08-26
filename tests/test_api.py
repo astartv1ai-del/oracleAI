@@ -16,7 +16,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 from app.api.deps import get_db  # noqa: E402
 from app.api.main import app  # noqa: E402
 from app.api.security import parse_init_data  # noqa: E402
-from app.repo import users  # noqa: E402
+from app.repo import dialog, readings, users  # noqa: E402
 
 
 @pytest.fixture
@@ -33,6 +33,45 @@ def as_user(user, params: dict | None = None) -> dict:
 
 
 # ─────────────────────────── доступ и безопасность ────────────────────────────
+
+async def test_unified_history_is_owner_scoped_and_normalized(client, db, user):
+    report_id = await readings.save_report(
+        db, user["tg_id"], "natal", "Natal report", "PRIVATE REPORT BODY",
+        meta={"source": "test"},
+    )
+    reading_id = await readings.save_reading(
+        db, user["tg_id"], "three", "A synthetic question",
+        [{"name": "The Star"}], "A synthetic answer",
+    )
+    thread = await dialog.create_thread(db, user["tg_id"], "oracle", "A conversation")
+    await dialog.save_message(db, user["tg_id"], "user", "A private message", thread_id=thread["id"])
+    await dialog.add_diary(db, user["tg_id"], "A private diary entry", mood="calm")
+
+    response = await client.get("/api/history", params=as_user(user))
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["owner_scoped"] is True
+    assert payload["raw_content_included"] is False
+    kinds = {item["kind"] for item in payload["items"]}
+    assert {"report", "tarot", "chat", "diary"} <= kinds
+    report = next(item for item in payload["items"] if item["kind"] == "report" and item["entry_id"] == report_id)
+    tarot = next(item for item in payload["items"] if item["kind"] == "tarot" and item["entry_id"] == reading_id)
+    diary = next(item for item in payload["items"] if item["kind"] == "diary")
+    assert "PRIVATE REPORT BODY" not in report.values()
+    assert tarot["deep_link"] == f"/api/tarot/history/{reading_id}"
+    assert diary["deep_link"] == f"/api/diary/{diary['entry_id']}"
+    chat = next(item for item in payload["items"] if item["kind"] == "chat")
+    assert chat["deep_link"] == f"/api/chat/oracle/sessions/{thread['id']}"
+
+    other = await users.ensure(db, 987654321, "Other", "other", lang="ru")
+    foreign = await readings.save_report(db, other["tg_id"], "natal", "Other report", "foreign")
+    assert all(item["source_id"] != f"report:{foreign}" for item in (await client.get("/api/history", params=as_user(user))).json()["items"])
+
+    exact_tarot = await client.get(f"/api/tarot/history/{reading_id}", params=as_user(user))
+    assert exact_tarot.status_code == 200
+    exact_diary = await client.get(f"/api/diary/{diary['entry_id']}", params=as_user(user))
+    assert exact_diary.status_code == 200
+
 
 async def test_health_is_open(client):
     res = await client.get("/api/health")

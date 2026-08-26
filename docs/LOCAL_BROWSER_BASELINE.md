@@ -6,7 +6,7 @@
 
 The Mini App loaded with HTTP 200 and rendered the first-use surface without a visible browser extraction error. The page title is `OracleAI — твой мягкий ритуал дня`. The initial surface exposes profile, notifications, today, diary, four guide entry points (Lilith, Urania, Madame Lenormand, Mira), bottom navigation (Today, Dialogues, Profile), and an onboarding prompt with Start/Skip actions.
 
-The extracted content confirmed explicit empty/loading-friendly copy for the daily ritual and personalized sign area. A screenshot was not available from the browser environment, so no visual pixel-level claim is made; a real screenshot-based desktop/mobile pass remains an open QA item in `docs/TASKS.md`.
+The extracted content confirmed explicit empty/loading-friendly copy for the daily ritual and personalized sign area. The interactive browser session did not provide a stable uploadable screenshot, so manual pixel-level approval is not claimed; deterministic Playwright captures below provide the reproducible mobile baseline, while broader desktop and state coverage remain open in `docs/TASKS.md`.
 
 ## Interaction follow-up
 
@@ -14,7 +14,7 @@ The first attempted indexed click could not be replayed because the browser repo
 
 ## Post-change browser check
 
-A fresh navigation to the committed server again returned the OracleAI first-use surface with the same interactive controls and localized copy. The extracted page title and four guide entry points remained intact after the report-history changes. Screenshot upload remained unavailable in this browser environment, so visual pixel-level approval is intentionally not claimed.
+A fresh navigation to the local source again returned the OracleAI first-use surface with the same interactive controls and localized copy. The extracted page title and four guide entry points remained intact after the report-history changes. Screenshot upload remained unavailable in this browser environment; deterministic Playwright evidence is therefore the reproducible visual baseline for the covered mobile states.
 
 ## PDF visual QA — RU exact-time sample
 
@@ -35,3 +35,21 @@ Pages 1–5 confirm the intended truth state after the fix: the summary card sho
 Rendered sample: `/tmp/oracleai-pdf-audit-v2/en_date_only/anna-1990-06-21.pdf`.
 
 Pages 1–5 preserve the localized premium layout and the same corrected truth state: unknown birth time is explicit, the wheel is replaced by a precision notice, house columns remain blank, and the narrative states that the Ascendant is not calculated because birth time is unconfirmed. Typography, spacing and localization remained readable in the inspected pages.
+
+## Expanded visual baseline — deterministic Playwright capture
+
+The new harness `scripts/capture_visual_baseline.py` captured synthetic RU/EN age-gate, home, chat and profile states at 360×800, 390×844 and 430×932. Aggregate DOM checks passed for every state: no horizontal overflow, zero unnamed focusable controls and zero images without `alt` attributes.
+
+Visual inspection of the locally generated 390×844 RU home and chat captures shows clear hero hierarchy, a single primary CTA above the safe-area dock, a readable daily-ritual card, a stable bottom navigation, a focused current-agent card, proof badges and distinct tool chips. No obvious clipping or decorative layer obscures the primary action in these inspected states. Generated captures are kept outside the source tree.
+
+Visual inspection of the locally generated 390×844 EN home capture confirms that the English hero, helper copy and navigation labels fit cleanly. The prior Russian helper-copy fallback was corrected in `HOME_I18N` and is protected by an English localization regression. Generated captures are kept outside the source tree.
+
+## Unified archive profile capture
+
+The latest profile screenshots at 390×844 remain visually stable: the existing hero, tab bar, stats grid and bottom dock preserve the established visual system and the new history section is loaded below the selected History tab without competing with the primary profile surface. Focus-visible styling, full-width card tap targets and ellipsis handling were added for the archive cards. The EN profile labels visible in the inspected viewport are localized; the history section is below the first fold and will be checked through the automated DOM/state harness rather than overstating visual content not present in this viewport.
+
+## Browser runtime check — latest source
+
+The local Mini App loaded at `/?dev_user=10001` and exposed labeled controls for profile, notifications, daily ritual, four agents and the three-item dock. The deterministic harness confirms the RU/EN fallback copy is localized; the previous mixed-language English defect is no longer present. The first-use overlay was dismissed successfully using its visible skip control. Browser screenshot upload was unavailable in this run, so no additional manual visual claim is made from that interaction alone.
+
+The browser reached the profile screen and exposed the expected tab controls (`Сводка`, `Карта`, `История`, `Память`). A subsequent click snapshot became stale and the browser session then returned to `about:blank`; this is recorded as a browser-session instability, not a product failure. The deterministic Playwright harness remains the authoritative visual/accessibility check and reports no overflow, unnamed focusable controls or missing image alt attributes.

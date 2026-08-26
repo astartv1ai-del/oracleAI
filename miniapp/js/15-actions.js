@@ -82,6 +82,8 @@
     outcome: (el, data) => call('setOutcome', parseInt(data.id, 10), data.val),
     'ref-copy': () => call('refCopy'),
     report: (el, data) => call('openReport', data.kind, parseInt(data.reportId, 10)),
+    'history-chat': (el, data) => call('openHistoryChat', data.agent, parseInt(data.id, 10)),
+    'history-diary': (el, data) => call('openDiary', parseInt(data.id, 10)),
     build: () => call('doBuildChart'),
     ask: (el, data) => call('askAgent', data.chat, data.q),
     'all-readings': () => call('openAllReadings'),

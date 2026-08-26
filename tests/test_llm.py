@@ -20,6 +20,18 @@ def test_completion_timeout_is_bounded():
     assert llm.TIMEOUT <= 40
 
 
+def test_gpt_reasoning_effort_is_provider_correct(monkeypatch):
+    monkeypatch.setattr(settings, "llm_reasoning_effort", "low")
+    assert llm._reasoning_kwargs("gpt-5-mini") == {
+        "extra_body": {"reasoning": {"effort": "low"}}
+    }
+    assert llm._reasoning_kwargs("claude-sonnet-4-6") == {}
+    monkeypatch.setattr(settings, "llm_reasoning_effort", "unsupported")
+    assert llm._reasoning_kwargs("gpt-5") == {
+        "extra_body": {"reasoning": {"effort": "minimal"}}
+    }
+
+
 async def test_rate_limit_paces_bursts():
     """После заполнения окна следующий вызов ждёт, а не проходит сразу."""
     rl = llm._RateLimit(rate=2, window_sec=1)

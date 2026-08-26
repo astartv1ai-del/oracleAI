@@ -26,7 +26,7 @@
 
 ## Evidence index
 
-Baseline commands and results are recorded in [BASELINE.md](BASELINE.md). The prioritized unresolved work is in [TASKS.md](TASKS.md). Domain methodology is in [DOMAIN_METHODS.md](DOMAIN_METHODS.md), agent behavior in [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), memory in [MEMORY.md](MEMORY.md), PDF in [PDF_SYSTEM.md](PDF_SYSTEM.md), and verification strategy in [TESTING.md](TESTING.md).
+Baseline commands and results are recorded in [BASELINE.md](BASELINE.md). The prioritized unresolved work is in [TASKS.md](TASKS.md), and the complete second-cycle implementation outcome is in [ORACLEAI_CONTINUATION_REPORT.md](ORACLEAI_CONTINUATION_REPORT.md). Domain methodology is in [DOMAIN_METHODS.md](DOMAIN_METHODS.md), agent behavior in [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), memory in [MEMORY.md](MEMORY.md), PDF in [PDF_SYSTEM.md](PDF_SYSTEM.md), and verification strategy in [TESTING.md](TESTING.md).
 
 ## References
 
@@ -34,3 +34,9 @@ Baseline commands and results are recorded in [BASELINE.md](BASELINE.md). The pr
 [2]: ../app/data/migrations.py "Database migration implementation"  
 [3]: ../tests/test_report_history.py "Report history regression tests"  
 [4]: ../docs/COMPETITOR_MATRIX.md "First-party competitor benchmark"
+
+| Unified cross-tool history | Normalized owner-scoped read model and profile History cards; exact Tarot/diary routes | `app/api/routers/history.py`, `app/api/routers/tarot.py`, `app/api/routers/diary.py`, `miniapp/js/12-misc.js`, `miniapp/js/15-actions.js`, `miniapp/css/15-ritual-redesign.css` | `tests/test_api.py::test_unified_history_is_owner_scoped_and_normalized`, frontend action tests | Full targeted suite and full quality gate pass | **Implemented locally; palm artifact boundary explicit** |
+| Live LLM evaluation | Catalog discovery, cost cap, stratified synthetic run, provider metadata, safety/language/latency/calibration gates | `scripts/run_llm_eval_live.py`, `scripts/evaluate_llm.py`, `app/config.py`, `app/core/llm.py`, `tests/test_live_llm_runner.py`, `tests/test_llm.py` | Offline suite pass; bounded synthetic live report kept outside source tree | 12 synthetic cases, zero critical violations, language 1.0, symbolic next-step 0.9, calibration 0.9; p95 22.14s exceeds 15s target | **Quality pass; latency gate open** |
+| Visual regression and accessibility | Deterministic Playwright captures for RU/EN age gate, home, chat, profile at three mobile widths | `scripts/capture_visual_baseline.py`, `docs/LOCAL_BROWSER_BASELINE.md` | Harness pass: no horizontal overflow, unnamed focusables or missing image alt | Latest generated captures kept outside source tree; inspected RU/EN home/chat/profile states | **Implemented locally for covered states** |
+| Localization | English hero fallback moved to HOME_I18N and regression added | `miniapp/js/01-utils.js`, `miniapp/js/06-home.js`, `tests/test_miniapp_actions.py` | Static localization regression and visual baseline | English home no longer renders the Russian fallback string | **Implemented locally for this defect** |
+| Final local release gate | Full repository check plus direct script reproducibility | `scripts/check_repository_hygiene.py`, `scripts/check_expanded_chart.py`, `docs/BASELINE.md` | `pytest`, Ruff, JS syntax, selfcheck, release gate, design/agent/domain/routing, hygiene, chart, visual, offline LLM, pip-audit | Local gate output kept outside source tree: `overall_status=0` | **Local pass; external launch gates open** |

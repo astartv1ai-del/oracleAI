@@ -51,6 +51,9 @@ class Settings:
     anthropic_lite: str = os.getenv("ANTHROPIC_MODEL_LITE", "claude-haiku-4-5")
     openai_main: str = os.getenv("OPENAI_MODEL_MAIN", "gpt-5")
     openai_lite: str = os.getenv("OPENAI_MODEL_LITE", "gpt-5-mini")
+    # GPT-5 reasoning is provider-specific; minimal keeps the default responsive,
+    # while staging can raise this to low/medium for difficult adjudication.
+    llm_reasoning_effort: str = os.getenv("LLM_REASONING_EFFORT", "minimal").lower()
 
     # ── мониторинг (G31): пусто = Sentry выключен ──
     sentry_dsn: str = os.getenv("SENTRY_DSN", "")

@@ -28,7 +28,8 @@
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
 | [DOMAIN_METHODS.md](DOMAIN_METHODS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
 | [PDF_SYSTEM.md](PDF_SYSTEM.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, visual regression и проверочные слои. |
-| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](TASKS.md), [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md), [BASELINE.md](BASELINE.md) | Все владельцы | Surface matrix, backlog, evidence и baseline. |
+| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](TASKS.md), [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md), [BASELINE.md](BASELINE.md), [NEXT_STEPS.md](NEXT_STEPS.md), [ORACLEAI_CONTINUATION_REPORT.md](ORACLEAI_CONTINUATION_REPORT.md) | Все владельцы | Surface matrix, backlog, evidence, next steps, baseline и итоговый implementation report. |
+| [UNIFIED_HISTORY.md](UNIFIED_HISTORY.md) | Frontend, backend, privacy, QA | Cross-tool archive read model, deep links, deletion ownership and palm boundary. |
 | [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 
@@ -68,7 +69,7 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 | Вопрос | Авторитетный источник |
 |---|---|
 | Таблицы и индексы | [`app/data/schema.py`](../app/data/schema.py) |
-| Единый архив | [`app/repo/history.py`](../app/repo/history.py), [`app/api/routers/history.py`](../app/api/routers/history.py) |
+| Единый архив | [`app/api/routers/history.py`](../app/api/routers/history.py), [`UNIFIED_HISTORY.md`](UNIFIED_HISTORY.md) |
 | Изменение существующих таблиц | [`app/data/migrations.py`](../app/data/migrations.py) |
 | Маршруты и статическая раздача | [`app/api/main.py`](../app/api/main.py), [`app/api/routers/`](../app/api/routers/) |
 | Runtime-конфигурация | [`app/config.py`](../app/config.py), [`.env.example`](../.env.example) |

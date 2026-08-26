@@ -2349,3 +2349,15 @@ html { scroll-behavior: smooth; }
 .tarot-proof__pairs span{padding:5px 7px;border-radius:8px;background:rgba(255,255,255,.05);color:#e8d8ef;font-size:10px}
 .tarot-proof small{color:var(--text-muted);font-size:9.5px}
 @media (max-width:380px){.palm-evidence-strip{display:grid;gap:5px}.palm-detail-row>div:first-child{display:block}.palm-detail-row span{display:block;margin-top:3px;text-align:left}.tarot-proof{font-size:10px}}
+
+/* Unified archive: a quiet, scannable history surface shared by all tools. */
+.history-item{display:flex;align-items:center;gap:10px;width:100%;min-height:64px;margin-bottom:7px;padding:10px 11px;border:1px solid rgba(214,195,244,.13);border-radius:15px;background:linear-gradient(120deg,rgba(255,255,255,.055),rgba(124,101,185,.07));color:var(--text-main);text-align:left;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease}
+.history-item:hover,.history-item:focus-visible{transform:translateY(-1px);border-color:rgba(232,197,107,.45);background:linear-gradient(120deg,rgba(232,197,107,.10),rgba(124,101,185,.12));outline:none}
+.history-item:focus-visible{box-shadow:0 0 0 3px rgba(232,197,107,.18)}
+.history-item__icon{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:1px solid rgba(232,197,107,.2);border-radius:12px;background:rgba(232,197,107,.08);font-size:16px}
+.history-item__body{display:grid;min-width:0;flex:1;gap:2px}
+.history-item__body b{color:var(--champagne-300,#e8c56b);font-size:9px;letter-spacing:.09em;text-transform:uppercase}
+.history-item__body strong{overflow:hidden;color:var(--text-main);font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.history-item__body small{overflow:hidden;color:var(--text-muted);font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.history-item__chev{color:var(--champagne-300,#e8c56b);font-size:20px;line-height:1}
+@media (max-width:380px){.history-item{gap:8px;padding:9px}.history-item__icon{flex-basis:31px;width:31px;height:31px}.history-item__body strong{font-size:11px}}

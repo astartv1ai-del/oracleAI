@@ -1,6 +1,8 @@
 """Таро: каталог раскладов, раздача, трактовка, история, отметка «сбылось»."""
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
@@ -68,6 +70,20 @@ async def interpret(reading_id: int, user=Depends(current_user), db=Depends(get_
 @router.get("/history")
 async def history(user=Depends(current_user), db=Depends(get_db)):
     return await readings.recent_readings(db, user["tg_id"], limit=30)
+
+
+@router.get("/history/{reading_id}")
+async def history_item(reading_id: int, user=Depends(current_user), db=Depends(get_db)):
+    row = await readings.get_reading(db, reading_id, user["tg_id"])
+    if not row or not row["answer"]:
+        raise HTTPException(404, "расклад не найден")
+    cards = json.loads(row["cards_json"] or "[]")
+    return {
+        "id": row["id"], "spread": row["spread"], "question": row["question"],
+        "answer": row["answer"], "outcome": row["outcome"],
+        "created_at": row["created_at"], "cards": cards,
+        "ledger": tarot.reading_ledger(cards, row["spread"] or "three"),
+    }
 
 
 @router.get("/stats")
