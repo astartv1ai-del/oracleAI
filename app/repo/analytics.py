@@ -285,6 +285,12 @@ async def timeseries(db, days: int = 30) -> list[dict]:
 async def retention(db, cohort_days: int = 7) -> list[dict]:
     """Удержание по недельным когортам: доля вернувшихся на день 1/3/7/14/30."""
     out = []
+    age_days_sql = (
+        "EXTRACT(EPOCH FROM (e.created_at::timestamptz "
+        "- u.created_at::timestamptz)) / 86400"
+        if getattr(db, "is_postgres", False)
+        else "julianday(e.created_at) - julianday(u.created_at)"
+    )
     for week in range(cohort_days):
         start = (date.today() - timedelta(days=(week + 1) * 7)).isoformat()
         end = (date.today() - timedelta(days=week * 7)).isoformat()
@@ -297,10 +303,10 @@ async def retention(db, cohort_days: int = 7) -> list[dict]:
         for day_n in (1, 3, 7, 14, 30):
             back = await _scalar(
                 db,
-                "SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
-                "ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=? "
-                "AND substr(u.created_at,1,10)<? "
-                "AND julianday(e.created_at) - julianday(u.created_at) BETWEEN ? AND ?",
+                f"SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
+                f"ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=? "
+                f"AND substr(u.created_at,1,10)<? "
+                f"AND {age_days_sql} BETWEEN ? AND ?",
                 start, end, day_n, day_n + 1)
             row[f"d{day_n}"] = round(back * 100 / size, 1)
         out.append(row)
@@ -512,6 +518,7 @@ async def rollup_day(db, day: str | None = None) -> dict:
     }
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO daily_stats(day, stats_json, updated_at) "
-            "VALUES(?,?,?)", (day, json.dumps(stats, ensure_ascii=False), utcnow()))
+            "INSERT INTO daily_stats(day, stats_json, updated_at) VALUES(?,?,?) "
+            "ON CONFLICT(day) DO UPDATE SET stats_json=excluded.stats_json, "
+            "updated_at=excluded.updated_at", (day, json.dumps(stats, ensure_ascii=False), utcnow()))
     return stats

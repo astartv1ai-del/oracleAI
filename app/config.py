@@ -96,6 +96,7 @@ class Settings:
     log_file: str = os.getenv("LOG_FILE", "")
     release_id: str = os.getenv("RELEASE_ID", "local")
     db_path: str = os.getenv("DB_PATH") or str(DATA_DIR / "oracle.db")
+    database_url: str = os.getenv("DATABASE_URL", "").strip()
     public_url: str = os.getenv("PUBLIC_URL", "").rstrip("/")
 
     # ── продуктовые значения по умолчанию ──

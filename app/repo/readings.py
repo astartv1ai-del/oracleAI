@@ -212,8 +212,9 @@ async def get_forecast(db, tg_id: int, day: str, *, lang: str = "ru") -> str | N
 async def save_forecast(db, tg_id: int, day: str, text: str, *, lang: str = "ru") -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO forecasts(tg_id, day, text, lang, created_at) "
-            "VALUES(?,?,?,?,?)", (tg_id, day, text, lang, utcnow()))
+            "INSERT INTO forecasts(tg_id, day, text, lang, created_at) "
+            "VALUES(?,?,?,?,?) ON CONFLICT(tg_id, day, lang) DO UPDATE SET "
+            "text=excluded.text, created_at=excluded.created_at", (tg_id, day, text, lang, utcnow()))
 
 
 async def save_report(db, tg_id: int, kind: str, title: str, body: str, *,
@@ -221,7 +222,10 @@ async def save_report(db, tg_id: int, kind: str, title: str, body: str, *,
     async with transaction(db):
         cur = await db.execute(
             "INSERT INTO reports(tg_id, kind, period, title, body, "
-            "meta_json, created_at) VALUES(?,?,?,?,?,?,?)",
+            "meta_json, created_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT "
+            "(tg_id, kind, period) DO UPDATE SET title=excluded.title, "
+            "body=excluded.body, meta_json=excluded.meta_json, "
+            "created_at=excluded.created_at",
             (tg_id, kind, period, title, body,
              json.dumps(meta, ensure_ascii=False) if meta else None, utcnow()))
         return int(cur.lastrowid)

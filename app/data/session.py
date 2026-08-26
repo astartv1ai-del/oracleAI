@@ -60,8 +60,23 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def connect(path: str | None = None, *, seed: bool = True) -> aiosqlite.Connection:
-    """Открывает соединение, приводит БД к актуальной структуре и отдаёт её."""
+async def connect(path: str | None = None, *, seed: bool = True):
+    """Открывает PostgreSQL из DATABASE_URL или SQLite при явном path/fallback."""
+    if path is None and settings.database_url:
+        from .pg_schema import POSTGRES_BOOTSTRAP, POSTGRES_INDEXES, POSTGRES_TABLES
+        from .postgres import PostgresDatabase
+
+        db = PostgresDatabase(settings.database_url)
+        await db.executescript(POSTGRES_BOOTSTRAP)
+        await db.executescript(POSTGRES_TABLES)
+        await db.executescript(POSTGRES_INDEXES)
+        await mig.apply_postgres_data_migrations(db)
+        if seed:
+            from .seed import seed_defaults
+            async with db.transaction():
+                await seed_defaults(db)
+        return db
+
     db = await aiosqlite.connect(path or settings.db_path)
     db.row_factory = aiosqlite.Row
     for pragma in PRAGMAS:
@@ -102,6 +117,11 @@ async def transaction(db):
     `transaction()`. Владельца храним задачей, а не флагом: иначе параллельная
     задача увидела бы «уже внутри» и вклинилась бы в чужую транзакцию.
     """
+    if getattr(db, "is_postgres", False):
+        async with db.transaction():
+            yield db
+        return
+
     owner = getattr(db, "_in_txn", None)
     if owner is asyncio.current_task():
         yield db
@@ -124,6 +144,8 @@ async def transaction(db):
 
 async def healthcheck(db) -> dict:
     """Состояние БД для /health и админки."""
+    if getattr(db, "is_postgres", False):
+        return await db.healthcheck()
     async def scalar(sql: str, *args):
         cur = await db.execute(sql, args)
         row = await cur.fetchone()

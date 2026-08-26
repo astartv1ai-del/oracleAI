@@ -417,3 +417,35 @@ async def apply_data_migrations(db) -> list[str]:
         await db.commit()
         log.info("миграция данных: %s", ", ".join(applied))
     return applied
+
+
+async def apply_postgres_data_migrations(db) -> list[str]:
+    """Apply portable data migrations on the canonical PostgreSQL schema.
+
+    PostgreSQL starts from the complete schema, so the SQLite-only forecasts table
+    rebuild is skipped. All data backfills, including referrals, event day,
+    subscription codes and legacy chat threads, remain valid and are applied by
+    the same named tracker used by the importer.
+    """
+    await db.executescript(TRACKER)
+    skipped = {"2026_08_forecasts_language_key"}
+    cur = await db.execute("SELECT name FROM migrations_applied")
+    done = {row[0] for row in await cur.fetchall()}
+    applied: list[str] = []
+    for name, fn in DATA_MIGRATIONS:
+        if name in skipped or name in done:
+            continue
+        async with db.transaction():
+            cur = await db.execute(
+                "SELECT 1 FROM migrations_applied WHERE name=?", (name,))
+            if await cur.fetchone():
+                done.add(name)
+                continue
+            await fn(db)
+            await db.execute(
+                "INSERT INTO migrations_applied(name, applied_at) VALUES(?,?) "
+                "ON CONFLICT(name) DO NOTHING", (name, utcnow_str()))
+        applied.append(name)
+    if applied:
+        log.info("postgres data migrations: %s", ", ".join(applied))
+    return applied

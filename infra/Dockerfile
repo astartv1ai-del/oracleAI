@@ -24,6 +24,8 @@ COPY app ./app
 COPY miniapp ./miniapp
 COPY admin ./admin
 COPY scripts ./scripts
+COPY alembic ./alembic
+COPY alembic.ini .
 
 # Пишем только в data/ — остальное дерево может быть read-only
 RUN useradd --create-home --uid 10001 oracle \

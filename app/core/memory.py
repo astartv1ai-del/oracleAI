@@ -104,6 +104,13 @@ def pack(vector: list[float]) -> bytes:
 def unpack(blob) -> list[float]:
     if not blob:
         return []
+    if isinstance(blob, str):
+        try:
+            return [float(item) for item in blob.strip("[]").split(",") if item]
+        except ValueError:
+            return []
+    if hasattr(blob, "to_list"):
+        return list(blob.to_list())
     arr = array.array("f")
     try:
         arr.frombytes(bytes(blob))
@@ -261,7 +268,10 @@ async def _insert(db, tg_id: int, fact: str, kind: str,
         await db.execute(
             "INSERT INTO memories(tg_id, fact, kind, weight, embedding, embed_model, "
             "created_at) VALUES(?,?,?,1,?,?,?)",
-            (tg_id, fact, kind, pack(vector) if vector else None,
+            (tg_id, fact, kind,
+             ("[" + ",".join(format(item, ".9g") for item in vector) + "]"
+              if vector and getattr(db, "is_postgres", False)
+              else pack(vector) if vector else None),
              embed_model() if vector else None, utcnow()))
 
 
@@ -397,7 +407,9 @@ async def build_summary(db, user) -> str:
     from ..data.session import transaction, utcnow
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO profile_summaries(tg_id, summary, facts_count, "
-            "built_at) VALUES(?,?,?,?)",
+            "INSERT INTO profile_summaries(tg_id, summary, facts_count, built_at) "
+            "VALUES(?,?,?,?) ON CONFLICT(tg_id) DO UPDATE SET "
+            "summary=excluded.summary, facts_count=excluded.facts_count, "
+            "built_at=excluded.built_at",
             (tg_id, text, await _facts_count(db, tg_id), utcnow()))
     return text
