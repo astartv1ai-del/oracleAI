@@ -870,3 +870,38 @@ async def test_sensitive_api_requires_server_side_age_confirmation(client, db, u
     assert res.status_code == 403
     assert res.json()["detail"]["code"] == "age_confirmation_required"
     await users.update(db, user["tg_id"], age_confirmed=1)
+
+
+async def test_account_delete_requires_confirmation_and_anonymizes(client, db, user):
+    await dialog.save_memory(db, user["tg_id"], "Synthetic private fact")
+    await dialog.add_diary(db, user["tg_id"], "Synthetic diary")
+
+    rejected = await client.post("/api/account/delete", json={"confirm": False},
+                                 params=as_user(user))
+    assert rejected.status_code == 400
+
+    deleted = await client.post("/api/account/delete", json={"confirm": True},
+                                params=as_user(user))
+    assert deleted.status_code == 200
+    assert deleted.json() == {"ok": True, "already_deleted": False, "status": "deleted"}
+    row = await users.get(db, user["tg_id"])
+    assert row["status"] == "deleted"
+    assert row["memory_enabled"] == 0
+    assert row["morning_push"] == 0
+    assert not await dialog.memories_full(db, user["tg_id"])
+    assert not await dialog.get_diary(db, user["tg_id"])
+
+    repeated = await client.post("/api/account/delete", json={"confirm": True},
+                                 params=as_user(user))
+    assert repeated.status_code == 200
+    assert repeated.json()["already_deleted"] is True
+
+
+async def test_account_delete_cannot_be_triggered_for_another_owner(client, db, user):
+    other = await users.ensure(db, 12002, "Other")
+    await users.update(db, other["tg_id"], age_confirmed=1)
+    response = await client.post("/api/account/delete", json={"confirm": True},
+                                 params=as_user(other))
+    assert response.status_code == 200
+    assert (await users.get(db, user["tg_id"]))["status"] != "deleted"
+    assert (await users.get(db, other["tg_id"]))["status"] == "deleted"

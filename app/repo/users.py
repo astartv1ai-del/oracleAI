@@ -199,8 +199,8 @@ async def anonymize(db, tg_id: int) -> None:
             "UPDATE users SET name='удалено', username=NULL, birth_date=NULL, "
             "birth_time=NULL, birth_city=NULL, birth_lat=NULL, birth_lon=NULL, "
             "chart_json=NULL, goal=NULL, memory_enabled=0, age_confirmed=0, "
-            "status='deleted', deleted_at=?, onboarded=0 WHERE tg_id=?",
-            (utcnow(), tg_id))
+            "status='deleted', deleted_at=?, onboarded=0, morning_push=0 "
+            "WHERE tg_id=?", (utcnow(), tg_id))
 
         # Personal content and targeting records have no retention reason after
         # deletion. Keep the table names static so dynamic SQL cannot be injected.

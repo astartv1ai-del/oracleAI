@@ -44,6 +44,7 @@ def dom_contract(page) -> dict:
             scrollWidth: Math.max(body.scrollWidth, document.documentElement.scrollWidth),
             horizontalOverflow: Math.max(body.scrollWidth, document.documentElement.scrollWidth) > window.innerWidth + 1,
             unnamedFocusableCount: unnamed.length,
+            unnamedFocusable: unnamed.map((el) => ({tag: el.tagName, className: el.className, text: (el.innerText || '').slice(0, 80)})),
             imagesWithoutAltCount: imagesWithoutAlt.length,
             visiblePrimaryActions: [...document.querySelectorAll('.btn-primary, [data-primary]')]
               .filter((el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)).length,
@@ -61,7 +62,9 @@ def capture() -> int:
         browser = playwright.chromium.launch(headless=True, executable_path='/usr/bin/chromium', args=['--no-sandbox'])
         for locale_key, locale in LOCALES.items():
             for name, (width, height) in VIEWPORTS.items():
-                context = browser.new_context(viewport={"width": width, "height": height}, locale=locale)
+                context = browser.new_context(
+                    viewport={"width": width, "height": height}, locale=locale,
+                    reduced_motion="reduce" if name == "reference-390" else "no-preference")
                 context.add_init_script(
                     "localStorage.setItem('oracle_lang', %r); "
                     "localStorage.removeItem('oracle_intro_seen'); "
@@ -92,6 +95,42 @@ def capture() -> int:
                         page.wait_for_timeout(250)
                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-profile.png"), full_page=True)
                         states["profile"] = dom_contract(page)
+
+                        # Navigate through the actual profile tabs before capturing their states.
+                        for tab_name, state_name in (("chart", "chart-tab"), ("history", "history"), ("memory", "memory-tab")):
+                            tab = page.locator(f'.ptab[data-tab="{tab_name}"]')
+                            if tab.count() and tab.first.is_visible():
+                                tab.first.click(force=True)
+                                page.wait_for_timeout(350)
+                                page.screenshot(path=str(OUT / f"{locale_key}-{name}-{state_name}.png"), full_page=True)
+                                states[state_name] = dom_contract(page)
+                                if tab_name == "chart":
+                                    full_chart = page.locator('[data-act="full-chart"]')
+                                    if full_chart.count() and full_chart.first.is_visible():
+                                        full_chart.first.click(force=True)
+                                        page.wait_for_timeout(250)
+                                        page.screenshot(path=str(OUT / f"{locale_key}-{name}-chart-modal.png"), full_page=True)
+                                        states["chart-modal"] = dom_contract(page)
+                                        page.evaluate("window.app && app.closeModal && app.closeModal()")
+                                        page.wait_for_timeout(100)
+                                elif tab_name == "memory":
+                                    memory_button = page.locator('[data-act="memories"]')
+                                    if memory_button.count() and memory_button.first.is_visible():
+                                        memory_button.first.click(force=True)
+                                        page.wait_for_timeout(250)
+                                        page.screenshot(path=str(OUT / f"{locale_key}-{name}-memory-modal.png"), full_page=True)
+                                        states["memory-modal"] = dom_contract(page)
+                                        page.evaluate("window.app && app.closeModal && app.closeModal()")
+                                        page.wait_for_timeout(100)
+
+                    # Tarot is a chat action from the home surface; invoke the same callback directly.
+                    page.evaluate("window.app && app.go && app.go('home')")
+                    page.wait_for_timeout(250)
+                    page.evaluate("window.app && app.openChat && app.openChat('tarot', () => app.featureTarot())")
+                    page.wait_for_timeout(450)
+                    page.screenshot(path=str(OUT / f"{locale_key}-{name}-tarot.png"), full_page=True)
+                    states["tarot"] = dom_contract(page)
+                    page.evaluate("window.app && app.closeChat && app.closeChat()")
                 except PlaywrightError as exc:
                     states["navigation_error"] = str(exc)
                 results[f"{locale_key}-{name}"] = states

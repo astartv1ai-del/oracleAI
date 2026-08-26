@@ -355,7 +355,7 @@
                   </div>
                   <div class="te-grid">
                     ${currentFeatures.map(f => `
-                      <button class="te-chip" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" data-testid="fn-${f.id}">
+                      <button class="te-chip" data-act="chat-fn" data-chat="${a.code}" data-fn="${f.h}" data-testid="fn-${f.id}" aria-label="${esc(f.t)}: ${esc(f.d || '')}">
                         <span class="te-ico">${sigilIcon(f.id)}</span><span class="te-chip-copy"><b>${esc(f.t)}</b><small>${esc(f.d)}${f.m ? ' · ' + esc(f.m) : ''}</small></span><span class="te-arrow" aria-hidden="true">›</span>
                       </button>`).join('')}
                   </div>
@@ -396,7 +396,7 @@
               <div class="tarot-question-label">О чём хочешь спросить?</div>
               <div class="tarot-question-prompts">${prompts.map(value => `<button class="tarot-question-prompt${p.q === value ? ' is-active' : ''}" data-act="tarot-question" data-value="${q(value)}" ${p.drawing ? 'disabled' : ''}>${esc(value)}</button>`).join('')}</div>
               ${p.err ? `<div class="s-err">${esc(p.err)}</div>` : ''}
-              <textarea class="ipt" id="tarot-q" rows="2" placeholder="Твой вопрос к картам…" ${p.drawing ? 'disabled' : ''}
+              <textarea class="ipt" id="tarot-q" rows="2" aria-label="Сформулируй вопрос к картам" placeholder="Твой вопрос к картам…" ${p.drawing ? 'disabled' : ''}
                 style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
               <div class="tarot-draw-status" aria-live="polite">${p.drawing ? '<span class="tarot-draw-orbit" aria-hidden="true"></span><span>Колода собирает твой расклад…</span>' : '<span class="tarot-draw-dot" aria-hidden="true"></span><span>После вопроса вытянем карты по одной.</span>'}</div>
               <button class="btn btn-primary tarot-draw-btn" style="margin-top:10px" data-act="draw" ${p.drawing ? 'disabled aria-busy="true"' : ''}>${p.drawing ? 'Собираем расклад…' : 'Потянуть карты'}</button>
