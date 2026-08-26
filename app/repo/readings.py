@@ -222,10 +222,7 @@ async def save_report(db, tg_id: int, kind: str, title: str, body: str, *,
     async with transaction(db):
         cur = await db.execute(
             "INSERT INTO reports(tg_id, kind, period, title, body, "
-            "meta_json, created_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT "
-            "(tg_id, kind, period) DO UPDATE SET title=excluded.title, "
-            "body=excluded.body, meta_json=excluded.meta_json, "
-            "created_at=excluded.created_at",
+            "meta_json, created_at) VALUES(?,?,?,?,?,?,?)",
             (tg_id, kind, period, title, body,
              json.dumps(meta, ensure_ascii=False) if meta else None, utcnow()))
         return int(cur.lastrowid)

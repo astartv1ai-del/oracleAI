@@ -108,16 +108,24 @@ async def prune_analytics(db, days: int = 120, *, batch_size: int = 5_000) -> in
         "webhook_events": max(max(1, days), 180),
         "admin_audit": max(max(1, days), 365),
     }
+    primary_keys = {
+        "events": "id",
+        "llm_usage": "id",
+        "safety_events": "id",
+        "webhook_events": "event_id",
+        "admin_audit": "id",
+    }
     total = 0
     for table, table_days in windows.items():
+        key = primary_keys[table]
         before = (datetime.now(timezone.utc)
                   - timedelta(days=table_days)).isoformat()
         while True:
             async with transaction(db):
                 cur = await db.execute(
-                    f"DELETE FROM {table} WHERE id IN ("
-                    f"SELECT id FROM {table} WHERE created_at < ? "
-                    "ORDER BY id LIMIT ?)", (before, batch_size))
+                    f"DELETE FROM {table} WHERE {key} IN ("
+                    f"SELECT {key} FROM {table} WHERE created_at < ? "
+                    f"ORDER BY {key} LIMIT ?)", (before, batch_size))
                 removed = cur.rowcount or 0
             total += removed
             if removed < batch_size:
