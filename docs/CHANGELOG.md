@@ -36,6 +36,7 @@
 - Live LLM evaluation получил catalog discovery, stratified synthetic run, cost cap, safety/language/calibration/latency gates и provider-correct GPT-5 reasoning effort через `LLM_REASONING_EFFORT`.
 - English home fallback переведён в HOME_I18N; добавлены localization regression, Playwright visual/accessibility baseline и финальные per-check quality-gate artifacts.
 - Добавлены `NEXT_STEPS.md`, `UNIFIED_HISTORY.md` и `ORACLEAI_CONTINUATION_REPORT.md`; второй pass фиксирует выполненные локальные рекомендации, внешние launch blockers и незелёный LLM p95 latency gate.
+- Подготовлен research-only документ `MONETIZATION_STRATEGY.md`: Hybrid B, публичные pricing anchors, unit economics, ethical upsell guardrails и owner decisions; код, UI, цены и payment logic на этом этапе не изменялись.
 
 ## 2.0.0 — 2026-08-12
 

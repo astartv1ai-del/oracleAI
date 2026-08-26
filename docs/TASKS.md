@@ -39,6 +39,7 @@
 | P1-008 | E2E | New and returning users | Existing tests are mainly API/core; real browser critical paths are not yet captured. | Add automated browser or equivalent integration flows for onboarding, natal, date-only, memory, chat, synastry and tarot with screenshots/logs. | Open |
 | P1-009 | API resilience | Any tool | Error matrix requires invalid/missing input, network/backend failure, timeout, rate limit, empty/partial/stale result, duplicate, retry, cancellation and expired session UX. | Malformed palm upload size headers now return a safe 400 instead of an internal error; broader route matrix is still open. | **Improved locally**; broader resilience matrix remains open |
 | P1-010 | Observability | Production incident | Structured logs exist, but journey-level evidence, correlation and tool/AI/PDF failure dashboards require verification. | Confirm correlation IDs, redaction, latency/error fields and event dictionary for key journeys without sensitive payloads. | Open |
+| P1-011 | Monetization analytics | Paid action → result delivered → margin | `llm_usage` records model/tokens/latency/estimated cost, but PDF render, voice/tool, support, settlement, refund and SKU allocation are not a complete unit-cost ledger. | Add privacy-safe SKU/catalog/channel/purpose dimensions; record retries, render time/bytes, delivery, refund and support categories; expose cost and contribution by product without user text or secrets. | **Open — urgent prerequisite for pricing** |
 
 ## P2 — product quality and trust
 
