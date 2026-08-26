@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import json
-from app.core.astro import compute_chart
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.core.astro import compute_chart  # noqa: E402
 
 chart = compute_chart(
     "1990-06-21", "14:30", "Казань", 55.79, 49.12, "Europe/Moscow", time_known=True

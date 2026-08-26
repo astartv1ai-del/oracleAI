@@ -28,7 +28,8 @@
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
 | [DOMAIN_METHODS.md](DOMAIN_METHODS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
 | [PDF_SYSTEM.md](PDF_SYSTEM.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, visual regression и проверочные слои. |
-| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](TASKS.md), [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md), [BASELINE.md](BASELINE.md) | Все владельцы | Surface matrix, backlog, evidence и baseline. |
+| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](TASKS.md), [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md), [BASELINE.md](BASELINE.md), [NEXT_STEPS.md](NEXT_STEPS.md), [ORACLEAI_CONTINUATION_REPORT.md](ORACLEAI_CONTINUATION_REPORT.md) | Все владельцы | Surface matrix, backlog, evidence, next steps, baseline и итоговый implementation report. |
+| [UNIFIED_HISTORY.md](UNIFIED_HISTORY.md) | Frontend, backend, privacy, QA | Cross-tool archive read model, deep links, deletion ownership and palm boundary. |
 | [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 

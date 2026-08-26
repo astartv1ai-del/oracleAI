@@ -2,7 +2,7 @@
 
 **Дата:** 2026-08-26  
 **Ветка:** `master`  
-**Коммиты:** `0e616fb` (`feat: preserve immutable report history`), `db09c43` (`fix: enforce date-only report truth state`)
+**Предыдущая audit-линия:** `0e616fb` (`feat: preserve immutable report history`), `db09c43` (`fix: enforce date-only report truth state`); follow-up changes описаны ниже и войдут в следующий commit.
 **Репозиторий:** `astartv1ai-del/oracleAI`
 
 ## Runtime and inventory
@@ -48,3 +48,11 @@ This is not equivalent to production readiness. The most important unproven area
 ## Audit evidence
 
 The route and surface inventory was collected from `app/api/routers/`, `app/api/main.py`, `miniapp/js/`, `app/core/`, `docs/` and `tests`. Browser extraction confirmed the Mini App first-use surface; screenshot upload was unavailable in the sandbox browser, so pixel-level browser approval is not claimed. PDF page inspection evidence is recorded in [LOCAL_BROWSER_BASELINE.md](LOCAL_BROWSER_BASELINE.md). The canonical capability boundary is documented in [CHART_TYPE_CAPABILITIES.md](CHART_TYPE_CAPABILITIES.md), while the full product matrix is in [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md) and prioritized work is in [TASKS.md](TASKS.md).
+
+## Follow-up implementation pass
+
+This pass added `GET /api/history` and the profile History visual surface for reports, Tarot, chat sessions and diary, plus exact owner-scoped Tarot and diary routes. It corrected an English home fallback that previously rendered Russian helper copy, added a regression, and added a deterministic Playwright capture matrix at 360×800, 390×844 and 430×932 for RU/EN age-gate, home, chat and profile states. The latest visual report is green for horizontal overflow, unnamed focusables and missing image alt attributes; inspected profile/home/chat captures are recorded in `LOCAL_BROWSER_BASELINE.md`.
+
+The live synthetic LLM runner completed 12 cases on `gpt-5-mini` under an estimated worst-case cost of `$0.009036`. The latest report records zero critical violations, mean score `0.9375`, language `1.0`, symbolic next-step `0.9`, symbolic calibration `0.9`, and p95 latency `22.14 s`. The quality dimensions pass; the product latency target `<=15 s` remains open and is explicitly gated.
+
+The final local gate was rerun after repairing direct-execution and hygiene issues. `pytest`, Ruff, JavaScript syntax, self-check, release gate, design contract, agent quality, domain evaluations, routing benchmark, repository hygiene, cache busting, expanded chart, visual baseline, offline LLM evaluation and pip-audit all passed; the gate summary is kept outside the source tree and records `overall_status=0`.

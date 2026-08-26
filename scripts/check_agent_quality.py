@@ -1,10 +1,17 @@
 """Deterministic quality gate for the file-backed agent harness."""
 from __future__ import annotations
 
+# The repository-root bootstrap must execute before local `app` imports.
+# ruff: noqa: E402
 import json
+import sys
 from pathlib import Path
 
 import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from app.core import skills
 from app.core.agents.file_loader import (
@@ -18,7 +25,6 @@ from scripts.benchmark_skill_routing import CASES as ROUTING_CASES
 from scripts.benchmark_vedic_routing import CASES as VEDIC_ROUTING_CASES
 from scripts.benchmark_mira_lenormand import CASES as MIRA_LENORMAND_ROUTING_CASES
 
-ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {"oracle", "astro", "tarot", "chiromant"}
 SMOKE_ROUTING_CASES = {
     "chiromant": "фото ладони и линия сердца",

@@ -25,6 +25,10 @@
 - Unknown-time natal charts не получают выдуманные дома, ASC, MC или колесо.
 - Transit day snapshots явно маркируются как дневные и не выдаются за точный момент Луны.
 - Отчёты переведены на append-only history: `?refresh=true` создаёт новую версию и сохраняет deterministic source/evidence limitations, не удаляя предыдущую.
+- Добавлена owner-scoped unified history для reports, Tarot, chat sessions и diary с exact routes, `source_id`, безопасным preview и palm boundary; profile History tab получил keyboard-visible cards.
+- Live LLM evaluation получил catalog discovery, stratified synthetic run, cost cap, safety/language/calibration/latency gates и provider-correct GPT-5 reasoning effort через `LLM_REASONING_EFFORT`.
+- English home fallback переведён в HOME_I18N; добавлены localization regression, Playwright visual/accessibility baseline и финальные per-check quality-gate artifacts.
+- Добавлены `NEXT_STEPS.md`, `UNIFIED_HISTORY.md` и `ORACLEAI_CONTINUATION_REPORT.md`; второй pass фиксирует выполненные локальные рекомендации, внешние launch blockers и незелёный LLM p95 latency gate.
 
 ## 2.0.0 — 2026-08-12
 

@@ -121,6 +121,9 @@
         </div>
 
         <div class="ptab-pane" id="ptab-history">
+          <div class="section-title">${profileT('unifiedHistory')}</div>
+          <div id="profile-unified-history"><div class="skeleton" style="height:150px;border-radius:16px"></div></div>
+          <div class="spacer"></div>
           <div class="section-title">${profileT('latestReadings')}</div>
           <div id="profile-tarot"><div class="skeleton" style="height:80px;border-radius:16px"></div></div>
           <div class="spacer"></div>
@@ -161,6 +164,7 @@
     const chartEl = document.getElementById('profile-chart');
     const tarotEl = document.getElementById('profile-tarot');
     const repEl = document.getElementById('profile-reports');
+    const historyEl = document.getElementById('profile-unified-history');
     const memEl = document.getElementById('profile-memories');
 
     // G001: три независимых запроса идут параллельно (.catch — чтобы не было
@@ -168,6 +172,28 @@
     const pChart = api('/api/chart'); pChart.catch(() => {});
     const pTarot = api('/api/tarot/history'); pTarot.catch(() => {});
     const pReps = api('/api/reports'); pReps.catch(() => {});
+    const pHistory = api('/api/history'); pHistory.catch(() => {});
+
+    try {
+      const history = await pHistory;
+      const labelKeys = { report: 'historyReport', tarot: 'historyTarot', chat: 'historyChat', diary: 'historyDiary' };
+      const actionFor = { report: 'report', tarot: 'reading', chat: 'history-chat', diary: 'history-diary' };
+      const rows = (history.items || []).slice(0, 8);
+      if (historyEl) {
+        historyEl.innerHTML = rows.length ? rows.map(item => {
+          const kind = item.kind || 'report';
+          const attrs = kind === 'report'
+            ? `data-kind="${esc(item.source_kind || 'natal')}" data-report-id="${Number(item.entry_id) || 0}"`
+            : `data-id="${Number(item.entry_id) || 0}" data-agent="${esc(item.source_kind || 'oracle')}"`;
+          return `<button class="history-item" data-act="${actionFor[kind] || 'report'}" ${attrs} type="button" aria-label="${esc(profileT(labelKeys[kind] || 'archive'))}: ${esc(item.title || '')}">
+            <span class="history-item__icon" aria-hidden="true">${kind === 'tarot' ? '🎴' : kind === 'chat' ? '◌' : kind === 'diary' ? '✎' : '📜'}</span>
+            <span class="history-item__body"><b>${esc(profileT(labelKeys[kind] || 'archive'))}</b><strong>${esc(item.title || '')}</strong><small>${esc(item.preview || fmtDay((item.created_at || '').slice(0, 10)))}</small></span><span class="history-item__chev" aria-hidden="true">›</span>
+          </button>`;
+        }).join('') : this.softEmpty({ icon: '✦', eyebrow: profileT('archive'), title: profileT('unifiedHistory'), copy: profileT('unifiedHistoryEmpty') });
+      }
+    } catch (e) {
+      if (historyEl) historyEl.innerHTML = this.softEmpty({ icon: '✦', eyebrow: profileT('archive'), title: profileT('reportsUnavailable'), copy: profileT('tryLater'), tone: 'recovery' });
+    }
 
     // натальная карта (по возможности — из /api/me, иначе /api/chart)
     try {
@@ -276,6 +302,19 @@
           </span>
           <span style="color:var(--gold)">›</span>
         </button>`;
+  };
+
+
+  app.openHistoryChat = function(agent, id) {
+    this.openChat(agent, () => this.openSession(id));
+  };
+
+
+  app.openDiary = async function(id) {
+    try {
+      const entry = await api('/api/diary/' + Number(id));
+      this.showModal(`<h3>${esc(profileT('historyDiary'))}</h3><button class="m-close" data-act="modal-close">✕</button><div style="font-size:12px;color:var(--text-dim);margin:8px 0">${esc(fmtDay((entry.created_at || '').slice(0, 10)))}</div><div style="font-size:14px;line-height:1.65;white-space:pre-wrap">${esc(entry.text || '')}</div>`);
+    } catch (e) { alert(friendlyError(e, 'Это временно. Попробуй ещё раз.')); }
   };
 
 

@@ -52,3 +52,19 @@ A release is blocked by any critical safety failure, unexplained grounding regre
 ## Privacy and deletion
 
 Golden cases are synthetic. If an anonymized production case is ever proposed, the owner must remove direct and quasi-identifiers, obtain the applicable approval, store it outside the public repository, and document deletion/retention. Evaluation reports contain no message text, diary, memory, birth data, payment details, Telegram ID, IP or raw initData.
+
+## Live synthetic runner
+
+`python3 scripts/run_llm_eval_live.py` is a staging-only, privacy-safe runner. It discovers the current OpenAI-compatible `/models` catalog, selects `gpt-5-mini` by default with a safe fallback, samples one deterministic case per scenario/language, uses bounded concurrency, applies a hard estimated cost cap and writes only the response envelope plus a score report. Raw response JSONL belongs in a protected temporary path and must not be committed.
+
+```bash
+python3 scripts/run_llm_eval_live.py \
+  --limit 12 --max-workers 4 --max-tokens 350 \
+  --max-cost-usd 0.25 --max-p95-ms 15000 \
+  --out /protected/staging/llm-responses.jsonl \
+  --report-out /protected/staging/llm-eval-live-report.json
+```
+
+The runner gates critical violations, mean score, language pass rate, symbolic next-step rate, symbolic calibration rate and p95 latency. The actual bounded run in this implementation pass used `gpt-5-mini`, 12 synthetic cases, estimated worst-case cost `$0.009036`, zero critical violations, mean score `0.9375`, language `1.0`, symbolic next-step `0.9`, symbolic calibration `0.9` and p95 latency `22.14 s`. Quality and safety passed; the latency target `<=15 s` remains open and is intentionally not marked green.
+
+For GPT-5-compatible providers, the runtime and staging runner send `extra_body.reasoning.effort`; the production default is configurable through `LLM_REASONING_EFFORT=minimal` and can be raised only after a measured quality review. Non-GPT providers receive no unsupported reasoning parameter.

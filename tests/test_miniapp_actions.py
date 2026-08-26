@@ -35,6 +35,7 @@ def test_every_static_miniapp_action_has_a_registered_handler() -> None:
     declared = {
         double or single
         for double, single in re.findall(r"data-act=(?:\"([^\"]+)\"|'([^']+)')", source)
+        if "${" not in (double or single)
     }
     registered = _action_registry_keys()
 
@@ -79,6 +80,15 @@ def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     value = version.group(1)
     assert f'?v={value}' in styles
     assert f'?v={int(value) - 1}' not in styles
+
+
+def test_home_fallback_is_localized() -> None:
+    home = (JS_DIR / "06-home.js").read_text(encoding="utf-8")
+    utils = (JS_DIR / "01-utils.js").read_text(encoding="utf-8")
+    assert "homeT('heroFallbackTitle')" in home
+    assert "homeT('heroFallbackCopy')" in home
+    assert "heroFallbackTitle: 'You do not need to find the perfect answer today.'" in utils
+    assert "heroFallbackCopy: 'Choose one gentle step for yourself.'" in utils
 
 
 def test_agent_quality_proof_is_visible_on_hub_and_chat() -> None:

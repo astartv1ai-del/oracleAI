@@ -184,7 +184,7 @@ const PROFILE_I18N = {
     chartDetailExact: 'Раху · Кету · дома · аспекты — в «Полной карте»', chartDetailApprox: 'Планеты и аспекты доступны без времени; ASC, MC и дома — после уточнения времени рождения.',
     chartEyebrow: 'Твоя основа', chartMissing: 'Карта ещё не собрана', chartMissingCopy: 'Укажи дату и город рождения. Время — только если ты его знаешь.', collectChart: 'Собрать карту',
     firstReadingEyebrow: 'Твой первый расклад', firstReadingTitle: 'Карты ждут твой вопрос', firstReadingCopy: 'Выбери бережный расклад — он сохранится здесь, чтобы к нему можно было вернуться.', askCards: 'Задать вопрос картам',
-    allReadings: 'Все {count} раскладов ›', archive: 'Личный архив', reportsEmpty: 'Здесь появятся твои разборы', reportsEmptyCopy: 'Сохраняй важные ответы из диалогов, чтобы возвращаться к ним в нужный момент.',
+    allReadings: 'Все {count} раскладов ›', archive: 'Личный архив', unifiedHistory: 'Всё важное в одном месте', unifiedHistoryEmpty: 'Здесь соберутся расклады, разборы, разговоры и записи дневника.', historyReport: 'Разбор', historyTarot: 'Расклад', historyChat: 'Разговор', historyDiary: 'Дневник', reportsEmpty: 'Здесь появятся твои разборы', reportsEmptyCopy: 'Сохраняй важные ответы из диалогов, чтобы возвращаться к ним в нужный момент.',
     reportsUnavailable: 'Разборы временно недоступны', tryLater: 'Попробуй открыть этот раздел немного позже.', readingsHistory: 'История раскладов', readingsUnavailable: 'Не получилось открыть историю', readingsUnavailableCopy: 'Это временно. Новый расклад по-прежнему можно сделать в чате.', openTarot: 'Открыть Таролога',
     readingFallback: 'Расклад', saveStory: '📸 Сохранить в сторис', outcomeQuestion: 'Сбылось?', outcomeYes: '✓ Да', outcomePartial: 'Частично', outcomeNo: 'Нет',
     memoryTitle: 'Что я помню о тебе', memoryEyebrow: 'Личная память', memoryUnavailable: 'Память пока недоступна', memoryUnavailableCopy: 'Твои сохранённые факты остаются под защитой. Попробуй открыть их чуть позже.',
@@ -217,7 +217,7 @@ const PROFILE_I18N = {
     chartDetailExact: 'Rahu · Ketu · houses · aspects — in “Full chart”', chartDetailApprox: 'Planets and aspects are available without a birth time; ASC, MC and houses appear after you add it.',
     chartEyebrow: 'Your foundation', chartMissing: 'Your chart is not ready yet', chartMissingCopy: 'Add your birth date and city. Include the time only if you know it.', collectChart: 'Build chart',
     firstReadingEyebrow: 'Your first reading', firstReadingTitle: 'The cards are waiting for your question', firstReadingCopy: 'Choose a gentle spread — it will be saved here so you can return to it later.', askCards: 'Ask the cards',
-    allReadings: 'All {count} readings ›', archive: 'Personal archive', reportsEmpty: 'Your insights will appear here', reportsEmptyCopy: 'Save meaningful answers from your conversations so you can return to them when you need to.',
+    allReadings: 'All {count} readings ›', archive: 'Personal archive', unifiedHistory: 'Everything important in one place', unifiedHistoryEmpty: 'Readings, insights, conversations and diary entries will gather here.', historyReport: 'Insight', historyTarot: 'Reading', historyChat: 'Conversation', historyDiary: 'Diary', reportsEmpty: 'Your insights will appear here', reportsEmptyCopy: 'Save meaningful answers from your conversations so you can return to them when you need to.',
     reportsUnavailable: 'Insights are temporarily unavailable', tryLater: 'Please try this section again a little later.', readingsHistory: 'Reading history', readingsUnavailable: 'Could not open reading history', readingsUnavailableCopy: 'This is temporary. You can still start a new reading in chat.', openTarot: 'Open Tarot guide',
     readingFallback: 'Reading', saveStory: '📸 Save to story', outcomeQuestion: 'Did it come true?', outcomeYes: '✓ Yes', outcomePartial: 'Partly', outcomeNo: 'No',
     memoryTitle: 'What I remember about you', memoryEyebrow: 'Personal memory', memoryUnavailable: 'Memory is temporarily unavailable', memoryUnavailableCopy: 'Your saved facts remain protected. Please try opening them again a little later.',
@@ -242,7 +242,7 @@ const profileFormat = (key, values = {}) => Object.entries(values).reduce(
 
 const HOME_I18N = {
   ru: {
-    ritualLabel: 'Твой мягкий ритуал дня', ritualCta: 'Получить мой знак дня', seasonalAria: 'Сезонный ритуал', seasonalKicker: 'Сезонный знак',
+    ritualLabel: 'Твой мягкий ритуал дня', ritualCta: 'Получить мой знак дня', heroFallbackTitle: 'Сегодня можно не искать идеальный ответ.', heroFallbackCopy: 'Выбери один бережный шаг для себя.', seasonalAria: 'Сезонный ритуал', seasonalKicker: 'Сезонный знак',
     rhythmAria: 'Твой ритм на сегодня', rhythmKicker: 'Твой ритм', rhythmTitle: 'Вернуться к себе', stepsAria: '{count} из 2 бережных шагов',
     diaryDoneAria: 'Дневник заполнен, открыть записи', diaryOpenAria: 'Открыть дневник состояния', diaryDone: 'Дневник уже заполнен', diaryOpen: 'Отметить своё состояние',
     diaryDoneCopy: 'Дневник уже ждёт тебя в личной библиотеке.', diaryPromptFallback: 'Одно честное предложение о том, как ты сейчас.',
@@ -258,7 +258,7 @@ const HOME_I18N = {
     seasonal: [['Зимний свет', 'Разреши себе меньше спешки и больше тёплых пауз.'], ['Время расцветать', 'Выбери один маленький шаг, который хочется начать для себя.'], ['Сезон полноты', 'Заметь, что уже стало твоей опорой, и поблагодари себя.'], ['Время бережно отпустить', 'Освободи место для того, что действительно важно сейчас.']],
   },
   en: {
-    ritualLabel: 'Your gentle daily ritual', ritualCta: 'Get my sign for today', seasonalAria: 'Seasonal ritual', seasonalKicker: 'Seasonal sign',
+    ritualLabel: 'Your gentle daily ritual', ritualCta: 'Get my sign for today', heroFallbackTitle: 'You do not need to find the perfect answer today.', heroFallbackCopy: 'Choose one gentle step for yourself.', seasonalAria: 'Seasonal ritual', seasonalKicker: 'Seasonal sign',
     rhythmAria: 'Your rhythm for today', rhythmKicker: 'Your rhythm', rhythmTitle: 'Return to yourself', stepsAria: '{count} of 2 gentle steps',
     diaryDoneAria: 'Diary completed, open entries', diaryOpenAria: 'Open mood diary', diaryDone: 'Diary completed', diaryOpen: 'Check in with yourself',
     diaryDoneCopy: 'Your entry is waiting in your private library.', diaryPromptFallback: 'One honest sentence about how you are right now.',

@@ -263,3 +263,17 @@ async def diary_summary(month: str | None = Query(default=None),
         "last": {"date": last["created_at"], "text": snippet(last)},
         "data_for_prompt": data_for_prompt,
     }
+
+
+@router.get("/diary/{entry_id}")
+async def diary_item(entry_id: int, user=Depends(current_user), db=Depends(get_db)):
+    """Open one diary entry from the unified archive without crossing owners."""
+    cur = await db.execute(
+        "SELECT id, text, mood, created_at FROM diary WHERE id=? AND tg_id=?",
+        (entry_id, user["tg_id"]),
+    )
+    row = await cur.fetchone()
+    if not row:
+        from fastapi import HTTPException
+        raise HTTPException(404, "запись дневника не найдена")
+    return dict(row)
