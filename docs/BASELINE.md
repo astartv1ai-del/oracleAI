@@ -2,7 +2,7 @@
 
 **Дата:** 2026-08-26  
 **Ветка:** `master`  
-**Коммит:** `0e616fb` (`feat: preserve immutable report history`)
+**Коммиты:** `0e616fb` (`feat: preserve immutable report history`), `db09c43` (`fix: enforce date-only report truth state`)
 **Репозиторий:** `astartv1ai-del/oracleAI`
 
 ## Runtime and inventory
