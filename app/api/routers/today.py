@@ -9,7 +9,7 @@ from ...core import agent as agent_core
 from ...core import astro
 from ...repo import readings, users
 from ...services import analytics, horoscopes
-from ..deps import active_user, current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, active_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["today"])
 
@@ -78,7 +78,7 @@ async def _next_action(db, user) -> dict:
 
 
 @router.get("/moon/week")
-async def moon_week(user=Depends(current_user), days: int = 7):
+async def moon_week(user=Depends(confirmed_age_user), days: int = 7):
     """Лунная лента: считаем на сервере, чтобы бот и приложение совпадали."""
     today_date = date.today()
     out = []
@@ -91,12 +91,12 @@ async def moon_week(user=Depends(current_user), days: int = 7):
 
 
 @router.get("/sky")
-async def sky(user=Depends(current_user)):
+async def sky(user=Depends(confirmed_age_user)):
     return astro.today_sky()
 
 
 @router.get("/horoscope", dependencies=[Depends(rate_limit("read"))])
-async def horoscope(sign: str | None = None, user=Depends(current_user),
+async def horoscope(sign: str | None = None, user=Depends(confirmed_age_user),
                     db=Depends(get_db)):
     """Гороскоп по знаку. Без параметра — по её знаку Солнца.
 
@@ -122,6 +122,6 @@ async def horoscope(sign: str | None = None, user=Depends(current_user),
 
 
 @router.get("/horoscope/all", dependencies=[Depends(rate_limit("read"))])
-async def horoscope_all(user=Depends(current_user), db=Depends(get_db)):
+async def horoscope_all(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Все двенадцать знаков на сегодня — витрина «а что у других»."""
     return await horoscopes.all_for_day(db)

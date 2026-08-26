@@ -12,7 +12,8 @@ from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot.onboarding import (
-    DeleteMe, Onb, delete_me, delete_me_confirm, onb_gender, onb_name,
+    DeleteMe, Onb, delete_me, delete_me_confirm, onb_age_confirm, onb_age_decline,
+    onb_gender, onb_name,
 )
 from app.repo import users
 
@@ -61,6 +62,9 @@ class _Message:
         self.replied = text
         self.reply_kwargs = kwargs
 
+    async def edit_reply_markup(self, **kwargs):
+        self.reply_kwargs.update(kwargs)
+
 
 class _Callback:
     def __init__(self, tg_id: int, data: str, message: _Message):
@@ -77,6 +81,31 @@ def _state_for() -> FSMContext:
     storage = MemoryStorage()
     key = StorageKey(chat_id=1, user_id=1, bot_id=42, thread_id=0)
     return FSMContext(storage=storage, key=key)
+
+
+async def test_onboarding_age_confirm_sets_consent_and_advances(db):
+    await users.ensure(db, 1005, "Аня")
+    state = _state_for()
+    message = _Message(1005, "/start")
+    callback = _Callback(1005, "age:confirm", message)
+
+    await onb_age_confirm(callback, state, db)
+
+    assert (await users.get(db, 1005))["age_confirmed"] == 1
+    assert await state.get_state() == Onb.name.state
+
+
+async def test_onboarding_age_decline_clears_state(db):
+    await users.ensure(db, 1006, "Вера")
+    state = _state_for()
+    message = _Message(1006, "/start")
+    callback = _Callback(1006, "age:decline", message)
+
+    await onb_age_decline(callback, state, db)
+
+    assert await state.get_state() is None
+    assert "Доступ закрыт" in message.replied
+    assert (await users.get(db, 1006))["age_confirmed"] == 0
 
 
 async def test_onboarding_gender_is_saved_and_advances_to_date(db):

@@ -862,3 +862,11 @@ async def test_palm_rejects_malformed_content_length_without_500(client, user):
 
     assert response.status_code == 400
     assert "размер" in response.json()["detail"]
+
+
+async def test_sensitive_api_requires_server_side_age_confirmation(client, db, user):
+    await users.update(db, user["tg_id"], age_confirmed=0)
+    res = await client.get("/api/chart", params=as_user(user))
+    assert res.status_code == 403
+    assert res.json()["detail"]["code"] == "age_confirmation_required"
+    await users.update(db, user["tg_id"], age_confirmed=1)

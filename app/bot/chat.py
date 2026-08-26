@@ -17,6 +17,7 @@ from ..core import agents
 from ..repo import admin as admin_repo
 from ..repo import billing, content, users
 from ..services import analytics, chat as chat_svc, limits
+from .formatting import tg_esc, tg_rich
 from .keyboards import agents_kb, back_menu, limit_kb, main_menu
 
 log = logging.getLogger("oracle.bot.chat")
@@ -71,7 +72,7 @@ async def _menu(db, tg_id: int):
 
 
 async def _send_long(message: Message, text: str, reply_markup=None) -> None:
-    chunks = split_message(text)
+    chunks = split_message(tg_rich(text))
     for i, chunk in enumerate(chunks):
         await message.answer(chunk,
                              reply_markup=reply_markup if i == len(chunks) - 1 else None)
@@ -186,7 +187,7 @@ async def voice_msg(message: Message, state: FSMContext, db):
     if not text:
         await message.answer("Я пока не слышу голоса — напиши свой вопрос текстом 🌙")
         return
-    await message.answer(f"🎙 <i>Я услышала: «{text[:200]}»</i>")
+    await message.answer(f"🎙 <i>Я услышала: «{tg_esc(text[:200])}»</i>")
     await _handle_text(message, state, db, text)
 
 
@@ -247,6 +248,6 @@ async def emergency(cb: CallbackQuery, state: FSMContext, db):
 async def menu(cb: CallbackQuery, state: FSMContext, db):
     await state.clear()
     user = await users.get(db, cb.from_user.id)
-    await cb.message.answer(f"Я здесь, {user['name']} 🌙",
+    await cb.message.answer(f"Я здесь, {tg_esc(user['name'])} 🌙",
                             reply_markup=await _menu(db, cb.from_user.id))
     await cb.answer()

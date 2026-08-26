@@ -19,7 +19,7 @@ from ...repo import billing, readings, users
 from ...services import analytics, compatibility as compatibility_svc
 from ..common.validation import parse_birth_date
 from ..contracts.compatibility import CompatIn
-from ..deps import active_user, current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, active_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["chart"])
 astro_log = logging.getLogger("oracle.astro")
@@ -109,7 +109,7 @@ async def chart_image(
     variant: str = Query(default="compact", min_length=1, max_length=16),
     format: str = Query(default="png", min_length=1, max_length=8),
     locale: str = Query(default="ru", min_length=2, max_length=2),
-    user=Depends(current_user),
+    user=Depends(confirmed_age_user),
 ):
     """Private raster chart image; the SVG engine output never crosses this boundary."""
     started = time.monotonic()
@@ -162,7 +162,7 @@ async def chart_image(
 
 
 @router.get("/chart")
-async def chart(user=Depends(current_user), db=Depends(get_db)):
+async def chart(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Карта целиком: планеты, дома, аспекты и честно указанная точность."""
     started = time.monotonic()
     data = users.chart_of(user)
@@ -188,7 +188,7 @@ class ChartBuildIn(BaseModel):
 
 
 @router.post("/chart", dependencies=[Depends(rate_limit("write"))])
-async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_user),
+async def build_chart(item: ChartBuildIn | None = None, user=Depends(confirmed_age_user),
                       db=Depends(get_db)):
     """Строит и сохраняет натальную карту — тот же путь, что в онбординге бота.
 
@@ -258,7 +258,7 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(current_use
 
 
 @router.post("/chart/interpret", dependencies=[Depends(rate_limit("write"))])
-async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
+async def chart_interpret(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Бесплатный ИИ-разбор построенной карты простыми словами (кэш в chart_json).
 
     Для людей без астрологических знаний: кто ты, характер, сильные/слабые
@@ -302,7 +302,7 @@ async def chart_interpret(user=Depends(current_user), db=Depends(get_db)):
 
 
 @router.get("/matrix")
-async def matrix(user=Depends(current_user)):
+async def matrix(user=Depends(confirmed_age_user)):
     if not user["birth_date"]:
         raise HTTPException(400, "нет даты рождения")
     return compute_matrix(user["birth_date"])
@@ -311,7 +311,7 @@ async def matrix(user=Depends(current_user)):
 # ─────────────────────────────── совместимость ────────────────────────────────
 
 @router.post("/compat", dependencies=[Depends(rate_limit("write"))])
-async def compat(item: CompatIn, user=Depends(current_user), db=Depends(get_db)):
+async def compat(item: CompatIn, user=Depends(confirmed_age_user), db=Depends(get_db)):
     """«Спидометр любви»: балл и его разбор считает сервер.
 
     Формула живёт в одном месте специально: раньше у клиента была своя копия, и
@@ -349,12 +349,12 @@ class PartnerIn(BaseModel):
 
 
 @router.get("/partners")
-async def partners(user=Depends(current_user), db=Depends(get_db)):
+async def partners(user=Depends(confirmed_age_user), db=Depends(get_db)):
     return await readings.list_partners(db, user["tg_id"])
 
 
 @router.post("/partners", dependencies=[Depends(rate_limit("write"))])
-async def add_partner(item: PartnerIn, user=Depends(current_user),
+async def add_partner(item: PartnerIn, user=Depends(confirmed_age_user),
                       db=Depends(get_db)):
     """Сохраняет человека из окружения — чтобы агент понимал «он»/«она»."""
     birth_date = parse_birth_date(item.birth_date)
@@ -378,7 +378,7 @@ async def add_partner(item: PartnerIn, user=Depends(current_user),
 
 
 @router.delete("/partners/{partner_id}", dependencies=[Depends(rate_limit("write"))])
-async def delete_partner(partner_id: int, user=Depends(current_user),
+async def delete_partner(partner_id: int, user=Depends(confirmed_age_user),
                          db=Depends(get_db)):
     await readings.delete_partner(db, partner_id, user["tg_id"])
     return {"ok": True}
@@ -392,7 +392,7 @@ class ReportIn(BaseModel):
 
 
 @router.get("/reports")
-async def reports(user=Depends(current_user), db=Depends(get_db)):
+async def reports(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Список готовых разборов + права на ещё не собранные."""
     return {
         "ready": await readings.list_reports(db, user["tg_id"]),
@@ -404,7 +404,7 @@ async def reports(user=Depends(current_user), db=Depends(get_db)):
 @router.get("/reports/{kind}")
 async def get_report(kind: str, period: str | None = None,
                      report_id: int | None = Query(default=None, ge=1),
-                     user=Depends(current_user), db=Depends(get_db)):
+                     user=Depends(confirmed_age_user), db=Depends(get_db)):
     row = (
         await readings.get_report_by_id(db, user["tg_id"], kind, report_id)
         if report_id is not None
@@ -419,7 +419,7 @@ async def get_report(kind: str, period: str | None = None,
 @router.post("/reports/{kind}", dependencies=[Depends(rate_limit("llm"))])
 async def build_report(kind: str, item: ReportIn | None = None,
                        refresh: bool = Query(default=False),
-                       user=Depends(current_user), db=Depends(get_db)):
+                       user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Собирает купленный разбор. Право списывается только после успеха."""
     if kind not in agent_core.REPORTS:
         raise HTTPException(404, "неизвестный разбор")

@@ -11,19 +11,19 @@ from ...repo import readings
 from ...services import catalog
 from ...services import chat as chat_svc
 from ..common.errors import access_denied
-from ..deps import current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api/tarot", tags=["tarot"])
 
 
 @router.get("/spreads")
-async def spreads(user=Depends(current_user), db=Depends(get_db)):
+async def spreads(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Витрина раскладов: что входит в тариф, что куплено, что стоит денег."""
     return await catalog.spread_list(db, user)
 
 
 @router.get("/spreads/full")
-async def spreads_full(user=Depends(current_user)):
+async def spreads_full(user=Depends(confirmed_age_user)):
     """Все встроенные расклады с `guide` — пояснения для страницы выбора.
 
     `/spreads` (витрина) не несёт `guide`, а здесь он нужен фронту, чтобы
@@ -41,7 +41,7 @@ class DrawIn(BaseModel):
 @router.post("/draw", dependencies=[Depends(rate_limit("write"))])
 async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
                question: str = Query(default=""),
-               user=Depends(current_user), db=Depends(get_db)):
+               user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Тянет карты. Трактовка — вторым запросом, после анимации переворота.
 
     `question` — формулировка клиентки «что спросить у карт»: сохраняется в
@@ -59,7 +59,7 @@ async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
 
 
 @router.post("/interpret/{reading_id}", dependencies=[Depends(rate_limit("llm"))])
-async def interpret(reading_id: int, user=Depends(current_user), db=Depends(get_db)):
+async def interpret(reading_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
     try:
         answer = await chat_svc.interpret(db, user, reading_id, surface="miniapp")
     except LookupError as e:
@@ -68,12 +68,12 @@ async def interpret(reading_id: int, user=Depends(current_user), db=Depends(get_
 
 
 @router.get("/history")
-async def history(user=Depends(current_user), db=Depends(get_db)):
+async def history(user=Depends(confirmed_age_user), db=Depends(get_db)):
     return await readings.recent_readings(db, user["tg_id"], limit=30)
 
 
 @router.get("/history/{reading_id}")
-async def history_item(reading_id: int, user=Depends(current_user), db=Depends(get_db)):
+async def history_item(reading_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
     row = await readings.get_reading(db, reading_id, user["tg_id"])
     if not row or not row["answer"]:
         raise HTTPException(404, "расклад не найден")
@@ -87,7 +87,7 @@ async def history_item(reading_id: int, user=Depends(current_user), db=Depends(g
 
 
 @router.get("/stats")
-async def stats(user=Depends(current_user), db=Depends(get_db)):
+async def stats(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Что сбывалось: счётчик отметок «сбылось / частично / нет»."""
     return await readings.outcome_stats(db, user["tg_id"])
 
@@ -97,7 +97,7 @@ class OutcomeIn(BaseModel):
 
 
 @router.post("/outcome/{reading_id}", dependencies=[Depends(rate_limit("write"))])
-async def set_outcome(reading_id: int, item: OutcomeIn, user=Depends(current_user),
+async def set_outcome(reading_id: int, item: OutcomeIn, user=Depends(confirmed_age_user),
                       db=Depends(get_db)):
     """Отметка «сбылось». Это и обратная связь, и доказательство ценности."""
     if not await readings.set_outcome(db, reading_id, user["tg_id"], item.outcome):

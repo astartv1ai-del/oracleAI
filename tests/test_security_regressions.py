@@ -115,3 +115,103 @@ async def test_tarot_finalization_is_owner_scoped_and_append_only(db):
     assert not await readings.finish_reading(db, reading_id, 1001, "перезапись")
     row = await readings.get_reading(db, reading_id, 1001)
     assert row["answer"] == "первый ответ"
+
+
+async def test_confirmed_age_dependency_blocks_unconfirmed_user(user):
+    from app.api import deps
+
+    unconfirmed = dict(user)
+    unconfirmed["age_confirmed"] = 0
+    with pytest.raises(Exception) as exc_info:
+        await deps.confirmed_age_user(unconfirmed)
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "age_confirmation_required"
+    confirmed = await deps.confirmed_age_user(user)
+    assert confirmed["tg_id"] == user["tg_id"]
+
+
+async def test_new_users_default_to_memory_off(db):
+    from app.repo import users
+
+    created = await users.ensure(db, 2201, "Новый пользователь")
+    assert created["memory_enabled"] == 0
+
+
+async def test_anonymize_cleans_sensitive_rows_and_pseudonymizes_finance(db, user):
+    from app.repo import users
+
+    tg_id = user["tg_id"]
+    await db.execute(
+        "INSERT INTO profile_summaries(tg_id, summary, built_at) VALUES(?,?,?)",
+        (tg_id, "личный summary", "2026-08-26"),
+    )
+    await db.execute(
+        "INSERT INTO palm_readings(tg_id, status, analysis_json, created_at) "
+        "VALUES(?,?,?,?)", (tg_id, "complete", '{"private":true}', "2026-08-26"),
+    )
+    await db.execute(
+        "INSERT INTO events(tg_id, name, props_json, created_at) VALUES(?,?,?,?)",
+        (tg_id, "question", '{"private":"text"}', "2026-08-26"),
+    )
+    await db.execute(
+        "INSERT INTO safety_events(tg_id, category, excerpt, action, created_at) "
+        "VALUES(?,?,?,?,?)", (tg_id, "crisis", "private excerpt", "support", "2026-08-26"),
+    )
+    await db.execute(
+        "INSERT INTO orders(tg_id, kind, amount_stars, status, created_at) "
+        "VALUES(?,?,?,?,?)", (tg_id, "plan", 10, "paid", "2026-08-26"),
+    )
+    await db.commit()
+
+    await users.anonymize(db, tg_id)
+    await users.anonymize(db, tg_id)
+
+    deleted_tables = (
+        "profile_summaries", "palm_readings", "events", "safety_events",
+    )
+    for table in deleted_tables:
+        cur = await db.execute(f"SELECT COUNT(*) c FROM {table} WHERE tg_id=?", (tg_id,))
+        assert (await cur.fetchone())["c"] == 0
+    cur = await db.execute("SELECT tg_id FROM orders WHERE amount_stars=10")
+    assert (await cur.fetchone())["tg_id"] == 0
+    row = await users.get(db, tg_id)
+    assert row["name"] == "удалено"
+    assert row["memory_enabled"] == 0
+    assert row["age_confirmed"] == 0
+
+
+async def test_safety_summary_redacts_crisis_identity_and_excerpt(db, user):
+    from app.repo import analytics
+
+    await db.execute(
+        "INSERT INTO safety_events(tg_id, category, excerpt, action, created_at) "
+        "VALUES(?,?,?,?,?)", (user["tg_id"], "crisis", "secret crisis text", "support", "2026-08-26"),
+    )
+    await db.commit()
+    result = await analytics.safety_summary(db, days=365)
+    assert result["redacted"] is True
+    assert "secret crisis text" not in str(result)
+    assert "tg_id" not in result["recent"][0]
+    assert "excerpt" not in result["recent"][0]
+
+
+def test_support_cannot_grant_or_read_restricted_safety():
+    from app.repo import admin
+
+    assert not admin.can("support", "grants")
+    assert not admin.can("support", "safety:read")
+    assert admin.can("admin", "grants")
+    assert admin.can("admin", "safety:read")
+
+
+def test_telegram_formatting_escapes_untrusted_markup():
+    from app.bot.formatting import tg_esc, tg_rich
+
+    assert tg_esc('<a href="https://evil.test">name</a>') == (
+        '&lt;a href="https://evil.test"&gt;name&lt;/a&gt;'
+    )
+    assert tg_rich("<b>trusted</b> <script>alert(1)</script>") == (
+        "<b>trusted</b> &lt;script&gt;alert(1)&lt;/script&gt;"
+    )
+    assert tg_rich("<b>unbalanced") == "&lt;b&gt;unbalanced"
+    assert tg_rich("<b>trusted</b>") == "<b>trusted</b>"

@@ -102,8 +102,25 @@ async def current_user(db=Depends(get_db),
     return user
 
 
-async def active_user(user=Depends(current_user)):
-    """Как `current_user`, но требует живую подписку — для платного контента."""
+async def confirmed_age_user(user=Depends(current_user)):
+    """Пользователь, подтвердивший возраст 16+ на сервере.
+
+    Age-gate must not rely on a Mini App overlay: every sensitive product
+    surface depends on this guard so direct API calls cannot bypass consent.
+    """
+    if not user["age_confirmed"]:
+        raise HTTPException(
+            403,
+            detail={
+                "code": "age_confirmation_required",
+                "message": "подтверди, что тебе уже исполнилось 16 лет",
+            },
+        )
+    return user
+
+
+async def active_user(user=Depends(confirmed_age_user)):
+    """Как `confirmed_age_user`, но требует живую подписку — для платного контента."""
     if not users_repo.sub_active(user):
         raise HTTPException(402, "подписка завершена — продли её в боте")
     return user

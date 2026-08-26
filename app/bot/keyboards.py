@@ -61,6 +61,14 @@ def main_menu(*, is_admin: bool = False) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def age_gate_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    labels = ("I am 16+", "Close") if lang == "en" else ("Мне уже 16+", "Закрыть")
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=labels[0], callback_data="age:confirm")],
+        [InlineKeyboardButton(text=labels[1], callback_data="age:decline")],
+    ])
+
+
 def gender_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     """Выбор формы обращения в онбординге; пропуск сохраняет нейтральный язык."""
     labels = (

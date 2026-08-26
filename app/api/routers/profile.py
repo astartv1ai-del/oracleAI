@@ -13,7 +13,7 @@ from ...core.personas import persona_list
 from ...data.session import healthcheck
 from ...repo import billing, content, dialog, readings, users
 from ...services import analytics, chat, limits, referrals
-from ..deps import current_user, get_db, rate_limit, touched_user
+from ..deps import confirmed_age_user, current_user, get_db, rate_limit, touched_user
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -67,6 +67,21 @@ async def health(db=Depends(get_db)):
 @router.get("/me")
 async def me(user=Depends(touched_user), db=Depends(get_db)):
     """Всё, что нужно интерфейсу на старте: профиль, лимиты, тариф, фичи."""
+    if not user["age_confirmed"]:
+        return {
+            "tg_id": user["tg_id"],
+            "name": user["name"],
+            "username": user["username"],
+            "onboarded": bool(user["onboarded"]),
+            "age_confirmed": False,
+            "lang": user["lang"] or "ru",
+            "memory_enabled": False,
+            "sub_active": users.sub_active(user),
+            "sub_days_left": users.sub_days_left(user),
+            "webapp_url": settings.webapp_url,
+            "pre_consent": True,
+        }
+
     chart = users.chart_of(user)
     allowance = await limits.allowance(db, user, check_followup=False)
     await chat.track_open(db, user)
@@ -195,7 +210,7 @@ async def personas(db=Depends(get_db)):
 
 
 @router.get("/referral")
-async def referral(user=Depends(current_user), db=Depends(get_db)):
+async def referral(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Экран рефералки: ссылка, статистика, текст для шеринга."""
     bot_username = await content.get_setting(db, "brand.bot_username", "") or ""
     stats = await referrals.stats(db, user["tg_id"])
@@ -210,7 +225,7 @@ async def referral(user=Depends(current_user), db=Depends(get_db)):
 
 
 @router.get("/memories")
-async def memories(user=Depends(current_user), db=Depends(get_db)):
+async def memories(user=Depends(confirmed_age_user), db=Depends(get_db)):
     if not bool(user["memory_enabled"]):
         return []
     return await dialog.memories_full(db, user["tg_id"], limit=60)
@@ -222,7 +237,7 @@ class MemoryIn(BaseModel):
 
 
 @router.post("/memories", dependencies=[Depends(rate_limit("write"))])
-async def add_memory(item: MemoryIn, user=Depends(current_user), db=Depends(get_db)):
+async def add_memory(item: MemoryIn, user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Ручное добавление факта из Mini App — та же дедупликация, что у агента."""
     if not bool(user["memory_enabled"]):
         raise HTTPException(409, "память отключена в настройках приватности")
@@ -232,7 +247,7 @@ async def add_memory(item: MemoryIn, user=Depends(current_user), db=Depends(get_
 
 
 @router.delete("/memories/{memory_id}", dependencies=[Depends(rate_limit("write"))])
-async def forget(memory_id: int, user=Depends(current_user), db=Depends(get_db)):
+async def forget(memory_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
     """«Забудь это» — клиентка должна управлять тем, что о ней помнят."""
     await dialog.forget_memory(db, memory_id, user["tg_id"])
     return {"ok": True}

@@ -20,8 +20,8 @@ from ..config import settings
 from ..core import flood, sentry
 from ..core.observability import configure_logging
 from ..data.session import connect
-from ..repo import content as content_repo
-from ..services import broadcast, scheduler
+from ..repo import content as content_repo, users as users_repo
+from ..services import analytics, broadcast, scheduler
 from . import chat, features, growth, onboarding, profile, shop
 
 configure_logging(level=settings.log_level, log_file=settings.log_file)
@@ -177,6 +177,11 @@ async def main() -> None:
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
+        # Drain deferred writes while the database is still open. This keeps
+        # analytics, memory extraction and last_seen updates durable on SIGTERM.
+        await chat.drain_background()
+        await analytics.drain()
+        await users_repo.drain_touch_tasks()
         await bot.session.close()
         await db.close()
         log.info("Оракул остановлен")

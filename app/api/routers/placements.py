@@ -7,9 +7,21 @@ from ...core import palm as palm_core
 from ...core import placements
 from ...core.geo import resolve_city_async
 from ..common.validation import parse_birth_date
-from ..deps import current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["placements"])
+
+
+async def _read_limited_body(request: Request, limit: int) -> bytes:
+    """Read an upload in chunks and reject it before unbounded buffering."""
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > limit:
+            raise HTTPException(413, "фото слишком большое; максимум 8 МБ")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 class PlacementIn(BaseModel):
@@ -40,7 +52,7 @@ async def placement_catalog():
 
 
 @router.post("/placements/calculate", dependencies=[Depends(rate_limit("write"))])
-async def calculate_placement(item: PlacementIn, user=Depends(current_user),
+async def calculate_placement(item: PlacementIn, user=Depends(confirmed_age_user),
                               db=Depends(get_db)):
     supplied = item.model_fields_set
     birth_date = parse_birth_date(item.birth_date) if item.birth_date else user["birth_date"]
@@ -64,14 +76,14 @@ async def calculate_placement(item: PlacementIn, user=Depends(current_user),
 
 
 @router.get("/palm")
-async def list_palm(user=Depends(current_user), db=Depends(get_db)):
+async def list_palm(user=Depends(confirmed_age_user), db=Depends(get_db)):
     from ...repo import palm as palm_repo
     return {"items": await palm_repo.list_readings(db, user["tg_id"], limit=20),
             "raw_image_stored": False}
 
 
 @router.post("/palm", dependencies=[Depends(rate_limit("llm"))])
-async def analyze_palm(request: Request, user=Depends(current_user), db=Depends(get_db)):
+async def analyze_palm(request: Request, user=Depends(confirmed_age_user), db=Depends(get_db)):
     content_type = (request.headers.get("content-type") or "").split(";", 1)[0].lower()
     if content_type not in palm_core.ALLOWED_MIME:
         raise HTTPException(415, "отправь изображение JPEG, PNG или WebP")
@@ -85,7 +97,7 @@ async def analyze_palm(request: Request, user=Depends(current_user), db=Depends(
             raise HTTPException(400, "некорректный размер изображения")
         if declared_size > palm_core.MAX_IMAGE_BYTES:
             raise HTTPException(413, "фото слишком большое; максимум 8 МБ")
-    image = await request.body()
+    image = await _read_limited_body(request, palm_core.MAX_IMAGE_BYTES)
     try:
         result = await palm_core.analyze_and_save(db, user, image)
     except ValueError as exc:
@@ -96,7 +108,7 @@ async def analyze_palm(request: Request, user=Depends(current_user), db=Depends(
 
 
 @router.get("/palm/{reading_id}")
-async def get_palm(reading_id: int, user=Depends(current_user), db=Depends(get_db)):
+async def get_palm(reading_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
     result = await palm_core.get(db, user, reading_id)
     if not result:
         raise HTTPException(404, "чтение ладони не найдено")
@@ -104,7 +116,7 @@ async def get_palm(reading_id: int, user=Depends(current_user), db=Depends(get_d
 
 
 @router.delete("/palm/{reading_id}", dependencies=[Depends(rate_limit("write"))])
-async def delete_palm(reading_id: int, user=Depends(current_user), db=Depends(get_db)):
+async def delete_palm(reading_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
     from ...repo import palm as palm_repo
     if not await palm_repo.delete_reading(db, reading_id, user["tg_id"]):
         raise HTTPException(404, "чтение ладони не найдено")

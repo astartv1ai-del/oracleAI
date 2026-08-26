@@ -38,6 +38,12 @@ def _spawn(coro) -> None:
     task.add_done_callback(_background.discard)
 
 
+async def drain_background() -> None:
+    """Wait for memory extraction tasks before the owning DB closes."""
+    if _background:
+        await asyncio.gather(*_background, return_exceptions=True)
+
+
 class ChatDenied(Exception):
     """Доступ к ответу не выдан. `verdict` объясняет причину."""
 
