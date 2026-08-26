@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -31,7 +32,16 @@ log = logging.getLogger("oracle.db")
 
 # Ждать освободившуюся блокировку до 15 секунд: столько заведомо хватает на любую
 # нашу запись, а падать с «database is locked» на пользовательском запросе нельзя.
-BUSY_TIMEOUT_MS = 15_000
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    try:
+        return max(int(os.getenv(name, str(default))), minimum)
+    except (TypeError, ValueError):
+        return default
+
+
+BUSY_TIMEOUT_MS = _env_int("SQLITE_BUSY_TIMEOUT_MS", 15_000)
+WAL_AUTOCHECKPOINT = _env_int("SQLITE_WAL_AUTOCHECKPOINT", 2_000)
+CACHE_SIZE_KB = _env_int("SQLITE_CACHE_SIZE_KB", 16_000)
 
 PRAGMAS = (
     "PRAGMA journal_mode=WAL",
@@ -39,8 +49,8 @@ PRAGMAS = (
     f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}",
     "PRAGMA foreign_keys=ON",
     "PRAGMA temp_store=MEMORY",
-    "PRAGMA wal_autocheckpoint=2000", # WAL-кеш копится до 2000 страниц (~16 МБ)
-    "PRAGMA cache_size=-16000",       # ~16 МБ страничного кеша
+    f"PRAGMA wal_autocheckpoint={WAL_AUTOCHECKPOINT}",
+    f"PRAGMA cache_size=-{CACHE_SIZE_KB}",
 )
 
 _LOCK_ATTR = "_oracle_write_lock"
@@ -50,8 +60,23 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def connect(path: str | None = None, *, seed: bool = True) -> aiosqlite.Connection:
-    """Открывает соединение, приводит БД к актуальной структуре и отдаёт её."""
+async def connect(path: str | None = None, *, seed: bool = True):
+    """Открывает PostgreSQL из DATABASE_URL или SQLite при явном path/fallback."""
+    if path is None and settings.database_url:
+        from .pg_schema import POSTGRES_BOOTSTRAP, POSTGRES_INDEXES, POSTGRES_TABLES
+        from .postgres import PostgresDatabase
+
+        db = PostgresDatabase(settings.database_url)
+        await db.executescript(POSTGRES_BOOTSTRAP)
+        await db.executescript(POSTGRES_TABLES)
+        await db.executescript(POSTGRES_INDEXES)
+        await mig.apply_postgres_data_migrations(db)
+        if seed:
+            from .seed import seed_defaults
+            async with db.transaction():
+                await seed_defaults(db)
+        return db
+
     db = await aiosqlite.connect(path or settings.db_path)
     db.row_factory = aiosqlite.Row
     for pragma in PRAGMAS:
@@ -63,6 +88,7 @@ async def connect(path: str | None = None, *, seed: bool = True) -> aiosqlite.Co
     await mig.reconcile_columns(db)
     await db.executescript(INDEXES)
     await mig.apply_data_migrations(db)
+    await db.execute("PRAGMA optimize")
     await db.commit()
 
     if seed:
@@ -91,6 +117,11 @@ async def transaction(db):
     `transaction()`. Владельца храним задачей, а не флагом: иначе параллельная
     задача увидела бы «уже внутри» и вклинилась бы в чужую транзакцию.
     """
+    if getattr(db, "is_postgres", False):
+        async with db.transaction():
+            yield db
+        return
+
     owner = getattr(db, "_in_txn", None)
     if owner is asyncio.current_task():
         yield db
@@ -113,6 +144,8 @@ async def transaction(db):
 
 async def healthcheck(db) -> dict:
     """Состояние БД для /health и админки."""
+    if getattr(db, "is_postgres", False):
+        return await db.healthcheck()
     async def scalar(sql: str, *args):
         cur = await db.execute(sql, args)
         row = await cur.fetchone()

@@ -212,8 +212,9 @@ async def get_forecast(db, tg_id: int, day: str, *, lang: str = "ru") -> str | N
 async def save_forecast(db, tg_id: int, day: str, text: str, *, lang: str = "ru") -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO forecasts(tg_id, day, text, lang, created_at) "
-            "VALUES(?,?,?,?,?)", (tg_id, day, text, lang, utcnow()))
+            "INSERT INTO forecasts(tg_id, day, text, lang, created_at) "
+            "VALUES(?,?,?,?,?) ON CONFLICT(tg_id, day, lang) DO UPDATE SET "
+            "text=excluded.text, created_at=excluded.created_at", (tg_id, day, text, lang, utcnow()))
 
 
 async def save_report(db, tg_id: int, kind: str, title: str, body: str, *,

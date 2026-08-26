@@ -92,13 +92,15 @@ async def _scalar(db, sql: str, *args):
     return (row[0] if row else 0) or 0
 
 
-async def prune_analytics(db, days: int = 120) -> int:
-    """Apply bounded retention to operational and privacy-sensitive logs.
+async def prune_analytics(db, days: int = 120, *, batch_size: int = 5_000) -> int:
+    """Apply bounded retention in small write transactions.
 
     Product analytics and LLM cost detail use the requested rolling window.
     Crisis incidents, provider evidence and admin audit have explicit longer or
-    shorter windows so their retention does not accidentally follow one metric.
+    shorter windows. Batch deletes reduce writer-lock duration on large tables.
     """
+    if batch_size < 1:
+        raise ValueError("batch_size должен быть положительным")
     windows = {
         "events": max(1, days),
         "llm_usage": max(1, days),
@@ -106,14 +108,28 @@ async def prune_analytics(db, days: int = 120) -> int:
         "webhook_events": max(max(1, days), 180),
         "admin_audit": max(max(1, days), 365),
     }
+    primary_keys = {
+        "events": "id",
+        "llm_usage": "id",
+        "safety_events": "id",
+        "webhook_events": "event_id",
+        "admin_audit": "id",
+    }
     total = 0
-    async with transaction(db):
-        for table, table_days in windows.items():
-            before = (datetime.now(timezone.utc)
-                      - timedelta(days=table_days)).isoformat()
-            cur = await db.execute(f"DELETE FROM {table} WHERE created_at < ?",
-                                   (before,))
-            total += cur.rowcount or 0
+    for table, table_days in windows.items():
+        key = primary_keys[table]
+        before = (datetime.now(timezone.utc)
+                  - timedelta(days=table_days)).isoformat()
+        while True:
+            async with transaction(db):
+                cur = await db.execute(
+                    f"DELETE FROM {table} WHERE {key} IN ("
+                    f"SELECT {key} FROM {table} WHERE created_at < ? "
+                    f"ORDER BY {key} LIMIT ?)", (before, batch_size))
+                removed = cur.rowcount or 0
+            total += removed
+            if removed < batch_size:
+                break
     return total
 
 
@@ -277,6 +293,12 @@ async def timeseries(db, days: int = 30) -> list[dict]:
 async def retention(db, cohort_days: int = 7) -> list[dict]:
     """Удержание по недельным когортам: доля вернувшихся на день 1/3/7/14/30."""
     out = []
+    age_days_sql = (
+        "EXTRACT(EPOCH FROM (e.created_at::timestamptz "
+        "- u.created_at::timestamptz)) / 86400"
+        if getattr(db, "is_postgres", False)
+        else "julianday(e.created_at) - julianday(u.created_at)"
+    )
     for week in range(cohort_days):
         start = (date.today() - timedelta(days=(week + 1) * 7)).isoformat()
         end = (date.today() - timedelta(days=week * 7)).isoformat()
@@ -289,10 +311,10 @@ async def retention(db, cohort_days: int = 7) -> list[dict]:
         for day_n in (1, 3, 7, 14, 30):
             back = await _scalar(
                 db,
-                "SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
-                "ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=? "
-                "AND substr(u.created_at,1,10)<? "
-                "AND julianday(e.created_at) - julianday(u.created_at) BETWEEN ? AND ?",
+                f"SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
+                f"ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=? "
+                f"AND substr(u.created_at,1,10)<? "
+                f"AND {age_days_sql} BETWEEN ? AND ?",
                 start, end, day_n, day_n + 1)
             row[f"d{day_n}"] = round(back * 100 / size, 1)
         out.append(row)
@@ -504,6 +526,7 @@ async def rollup_day(db, day: str | None = None) -> dict:
     }
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO daily_stats(day, stats_json, updated_at) "
-            "VALUES(?,?,?)", (day, json.dumps(stats, ensure_ascii=False), utcnow()))
+            "INSERT INTO daily_stats(day, stats_json, updated_at) VALUES(?,?,?) "
+            "ON CONFLICT(day) DO UPDATE SET stats_json=excluded.stats_json, "
+            "updated_at=excluded.updated_at", (day, json.dumps(stats, ensure_ascii=False), utcnow()))
     return stats

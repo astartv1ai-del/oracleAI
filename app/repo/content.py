@@ -28,8 +28,10 @@ async def get_setting(db, key: str, default=None):
 async def set_setting(db, key: str, value, admin_id: int | None = None) -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO settings(key, value_json, updated_at, updated_by) "
-            "VALUES(?,?,?,?)",
+            "INSERT INTO settings(key, value_json, updated_at, updated_by) "
+            "VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET "
+            "value_json=excluded.value_json, updated_at=excluded.updated_at, "
+            "updated_by=excluded.updated_by",
             (key, json.dumps(value, ensure_ascii=False), utcnow(), admin_id))
 
 

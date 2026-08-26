@@ -234,6 +234,80 @@ async def _m_forecasts_language_key(db) -> None:
     await db.commit()
 
 
+async def _m_legacy_messages_to_default_threads(db) -> int:
+    """Мягко переносит старые сообщения в активный дефолтный тред пользователя.
+
+    Legacy-сообщения создавались до сессионной модели и имеют ``thread_id IS NULL``.
+    Для каждого существующего пользователя переиспользуем его активный oracle-тред
+    или создаём один с понятным названием. Orphan-строки без users пропускаем.
+
+    Savepoint нужен потому, что apply_data_migrations может выполнять несколько
+    data-migrations в одной внешней транзакции: частичный перенос нельзя оставлять,
+    если один из SQL-шагов завершился ошибкой.
+    """
+    savepoint = "legacy_messages_to_default_threads"
+    await db.execute(f"SAVEPOINT {savepoint}")
+    moved = 0
+    try:
+        cur = await db.execute(
+            "SELECT tg_id FROM messages "
+            "WHERE thread_id IS NULL AND tg_id IS NOT NULL GROUP BY tg_id")
+        legacy_users = [row[0] for row in await cur.fetchall()]
+
+        for tg_id in legacy_users:
+            cur = await db.execute("SELECT 1 FROM users WHERE tg_id=?", (tg_id,))
+            if await cur.fetchone() is None:
+                continue
+
+            cur = await db.execute(
+                "SELECT id FROM threads WHERE tg_id=? AND agent='oracle' "
+                "AND archived=0 ORDER BY id DESC LIMIT 1", (tg_id,))
+            thread = await cur.fetchone()
+            if thread:
+                thread_id = thread[0]
+            else:
+                now = utcnow_str()
+                cur = await db.execute(
+                    "INSERT INTO threads(tg_id, agent, title, msg_count, "
+                    "created_at, last_at) VALUES(?,?,?,?,?,?)",
+                    (tg_id, "oracle", "Личный Оракул", 0, now, now),
+                )
+                thread_id = cur.lastrowid
+
+            cur = await db.execute(
+                "SELECT COUNT(*) FROM messages "
+                "WHERE tg_id=? AND thread_id IS NULL", (tg_id,))
+            pending = (await cur.fetchone())[0]
+            if not pending:
+                continue
+
+            await db.execute(
+                "UPDATE messages SET thread_id=? "
+                "WHERE tg_id=? AND thread_id IS NULL", (thread_id, tg_id))
+            moved += pending
+
+            await db.execute(
+                "UPDATE threads SET "
+                "msg_count=(SELECT COUNT(*) FROM messages WHERE thread_id=?), "
+                "last_text=(SELECT text FROM messages WHERE thread_id=? "
+                "ORDER BY id DESC LIMIT 1), "
+                "last_at=(SELECT created_at FROM messages WHERE thread_id=? "
+                "ORDER BY id DESC LIMIT 1), "
+                "title=COALESCE(NULLIF(title, ''), 'Личный Оракул') "
+                "WHERE id=?",
+                (thread_id, thread_id, thread_id, thread_id),
+            )
+
+        await db.execute(f"RELEASE SAVEPOINT {savepoint}")
+        if moved:
+            log.info("legacy messages migrated to default threads: %d", moved)
+        return moved
+    except Exception:
+        await db.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+        await db.execute(f"RELEASE SAVEPOINT {savepoint}")
+        raise
+
+
 async def _m_reports_append_only(db) -> None:
     """Preserve regenerated reports as history instead of replacing old rows.
 
@@ -300,6 +374,7 @@ DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_07_events_day_backfill", _m_events_day_backfill),
     ("2026_07_users_sub_level_codes", _m_users_sub_level_codes),
     ("2026_08_forecasts_language_key", _m_forecasts_language_key),
+    ("2026_08_legacy_messages_to_default_threads", _m_legacy_messages_to_default_threads),
     ("2026_08_reports_append_only", _m_reports_append_only),
     ("2026_08_memory_explicit_opt_in", _m_memory_explicit_opt_in),
 ]
@@ -341,4 +416,36 @@ async def apply_data_migrations(db) -> list[str]:
     if applied:
         await db.commit()
         log.info("миграция данных: %s", ", ".join(applied))
+    return applied
+
+
+async def apply_postgres_data_migrations(db) -> list[str]:
+    """Apply portable data migrations on the canonical PostgreSQL schema.
+
+    PostgreSQL starts from the complete schema, so the SQLite-only forecasts table
+    rebuild is skipped. All data backfills, including referrals, event day,
+    subscription codes and legacy chat threads, remain valid and are applied by
+    the same named tracker used by the importer.
+    """
+    await db.executescript(TRACKER)
+    skipped = {"2026_08_forecasts_language_key"}
+    cur = await db.execute("SELECT name FROM migrations_applied")
+    done = {row[0] for row in await cur.fetchall()}
+    applied: list[str] = []
+    for name, fn in DATA_MIGRATIONS:
+        if name in skipped or name in done:
+            continue
+        async with db.transaction():
+            cur = await db.execute(
+                "SELECT 1 FROM migrations_applied WHERE name=?", (name,))
+            if await cur.fetchone():
+                done.add(name)
+                continue
+            await fn(db)
+            await db.execute(
+                "INSERT INTO migrations_applied(name, applied_at) VALUES(?,?) "
+                "ON CONFLICT(name) DO NOTHING", (name, utcnow_str()))
+        applied.append(name)
+    if applied:
+        log.info("postgres data migrations: %s", ", ".join(applied))
     return applied

@@ -19,11 +19,12 @@ DATA_DIR = Path(os.getenv("DATA_DIR") or (ROOT / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _int(name: str, default: int) -> int:
+def _int(name: str, default: int, *, minimum: int | None = None) -> int:
     try:
-        return int(os.getenv(name, "") or default)
+        value = int(os.getenv(name, "") or default)
     except ValueError:
-        return default
+        value = default
+    return max(value, minimum) if minimum is not None else value
 
 
 #: Не `frozen=True`: тесты и админские сценарии подменяют отдельные поля на
@@ -96,6 +97,15 @@ class Settings:
     log_file: str = os.getenv("LOG_FILE", "")
     release_id: str = os.getenv("RELEASE_ID", "local")
     db_path: str = os.getenv("DB_PATH") or str(DATA_DIR / "oracle.db")
+    database_url: str = os.getenv("DATABASE_URL", "").strip()
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0").strip()
+    celery_enabled: bool = os.getenv("CELERY_ENABLED", "0") == "1"
+    celery_task_always_eager: bool = os.getenv("CELERY_TASK_ALWAYS_EAGER", "0") == "1"
+    celery_task_time_limit: int = _int("CELERY_TASK_TIME_LIMIT", 300)
+    celery_task_soft_time_limit: int = _int("CELERY_TASK_SOFT_TIME_LIMIT", 270)
+    celery_visibility_timeout: int = _int("CELERY_VISIBILITY_TIMEOUT", 3600)
+    celery_worker_prefetch: int = _int("CELERY_WORKER_PREFETCH", 1)
+    celery_max_retries: int = _int("CELERY_MAX_RETRIES", 3, minimum=0)
     public_url: str = os.getenv("PUBLIC_URL", "").rstrip("/")
 
     # ── продуктовые значения по умолчанию ──

@@ -484,29 +484,60 @@ CREATE TABLE IF NOT EXISTS broadcast_targets (
     claimed_at   TEXT,                        -- момент захвата (G9: атомарный claim)
     PRIMARY KEY (broadcast_id, tg_id)
 );
-"""
+CREATE TABLE IF NOT EXISTS task_jobs (
+    id           TEXT PRIMARY KEY,
+    kind         TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'queued', -- queued|running|succeeded|failed|retry
+    tg_id        INTEGER,
+    payload_json TEXT,
+    result_json  TEXT,
+    error        TEXT,
+    attempts     INTEGER NOT NULL DEFAULT 0,
+    available_at TEXT,
+    started_at   TEXT,
+    finished_at  TEXT,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
+    """
 
 INDEXES = """
-CREATE INDEX IF NOT EXISTS idx_msg_user      ON messages(tg_id, is_question, created_at);
-CREATE INDEX IF NOT EXISTS idx_msg_created   ON messages(created_at);
-CREATE INDEX IF NOT EXISTS idx_msg_thread    ON messages(thread_id, id);
-CREATE INDEX IF NOT EXISTS idx_thread_user   ON threads(tg_id, archived, last_at);
+CREATE INDEX IF NOT EXISTS idx_msg_user            ON messages(tg_id, is_question, created_at);
+CREATE INDEX IF NOT EXISTS idx_msg_created         ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_msg_thread          ON messages(thread_id, id);
+CREATE INDEX IF NOT EXISTS idx_msg_user_id          ON messages(tg_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_msg_user_thread_id   ON messages(tg_id, thread_id, id);
+CREATE INDEX IF NOT EXISTS idx_msg_user_question_id ON messages(tg_id, is_question, id DESC);
+CREATE INDEX IF NOT EXISTS idx_thread_user         ON threads(tg_id, archived, last_at);
+CREATE INDEX IF NOT EXISTS idx_thread_user_agent   ON threads(tg_id, agent, archived, id DESC);
+CREATE INDEX IF NOT EXISTS idx_thread_user_recent  ON threads(
+    tg_id, archived, COALESCE(last_at, created_at) DESC, id DESC
+);
 CREATE INDEX IF NOT EXISTS idx_reports_user  ON reports(tg_id, kind);
-CREATE INDEX IF NOT EXISTS idx_mem_user      ON memories(tg_id);
-CREATE INDEX IF NOT EXISTS idx_diary_user    ON diary(tg_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_mem_user        ON memories(tg_id);
+CREATE INDEX IF NOT EXISTS idx_mem_user_rank   ON memories(tg_id, weight DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_diary_user      ON diary(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_read_user     ON tarot_readings(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_read_created  ON tarot_readings(created_at);
 CREATE INDEX IF NOT EXISTS idx_palm_user     ON palm_readings(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_name   ON events(name, day);
-CREATE INDEX IF NOT EXISTS idx_events_user   ON events(tg_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_events_day    ON events(day);
-CREATE INDEX IF NOT EXISTS idx_orders_user   ON orders(tg_id, status, created_at);
-CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at);
-CREATE INDEX IF NOT EXISTS idx_pay_created   ON payments(created_at);
+CREATE INDEX IF NOT EXISTS idx_events_user       ON events(tg_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_events_user_name  ON events(tg_id, name);
+CREATE INDEX IF NOT EXISTS idx_events_day        ON events(day);
+CREATE INDEX IF NOT EXISTS idx_task_jobs_status_available ON task_jobs(status, available_at);
+CREATE INDEX IF NOT EXISTS idx_task_jobs_user_created ON task_jobs(tg_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_created_name
+    ON events(created_at, name, tg_id);
+CREATE INDEX IF NOT EXISTS idx_orders_user        ON orders(tg_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_status      ON orders(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_status_paid ON orders(status, paid_at);
+CREATE INDEX IF NOT EXISTS idx_pay_created        ON payments(created_at);
+CREATE INDEX IF NOT EXISTS idx_pay_status_created ON payments(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_ent_user      ON entitlements(tg_id, kind, code);
 CREATE INDEX IF NOT EXISTS idx_ledger_user   ON crystal_ledger(tg_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_users_seen    ON users(last_seen);
-CREATE INDEX IF NOT EXISTS idx_users_created ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_seen         ON users(last_seen);
+CREATE INDEX IF NOT EXISTS idx_users_created      ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_created_source ON users(created_at, source);
 CREATE INDEX IF NOT EXISTS idx_users_sub     ON users(sub_until);
 CREATE INDEX IF NOT EXISTS idx_partners_user ON partners(tg_id);
 CREATE INDEX IF NOT EXISTS idx_syn_user      ON synastry_cache(tg_id, partner_key);
@@ -515,6 +546,7 @@ CREATE INDEX IF NOT EXISTS idx_ref_referrer  ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_ref_invitee   ON referrals(invitee_id, level);
 CREATE INDEX IF NOT EXISTS idx_promo_batch   ON promo_codes(batch);
 CREATE INDEX IF NOT EXISTS idx_promo_red     ON promo_redemptions(code, tg_id);
+CREATE INDEX IF NOT EXISTS idx_promo_created  ON promo_redemptions(created_at);
 CREATE INDEX IF NOT EXISTS idx_pay_order     ON payments(order_id);
 CREATE INDEX IF NOT EXISTS idx_bt_status     ON broadcast_targets(broadcast_id, status);
 CREATE INDEX IF NOT EXISTS idx_usage_day     ON llm_usage(day, purpose);
