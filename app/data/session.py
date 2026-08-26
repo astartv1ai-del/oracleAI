@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -31,7 +32,16 @@ log = logging.getLogger("oracle.db")
 
 # Ждать освободившуюся блокировку до 15 секунд: столько заведомо хватает на любую
 # нашу запись, а падать с «database is locked» на пользовательском запросе нельзя.
-BUSY_TIMEOUT_MS = 15_000
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    try:
+        return max(int(os.getenv(name, str(default))), minimum)
+    except (TypeError, ValueError):
+        return default
+
+
+BUSY_TIMEOUT_MS = _env_int("SQLITE_BUSY_TIMEOUT_MS", 15_000)
+WAL_AUTOCHECKPOINT = _env_int("SQLITE_WAL_AUTOCHECKPOINT", 2_000)
+CACHE_SIZE_KB = _env_int("SQLITE_CACHE_SIZE_KB", 16_000)
 
 PRAGMAS = (
     "PRAGMA journal_mode=WAL",
@@ -39,8 +49,8 @@ PRAGMAS = (
     f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}",
     "PRAGMA foreign_keys=ON",
     "PRAGMA temp_store=MEMORY",
-    "PRAGMA wal_autocheckpoint=2000", # WAL-кеш копится до 2000 страниц (~16 МБ)
-    "PRAGMA cache_size=-16000",       # ~16 МБ страничного кеша
+    f"PRAGMA wal_autocheckpoint={WAL_AUTOCHECKPOINT}",
+    f"PRAGMA cache_size=-{CACHE_SIZE_KB}",
 )
 
 _LOCK_ATTR = "_oracle_write_lock"
@@ -63,6 +73,7 @@ async def connect(path: str | None = None, *, seed: bool = True) -> aiosqlite.Co
     await mig.reconcile_columns(db)
     await db.executescript(INDEXES)
     await mig.apply_data_migrations(db)
+    await db.execute("PRAGMA optimize")
     await db.commit()
 
     if seed:

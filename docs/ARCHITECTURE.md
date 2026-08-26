@@ -100,6 +100,8 @@ Frontend намеренно не использует bundler: `miniapp/index.ht
 
 SQLite stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. DDL is defined in `app/data/schema.py`; changes to existing tables use `app/data/migrations.py`. Code must access `sqlite3.Row` by key/index and not call `.get()`.
 
+The legacy `messages.thread_id IS NULL` migration is idempotent: existing users are attached to an active default `oracle` thread, while orphan rows without a matching user are preserved. Composite indexes cover chat history by user/thread/agent and recency. Analytics, payment, event and memory-ranking indexes support the main milestone queries; `prune_analytics()` removes old events and LLM usage in batches. Connection startup runs `PRAGMA optimize`, and `SQLITE_BUSY_TIMEOUT_MS`, `SQLITE_WAL_AUTOCHECKPOINT` and `SQLITE_CACHE_SIZE_KB` are configurable through the environment.
+
 ## Operations and trust boundaries
 
 Telegram `initData`, browser input, API payloads, LLM output and SQLite records are separate trust zones. Server-side validation, owner authorization, rate limits, escaping, privacy guards and safe error mapping are mandatory. `scripts/selfcheck.py`, `scripts/release_gate.py`, CI and the tests directory provide automated checks; generated output belongs outside the source tree.

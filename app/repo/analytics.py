@@ -92,13 +92,15 @@ async def _scalar(db, sql: str, *args):
     return (row[0] if row else 0) or 0
 
 
-async def prune_analytics(db, days: int = 120) -> int:
-    """Apply bounded retention to operational and privacy-sensitive logs.
+async def prune_analytics(db, days: int = 120, *, batch_size: int = 5_000) -> int:
+    """Apply bounded retention in small write transactions.
 
     Product analytics and LLM cost detail use the requested rolling window.
     Crisis incidents, provider evidence and admin audit have explicit longer or
-    shorter windows so their retention does not accidentally follow one metric.
+    shorter windows. Batch deletes reduce writer-lock duration on large tables.
     """
+    if batch_size < 1:
+        raise ValueError("batch_size должен быть положительным")
     windows = {
         "events": max(1, days),
         "llm_usage": max(1, days),
@@ -107,13 +109,19 @@ async def prune_analytics(db, days: int = 120) -> int:
         "admin_audit": max(max(1, days), 365),
     }
     total = 0
-    async with transaction(db):
-        for table, table_days in windows.items():
-            before = (datetime.now(timezone.utc)
-                      - timedelta(days=table_days)).isoformat()
-            cur = await db.execute(f"DELETE FROM {table} WHERE created_at < ?",
-                                   (before,))
-            total += cur.rowcount or 0
+    for table, table_days in windows.items():
+        before = (datetime.now(timezone.utc)
+                  - timedelta(days=table_days)).isoformat()
+        while True:
+            async with transaction(db):
+                cur = await db.execute(
+                    f"DELETE FROM {table} WHERE id IN ("
+                    f"SELECT id FROM {table} WHERE created_at < ? "
+                    "ORDER BY id LIMIT ?)", (before, batch_size))
+                removed = cur.rowcount or 0
+            total += removed
+            if removed < batch_size:
+                break
     return total
 
 

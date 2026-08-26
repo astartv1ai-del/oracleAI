@@ -242,8 +242,41 @@ async def test_g13_missing_indexes_exist(db):
         "idx_msg_user", "idx_msg_thread", "idx_msg_user_id",
         "idx_msg_user_thread_id", "idx_msg_user_question_id",
         "idx_thread_user", "idx_thread_user_agent", "idx_thread_user_recent",
+        "idx_mem_user_rank", "idx_events_user_name", "idx_events_created_name",
+        "idx_orders_status_paid", "idx_pay_status_created", "idx_users_created_source",
+        "idx_promo_created",
     ):
         assert required in indexes, required
+
+
+async def test_prune_analytics_uses_small_batches(db):
+    from app.repo import analytics
+
+    await db.executemany(
+        "INSERT INTO events(tg_id, name, day, created_at) VALUES(?,?,?,?)",
+        [(1, "old", "2020-01-01", "2020-01-01T00:00:00+00:00") for _ in range(5)]
+        + [(1, "new", "2099-01-01", "2099-01-01T00:00:00+00:00")],
+    )
+    await db.executemany(
+        "INSERT INTO llm_usage(tg_id, purpose, created_at) VALUES(?,?,?)",
+        [(1, "old", "2020-01-01T00:00:00+00:00") for _ in range(5)]
+        + [(1, "new", "2099-01-01T00:00:00+00:00")],
+    )
+    await db.commit()
+
+    assert await analytics.prune_analytics(db, days=120, batch_size=2) == 10
+    assert await analytics.prune_analytics(db, days=120, batch_size=2) == 0
+    with pytest.raises(ValueError):
+        await analytics.prune_analytics(db, days=120, batch_size=0)
+
+    cur = await db.execute("SELECT COUNT(*) c FROM events WHERE name='old'")
+    assert (await cur.fetchone())["c"] == 0
+    cur = await db.execute("SELECT COUNT(*) c FROM events WHERE name='new'")
+    assert (await cur.fetchone())["c"] == 1
+    cur = await db.execute("SELECT COUNT(*) c FROM llm_usage WHERE purpose='old'")
+    assert (await cur.fetchone())["c"] == 0
+    cur = await db.execute("SELECT COUNT(*) c FROM llm_usage WHERE purpose='new'")
+    assert (await cur.fetchone())["c"] == 1
 
 
 async def test_overview_dau_wau_on_day(db):
