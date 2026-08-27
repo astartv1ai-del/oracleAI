@@ -10,9 +10,12 @@ __pycache__/
 !/data/llm_eval/
 !/data/llm_eval/*.jsonl
 !/data/palm_golden/
-!/data/palm_golden/*.json
-!/data/palm_golden/*.jsonl
-!/data/palm_golden/*.md
+!/data/palm_golden/README.md
+!/data/palm_golden/schema.json
+!/data/palm_golden/manifest.template.jsonl
+!/data/palm_golden/predictions.template.jsonl
+!/data/palm_golden/reviewer_registry.schema.json
+!/data/palm_golden/reviewer_registry.template.json
 # Local agent/index state — not project source
 .omc/
 .codegraph/
