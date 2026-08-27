@@ -36,7 +36,7 @@
   left: 5px;
   width: calc((100% - 10px - (var(--nav-count, 4) - 1) * 4px) / var(--nav-count, 4));
   transform: translateX(calc(var(--nav-index, 0) * (100% + 4px)));
-  transition: transform .38s cubic-bezier(.34, 1.3, .5, 1);
+  transition: transform var(--motion-base) var(--ease);
   z-index: 0;
 }
 .main-nav::before {

@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "artifacts" / "visual-qa"
-BASE_URL = "http://127.0.0.1:8080/?dev_user=10001&qa=visual"
+BASE_URL = "http://127.0.0.1:8080/?dev_user=10001&qa=1&qa_view=home"
 VIEWPORTS = {
     "mobile-375": (375, 812),
     "tablet-768": (768, 1024),
@@ -83,20 +83,23 @@ def capture() -> int:
                 )
                 context.add_init_script(
                     "localStorage.setItem('oracle_lang', %r); "
-                    "localStorage.removeItem('oracle_intro_seen'); "
-                    "localStorage.removeItem('oracle_age_confirmed');" % locale_key
+                    "localStorage.setItem('oracle_intro_seen', '1'); "
+                    "localStorage.setItem('oracle_chat_guide_v2', '1');" % locale_key
                 )
                 page = context.new_page()
-                page.goto(BASE_URL, wait_until="networkidle")
-                page.screenshot(path=str(OUT / f"{locale_key}-{viewport_name}-age-gate.png"), full_page=True)
-                first_click(page, "[data-age-accept]")
-                first_click(page, "[data-intro-skip]")
+                page.goto(BASE_URL, wait_until="domcontentloaded")
+                page.wait_for_selector('#app-main .screen, #app-main [data-auth-required], .soft-empty', timeout=15000)
+                page.wait_for_timeout(400)
                 page.screenshot(path=str(OUT / f"{locale_key}-{viewport_name}-home.png"), full_page=True)
                 states = {"home": contract(page)}
-                if first_click(page, '.nav-btn[data-screen="chat"], .nav-btn:nth-child(2)'):
-                    page.screenshot(path=str(OUT / f"{locale_key}-{viewport_name}-chat.png"), full_page=True)
-                    states["chat"] = contract(page)
-                if first_click(page, '.nav-btn[data-screen="profile"], .nav-btn:nth-child(3)'):
+                if first_click(page, '.nav-btn[data-goto="hub"]'):
+                    page.screenshot(path=str(OUT / f"{locale_key}-{viewport_name}-hub.png"), full_page=True)
+                    states["hub"] = contract(page)
+                    if first_click(page, '.agent-card [data-act="chat"]'):
+                        page.wait_for_timeout(400)
+                        page.screenshot(path=str(OUT / f"{locale_key}-{viewport_name}-chat.png"), full_page=True)
+                        states["chat"] = contract(page)
+                if first_click(page, '.nav-btn[data-goto="profile"]'):
                     page.screenshot(path=str(OUT / f"{locale_key}-{viewport_name}-profile.png"), full_page=True)
                     states["profile"] = contract(page)
                     for tab_name in ("chart", "history", "memory"):
