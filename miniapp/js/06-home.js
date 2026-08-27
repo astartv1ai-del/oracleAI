@@ -43,9 +43,9 @@
           </div>
           <div class="welcome-card__prompt"><span class="welcome-card__prompt-mark" aria-hidden="true">↗</span><span>${homeT('welcomePrompt')}</span><span class="welcome-card__prompt-line" aria-hidden="true"></span></div>
           <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="${homeT('ritualCta')}"><span>${homeT('ritualCta')}</span><span aria-hidden="true">→</span></button>
+          ${seasonalVariant === 'seasonal' ? `<div class="welcome-card__season" aria-label="${homeT('seasonalAria')}"><span class="welcome-card__season-sigil" aria-hidden="true">✦</span><div><span>${homeT('seasonalKicker')}</span><b>${seasonal.title}</b><p>${seasonal.copy}</p></div></div>` : ''}
         </section>
 
-        ${seasonalVariant === 'seasonal' ? `<section class="seasonal-moment" aria-label="${homeT('seasonalAria')}"><div class="seasonal-moment__sigil" aria-hidden="true">✦</div><div><div class="section-kicker">${homeT('seasonalKicker')}</div><h2>${seasonal.title}</h2><p>${seasonal.copy}</p></div></section>` : ''}
         <section class="daily-ritual daily-ritual--${ritualCompleted === 2 ? 'complete' : ritualCompleted ? 'in-progress' : 'begin'}" aria-label="${homeT('rhythmAria')}">
           <div class="daily-ritual-head"><div><div class="section-kicker">${homeT('rhythmKicker')}</div><h2>${homeT('rhythmTitle')}</h2></div><output class="daily-ritual-score" aria-label="${homeFormat('stepsAria', { count: ritualCompleted })}">${ritualCompleted}<span>/2</span></output></div>
           <div class="daily-ritual-progress" aria-hidden="true"><i style="--ritual-progress:${ritualCompleted / 2}"></i></div>
