@@ -1,7 +1,8 @@
 # OracleAI — детальный отчёт по мобильной/десктопной версии, контрастности и a11y
 
 **Дата проверки:** 27 августа 2026 года.  
-**Коммит:** `0323801` — `feat: complete visual QA polish pass`.  
+**Базовый коммит:** `0323801` — `feat: complete visual QA polish pass`.
+**Расширенный аудит:** `f435951` — `feat: extend wcag and desktop visual QA`.
 **Проверенные локали:** RU и EN.  
 **Проверенные ширины:** 375px, 768px, 1440px и 1920px.  
 **Проверенные состояния:** age gate, onboarding, Сегодня, Диалоги, чат проводника, Профиль, вкладки Chart/History/Memory, memory modal и Tarot entry.
