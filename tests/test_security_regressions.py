@@ -62,6 +62,43 @@ async def test_diary_tool_is_blocked_when_memory_off(db, user):
     assert "выключена" in result
 
 
+def test_production_config_accepts_safe_runtime_configuration(monkeypatch):
+    from app.api.main import _validate_production_config
+
+    for name, value in {
+        "APP_ENV": "production",
+        "DEV_MODE": "0",
+        "DATABASE_URL": "postgresql+asyncpg://oracle:secret@postgres:5432/oracle",
+        "POSTGRES_PASSWORD": "a-long-random-production-secret",
+        "REDIS_URL": "redis://redis:6379/0",
+        "CELERY_ENABLED": "1",
+    }.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "bot_token", "test-token")
+    monkeypatch.setattr(settings, "admin_id", 1001)
+    monkeypatch.setattr(settings, "webapp_url", "https://oracle.example")
+    monkeypatch.setattr(settings, "release_id", "2026.08.27-test")
+    _validate_production_config()
+
+
+def test_production_config_fails_closed_on_unsafe_database(monkeypatch):
+    from app.api.main import _validate_production_config
+
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///oracle.db")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "oracle")
+    monkeypatch.setenv("REDIS_URL", "redis://redis:6379/0")
+    monkeypatch.setenv("CELERY_ENABLED", "1")
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "bot_token", "test-token")
+    monkeypatch.setattr(settings, "admin_id", 1001)
+    monkeypatch.setattr(settings, "webapp_url", "https://oracle.example")
+    monkeypatch.setattr(settings, "release_id", "2026.08.27-test")
+    with pytest.raises(RuntimeError, match="PostgreSQL|шаблонным"):
+        _validate_production_config()
+
+
 def test_production_config_fails_closed(monkeypatch):
     from app.api.main import _validate_production_config
 

@@ -161,11 +161,11 @@ async def current_admin(db=Depends(get_db),
         raise HTTPException(401, "подпись Telegram не подтверждена")
     role = await admin_repo.resolve_role(db, tg_id)
     if not role:
-        log.warning("попытка входа в админку: %s", tg_id)
+        log.warning("попытка входа в админку без роли")
         raise HTTPException(403, "нет доступа к панели")
     user = await users_repo.get(db, tg_id)
     if user and user["status"] == "blocked":
-        log.warning("заблокированный администратор отклонён: %s", tg_id)
+        log.warning("заблокированный администратор отклонён")
         raise HTTPException(403, "доступ приостановлен")
     return AdminContext(tg_id, role)
 

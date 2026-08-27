@@ -277,6 +277,8 @@ class TagIn(BaseModel):
 async def add_tag(tg_id: int, item: TagIn, ctx=Depends(require("crm:write")),
                   db=Depends(get_db)):
     await crm.add_tag(db, tg_id, item.tag, ctx.tg_id)
+    await admin_repo.audit(db, ctx.tg_id, "tag.add", target=str(tg_id),
+                           payload={"tag": item.tag.strip().lower()})
     return {"tags": await crm.tags_of(db, tg_id)}
 
 
@@ -284,6 +286,8 @@ async def add_tag(tg_id: int, item: TagIn, ctx=Depends(require("crm:write")),
 async def remove_tag(tg_id: int, tag: str, ctx=Depends(require("crm:write")),
                      db=Depends(get_db)):
     await crm.remove_tag(db, tg_id, tag)
+    await admin_repo.audit(db, ctx.tg_id, "tag.delete", target=str(tg_id),
+                           payload={"tag": tag.strip().lower()})
     return {"tags": await crm.tags_of(db, tg_id)}
 
 

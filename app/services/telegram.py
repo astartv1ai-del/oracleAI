@@ -90,7 +90,7 @@ async def send_message(tg_id: int, text: str, *, html: bool = True) -> bool:
         })
         return True
     except TelegramError as e:
-        log.warning("сообщение %s не доставлено: %s", tg_id, e)
+        log.warning("сообщение не доставлено: %s", type(e).__name__)
         return False
 
 
@@ -101,7 +101,7 @@ async def refund_star_payment(tg_id: int, charge_id: str) -> bool:
                    {"user_id": tg_id, "telegram_payment_charge_id": charge_id})
         return True
     except TelegramError as e:
-        log.warning("возврат %s для %s не прошёл: %s", charge_id, tg_id, e)
+        log.warning("возврат платежа не прошёл: %s", type(e).__name__)
         return False
 
 

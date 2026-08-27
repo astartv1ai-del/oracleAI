@@ -275,7 +275,8 @@ async def apply_payment(db, payload: str, *, charge_id: str | None = None,
                                            amount_stars=amount_stars,
                                            provider=provider, currency=currency)
         if not order:
-            log.info("оплата %s уже обработана или заказ не найден", payload)
+            log.info("оплата уже обработана или заказ не найден",
+                     extra={"event": "payment_duplicate_or_missing"})
             return None
 
         meta = _order_meta(order)

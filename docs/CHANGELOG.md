@@ -6,6 +6,7 @@
 
 ### Added
 
+- Добавлены `PRODUCTION_GAUNTLET.md` и `PRODUCTION_FINAL_REVIEW.md` с полной phase matrix, локальными evidence и явными внешними release blockers.
 - Добавлены versioned JSON-контракты для natal, synastry, transit, composite и solar returns product paths.
 - Добавлены owner-scoped маршруты `POST /api/synastry`, `POST /api/transits`, `POST /api/composite` и `POST /api/returns` с явными precision-gates.
 - Mini App получил отдельные journeys «Полная синастрия», «Транзиты», «Композит пары» и «Солнечный возврат»; Astrologer agent получает deterministic evidence для всех путей.
@@ -31,6 +32,7 @@
 
 ### Security
 
+- CRM tag mutations в admin API теперь записываются в `admin_audit`; production startup/release gate блокируют шаблонные PostgreSQL credentials, неполную DB/Redis конфигурацию и отсутствующий release identity; operational logs больше не интерполируют Telegram IDs, invoice payloads, charge IDs или сырые provider errors в проверенных путях.
 - Синастрия использует только owner-scoped `partner_id`; birth data не принимаются через GET URL и не появляются в публичных cache keys.
 - Unknown-time natal charts не получают выдуманные дома, ASC, MC или колесо.
 - Transit day snapshots явно маркируются как дневные и не выдаются за точный момент Луны.

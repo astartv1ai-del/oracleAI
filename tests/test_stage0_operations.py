@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -35,6 +36,25 @@ def test_json_formatter_emits_operational_fields_without_pii():
     assert "123456789" not in payload["message"]
     assert "request_id" in payload
     assert "release_id" in payload
+
+
+def test_sensitive_logger_calls_do_not_interpolate_pii():
+    sources = (
+        ROOT / "app" / "api" / "deps.py",
+        ROOT / "app" / "bot" / "shop.py",
+        ROOT / "app" / "services" / "billing.py",
+        ROOT / "app" / "services" / "broadcast.py",
+        ROOT / "app" / "services" / "chat.py",
+        ROOT / "app" / "services" / "scheduler.py",
+        ROOT / "app" / "services" / "telegram.py",
+    )
+    forbidden = ("tg_id", "invoice_payload", "charge_id")
+    for path in sources:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if re.search(r"\blog\.(debug|info|warning|error|exception)\(", line):
+                assert not any(token in line for token in forbidden), (
+                    f"PII/payment identifier in logger call: {path}:{line}"
+                )
 
 
 def test_ops_alert_log_counts_are_windowed(tmp_path):
