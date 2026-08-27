@@ -360,3 +360,63 @@ async def test_palm_vision_invalid_json_returns_safe_needs_photo_after_three_att
     cursor = await db.execute("SELECT analysis_json FROM palm_readings WHERE id=?", (result["id"],))
     stored = await cursor.fetchone()
     assert "provider raw content" not in stored["analysis_json"]
+
+
+@pytest.mark.asyncio
+async def test_palm_upload_rejects_mismatched_signature_and_animation_before_vision(client, user, monkeypatch):
+    calls = 0
+
+    async def should_not_run(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return _vision_payload()
+
+    monkeypatch.setattr(palm_core.llm, "complete_vision", should_not_run)
+    with Image.open(FIXTURE) as source:
+        png = io.BytesIO()
+        source.save(png, format="PNG")
+    mismatch = await client.post(
+        "/api/palm", params={"dev_user": user["tg_id"]},
+        headers={"content-type": "image/jpeg"}, content=png.getvalue(),
+    )
+    assert mismatch.status_code == 400
+    assert "не совпадает" in mismatch.json()["detail"]
+
+    animated = io.BytesIO()
+    frame = Image.new("RGB", (640, 640), "white")
+    frame.save(animated, format="GIF", save_all=True, append_images=[frame.copy()], duration=100)
+    rejected = await client.post(
+        "/api/palm", params={"dev_user": user["tg_id"]},
+        headers={"content-type": "image/png"}, content=animated.getvalue(),
+    )
+    assert rejected.status_code == 400
+    assert "поддерживаются только JPEG, PNG и WebP" in rejected.json()["detail"]
+    assert calls == 0
+
+
+@pytest.mark.asyncio
+async def test_multiple_hands_fail_early_without_vision_call(client, user, monkeypatch):
+    calls = 0
+
+    async def should_not_run(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return _vision_payload()
+
+    monkeypatch.setattr(palm_core.llm, "complete_vision", should_not_run)
+    monkeypatch.setattr(palm_core.palm_landmarks, "analyze", lambda *_args, **_kwargs: {
+        "status": "multiple_hands", "hand_count": 2, "hands": [], "issues": ["multiple_hands_in_frame"],
+    })
+    monkeypatch.setattr(palm_core.palm_full_scope, "analyze", lambda *_args, **_kwargs: {
+        "status": "candidate_evidence", "view_type": "unclear", "line_catalog": [],
+    })
+    response = await client.post(
+        "/api/palm", params={"dev_user": user["tg_id"]},
+        headers={"content-type": "image/jpeg"}, content=FIXTURE.read_bytes(),
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["status"] == "needs_photo"
+    assert calls == 0
+    assert result["processing_metrics"]["vision_skipped"] is True
+    assert any("несколько рук" in item for item in result["limitations"])

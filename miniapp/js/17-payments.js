@@ -29,6 +29,7 @@
       loadFailed: 'Не удалось открыть оплату. Попробуй ещё раз.', starsUnavailable: 'Stars сейчас недоступны. Попробуй чуть позже.',
       cryptoUnavailable: 'Крипто-оплата сейчас недоступна. Попробуй чуть позже.', invoiceOpened: 'Счёт открыт в Telegram',
       paid: 'Оплата прошла — доступ уже открывается ✦', paymentPassed: 'Оплата прошла — доступ уже открывается ✦', paymentFailed: 'Telegram не подтвердил оплату. Попробуй ещё раз.',
+
       cryptoOpened: asset => `Счёт ${asset} открыт. После оплаты заказ появится в истории.`,
       statuses: { pending: 'ожидает оплаты', paid: 'оплачен', failed: 'ошибка', refunded: 'возвращён' },
     },
@@ -48,6 +49,7 @@
       loadFailed: 'Payment could not be opened. Please try again.', starsUnavailable: 'Stars are temporarily unavailable. Please try again later.',
       cryptoUnavailable: 'Crypto payments are temporarily unavailable. Please try again later.', invoiceOpened: 'Invoice opened in Telegram',
       paid: 'Payment received — access is opening ✦', paymentPassed: 'Payment confirmed — access is opening ✦', paymentFailed: 'Telegram did not confirm the payment. Please try again.',
+
       cryptoOpened: asset => `Invoice for ${asset} opened. Your order will appear in history after payment.`,
       statuses: { pending: 'pending', paid: 'paid', failed: 'failed', refunded: 'refunded' },
     },

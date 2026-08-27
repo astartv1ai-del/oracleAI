@@ -240,6 +240,8 @@ def _zone_evidence(view_type: str, candidates: list[dict[str, Any]], hand_geomet
             evidence[zone] = {**base,
                               "status": "candidate_search" if support_ids else "no_candidates",
                               "engine": "opencv_candidate_search"}
+    for item in evidence.values():
+        item.setdefault("evidence_state", "unknown")
     return evidence
 
 
@@ -279,17 +281,18 @@ def analyze(image_bytes: bytes, *, hand_geometry: dict[str, Any] | None = None) 
         fused_edges = cv2.bitwise_or(edges, ridge_edges)
         resized_geometry = hand_geometry
         mask = _hand_mask(cv2, np, gray.shape[1], gray.shape[0], resized_geometry)
+        # Without a verified hand hull, edges remain unscoped candidates and are
+        # never sufficient for a semantic palm-line claim.
         candidates = _candidate_segments(cv2, np, gray, fused_edges, mask)
-        if view_type := _view_type(hand_geometry):
-            if view_type == "folded_edge":
-                edge_mask = _pinky_edge_mask(cv2, np, gray.shape[1], gray.shape[0], hand_geometry, mask)
-                edge_candidates = _candidate_segments(
-                    cv2, np, gray, fused_edges, edge_mask, region_hint="pinky_edge"
-                ) if edge_mask is not None else []
-                candidates = _merge_candidates(candidates, edge_candidates)
+        view_type = _view_type(hand_geometry)
+        if view_type == "folded_edge":
+            edge_mask = _pinky_edge_mask(cv2, np, gray.shape[1], gray.shape[0], hand_geometry, mask)
+            edge_candidates = _candidate_segments(
+                cv2, np, gray, fused_edges, edge_mask, region_hint="pinky_edge"
+            ) if edge_mask is not None else []
+            candidates = _merge_candidates(candidates, edge_candidates)
         edge_density = float(np.count_nonzero(fused_edges)) / float(fused_edges.size or 1)
         ridge_energy = float(np.mean(ridge)) / 255.0
-        view_type = _view_type(hand_geometry)
         return {
             "version": ADAPTER_VERSION,
             "status": "candidate_evidence" if candidates else "no_candidates",
@@ -300,6 +303,11 @@ def analyze(image_bytes: bytes, *, hand_geometry: dict[str, Any] | None = None) 
             "edge_density": round(min(1.0, edge_density), 5),
             "ridge_energy": round(min(1.0, ridge_energy), 5),
             "edge_passes": ["clahe_canny", "blackhat_ridge_canny"],
+            "palm_region": {
+                "status": "hand_hull_scoped" if mask is not None else "unscoped",
+                "evidence_state": "observed" if mask is not None else "unknown",
+                "raw_mask_stored": False,
+            },
             "candidate_count": len(candidates),
             "candidate_segments": candidates,
             "zone_evidence": _zone_evidence(view_type, candidates, hand_geometry),

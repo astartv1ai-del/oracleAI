@@ -541,8 +541,18 @@ async def _run_palm_scanner(db, user, args) -> str:
         precheck_score = 0.0
     usable = reading.get("status") == "complete" and max(score, precheck_score) >= 0.45
     if not usable:
+        limitation = {
+            "status": reading.get("status") or "needs_photo",
+            "quality_state": "needs_photo",
+            "image_quality": quality,
+            "photo_assessment": reading.get("photo_assessment") or {},
+            "requires_view": reading.get("requires_view") or [],
+            "limitations": (reading.get("limitations") or [])[:8],
+            "rule": "UNKNOWN не превращается в OBSERVED; предложи только конкретную пересъёмку.",
+        }
         return ("кадр недостаточно качественный для разбора — предложи переснять ладонь целиком "
-                "при ровном свете, без бликов и фильтров")
+                "при ровном свете, без бликов и фильтров\n"
+                "[PALM_LIMITATION]" + json.dumps(limitation, ensure_ascii=False, separators=(",", ":")))
     zones = []
     for item in reading.get("observations") or []:
         topic = str(item.get("topic") or "unknown")
@@ -550,11 +560,14 @@ async def _run_palm_scanner(db, user, args) -> str:
             "topic": topic,
             "label": PALM_TOPIC_LABELS.get(topic, topic),
             "visibility": item.get("visibility", "unclear"),
+            "evidence_state": item.get("evidence_state", "unknown"),
             "confidence": item.get("confidence", 0),
             "summary": item.get("summary", ""),
         })
     payload = {
         "reading_id": reading.get("id"),
+        "evidence_contract_version": reading.get("evidence_contract_version", "palm-evidence-v1"),
+        "confidence_semantics": reading.get("confidence_semantics", "confidence is bounded visual support, not certainty"),
         "hand_side": reading.get("hand_side", "unknown"),
         "hand_shape_element": reading.get("hand_shape_element", "unknown"),
         "image_quality": {"score": round(score, 2), "issues": quality.get("issues") or [],

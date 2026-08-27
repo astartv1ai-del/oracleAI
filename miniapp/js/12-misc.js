@@ -752,6 +752,7 @@
       this.me = Object.assign({}, this.me, { lang });
       syncDocumentLocale();
       this.closeModal();
+      if (typeof this.refreshPalmLocale === 'function') this.refreshPalmLocale();
       this.renderFrame();
       this.go(this.view || 'profile');
       this.toast(t('saved'));

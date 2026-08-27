@@ -84,8 +84,10 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
     # a claim that the pixels prove absence of a hand.
     precheck = palm_vision.analyze(image_bytes)
     precheck_issues = set(precheck.get("issues") or [])
-    if {"low_contrast_or_flat_light", "soft_or_blurred_edges"} <= precheck_issues:
-        return _empty("no_hand", ["hand_not_detected"], model_path=str(path))
+    # Fail early if the frame is objectively too poor for a reliable hand decision.
+    if (precheck.get("status") == "reshoot_recommended" and
+        {"low_contrast_or_flat_light", "soft_or_blurred_edges", "underexposed", "overexposed"} & precheck_issues):
+        return _empty("quality_limited", ["hand_detection_skipped_for_quality"], model_path=str(path))
 
     if not path.exists():
         return _empty("model_missing", ["mediapipe_model_missing"], model_path=str(path))
@@ -100,10 +102,10 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
         options = vision.HandLandmarkerOptions(
             base_options=base_options,
             running_mode=vision.RunningMode.IMAGE,
-            num_hands=1,
-            min_hand_detection_confidence=0.5,
-            min_hand_presence_confidence=0.5,
-            min_tracking_confidence=0.5,
+            num_hands=2,
+            min_hand_detection_confidence=0.65,
+            min_hand_presence_confidence=0.65,
+            min_tracking_confidence=0.65,
         )
         detected = None
         last_runtime_error: Exception | None = None
@@ -151,10 +153,11 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
             })
         return {
             "version": ADAPTER_VERSION,
-            "status": "detected" if hands else "no_hand",
+            "status": "multiple_hands" if len(hands) > 1 else ("detected" if hands else "no_hand"),
             "hands": hands,
             "hand_count": len(hands),
-            "issues": [] if hands else ["hand_not_detected"],
+            "issues": (["multiple_hands_in_frame"] if len(hands) > 1
+                       else ([] if hands else ["hand_not_detected"])),
             "model": "hand_landmarker_full_float16",
             "image_size": {"width": width, "height": height},
         }

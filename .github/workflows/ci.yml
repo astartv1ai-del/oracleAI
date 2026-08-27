@@ -71,6 +71,12 @@ jobs:
       - name: Design contract
         run: python scripts/check_design_contract.py
 
+      - name: Palm evidence and safety gauntlet
+        run: |
+          mkdir -p artifacts
+          python scripts/palm_accuracy_gauntlet.py \
+            --output artifacts/palm-accuracy-matrix.json
+
       - name: LLM golden-set evaluator smoke
         run: |
           mkdir -p artifacts
@@ -101,7 +107,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-evidence-${{ github.sha }}
-          path: artifacts/llm-eval-report.json
+          path: |
+            artifacts/llm-eval-report.json
+            artifacts/palm-accuracy-matrix.json
           if-no-files-found: ignore
 
   frontend-quality:
