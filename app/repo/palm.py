@@ -65,7 +65,9 @@ async def decode_row(row) -> dict | None:
 async def delete_reading(db, reading_id: int, tg_id: int) -> bool:
     async with transaction(db):
         cur = await db.execute(
-            "UPDATE palm_readings SET status='deleted', deleted_at=?, updated_at=? "
+            "UPDATE palm_readings SET status='deleted', hand_side='unknown', "
+            "image_sha256=NULL, image_size=NULL, analysis_json=NULL, "
+            "deleted_at=?, updated_at=? "
             "WHERE id=? AND tg_id=? AND deleted_at IS NULL",
             (utcnow(), utcnow(), reading_id, tg_id),
         )

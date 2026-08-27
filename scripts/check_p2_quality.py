@@ -32,6 +32,7 @@ def run_checks() -> list[dict]:
         ROOT / "docs/LOCAL_BROWSER_BASELINE.md",
         ROOT / "docs/VISUAL_QA_A11Y_REPORT.md",
         ROOT / "docs/LOCALIZATION_GLOSSARY.md",
+        ROOT / "docs/P2_RELEASE_CHECKLIST.md",
         ROOT / "docs/PDF_TEMPLATE_CATALOG.md",
         ROOT / "docs/PALM_ENGINE_RESEARCH.md",
         ROOT / "scripts/benchmark_product_performance.py",
@@ -58,12 +59,77 @@ def run_checks() -> list[dict]:
         f"missing_en={sorted(ru_keys - en_keys)[:5]}",
     ))
 
+    glossary = (ROOT / "docs/LOCALIZATION_GLOSSARY.md").read_text(encoding="utf-8").casefold()
+    glossary_terms = ("ru", "en", "pluralization", "long labels", "glyph")
+    missing_glossary = [term for term in glossary_terms if term not in glossary]
+    checks.append(_check(
+        "localization_glossary", not missing_glossary,
+        f"missing={missing_glossary or 'none'}",
+    ))
+
     templates = (ROOT / "docs/PDF_TEMPLATE_CATALOG.md").read_text(encoding="utf-8")
     required_template_terms = ("natal", "synastry", "tarot", "localized", "snapshot")
     template_missing = [term for term in required_template_terms if term not in templates.casefold()]
     checks.append(_check(
         "report_template_contract", not template_missing,
         f"missing={template_missing or 'none'}",
+    ))
+
+    def run_script(name: str) -> tuple[bool, str]:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / name)],
+            cwd=ROOT, env={**__import__("os").environ, "LLM_PROVIDER": "off", "EMBED_MODEL": ""},
+            capture_output=True, text=True, check=False,
+        )
+        detail = (result.stdout or result.stderr).strip().splitlines()
+        return result.returncode == 0, detail[-1] if detail else "no output"
+
+    for check_name, script_name in (
+        ("accessibility_design_contract", "check_design_contract.py"),
+        ("visual_contrast_contract", "check_visual_contrast.py"),
+        ("report_golden_cases", "check_pdf_golden_cases.py"),
+        ("backup_restore_isolation", "check_backup_restore_drill.py"),
+    ):
+        ok, detail = run_script(script_name)
+        checks.append(_check(check_name, ok, detail))
+
+    palm_repo = (ROOT / "app/repo/palm.py").read_text(encoding="utf-8")
+    palm_contract = all(marker in palm_repo for marker in (
+        "image_sha256=NULL", "image_size=NULL", "analysis_json=NULL", "status='deleted'",
+    ))
+    checks.append(_check(
+        "palm_retention_contract", palm_contract,
+        "deleted palm readings scrub analysis and image metadata" if palm_contract
+        else "delete_reading does not scrub all sensitive fields",
+    ))
+
+    payment_ui = (ROOT / "miniapp/js/17-payments.js").read_text(encoding="utf-8")
+    payment_dictionary = re.search(
+        r"const PAYMENT_I18N = \{\s*ru: \{(.*?)\n\s*\},\s*en: \{(.*?)\n\s*\},",
+        payment_ui, re.S,
+    )
+    payment_ru = set(re.findall(r"(?:^|,)\s*([A-Za-z][A-Za-z0-9_]*)\s*:", payment_dictionary.group(1))) if payment_dictionary else set()
+    payment_en = set(re.findall(r"(?:^|,)\s*([A-Za-z][A-Za-z0-9_]*)\s*:", payment_dictionary.group(2))) if payment_dictionary else set()
+    checks.append(_check(
+        "payment_locale_key_parity", payment_ru == payment_en and bool(payment_ru),
+        f"ru={len(payment_ru)} en={len(payment_en)} missing_ru={sorted(payment_en - payment_ru)} missing_en={sorted(payment_ru - payment_en)}",
+    ))
+    payment_contract = all(marker in payment_ui for marker in (
+        "Доступ откроется только после подтверждения провайдера",
+        "История заказов", "payment-retry", "payProduct", "aria-label=",
+    ))
+    checks.append(_check(
+        "payment_ux_contract", payment_contract,
+        "provider-confirmed entitlement, retry, order history and accessible payment actions are present"
+        if payment_contract else "payment safety or recovery marker is missing",
+    ))
+
+    release = (ROOT / "docs/P2_RELEASE_CHECKLIST.md").read_text(encoding="utf-8")
+    release_contract = all(f"P2-00{i}" in release for i in range(1, 9)) and "OPEN — manual" in release
+    checks.append(_check(
+        "manual_release_register", release_contract,
+        "all eight P2 rows and explicit manual/external status are recorded"
+        if release_contract else "P2 release register is incomplete",
     ))
 
     benchmark = subprocess.run(

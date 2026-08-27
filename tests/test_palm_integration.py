@@ -169,6 +169,14 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     assert deleted.status_code == 200
     assert deleted.json() == {"ok": True}
     assert (await client.get(f"/api/palm/{reading_id}", params={"dev_user": user["tg_id"]})).status_code == 404
+    cursor = await db.execute(
+        "SELECT status, hand_side, image_sha256, image_size, analysis_json "
+        "FROM palm_readings WHERE id=?", (reading_id,))
+    scrubbed = await cursor.fetchone()
+    assert dict(scrubbed) == {
+        "status": "deleted", "hand_side": "unknown", "image_sha256": None,
+        "image_size": None, "analysis_json": None,
+    }
     deleted_second = await client.delete(f"/api/palm/{second_id}", params={"dev_user": user["tg_id"]})
     assert deleted_second.status_code == 200
     assert "чтений ладони пока нет" in await skills.execute(db, user, "palm_scanner", {})
