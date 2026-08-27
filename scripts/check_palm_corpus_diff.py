@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from validate_palm_corpus import _validate_record
+from validate_palm_reviewer_registry import validate as validate_reviewer_registry
 
 
 def _records_from_text(text: str) -> dict[str, dict[str, Any]]:
@@ -28,6 +29,10 @@ def _records_from_text(text: str) -> dict[str, dict[str, Any]]:
             raise ValueError(f"duplicate record_id: {record_id}")
         records[record_id] = item
     return records
+
+
+def _ref_exists(ref: str) -> bool:
+    return subprocess.run(["git", "rev-parse", "--verify", ref], check=False, capture_output=True, text=True).returncode == 0
 
 
 def _base_text(ref: str, path: str) -> str | None:
@@ -56,6 +61,8 @@ def main() -> int:
         return 1
     base = {}
     if args.base_ref:
+        if not _ref_exists(args.base_ref):
+            errors.append(f"base ref is unavailable: {args.base_ref}")
         previous = _base_text(args.base_ref, str(args.manifest))
         if previous is not None:
             try:
@@ -70,9 +77,12 @@ def main() -> int:
     else:
         try:
             registry = json.loads(args.reviewers.read_text(encoding="utf-8"))
+            errors.extend(f"reviewer registry: {error}" for error in validate_reviewer_registry(registry, require_domain=True))
             reviewer_map = {str(item["reviewer_id"]): item for item in (registry.get("reviewers") or []) if isinstance(item, dict) and item.get("reviewer_id")}
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"reviewer registry invalid: {exc}")
+    if removed_ids:
+        errors.extend(f"{record_id}: removal requires explicit corpus-owner review" for record_id in removed_ids)
     immutable_fields = ("image_path", "image_sha256", "split", "capture")
     for record_id in changed_ids:
         if record_id in base and (base[record_id].get("split") in {"test", "challenge"} or current[record_id].get("split") in {"test", "challenge"}):

@@ -119,4 +119,4 @@ python scripts/validate_palm_corpus.py \
   --require-adjudicated
 ```
 
-Если manifest ещё не добавлен, CI проверяет только template в `--schema-only` режиме и оставляет semantic sign-off заблокированным. Если manifest появился, отсутствие registry или неadjudicated новая запись делает job красным.
+Если manifest ещё не добавлен, CI проверяет только template в `--schema-only` режиме и оставляет semantic sign-off заблокированным. Если manifest появился, отсутствие registry или неadjudicated новая запись делает job красным. Недоступный base ref также делает job красным; gate не принимает его за пустую историю. Удаление записи требует отдельного явного review владельца корпуса.
