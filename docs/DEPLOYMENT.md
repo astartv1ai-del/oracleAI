@@ -150,9 +150,71 @@ make selfcheck
 
 Откат возможен только к commit, совместимому с текущей схемой. Сначала возвращайте приложение, затем убеждайтесь, что `/api/health` зелёный и пользовательские операции работают. Если изменение было разрушительным для данных, применяйте заранее проверенный restore из backup вместо произвольного ручного изменения базы.
 
+## Мониторинг и логирование всех контейнеров
+
+Compose включает observability-контур по умолчанию: `Loki` хранит JSON-логи Docker, `Alloy` читает логи всех контейнеров через read-only Docker socket и отправляет их в Loki, `cAdvisor` собирает CPU/RAM/network metrics контейнеров, `node-exporter` — метрики VPS, `Prometheus` хранит time series и alert rules, а `Grafana` автоматически получает оба datasource и готовый dashboard. Promtail намеренно не используется: Grafana объявила его EOL с 2 марта 2026 года и перенесла дальнейшее развитие в Alloy.[5]
+
+```bash
+# первый запуск
+cp .env.production.example .env
+chmod 600 .env
+# обязательно заменить GRAFANA_ADMIN_PASSWORD и остальные CHANGE_ME значения
+docker compose -f infra/docker-compose.yml up -d --build
+
+docker compose -f infra/docker-compose.yml ps
+```
+
+Grafana по умолчанию слушает только `127.0.0.1:3000`, а Prometheus/Loki вообще не публикуются наружу. Для безопасного доступа с рабочей станции используйте SSH-туннель:
+
+```bash
+ssh -N -L 3000:127.0.0.1:3000 user@YOUR_VPS
+# открыть http://127.0.0.1:3000
+```
+
+В Grafana откройте dashboard `OracleAI / OracleAI - Containers & Logs`. Для поиска логов используйте LogQL `{stack="oracleai"}` или фильтр `compose_service="api"`. Для Prometheus доступны alert rules по недоступности targets, частым рестартам, памяти контейнеров и свободному месту root filesystem. Локальные Docker `json-file` logs также ограничены `10m × 5` на контейнер; это защита от заполнения диска, а Loki хранит данные по умолчанию 7 дней.
+
+Docker socket даёт Alloy и cAdvisor доступ к metadata и runtime statistics Docker-хоста, поэтому эти сервисы должны оставаться во внутренней сети и не получать публичные ports. На production VPS регулярно проверяйте размер volumes `loki_data`, `prometheus_data`, `grafana_data` и свободное место диска.
+
+## Автоматический деплой через GitHub Actions
+
+Workflow `.github/workflows/deploy.yml` запускается после push в `master` или вручную через `workflow_dispatch`. Он сначала проверяет Compose definition, затем подключается к VPS по SSH, получает точный `github.sha`, переключает checkout на этот commit, выполняет `docker compose pull` и `docker compose up -d --build --remove-orphans`, ждёт `/api/health` и печатает состояние сервисов. При ошибке workflow пытается вернуть предыдущий commit и поднять его обратно. Деплои сериализованы через GitHub concurrency, поэтому два rollout не выполняются одновременно.[6]
+
+На VPS один раз подготовьте каталог и production env:
+
+```bash
+sudo install -d -o deploy -g deploy -m 755 /opt/oracleAI
+cd /opt/oracleAI
+git clone https://github.com/astartv1ai-del/oracleAI.git .
+cp .env.production.example .env
+chmod 600 .env
+# заполнить .env реальными credentials и доменом
+sudo install -d -m 700 /etc/oracle
+openssl rand -base64 48 | sudo tee /etc/oracle/backup.key >/dev/null
+sudo chmod 600 /etc/oracle/backup.key
+docker compose -f infra/docker-compose.yml config
+docker compose -f infra/docker-compose.yml up -d --build
+```
+
+Создайте в GitHub Settings → Secrets and variables → Actions следующие secrets. `VPS_KNOWN_HOSTS` должен содержать заранее проверенный результат `ssh-keyscan -H YOUR_VPS`; workflow не принимает host key автоматически, чтобы не скрывать MITM-риск.[6]
+
+| Secret/variable | Значение |
+|---|---|
+| `VPS_HOST` | DNS-имя или IP VPS |
+| `VPS_USER` | Непривилегированный deploy user, например `deploy` |
+| `VPS_SSH_KEY` | Отдельный private deploy key без passphrase в runner; public key добавляется в `~deploy/.ssh/authorized_keys` |
+| `VPS_KNOWN_HOSTS` | Проверенный host key из `ssh-keyscan -H` |
+| Repository variable `VPS_APP_DIR` | Обычно `/opt/oracleAI` |
+| Repository variable `VPS_SSH_PORT` | Обычно `22` |
+
+Workflow не передаёт production `.env` через GitHub Actions и не хранит credentials в GitHub repository. `.env` создаётся и поддерживается только на VPS. Для SSH-ключа используйте отдельного пользователя без общего root login; дайте ему только необходимые права Docker, каталог проекта и backup path. GitHub рекомендует хранить sensitive values в secrets и не передавать их в командной строке без необходимости.[6]
+
+После добавления secrets выполните сначала ручной `workflow_dispatch`, проверьте dashboard и `/api/health`, затем используйте push в `master` как production trigger. Не удаляйте старые Docker images до успешного health-check: встроенный rollback опирается на предыдущий checkout и доступные локальные build layers.
+
 ## References
 
 [1]: [infra/docker-compose.yml](../infra/docker-compose.yml), [infra/Caddyfile](../infra/Caddyfile) и [infra/backup-postgres.sh](../infra/backup-postgres.sh) — состав runtime-стека, TLS и backup.
 [2]: [app/config.py](../app/config.py), [.env.production.example](../.env.production.example) — типизированная конфигурация и production-шаблон.
 [3]: [miniapp/index.html](../miniapp/index.html) и [miniapp/styles.css](../miniapp/styles.css) — подключение versioned клиентских ассетов.
 [4]: [alembic/versions/0001_pg_baseline.py](../alembic/versions/0001_pg_baseline.py), [alembic/versions/0002_task_jobs.py](../alembic/versions/0002_task_jobs.py) и [app/data/migrations.py](../app/data/migrations.py) — порядок и правила миграций.
+[5]: [Grafana Promtail EOL notice](https://grafana.com/docs/loki/latest/send-data/promtail/) и [Grafana Alloy Docker monitoring](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) — актуальная схема сбора Docker logs/metrics.
+[6]: [GitHub Actions secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) — правила хранения и использования deployment secrets.

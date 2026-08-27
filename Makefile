@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: init up down restart ps logs build migrate selfcheck shell worker-scale local-llm backup config
+.PHONY: init up down restart ps logs observability build migrate selfcheck shell worker-scale local-llm backup config
 
 init:
 	@test -f .env || cp .env.example .env
@@ -29,7 +29,10 @@ ps:
 	$(COMPOSE) ps
 
 logs:
-	$(COMPOSE) logs -f --tail=100 api bot worker beat redis postgres
+	$(COMPOSE) logs -f --tail=100 api bot worker beat redis postgres caddy loki alloy prometheus grafana cadvisor node-exporter
+
+observability:
+	$(COMPOSE) ps loki alloy prometheus grafana cadvisor node-exporter
 
 migrate:
 	$(COMPOSE) run --rm migrate

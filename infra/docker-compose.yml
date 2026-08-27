@@ -7,6 +7,12 @@
 # application image is shared by API, bot, Celery worker and Beat so all LLM
 # agents and local CV/astrology engines are always on the same release.
 
+x-observability-logging: &observability-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 x-app-common: &app-common
   build:
     context: ..
@@ -28,11 +34,7 @@ x-app-common: &app-common
   restart: unless-stopped
   security_opt:
     - no-new-privileges:true
-  logging:
-    driver: json-file
-    options:
-      max-size: "10m"
-      max-file: "5"
+  logging: *observability-logging
 
 services:
   postgres:
@@ -181,6 +183,128 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  # Observability is part of the default stack. Grafana is bound to loopback
+  # by default; use an SSH tunnel instead of exposing Prometheus/Loki publicly.
+  loki:
+    image: grafana/loki:3.7.0
+    command: ["-config.file=/etc/loki/config.yml"]
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    networks:
+      - oracle_internal
+    restart: unless-stopped
+    logging: *observability-logging
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - oracle_internal
+    depends_on:
+      loki:
+        condition: service_started
+      cadvisor:
+        condition: service_started
+      node-exporter:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *observability-logging
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:0.56.1
+    command:
+      - "--docker_only=true"
+      - "--housekeeping_interval=15s"
+      - "--storage_driver=memory"
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - oracle_internal
+    restart: unless-stopped
+    logging: *observability-logging
+
+  node-exporter:
+    image: prom/node-exporter:v1.10.2
+    command:
+      - "--path.rootfs=/host"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - oracle_internal
+    restart: unless-stopped
+    logging: *observability-logging
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    command:
+      - "run"
+      - "--server.http.listen-addr=0.0.0.0:12345"
+      - "--storage.path=/var/lib/alloy/data"
+      - "/etc/alloy/config.alloy"
+    volumes:
+      - ./observability/alloy.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    networks:
+      - oracle_internal
+    depends_on:
+      loki:
+        condition: service_started
+      prometheus:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *observability-logging
+
+  grafana:
+    image: grafana/grafana:13.0.7
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    ports:
+      - "${GRAFANA_BIND_ADDRESS:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - oracle_internal
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    logging: *observability-logging
+
   # Optional local OpenAI-compatible LLM. It is deliberately not enabled by
   # default: model downloads are large. Set CUSTOM_LLM_BASE_URL=http://ollama:11434/v1,
   # CUSTOM_LLM_MODEL and CUSTOM_LLM_MODEL_LITE in .env before enabling this profile.
@@ -197,6 +321,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
+    logging: *observability-logging
 
   ollama-init:
     image: ollama/ollama:latest
@@ -213,6 +338,7 @@ services:
       ollama:
         condition: service_healthy
     restart: "no"
+    logging: *observability-logging
 
   # Encrypted PostgreSQL backups are opt-in so a local developer can start the
   # application without first creating a host secret. Enable with:
@@ -242,6 +368,7 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    logging: *observability-logging
 
 volumes:
   postgres_data:
@@ -251,6 +378,10 @@ volumes:
   caddy_data:
   caddy_config:
   ollama_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+  alloy_data:
 
 networks:
   oracle_internal:

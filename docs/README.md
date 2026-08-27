@@ -11,6 +11,7 @@
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Дизайн, frontend, QA | Чтобы добавлять экраны, компоненты и motion без визуального дрейфа. |
 | [API.md](API.md) | Frontend, backend, интеграции | Чтобы вызывать или изменять HTTP-контракты. |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | DevOps, владелец продукта | Чтобы подготовить окружение, выпустить релиз и откатить его. |
+| [OBSERVABILITY.md](OBSERVABILITY.md) | DevOps, operations | Чтобы смотреть контейнеры, логи, metrics, alerts и Grafana dashboard. |
 | [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
 | [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
@@ -58,7 +59,7 @@ make ps
 make selfcheck
 ```
 
-Compose поднимает PostgreSQL + pgvector, Redis, одноразовую миграцию, API, Telegram-бота, Celery worker/Beat и Caddy. Общий application image также содержит Mini App, admin, landing, astrology engine, palm ONNX/MediaPipe assets и LLM runtime. Порты dev по умолчанию: `8080` (HTTP) и `8443` (HTTPS). Операционные команды собраны в корневом `Makefile`.
+Compose поднимает PostgreSQL + pgvector, Redis, одноразовую миграцию, API, Telegram-бота, Celery worker/Beat и Caddy. Общий application image также содержит Mini App, admin, landing, astrology engine, palm ONNX/MediaPipe assets и LLM runtime. Порты dev по умолчанию: `8080` (HTTP) и `8443` (HTTPS). Observability-контур включает Grafana, Loki, Prometheus, Alloy, cAdvisor и node-exporter; Grafana по умолчанию доступна только на `127.0.0.1:3000`. Подробности — в [OBSERVABILITY.md](OBSERVABILITY.md) и [DEPLOYMENT.md](DEPLOYMENT.md). Операционные команды собраны в корневом `Makefile`.
 
 Для optional локального OpenAI-compatible LLM сначала задайте `CUSTOM_LLM_BASE_URL=http://ollama:11434/v1`, `CUSTOM_LLM_MODEL` и `CUSTOM_LLM_MODEL_LITE`, затем выполните `make up-local-llm`.
 
@@ -112,3 +113,4 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 ## References
 
 [1]: [app/api/main.py](../app/api/main.py) — проверка режима разработки в lifecycle FastAPI.
+[2]: [OBSERVABILITY.md](OBSERVABILITY.md) — monitoring/logging runbook и Grafana access.

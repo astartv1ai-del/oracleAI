@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 from ..config import settings
 from ..core import sentry as sentry
@@ -35,6 +36,17 @@ from .routers import ROUTERS
 
 configure_logging(level=settings.log_level, log_file=settings.log_file)
 log = logging.getLogger("oracle.api")
+
+HTTP_REQUESTS = Counter(
+    "oracleai_http_requests_total",
+    "Total HTTP requests handled by the API.",
+    ("method", "status"),
+)
+HTTP_LATENCY = Histogram(
+    "oracleai_http_request_duration_seconds",
+    "HTTP request duration in seconds.",
+    ("method",),
+)
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 MINIAPP_DIR = ROOT / "miniapp"
@@ -121,6 +133,8 @@ async def access_log(request: Request, call_next):
                 {"detail": "Связь со звёздами прервалась… попробуй ещё раз 🌙"},
                 status_code=500)
         took = (time.monotonic() - started) * 1000
+        HTTP_REQUESTS.labels(request.method, str(response.status_code)).inc()
+        HTTP_LATENCY.labels(request.method).observe(took / 1000)
         if took > 2000 or response.status_code >= 500:
             level = logging.ERROR if response.status_code >= 500 else logging.WARNING
             log_event(
@@ -151,6 +165,12 @@ async def access_log(request: Request, call_next):
         return response
     finally:
         reset_request_id(token)
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics() -> Response:
+    """Prometheus metrics; Caddy denies this path on the public edge."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 for router in ROUTERS:
