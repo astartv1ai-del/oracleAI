@@ -116,6 +116,30 @@
     }
   };
 
+  app.chartProvenanceHtml = function(c) {
+    const raw = c && (c.engine_provenance || (c.calculation && c.calculation.engine_provenance));
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const value = (key, max = 120) => {
+      const item = source[key];
+      return typeof item === 'string' && item.trim() ? item.trim().slice(0, max) : '';
+    };
+    const rows = [
+      [profileT('provenanceProduct'), value('product_engine')],
+      [profileT('provenanceBackend'), value('backend')],
+      [profileT('provenanceVersion'), value('adapter_version')],
+      [profileT('provenanceEphemeris'), value('ephemeris')],
+      [profileT('provenanceLicense'), value('license_notice', 220)],
+    ];
+    const hasValues = rows.some(([, item]) => item);
+    const body = hasValues
+      ? rows.filter(([, item]) => item).map(([label, item]) => `<div class="chart-provenance__row"><span>${esc(label)}</span><b>${esc(item)}</b></div>`).join('')
+      : `<p class="chart-provenance__fallback">${esc(profileT('provenanceFallback'))}</p>`;
+    return `<details class="chart-provenance">
+      <summary><span>${esc(profileT('provenanceTitle'))}</span><small>${esc(profileT('provenanceSummary'))}</small><span class="chart-provenance__chevron" aria-hidden="true">⌄</span></summary>
+      <div class="chart-provenance__body">${body}</div>
+    </details>`;
+  };
+
   app.chartHtml = function(c) {
     this.chart = c;
     const sun = c.sun || {};
@@ -166,6 +190,7 @@
         ${accentChips}
         <div class="chart-signature">Солнце в ${esc(sun.sign || '—')}${anglesAvailable ? ' · Асцендент ' + esc(asc.sign || '—') : ''}</div>
         ${precisionNotice}
+        ${this.chartProvenanceHtml(c)}
         <div class="chart-takeaway">
           <span class="chart-takeaway__label">ТВОЯ ОТПРАВНАЯ ТОЧКА</span>
           <p>${takeaway}</p>

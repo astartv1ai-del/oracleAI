@@ -29,6 +29,7 @@ jobs:
           npm ci --ignore-scripts
           npm run build:frontend
           python scripts/check_frontend_build.py
+          python scripts/check_frontend_provenance.py
           python scripts/check_static_asset_references.py
 
       - name: Системные библиотеки WeasyPrint
@@ -147,6 +148,7 @@ jobs:
         run: |
           npm run build:frontend
           python scripts/check_frontend_build.py
+          python scripts/check_frontend_provenance.py
           python scripts/check_static_asset_references.py
 
       - name: JavaScript syntax
