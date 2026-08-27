@@ -184,7 +184,9 @@ def frontend_assets():
         "miniapp/js/17-payments.js",
         "miniapp/css/00-tokens.css", "miniapp/css/15-ritual-redesign.css",
         "miniapp/css/16-visual-qa.css", "miniapp/css/16-payments.css",
+        "miniapp/css/18-pixel-reconstruction.css",
         "admin/index.html", "admin/admin.js", "admin/admin.css",
+        "admin/pixel-reconstruction.css",
     ]
     missing = [p for p in required if not (ROOT / p).is_file()]
     if missing:

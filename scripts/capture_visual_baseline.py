@@ -55,6 +55,43 @@ def dom_contract(page) -> dict:
     )
 
 
+def geometry_contract(page) -> dict:
+    return page.evaluate(
+        """
+        () => {
+          const selectors = [
+            ['appRoot', '#app-root'], ['header', '.app-header'],
+            ['main', '#app-main'], ['screen', '.screen'],
+            ['hero', '.hero-orb'], ['seasonal', '.seasonal-moment'],
+            ['dailyRitual', '.daily-ritual'], ['agentCard', '.agent-card'],
+            ['profileHero', '.profile-hero'], ['nav', '.app-nav'],
+            ['navButton', '.nav-btn'], ['primary', '.btn-primary']
+          ];
+          const rect = (selector) => {
+            const el = document.querySelector(selector);
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            const cs = getComputedStyle(el);
+            return {
+              x: Math.round(r.x * 10) / 10,
+              y: Math.round(r.y * 10) / 10,
+              width: Math.round(r.width * 10) / 10,
+              height: Math.round(r.height * 10) / 10,
+              padding: cs.padding,
+              gap: cs.gap,
+              borderRadius: cs.borderRadius
+            };
+          };
+          return Object.fromEntries(selectors.map(([name, selector]) => [name, rect(selector)]));
+        }
+        """
+    )
+
+
+def snapshot(page) -> dict:
+    return {**dom_contract(page), "geometry": geometry_contract(page)}
+
+
 def capture() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict] = {}
@@ -82,19 +119,19 @@ def capture() -> int:
                     skip.first.click()
                     page.wait_for_timeout(250)
                 page.screenshot(path=str(OUT / f"{locale_key}-{name}-home.png"), full_page=True)
-                states = {"home": dom_contract(page)}
+                states = {"home": snapshot(page)}
                 try:
                     nav = page.locator(".nav-btn")
                     if nav.count() >= 2:
                         nav.nth(1).click(force=True)
                         page.wait_for_timeout(250)
                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-chat.png"), full_page=True)
-                        states["chat"] = dom_contract(page)
+                        states["chat"] = snapshot(page)
                     if nav.count() >= 3:
                         nav.nth(2).click(force=True)
                         page.wait_for_timeout(250)
                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-profile.png"), full_page=True)
-                        states["profile"] = dom_contract(page)
+                        states["profile"] = snapshot(page)
 
                         # Navigate through the actual profile tabs before capturing their states.
                         for tab_name, state_name in (("chart", "chart-tab"), ("history", "history"), ("memory", "memory-tab")):
@@ -103,14 +140,14 @@ def capture() -> int:
                                 tab.first.click(force=True)
                                 page.wait_for_timeout(350)
                                 page.screenshot(path=str(OUT / f"{locale_key}-{name}-{state_name}.png"), full_page=True)
-                                states[state_name] = dom_contract(page)
+                                states[state_name] = snapshot(page)
                                 if tab_name == "chart":
                                     full_chart = page.locator('[data-act="full-chart"]')
                                     if full_chart.count() and full_chart.first.is_visible():
                                         full_chart.first.click(force=True)
                                         page.wait_for_timeout(250)
                                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-chart-modal.png"), full_page=True)
-                                        states["chart-modal"] = dom_contract(page)
+                                        states["chart-modal"] = snapshot(page)
                                         page.evaluate("window.app && app.closeModal && app.closeModal()")
                                         page.wait_for_timeout(100)
                                 elif tab_name == "memory":
@@ -119,7 +156,7 @@ def capture() -> int:
                                         memory_button.first.click(force=True)
                                         page.wait_for_timeout(250)
                                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-memory-modal.png"), full_page=True)
-                                        states["memory-modal"] = dom_contract(page)
+                                        states["memory-modal"] = snapshot(page)
                                         page.evaluate("window.app && app.closeModal && app.closeModal()")
                                         page.wait_for_timeout(100)
 
@@ -129,7 +166,7 @@ def capture() -> int:
                     page.evaluate("window.app && app.openChat && app.openChat('tarot', () => app.featureTarot())")
                     page.wait_for_timeout(450)
                     page.screenshot(path=str(OUT / f"{locale_key}-{name}-tarot.png"), full_page=True)
-                    states["tarot"] = dom_contract(page)
+                    states["tarot"] = snapshot(page)
                     page.evaluate("window.app && app.closeChat && app.closeChat()")
                 except PlaywrightError as exc:
                     states["navigation_error"] = str(exc)

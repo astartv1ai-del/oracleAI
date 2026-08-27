@@ -18,6 +18,7 @@ REQUIRED_DOCS = (
     ROOT / "docs" / "PRODUCTION_READINESS_AND_LAUNCH_PLAN.md",
     ROOT / "docs" / "PRODUCTION_GAUNTLET.md",
     ROOT / "docs" / "PRODUCTION_FINAL_REVIEW.md",
+    ROOT / "docs" / "UI_PIXEL_AUDIT.md",
 )
 
 

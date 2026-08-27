@@ -6,6 +6,8 @@
 
 ### Added
 
+- Добавлены `UI_PIXEL_AUDIT.md` и geometry snapshots в visual baseline harness для измерения frame, header, cards, CTA и bottom navigation.
+- Добавлены `18-pixel-reconstruction.css` для Mini App и `admin/pixel-reconstruction.css` для bounded desktop/mobile dashboard layout.
 - Добавлены `PRODUCTION_GAUNTLET.md` и `PRODUCTION_FINAL_REVIEW.md` с полной phase matrix, локальными evidence и явными внешними release blockers.
 - Добавлены versioned JSON-контракты для natal, synastry, transit, composite и solar returns product paths.
 - Добавлены owner-scoped маршруты `POST /api/synastry`, `POST /api/transits`, `POST /api/composite` и `POST /api/returns` с явными precision-gates.
@@ -53,6 +55,7 @@
 - Account deletion теперь доступен из Profile Summary через локализованный confirm-gated UI, вызывает существующий idempotent `/api/account/delete` и показывает terminal success state без повторного запроса данных удалённого профиля.
 - Standalone agent/skill benchmark scripts получили repository-root bootstrap; direct invocation добавлен в CI как regression contract.
 - Selfcheck limits path теперь явно подтверждает `age_confirmed=1` перед проверкой платного chat flow; design contract checker учитывает visual и payments CSS layers, а VISUAL QA больше не ссылается на отсутствующие generated artifacts.
+- Pixel reconstruction pass нормализует content frame, section rhythm, card families, 48px controls, safe-area/nav clearance и wide-screen bounds; Admin Dashboard получил responsive stacking, 44px controls и явные `aria-label` для dynamic form fields.
 
 ## 2.0.0 — 2026-08-12
 
