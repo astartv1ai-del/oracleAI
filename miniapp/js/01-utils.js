@@ -161,6 +161,7 @@ const I18N = {
     notSpecifiedCopy: 'Нейтральные формулировки',
     genderCopy: 'Помогает Оракулу обращаться к тебе в правильном роде. Это можно изменить или не указывать.',
     changeGender: 'Изменить пол', saved: 'Сохранено', changeLanguage: 'Сменить язык',
+    authRequiredTitle: 'Открой OracleAI в Telegram', authRequiredCopy: 'Личное пространство загружается только внутри защищённого входа Telegram.', authRetry: 'Повторить',
   },
   en: {
     today: 'Today', chats: 'Guides', mine: 'Mine', ritual: 'Ritual', guides: 'Guides', profile: 'Profile', paymentTab: 'Pay', paymentHint: 'Access and packs',
@@ -171,6 +172,7 @@ const I18N = {
     notSpecifiedCopy: 'Gender-neutral wording',
     genderCopy: 'Helps Oracle use the right form of address. You can change it later or leave it unspecified.',
     changeGender: 'Change gender', saved: 'Saved', changeLanguage: 'Change language',
+    authRequiredTitle: 'Open OracleAI in Telegram', authRequiredCopy: 'Your personal space loads only inside a protected Telegram session.', authRetry: 'Retry',
   },
 };
 const t = (key, fallback = '') => (I18N[oracleLang()] || I18N.ru)[key] || fallback || key;
@@ -210,6 +212,7 @@ const PROFILE_I18N = {
     askAstrologer: 'Спросить Астролога про карту', shareChart: '📸 Сохранить карту в сторис', simpleReading: '🧠 Разбор простыми словами', chartUnavailable: 'Карта пока недоступна', chartUnavailableCopy: 'Проверь соединение и попробуй открыть её чуть позже.', close: 'Закрыть', chartReading: 'Разбор карты', chartReadingUnavailable: 'Смысл пока не раскрылся', chartReadingUnavailableCopy: 'Попробуй ещё раз немного позже — твоя карта никуда не исчезнет.',
     saveGenderFailed: 'Не удалось сохранить пол', closeAria: 'Закрыть', changeLanguageFailed: 'Не удалось сменить язык', notifications: 'Уведомления', today: 'Сегодня', morningForecast: 'Утренний прогноз в боте', on: 'вкл', off: 'выкл', notificationCopy: 'Напоминания и прогнозы приходят в Telegram-боте. Включить их можно там же.', quiet: 'Пока тихо', quietCopy: 'Когда появится новый знак дня или важное напоминание, оно будет ждать тебя здесь.',
     memoryCount: '{count} записей · нажми, чтобы посмотреть и править', memoryEmpty: 'Пока пусто — нажми, чтобы добавить первое',
+    account: 'Аккаунт', deleteAccount: 'Удалить аккаунт', deleteAccountCopy: 'Удаление необратимо: личные данные и материалы будут обезличены. Платёжные записи, которые нужно хранить по закону, могут остаться без связи с профилем.', deleteAccountConfirm: 'Удалить аккаунт и обезличить личные данные? Это действие нельзя отменить.', deleteAccountDone: 'Аккаунт удалён', deleteAccountDoneCopy: 'Личные данные обезличены. Если нужно уточнить остаточные платёжные или юридические записи, напиши в поддержку.', deleteAccountFailed: 'Не удалось завершить удаление. Проверь соединение и попробуй ещё раз.',
   },
   en: {
     you: 'You', birth: 'Birth', time: 'Time', city: 'City', unknown: 'unknown',
@@ -243,6 +246,7 @@ const PROFILE_I18N = {
     askAstrologer: 'Ask the Astrologer about my chart', shareChart: '📸 Save chart to story', simpleReading: '🧠 Explain in simple words', chartUnavailable: 'Chart is temporarily unavailable', chartUnavailableCopy: 'Check your connection and try opening it again a little later.', close: 'Close', chartReading: 'Chart reading', chartReadingUnavailable: 'Meaning has not unfolded yet', chartReadingUnavailableCopy: 'Try again a little later — your chart is still here.',
     saveGenderFailed: 'Could not save gender', closeAria: 'Close', changeLanguageFailed: 'Could not change language', notifications: 'Notifications', today: 'Today', morningForecast: 'Morning forecast in the bot', on: 'on', off: 'off', notificationCopy: 'Reminders and forecasts arrive in the Telegram bot. You can enable them there.', quiet: 'Quiet for now', quietCopy: 'A new sign of the day or an important reminder will wait for you here.',
     memoryCount: '{count} entries · tap to view and edit', memoryEmpty: 'Nothing here yet — tap to add your first entry',
+    account: 'Account', deleteAccount: 'Delete account', deleteAccountCopy: 'This cannot be undone: personal data and materials will be anonymized. Payment records required by law may remain without a link to your profile.', deleteAccountConfirm: 'Delete your account and anonymize personal data? This cannot be undone.', deleteAccountDone: 'Account deleted', deleteAccountDoneCopy: 'Your personal data has been anonymized. Contact support if you need to clarify retained payment or legal records.', deleteAccountFailed: 'The deletion could not be completed. Check your connection and try again.',
   },
 };
 const profileT = (key, fallback = '') => (PROFILE_I18N[oracleLang()] || PROFILE_I18N.ru)[key] || fallback || key;

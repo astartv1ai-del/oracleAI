@@ -46,7 +46,10 @@
 - Playwright visual baseline расширен до chart/history/memory/Tarot states, reduced-motion reference and seeded synthetic data; localized accessible names added for the previously failing inputs and tool controls.
 - Agent prompt/context hardening централизовал untrusted wrappers для memory, profile summaries, diary и evidence blocks; добавлен deterministic consistency gate против взаимоисключающих start/stop directives, а pre-tool fallback теперь intent-gated для chart/transit calls.
 - Mira получил topic-aware reshoot guidance, explicit `reading_id` retrieval и optional integrity-checked ONNX line evidence helper с vendored MIT model variants; raw masks не сохраняются, hard precheck skips heavy CV, а LLM остаётся авторитетом для видимого изображения и uncertainty.
-- Повторный live synthetic LLM run после hardening: 0 critical violations, mean 0.9583, language 1.0, next-step 1.0, calibration 0.9; p95 23.899 s против цели 15 s остаётся staging blocker. Palm-line CPU baseline: fp16 около 8.36 s p50, int8 около 0.45 s p50 с отдельным quality tradeoff.
+- Последний bounded live synthetic LLM run: 12/12 cases, 0 critical violations, mean 0.9167, language 1.0, next-step 1.0, calibration 0.8; p95 25.088 s против цели 15 s остаётся staging blocker. Palm-line CPU baseline: fp16 около 8.35 s p50, int8 остаётся отдельным quality tradeoff.
+- Добавлен явный authenticated boot recovery state: Mini App больше не показывает полноценный home shell после неуспешного `/api/me`, а предлагает повторить вход внутри Telegram.
+- Account deletion теперь доступен из Profile Summary через локализованный confirm-gated UI, вызывает существующий idempotent `/api/account/delete` и показывает terminal success state без повторного запроса данных удалённого профиля.
+- Standalone agent/skill benchmark scripts получили repository-root bootstrap; direct invocation добавлен в CI как regression contract.
 
 ## 2.0.0 — 2026-08-12
 

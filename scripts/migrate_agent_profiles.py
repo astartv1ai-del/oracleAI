@@ -1,9 +1,12 @@
 """Create the file-backed agent profiles and portable skill packs."""
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.agents.specs import REGISTRY
 

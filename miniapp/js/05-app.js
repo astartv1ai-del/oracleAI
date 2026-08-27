@@ -34,7 +34,10 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
         if (name) name.textContent = this.me.name;
         pill.setAttribute('aria-label', 'Открыть профиль: ' + this.me.name);
       }
-    } catch (e) { /* вход по dev_user в БД уже есть */ }
+    } catch (e) {
+      this.renderAuthRequired();
+      return;
+    }
     this.loadAgents();
     this.loadToday();
     this.go('home');
@@ -43,6 +46,26 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     if (this.me && !this.me.age_confirmed) this.showAgeGate();
     else this.maybeIntro();
   };
+  app.renderAuthRequired = function() {
+    const main = document.getElementById('app-main');
+    const nav = document.querySelector('.app-nav');
+    if (nav) nav.hidden = true;
+    if (!main) return;
+    const title = t('authRequiredTitle', 'Открой OracleAI в Telegram');
+    const copy = t('authRequiredCopy', 'Личное пространство загружается только внутри защищённого входа Telegram.');
+    const retry = t('authRetry', 'Повторить');
+    main.innerHTML = `<div class="screen" data-auth-required>
+      <div class="soft-empty soft-empty--recovery" data-state="error">
+        <div class="soft-empty__orb" aria-hidden="true">⌁</div>
+        <div class="soft-empty__title">${esc(title)}</div>
+        <div class="soft-empty__copy">${esc(copy)}</div>
+        <div class="soft-empty__action"><button class="btn btn-primary" type="button" data-auth-retry>${esc(retry)}</button></div>
+      </div>
+    </div>`;
+    const button = main.querySelector('[data-auth-retry]');
+    if (button) button.addEventListener('click', () => window.location.reload());
+  };
+
   // G001 клавиатура: композер поднимается, когда Telegram раскрывает клавиатуру
 
   app.initViewport = function() {
