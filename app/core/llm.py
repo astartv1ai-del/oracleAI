@@ -704,8 +704,18 @@ async def _run_pretool(client, model, system, messages, tools, execute,
             return
         wanted.append((name, args or {}))
 
-    add("get_chart")
-    add("get_transits")
+    chart_markers = (
+        "наталь", "карта", "планет", "аспект", "дом", "асценд", "знак", "солнц", "placement",
+        "birth chart", "natal", "planet", "house", "ascendant", "sign", "sun sign",
+    )
+    transit_markers = (
+        "транзит", "сейчас", "сегодня", "текущее небо", "небо на", "transit",
+        "current sky", "today", "right now",
+    )
+    if any(w in lower for w in chart_markers):
+        add("get_chart")
+    if any(w in lower for w in transit_markers):
+        add("get_transits")
     if any(w in lower for w in ("таро", "карт", "расклад", "будет", "стоит ли", "гада")):
         add("draw_tarot", {"n": 3})
     if any(w in lower for w in ("матриц", "предназнач", "карм")):

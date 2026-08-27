@@ -14,6 +14,8 @@
 | [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
 | [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
+| [LLM_AGENT_TECHNICAL_AUDIT.md](LLM_AGENT_TECHNICAL_AUDIT.md) | AI, backend, QA, privacy | Полная карта agent prompts, memory/context integrity, tools/skills, conflict handling и palm vision pipeline. |
+| [PALM_ENGINE_RESEARCH.md](PALM_ENGINE_RESEARCH.md) | AI, CV, legal, product | Исследование palm-line engines, лицензий, model contracts и безопасного integration boundary. |
 | [LAUNCH_GOVERNANCE.md](LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
 | [PRODUCTION_READINESS_AND_LAUNCH_PLAN.md](PRODUCTION_READINESS_AND_LAUNCH_PLAN.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |
 | [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) | Product, astrology, backend, QA | Чтобы реализовать будущие composite и planetary returns без неявных precision-правил. |
@@ -35,6 +37,7 @@
 | [API_RESILIENCE_MATRIX.md](API_RESILIENCE_MATRIX.md) | Backend, frontend, QA | Negative-path, rate-limit, backend-error and owner-scope checks. |
 | [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md) | Performance, operations, QA | Local p50/p95 directional measurements and live LLM latency blocker. |
 | [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) | Operations, database, security | Disposable integrity, restore, snapshot and isolation drill. |
+| [`models/THIRD_PARTY_NOTICES.md`](../models/THIRD_PARTY_NOTICES.md) | Legal, release, ML | Provenance, MIT notice, checksums and limitations for the vendored palm-line models. |
 | [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 

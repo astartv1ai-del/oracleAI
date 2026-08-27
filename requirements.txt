@@ -33,6 +33,8 @@ timezonefinder==8.2.5
 
 # Картинки-карточки для сторис. Без Pillow шеринг остаётся текстовым.
 pillow==12.3.0
+# Optional palm-line CV evidence helper; model is vendored under models/.
+onnxruntime==1.29.0
 
 # PDF-разборы (товар для маркетплейсов). Диапазон сознательно: системные
 # libcairo2/libpango ставятся в infra/Dockerfile; локально пакет опционален.

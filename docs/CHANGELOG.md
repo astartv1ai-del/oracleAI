@@ -40,6 +40,9 @@
 - Добавлены synthetic memory evaluator, API resilience matrix, PDF golden-case runner, Tarot contract tests, disposable backup/restore drill and directional chart/Tarot/memory/PDF performance benchmark.
 - Account deletion получил confirm-gated idempotent API contract; anonymization clears user history and disables memory, push and age flags. Memory recall cache now respects requested result limits.
 - Playwright visual baseline расширен до chart/history/memory/Tarot states, reduced-motion reference and seeded synthetic data; localized accessible names added for the previously failing inputs and tool controls.
+- Agent prompt/context hardening централизовал untrusted wrappers для memory, profile summaries, diary и evidence blocks; добавлен deterministic consistency gate против взаимоисключающих start/stop directives, а pre-tool fallback теперь intent-gated для chart/transit calls.
+- Mira получил topic-aware reshoot guidance, explicit `reading_id` retrieval и optional integrity-checked ONNX line evidence helper с vendored MIT model variants; raw masks не сохраняются, hard precheck skips heavy CV, а LLM остаётся авторитетом для видимого изображения и uncertainty.
+- Повторный live synthetic LLM run после hardening: 0 critical violations, mean 0.9583, language 1.0, next-step 1.0, calibration 0.9; p95 23.899 s против цели 15 s остаётся staging blocker. Palm-line CPU baseline: fp16 около 8.36 s p50, int8 около 0.45 s p50 с отдельным quality tradeoff.
 
 ## 2.0.0 — 2026-08-12
 

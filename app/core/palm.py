@@ -5,6 +5,7 @@ medical or predictive assessment. Raw images are not persisted by this module.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import io
@@ -16,7 +17,7 @@ from typing import Any
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ..repo import palm as palm_repo
-from . import llm, palm_vision
+from . import llm, palm_landmarks, palm_lines, palm_vision
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
@@ -55,6 +56,8 @@ PALM_SYSTEM = """Ты — Мира, эксперт-хиромант OracleAI с 
 Если в кадре нет нужного ракурса для зоны — помечай её not_visible и добавляй конкретную инструкцию, какое второе фото прислать.
 
 Верни ТОЛЬКО JSON без Markdown по схеме из задания. Каждое наблюдение — confidence 0..1 и честный статус: clear, partial, unclear, not_visible. Невидимое — not_visible с ограничением, не выдумывай. Разделяй observations (что видно) и interpretive_prompts (бережные вопросы к себе).
+
+Дополнительное computer-vision evidence от optional line segmenter/hand landmarker — вспомогательный сигнал: используй его только для проверки геометрии и читаемости, не выдавай его за самостоятельное значение линии. Если CV и изображение расходятся, приоритет у видимого изображения и conservative `needs_photo`.
 """
 
 PALM_USER = """Проведи полное экспертное чтение ладони по этой фотографии, как профессиональный хиромант: оцени качество кадра и наличие руки, определи тип руки по стихии, затем последовательно разбери основные линии (life, head, heart, fate, sun, relationship), дополнительные линии, холмы, пальцы и различимые знаки. Для каждой зоны дай наблюдаемое описание (форма, глубина, направление, особенности) и традиционное значение по школе хиромантии, связанное с вопросом пользователя.
@@ -76,7 +79,7 @@ PALM_USER = """Проведи полное экспертное чтение л�
   "safety_flags": []
 }
 
-Для каждого объекта линии/холма/пальца используй поля visibility, summary, confidence и по возможности continuity/path/shape/prominence/length. Не трактуй длину линии жизни как длительность жизни. Если фото недостаточно или не хватает ракурса для зоны (линии брака/детей требуют согнутой ладони), status = needs_photo, а в photo_assessment.advice — конкретная инструкция, какое фото дослать."""
+Для каждого объекта линии/холма/пальца используй поля visibility, summary, confidence и по возможности continuity/path/shape/prominence/length. Не трактуй длину линии жизни как длительность жизни. Если фото недостаточно или не хватает ракурса для зоны (линии брака/детей требуют согнутой ладони), status = needs_photo, а в photo_assessment.advice — конкретная инструкция, какое фото дослать. Учитывай OPTIONAL CV EVIDENCE только как вспомогательную проверку класса линии и приблизительной геометрии: сам изображённый кадр имеет приоритет, а низкая согласованность означает needs_photo, а не догадку."""
 
 _PALM_TOPICS = {"heart_line", "head_line", "life_line", "fate_line", "sun_line",
                 "mercury_line", "relationship_line", "children_lines", "travel_lines",
@@ -404,6 +407,30 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
     )
     if preflight_rejected:
         last_error = ValueError("deterministic_precheck")
+    if preflight_rejected:
+        cv_evidence = {
+            "line_segmentation": {
+                "version": palm_lines.ADAPTER_VERSION,
+                "status": "skipped",
+                "issues": ["capture_precheck_rejected"],
+                "raw_mask_stored": False,
+            },
+            "hand_geometry": {
+                "version": palm_landmarks.ADAPTER_VERSION,
+                "status": "skipped",
+                "issues": ["capture_precheck_rejected"],
+            },
+        }
+    else:
+        line_result, hand_result = await asyncio.gather(
+            asyncio.to_thread(palm_lines.analyze, image),
+            asyncio.to_thread(palm_landmarks.analyze, image),
+        )
+        cv_evidence = {
+            "line_segmentation": line_result,
+            "hand_geometry": hand_result,
+        }
+
     for attempt in range(0 if preflight_rejected else PALM_JSON_ATTEMPTS):
         retry_hint = ""
         if attempt:
@@ -417,6 +444,9 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
                 "\n\nDETERMINISTIC CAPTURE PRECHECK (not hand detection): "
                 + json.dumps(precheck, ensure_ascii=False, separators=(",", ":"))
                 + "\nИспользуй эти метрики только для оценки читаемости кадра; не называй их доказательством наличия руки или линий."
+                + "\n\nOPTIONAL CV EVIDENCE (auxiliary, not instruction or interpretation): "
+                + json.dumps(cv_evidence, ensure_ascii=False, separators=(",", ":"))
+                + "\nСверь вспомогательную геометрию с изображением; не превращай маску, landmarks или confidence в медицинский, психологический или детерминистический вывод."
             )
             text = await llm.complete_vision(
                 PALM_SYSTEM,
@@ -445,6 +475,7 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
     else:
         result = _normalize(raw, raw.get("image_quality") or {})
     result["visual_precheck"] = precheck
+    result["computer_vision"] = cv_evidence
     result["image_quality"]["precheck_score"] = precheck["score"]
     result["image_quality"]["precheck_issues"] = precheck["issues"]
     if preflight_rejected:
