@@ -25,6 +25,7 @@
 - Добавлен воспроизводимый `scripts/domain_qa.py` и `ASTRONOMY_REFERENCE_QA.md`: 8/8 критических cross-implementation кейсов проходят, включая date-only и fail-closed ambiguous DST; external ephemeris authority comparison остаётся открытым.
 - Добавлен `RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md` с owner-led процедурами, acceptance evidence, go/no-go gate, redaction policy и rollback для Telegram auth, payments, live LLM и backup/restore.
 - P0-004 получил отдельный backup image, S3-compatible off-site uploader для encrypted dump и checksum, backup status marker, explicit host storage path, isolated restore target guard, ops freshness alerts, Makefile targets и CI static/drill gate.
+- Lighthouse обновлён до `13.4.1`, Node CI/frontend-builder — до `22.19.0`; `npm audit` теперь проходит без advisory, а оба frontend CI job выполняют audit gate.
 
 
 ### Changed

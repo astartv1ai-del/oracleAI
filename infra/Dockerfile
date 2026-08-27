@@ -2,7 +2,7 @@
 # The same image is used by API, Telegram bot, Celery worker and Beat so that
 # every process runs identical application, LLM-agent and local-engine code.
 # Frontend bundles are built in a separate Node stage and copied into the Python image.
-FROM node:22.13.0-bookworm-slim AS frontend-builder
+FROM node:22.19.0-bookworm-slim AS frontend-builder
 WORKDIR /opt/oracle
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit
