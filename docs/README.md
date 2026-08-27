@@ -48,9 +48,8 @@
 | Production readiness | [`RELEASE/PRODUCTION_READINESS.md`](RELEASE/PRODUCTION_READINESS.md) | Release process and readiness gates. |
 | Launch governance | [`RELEASE/LAUNCH_GOVERNANCE.md`](RELEASE/LAUNCH_GOVERNANCE.md) | Owners, gates, SLO placeholders and go/no-go rules. |
 | P0 execution | [`RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md`](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) | Owner-led procedures for the four public-launch blockers. |
-| P0-004 infrastructure audit | [`P004_INFRASTRUCTURE_AUDIT.md`](P004_INFRASTRUCTURE_AUDIT.md) | Backup/restore implementation status, local evidence and external staging gates. |
+| P0-004 infrastructure evidence | [`EVIDENCE/P004_INFRASTRUCTURE_AUDIT_2026-08-27.md`](EVIDENCE/P004_INFRASTRUCTURE_AUDIT_2026-08-27.md) | Dated implementation evidence; current operating procedure remains in P0 execution and operations docs. |
 | Changelog | [`RELEASE/CHANGELOG.md`](RELEASE/CHANGELOG.md) | User- and engineering-visible release history. |
-| Documentation final review | [`RELEASE/DOCUMENTATION_FINAL_REVIEW.md`](RELEASE/DOCUMENTATION_FINAL_REVIEW.md) | Audit result, before/after shape, validation and remaining concerns. |
 | Dated evidence | [`EVIDENCE/`](EVIDENCE/) | Historical audits, QA baselines, traceability and benchmark records. Evidence is not current truth unless explicitly revalidated. |
 | Archive | [`ARCHIVE/`](ARCHIVE/) | Superseded plans and design proposals retained for context, each labeled historical. |
 
@@ -61,13 +60,13 @@ These documents provide focused implementation, research or operational context 
 | Area | Reference |
 |---|---|
 | Observability | [`OBSERVABILITY.md`](OBSERVABILITY.md) |
-| AI evaluation and agent audit | [`LLM_EVALUATION.md`](LLM_EVALUATION.md), [`LLM_AGENT_TECHNICAL_AUDIT.md`](LLM_AGENT_TECHNICAL_AUDIT.md), [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md), [`AGENT_QUALITY_STANDARD.md`](AGENT_QUALITY_STANDARD.md) |
+| AI evaluation and agent quality | [`LLM_EVALUATION.md`](LLM_EVALUATION.md), [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md), [`AGENT_QUALITY_STANDARD.md`](AGENT_QUALITY_STANDARD.md), [`INTERPRETATION_QUALITY_STANDARD.md`](INTERPRETATION_QUALITY_STANDARD.md) |
 | AI onboarding and skills | [`AI_ONBOARDING_GAUNTLET.md`](AI_ONBOARDING_GAUNTLET.md), [`AGENTS.md`](AGENTS.md), [`AGENT_SKILL_LIBRARY.md`](AGENT_SKILL_LIBRARY.md) |
 | Chart and product boundaries | [`CHART_ENGINE_DECISION.md`](CHART_ENGINE_DECISION.md), [`CHART_ENGINE_LICENSING.md`](CHART_ENGINE_LICENSING.md), [`CHART_TYPE_CAPABILITIES.md`](CHART_TYPE_CAPABILITIES.md), [`COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md`](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) |
-| Astronomy and visual domain research | [`ASTRONOMY_REFERENCE_QA.md`](ASTRONOMY_REFERENCE_QA.md), [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md), [`CHIROMANT_AVATAR_BRIEF.md`](CHIROMANT_AVATAR_BRIEF.md) |
+| Astronomy and visual domain research | [`DOMAIN/ACCURACY_MATRIX.md`](DOMAIN/ACCURACY_MATRIX.md), [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md), [`CHIROMANT_AVATAR_BRIEF.md`](CHIROMANT_AVATAR_BRIEF.md) |
 | API, memory and localization | [`API_RESILIENCE_MATRIX.md`](API_RESILIENCE_MATRIX.md), [`MEMORY_EVALUATION.md`](MEMORY_EVALUATION.md), [`LOCALIZATION_GLOSSARY.md`](LOCALIZATION_GLOSSARY.md) |
 | Analytics and payments | [`ANALYTICS_EVENT_DICTIONARY.md`](ANALYTICS_EVENT_DICTIONARY.md), [`PAYMENTS_UX_AND_INTEGRATION.md`](PAYMENTS_UX_AND_INTEGRATION.md), [`PAYMENT_MONITORING.md`](PAYMENT_MONITORING.md) |
-| PDF, backup and visual QA | [`PDF_SYSTEM.md`](PDF_SYSTEM.md), [`PDF_TEMPLATE_CATALOG.md`](PDF_TEMPLATE_CATALOG.md), [`BACKUP_RESTORE_DRILL.md`](BACKUP_RESTORE_DRILL.md), [`P004_INFRASTRUCTURE_AUDIT.md`](P004_INFRASTRUCTURE_AUDIT.md), [`VISUAL_QA.md`](VISUAL_QA.md) |
+| PDF, backup and visual QA | [`PDF_SYSTEM.md`](PDF_SYSTEM.md), [`PDF_TEMPLATE_CATALOG.md`](PDF_TEMPLATE_CATALOG.md), [`BACKUP_RESTORE_DRILL.md`](BACKUP_RESTORE_DRILL.md), [`VISUAL_QA.md`](VISUAL_QA.md) |
 | Scale and competition | [`SCALE_AND_MIGRATION.md`](SCALE_AND_MIGRATION.md), [`COMPETITOR_MATRIX.md`](COMPETITOR_MATRIX.md) |
 | Legal and model provenance | [`LEGAL_REVIEW.md`](LEGAL_REVIEW.md), [`models/THIRD_PARTY_NOTICES.md`](../models/THIRD_PARTY_NOTICES.md) |
 
@@ -129,5 +128,4 @@ Before opening a pull request, validate relative links, stale path references, d
 [1]: [Repository README](../README.md) — repository-level quick start and boundary.
 [2]: [Current status](RELEASE/CURRENT_STATUS.md) — current release verdict.
 [3]: [Current tasks](RELEASE/TASKS.md) — current backlog.
-[4]: [Repository inventory](REPOSITORY_INVENTORY.md) — file-by-file inventory.
-[5]: [Documentation link checker](../scripts/check_documentation_links.py) — repository-relative Markdown checker.
+[4]: [Documentation link checker](../scripts/check_documentation_links.py) — repository-relative Markdown checker.

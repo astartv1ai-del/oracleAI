@@ -4,7 +4,7 @@
 
 The canonical natal path is `app.core.astro.compute_chart`. In the full path it uses **Kerykeion 5.12.9** over Swiss Ephemeris. The product contract is version **1** from `app/core/chart_contract.py`. The calculation is tropical, apparent geocentric and Placidus (`P`) when angular data is available. The active points include Sun–Pluto, Chiron, Juno, Ceres, Vesta, Pallas, true North/South lunar nodes, true Lilith and the four angles where supported.
 
-The direct reference harness in `scripts/domain_qa.py` calls `pyswisseph` directly. It is an independent implementation path but shares the Swiss Ephemeris kernel with Kerykeion. It confirms adapter/timezone consistency, not independent vendor or scientific truth. The exact run and its limits are documented in [`docs/ASTRONOMY_REFERENCE_QA.md`](../ASTRONOMY_REFERENCE_QA.md).
+The direct reference harness in `scripts/domain_qa.py` calls `pyswisseph` directly. It is an independent implementation path but shares the Swiss Ephemeris kernel with Kerykeion. It confirms adapter/timezone consistency, not independent vendor or scientific truth. The exact run and its limits are documented in [`DOMAIN/ACCURACY_MATRIX.md`](ACCURACY_MATRIX.md).
 
 ## Input contract
 

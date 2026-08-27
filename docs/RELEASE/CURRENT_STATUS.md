@@ -5,8 +5,8 @@
 | Field | Definition |
 |---|---|
 | **Purpose** | State what is implemented, what was checked and what still blocks release. |
-| **Source of truth** | Current `master` code, tests, CI configuration and [`RELEASE/TASKS.md`](TASKS.md). |
-| **Scope** | Repository state observed on 2026-08-27 at commit `68e3945`. |
+| **Source of truth** | Current checked-out candidate code, tests, CI configuration and [`RELEASE/TASKS.md`](TASKS.md); reconcile with `master` before promotion. |
+| **Scope** | Repository state observed on 2026-08-27 at commit `bcefd38` on candidate branch `p0-004-infrastructure`. |
 | **Do not change** | Do not convert local, synthetic or historical evidence into staging or production claims. |
 | **Key files** | `app/`, `miniapp/`, `tests/`, `scripts/`, `infra/`, [`RELEASE/TASKS.md`](TASKS.md), [`EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md`](../EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md). |
 | **Validation** | Use the commands in [`TESTING.md`](../TESTING.md) and the evidence record for each gate. |
@@ -19,7 +19,7 @@
 
 | Environment | What is verified | What is not verified | Status |
 |---|---|---|---|
-| **LOCAL** | FastAPI/API, bot and Mini App code paths; deterministic chart, Tarot, memory, report and PDF contracts; owner-scoped persistence; safety and resilience tests; repository scripts and static checks where dependencies are available. | Full local command suite still needs to be rerun in the current clean environment after this documentation change. Live provider, real Telegram identity and real payment systems are intentionally absent. | **IMPLEMENTED WITH LIMITATIONS** |
+| **LOCAL** | FastAPI/API, bot and Mini App code paths; deterministic chart, Tarot, memory, report and PDF contracts; owner-scoped persistence; safety and resilience tests; repository scripts and static checks where dependencies are available. | Live provider, real Telegram identity and real payment systems are intentionally absent; rerun the documented suite after any source or dependency change. | **IMPLEMENTED WITH LIMITATIONS** |
 | **STAGING** | The code and runbooks define the required staging scenarios. | Signed Telegram `initData` and device/WebView journey, provider latency/quality, payment sandbox settlement/refund/reconciliation, production-like storage, rollback and independent domain comparison are not evidenced here. | **OPEN** |
 | **PRODUCTION** | Production fail-closed configuration, Compose topology, migrations, health/security middleware and operational procedures exist in code. | No production deployment, real traffic, alert routing, encrypted off-site restore, capacity ceiling or rollback rehearsal was run from this checkout. | **NOT CERTIFIED** |
 | **EXTERNAL** | Legal, licensing, provider, Telegram, payment and infrastructure owners are identified as release dependencies. | Privacy/Terms operator placeholders, Swiss Ephemeris/Kerykeion sign-off, PSP certification, country scope, live LLM and independent astronomy authority evidence remain open. | **BLOCKED** |

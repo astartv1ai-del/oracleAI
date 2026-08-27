@@ -14,7 +14,7 @@ The upstream Kerykeion GitHub repository identifies an AGPL-3.0 license in its r
 
 ## Numerical comparison scope
 
-`scripts/domain_qa.py` and `docs/ASTRONOMY_REFERENCE_QA.md` compare the canonical Kerykeion adapter to direct `pyswisseph` calls. This is a useful independent implementation-path check, but both paths share the Swiss Ephemeris kernel. It is **not** an independent ephemeris-vendor comparison. Public web calculators discovered during review either expose an interactive form or also advertise Swiss Ephemeris; no stable, machine-readable, independently sourced numeric reference was captured in this run. No fabricated external values are added to the golden corpus. The external vendor/reference comparison gate remains open.
+`scripts/domain_qa.py` and `docs/DOMAIN/ACCURACY_MATRIX.md` compare the canonical Kerykeion adapter to direct `pyswisseph` calls. This is a useful independent implementation-path check, but both paths share the Swiss Ephemeris kernel. It is **not** an independent ephemeris-vendor comparison. Public web calculators discovered during review either expose an interactive form or also advertise Swiss Ephemeris; no stable, machine-readable, independently sourced numeric reference was captured in this run. No fabricated external values are added to the golden corpus. The external vendor/reference comparison gate remains open.
 
 ## References
 

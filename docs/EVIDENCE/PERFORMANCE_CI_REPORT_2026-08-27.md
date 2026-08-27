@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL
+> SUPERSEDED BY: `../TESTING.md and ../EVIDENCE/BASELINE_2026-08-26.md`
+> This dated evidence is retained for audit context; it is not a current source of truth.
+
 # Performance и CI/CD: итог оптимизации OracleAI
 
 **Дата измерения:** 27 августа 2026 года

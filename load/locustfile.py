@@ -1,4 +1,4 @@
-"""Locust-сценарий: API Mini App под 50 RPS (SLO из docs/PRODUCTION_READINESS.md §2).
+"""Locust-сценарий: API Mini App под 50 RPS (SLO из docs/RELEASE/PRODUCTION_READINESS.md §2).
 
 API ходит на сервер, поднятый в DEV_MODE: подписанную Telegram-initData не
 шлём, а эмулируем распределение по клиенткам через `?dev_user=`, как

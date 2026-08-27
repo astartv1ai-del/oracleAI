@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL
+> SUPERSEDED BY: `../RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md and ../OPERATIONS.md`
+> This dated evidence is retained for audit context; it is not a current source of truth.
+
 # P0-004 Infrastructure Readiness Audit
 
 **Дата:** 2026-08-27
@@ -75,8 +79,8 @@ The sandbox does not have Docker, a PostgreSQL server, an S3-compatible bucket, 
 
 ## References
 
-[1]: [P0 production execution plan](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) — gate order, acceptance, evidence and rollback.
-[2]: [Deployment runbook](DEPLOYMENT.md) — Compose topology, backup profile and restore operations.
-[3]: [Backup/restore drill](BACKUP_RESTORE_DRILL.md) — disposable local evidence and explicit production limitations.
+[1]: [P0 production execution plan](../RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) — gate order, acceptance, evidence and rollback.
+[2]: [Deployment runbook](../DEPLOYMENT.md) — Compose topology, backup profile and restore operations.
+[3]: [Backup/restore drill](../BACKUP_RESTORE_DRILL.md) — disposable local evidence and explicit production limitations.
 [4]: [PostgreSQL `pg_dump` docs](https://www.postgresql.org/docs/current/app-pgdump.html) — archive formats and restore relationship.
 [5]: [PostgreSQL `pg_restore` docs](https://www.postgresql.org/docs/current/app-pgrestore.html) — restoration of non-plain-text archives.
