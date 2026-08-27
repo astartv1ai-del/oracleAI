@@ -27,7 +27,7 @@
 | Location / coordinates | **Enabled with limitation** | Геокодирование и ручные координаты поддержаны; качество внешнего геокодера — external gate. |
 | Avatar | **Partial** | Агентские спрайты есть; пользовательский avatar upload как завершённый identity-surface не подтверждён. |
 | Language | **Enabled** | RU/EN client localization и server language fields. |
-| Preferences | **Partial** | Предпочтения и gender/language есть; единый экран управления всеми preference-категориями требует аудита. |
+| Preferences | **Enabled with limitation** | Профильные настройки и отдельный owner-scoped notification preference contract реализованы; дополнительные категории требуют отдельной продуктовой спецификации. |
 | Privacy controls | **Enabled with limitation** | Memory consent, pause/delete controls и privacy docs есть; legal sign-off остаётся внешним gate. |
 | Account deletion | **Partial** | Admin anonymization существует; self-service deletion flow требует отдельного E2E-подтверждения. |
 
@@ -42,7 +42,7 @@
 | Profile | **Enabled** | Profile view, chart and settings actions. |
 | History | **Partial** | Tarot, reports, chat sessions and palm histories exist; unified cross-tool history is not complete. |
 | Favorites / saved results | **Partial** | Saved reports and memories exist; generalized favorites contract is not confirmed. |
-| Notifications | **Partial** | Bot scheduler/broadcast surfaces exist; user notification center is not confirmed. |
+| Notifications | **Enabled with limitation** | Mini App bell показывает server-owned inbox summaries с unread count и mark-all-read; реальная Telegram delivery/device QA остаётся external gate. |
 | Empty states | **Enabled** | Core widgets include explicit empty and unavailable states; full matrix needs visual QA. |
 | Loading states | **Enabled** | Widget-specific loading/re-entry guards and API error states exist. |
 | Error / retry | **Enabled with limitation** | Friendly client errors and retry-chat exist; every feature still needs matrix-level E2E. |
@@ -131,7 +131,7 @@
 | Credits / entitlements / trial | **Enabled with limitation** | Billing services and tests cover core balance/idempotency; production price ownership is external. |
 | Paywall | **Partial** | Limit and entitlement checks exist; complete UX matrix needs browser validation. |
 | Web checkout | **Enabled with limitation** | Paddle/LemonSqueezy-style configuration path; requires real provider certification. |
-| Telegram Stars / crypto invoice | **Partial** | Endpoints exist; external credentials and reconciliation are not locally provable. |
+| Telegram Stars / crypto invoice | **Partial** | Endpoints and payment history exist; external credentials, provider certification and live settlement reconciliation are not locally provable. |
 | Refund / webhook / reconciliation | **Enabled with limitation** | Signature and idempotency tests exist; live settlement drill is external. |
 | Telegram bot | **Enabled with limitation** | aiogram entrypoint and handlers exist; real bot token/device flow is external. |
 | Mini App | **Enabled with limitation** | FastAPI static delivery and Telegram WebApp client. |

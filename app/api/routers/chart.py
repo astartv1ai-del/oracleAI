@@ -135,11 +135,14 @@ async def chart_image(
     if not data:
         raise HTTPException(400, "карта ещё не построена")
     calculation_input = (data.get("calculation") or {}).get("input") or {}
-    birth_date = user["birth_date"] or calculation_input.get("birth_date")
-    birth_time = user["birth_time"] or calculation_input.get("birth_time")
-    lat = user["birth_lat"] if user["birth_lat"] is not None else calculation_input.get("lat")
-    lon = user["birth_lon"] if user["birth_lon"] is not None else calculation_input.get("lon")
-    tz = user["tz"] or calculation_input.get("tz")
+    # A rendered image must describe the immutable chart snapshot. Prefer the
+    # calculation input captured with that snapshot; profile edits are applied
+    # only after a new chart calculation, not implicitly during rendering.
+    birth_date = calculation_input.get("birth_date") or user["birth_date"]
+    birth_time = calculation_input.get("birth_time") or user["birth_time"]
+    lat = calculation_input.get("lat") if calculation_input.get("lat") is not None else user["birth_lat"]
+    lon = calculation_input.get("lon") if calculation_input.get("lon") is not None else user["birth_lon"]
+    tz = calculation_input.get("tz") or user["tz"]
     try:
         image, spec, cache_hit, etag = await asyncio.to_thread(
             chart_rendering.render_chart_image,

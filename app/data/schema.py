@@ -161,6 +161,20 @@ CREATE TABLE IF NOT EXISTS deliveries (
 
 # ────────────────────────────── таро и практики ─────────────────────────────
 
+USER_NOTIFICATIONS = """
+CREATE TABLE IF NOT EXISTS user_notifications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id       INTEGER NOT NULL,
+    kind        TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    body        TEXT NOT NULL,
+    dedupe_key  TEXT NOT NULL,
+    read_at     TEXT,
+    created_at  TEXT NOT NULL,
+    UNIQUE (tg_id, dedupe_key)
+);
+"""
+
 READINGS = """
 CREATE TABLE IF NOT EXISTS tarot_readings (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -575,6 +589,8 @@ CREATE INDEX IF NOT EXISTS idx_thread_user_recent  ON threads(
     tg_id, archived, COALESCE(last_at, created_at) DESC, id DESC
 );
 CREATE INDEX IF NOT EXISTS idx_reports_user  ON reports(tg_id, kind);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON user_notifications(tg_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON user_notifications(tg_id, read_at, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_mem_user        ON memories(tg_id);
 CREATE INDEX IF NOT EXISTS idx_mem_user_rank   ON memories(tg_id, weight DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_shared_event_user_time ON shared_context_events(tg_id, event_type, created_at DESC);
@@ -631,7 +647,7 @@ CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
 #: поэтому индекс по новой колонке (например, `messages.thread_id`) упадёт, если
 #: строить его до `migrations.reconcile_columns`. Порядок: таблицы → колонки →
 #: индексы (см. `session.connect`).
-TABLES = "\n".join([USERS, DIALOG, READINGS, BILLING, GROWTH, INFRA,
+TABLES = "\n".join([USERS, DIALOG, USER_NOTIFICATIONS, READINGS, BILLING, GROWTH, INFRA,
                     ANALYTICS, ADMIN])
 
 SCHEMA = "\n".join([TABLES, INDEXES])

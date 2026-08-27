@@ -108,10 +108,16 @@ def cache_key(chart: dict, *, birth_date: str, birth_time: str | None,
               spec: RenderSpec) -> str:
     """Return a keyed digest over chart version/conventions, never raw birth data."""
     calculation = chart.get("calculation") or {}
+    runtime = (calculation.get("config") or {}).get("runtime_versions") or {}
     payload = "|".join([
-        "chart-image-v2-classic-dark-clean", astro.EPHEMERIS_ENGINE, "kerykeion-5.12.9", "resvg_py-0.5.0",
+        "chart-image-v2-classic-dark-clean", astro.EPHEMERIS_ENGINE,
+        f"kerykeion-{runtime.get('kerykeion', 'unknown')}",
+        f"swiss-{runtime.get('swiss_ephemeris', 'unknown')}",
+        f"tzdata-{runtime.get('tzdata', 'unknown')}", "resvg_py-0.5.0",
         str(chart.get("natal_schema_version", 2)), str(chart.get("precision", "")),
-        str(calculation.get("contract_version", "")), astro.ZODIAC_TYPE,
+        str(calculation.get("contract_version", "")),
+        str(calculation.get("configuration_fingerprint", "")),
+        str(calculation.get("request_fingerprint", "")), astro.ZODIAC_TYPE,
         astro.HOUSE_SYSTEM_IDENTIFIER, astro.PERSPECTIVE_TYPE, spec.variant,
         spec.image_format, spec.locale, str(spec.width), str(spec.height),
         # These values are only keyed, not emitted. HMAC prevents reversing them
@@ -123,6 +129,15 @@ def cache_key(chart: dict, *, birth_date: str, birth_time: str | None,
 
 def _subject_from_chart(chart: dict, *, birth_date: str, birth_time: str | None,
                         lat: float | None, lon: float | None, tz: str | None):
+    calculation = chart.get("calculation") or {}
+    config = calculation.get("config") or {}
+    expected_config = {
+        "zodiac_type": astro.ZODIAC_TYPE,
+        "house_system": astro.HOUSE_SYSTEM_IDENTIFIER,
+        "perspective_type": astro.PERSPECTIVE_TYPE,
+    }
+    if config and any(str(config.get(key)) != value for key, value in expected_config.items()):
+        raise EngineRenderError("stored chart configuration is stale")
     if chart.get("precision") != "exact":
         raise InsufficientPrecisionError(
             "A natal wheel image requires confirmed birth time, coordinates, and timezone.")
@@ -140,10 +155,10 @@ def _subject_from_chart(chart: dict, *, birth_date: str, birth_time: str | None,
             name="oracle", year=day.year, month=day.month, day=day.day,
             hour=parsed.hour, minute=parsed.minute, city="-",
             lat=float(lat), lng=float(lon), tz_str=tz, online=False,
-            zodiac_type=astro.ZODIAC_TYPE,
-            houses_system_identifier=astro.HOUSE_SYSTEM_IDENTIFIER,
-            perspective_type=astro.PERSPECTIVE_TYPE,
-            active_points=astro.ACTIVE_POINTS,
+            zodiac_type=config.get("zodiac_type", astro.ZODIAC_TYPE),
+            houses_system_identifier=config.get("house_system", astro.HOUSE_SYSTEM_IDENTIFIER),
+            perspective_type=config.get("perspective_type", astro.PERSPECTIVE_TYPE),
+            active_points=config.get("active_points") or astro.ACTIVE_POINTS,
         )
     except ChartRenderError:
         raise

@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
@@ -189,6 +189,14 @@ async def access_log(request: Request, call_next):
 def metrics() -> Response:
     """Prometheus metrics; Caddy denies this path on the public edge."""
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/health", include_in_schema=False)
+async def health(db=Depends(get_db)) -> dict:
+    """Unauthenticated liveness/readiness probe for the API process and DB."""
+    from ..data.session import healthcheck
+    state = await healthcheck(db)
+    return {"ok": bool(state.get("ok")), "database": state}
 
 
 for router in ROUTERS:

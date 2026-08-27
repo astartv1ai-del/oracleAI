@@ -376,7 +376,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
               <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(chatAgentField(b, 'name').split(' ')[0])}</span>
             </button>`).join('')}
         </div>
-        <div class="chat-messages" id="chat-messages">
+        <div class="chat-messages" id="chat-messages" tabindex="0" role="log" aria-label="${esc(chatLang() === 'en' ? 'Conversation history' : 'История разговора')}">
           ${introHtml}
           ${body}
           ${pendHtml}

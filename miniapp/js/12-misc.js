@@ -764,30 +764,60 @@
 
   app.openBell = async function() {
     this.markBellSeen && this.markBellSeen();
-    const bellTitle = oracleLang() === 'en' ? 'Notifications' : 'Уведомления';
-    this.showModal(`<h3>${esc(bellTitle)}</h3><button class="m-close" data-act="modal-close" aria-label="${oracleLang() === 'en' ? 'Close' : 'Закрыть'}">✕</button>
+    const en = oracleLang() === 'en';
+    const bellTitle = en ? 'Notifications' : 'Уведомления';
+    this.showModal(`<h3>${esc(bellTitle)}</h3><button class="m-close" data-act="modal-close" aria-label="${en ? 'Close' : 'Закрыть'}">✕</button>
       <div id="bell-body" style="margin-top:8px"><div class="loader-ring"></div></div>`);
     try {
       if (!this.today) this.today = await api('/api/today');
       const t = this.today;
+      const inbox = await api('/api/notifications?limit=20');
       const push = this.me && this.me.morning_push;
+      const items = (inbox.items || []).map(item => `<article class="glass notification-item${item.read_at ? '' : ' notification-item--unread'}">
+        <div class="notification-item__meta"><b>${esc(item.title || (en ? 'Notification' : 'Уведомление'))}</b><small>${esc(fmtDate(item.created_at || ''))}</small></div>
+        <div class="notification-item__body">${esc(item.body || '')}</div>
+      </article>`).join('');
+      const inboxTitle = en ? 'Inbox' : 'Входящие';
+      const empty = en ? 'Nothing new yet.' : 'Пока новых уведомлений нет.';
+      const markRead = en ? 'Mark all as read' : 'Отметить всё прочитанным';
       document.getElementById('bell-body').innerHTML = `
         <div class="glass" style="padding:14px 16px">
-          <div style="font-size:12px;color:var(--text-faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Сегодня · ${fmtDate()}</div>
+          <div style="font-size:12px;color:var(--text-faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">${en ? 'Today' : 'Сегодня'} · ${fmtDate()}</div>
           <div style="font-size:13.5px;line-height:1.6">${esc(t.forecast)}</div>
         </div>
         <div class="mem-row" style="margin-top:10px;align-items:center">
           <span class="mem-dot">🌅</span>
-          <span class="mem-txt" style="flex:1">Утренний прогноз в боте</span>
-          <span style="color:${push ? '#58d68d' : 'var(--text-faint)'};font-size:12px">${push ? 'вкл' : 'выкл'}</span>
+          <span class="mem-txt" style="flex:1">${en ? 'Morning forecast in Telegram' : 'Утренний прогноз в боте'}</span>
+          <button class="btn btn-ghost notification-toggle" data-act="notifications-toggle" type="button">${push ? (en ? 'on' : 'вкл') : (en ? 'off' : 'выкл')}</button>
         </div>
-        <div style="color:var(--text-faint);font-size:11.5px;margin-top:10px">Напоминания и прогнозы приходят в Telegram-боте. Включить их можно там же.</div>`;
+        <div class="notification-inbox" aria-live="polite"><div class="section-kicker">${esc(inboxTitle)} · ${Number(inbox.unread_count || 0)}</div>${items || `<div class="notification-empty">${esc(empty)}</div>`}${inbox.unread_count ? `<button class="btn btn-ghost" data-act="notifications-read-all" type="button">${esc(markRead)}</button>` : ''}</div>
+        <div style="color:var(--text-faint);font-size:11.5px;margin-top:10px">${en ? 'Only server-owned summaries appear here. Private chat text and provider payloads are excluded.' : 'Здесь показываются только серверные сводки. Тексты приватных чатов и payload провайдеров не включаются.'}</div>`;
     } catch (e) {
       const body = document.getElementById('bell-body');
       if (body) body.innerHTML = this.softEmpty({
-        icon: '🌙', eyebrow: 'Уведомления', title: 'Пока тихо',
-        copy: 'Когда появится новый знак дня или важное напоминание, оно будет ждать тебя здесь.', tone: 'quiet'
+        icon: '🌙', eyebrow: bellTitle, title: en ? 'Quiet for now' : 'Пока тихо',
+        copy: en ? 'A new forecast or reminder will wait here.' : 'Когда появится новый прогноз или напоминание, оно будет ждать тебя здесь.', tone: 'quiet'
       });
+    }
+  };
+
+  app.toggleMorningNotifications = async function() {
+    const next = !(this.me && this.me.morning_push);
+    try {
+      const updated = await api('/api/notifications/preferences', { method: 'PATCH', body: JSON.stringify({ morning_forecast: next }) });
+      this.me = Object.assign({}, this.me, { morning_push: !!updated.morning_forecast });
+      await this.openBell();
+    } catch (e) {
+      this.toast(friendlyError(e, oracleLang() === 'en' ? 'Notification settings are temporarily unavailable.' : 'Настройки уведомлений временно недоступны.'));
+    }
+  };
+
+  app.markNotificationsRead = async function() {
+    try {
+      await api('/api/notifications/read-all', { method: 'POST', body: '{}' });
+      await this.openBell();
+    } catch (e) {
+      this.toast(friendlyError(e, oracleLang() === 'en' ? 'Notifications are temporarily unavailable.' : 'Уведомления временно недоступны.'));
     }
   };
 

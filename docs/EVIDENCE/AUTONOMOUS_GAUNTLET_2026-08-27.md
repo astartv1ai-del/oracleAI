@@ -6,7 +6,7 @@
 
 **Автор:** Manus AI
 **Дата проверки:** 2026-08-27
-**Решение:** **FAIL — public production launch remains NO-GO**
+**Решение:** **BLOCKED — external production gates remain; public launch is NO-GO**
 
 ## Executive decision
 
@@ -48,6 +48,7 @@ OracleAI прошёл локальный autonomous gauntlet по коду, disp
 | Payment DOM contract | **PASS** | 5 plans and 5 product cards observed in inspected RU/EN payment states |
 | Production fail-closed probe | **PASS** | Missing secrets and `DEV_MODE=1` in production both rejected |
 | Offline selfcheck and release gate | **PASS** | Expected skips only for live LLM and absent production credentials |
+| GitHub CI final run | **PASS** | Run `33094323868` for SHA `9879ec0`; `quality` and `frontend-quality` both successful |
 
 ## Visual and interaction assessment
 
