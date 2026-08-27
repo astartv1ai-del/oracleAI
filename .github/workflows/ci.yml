@@ -19,6 +19,18 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13.0"
+          cache: npm
+
+      - name: Frontend build required by API tests
+        run: |
+          npm ci --ignore-scripts
+          npm run build:frontend
+          python scripts/check_frontend_build.py
+          python scripts/check_static_asset_references.py
+
       - name: Системные библиотеки WeasyPrint
         run: |
           sudo apt-get update
