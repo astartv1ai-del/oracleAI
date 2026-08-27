@@ -172,14 +172,18 @@ def frontend_assets():
     """Ключевые файлы модульного Mini App и админки должны отдаваться API."""
     required = [
         "miniapp/index.html", "miniapp/styles.css",
-        "miniapp/js/01-utils.js", "miniapp/js/02-art.js",
-        "miniapp/js/03-data.js",
+        "miniapp/js/00-runtime.js", "miniapp/js/01-utils.js",
+        "miniapp/js/02-art.js", "miniapp/js/03-data.js",
         "miniapp/js/05-app.js", "miniapp/js/06-home.js",
         "miniapp/js/07-chat.js", "miniapp/js/08-widgets.js",
         "miniapp/js/09-tarot.js", "miniapp/js/10-chart.js",
         "miniapp/js/11-compat.js", "miniapp/js/12-misc.js",
-        "miniapp/js/13-events.js", "miniapp/js/14-gestures.js",
-        "miniapp/css/15-ritual-redesign.css",
+        "miniapp/js/13-events.js", "miniapp/js/13-palm.js",
+        "miniapp/js/14-gestures.js", "miniapp/js/14-products.js",
+        "miniapp/js/15-actions.js", "miniapp/js/16-placements.js",
+        "miniapp/js/17-payments.js",
+        "miniapp/css/00-tokens.css", "miniapp/css/15-ritual-redesign.css",
+        "miniapp/css/16-visual-qa.css", "miniapp/css/16-payments.css",
         "admin/index.html", "admin/admin.js", "admin/admin.css",
     ]
     missing = [p for p in required if not (ROOT / p).is_file()]
@@ -284,8 +288,8 @@ async def limits_smoke():
         db = await connect(f"{tmp}/limits.db")
         try:
             await users.ensure(db, 999000333, "Спрашивающая")
-            await users.update(db, 999000333, onboarded=1, birth_date="1990-06-21",
-                               sub_level="vip", age_confirmed=1)
+            await users.update(db, 999000333, onboarded=1, age_confirmed=1,
+                               birth_date="1990-06-21", sub_level="vip")
             user = await users.get(db, 999000333)
 
             allowance = await limits.allowance(db, user)

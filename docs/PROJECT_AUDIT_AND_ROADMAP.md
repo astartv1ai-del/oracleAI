@@ -157,7 +157,7 @@ Documentation quality is unusually high and honest about limitations. The remain
 
 ## 5. Post-audit local fixes
 
-The following findings were fixed after the initial audit and are covered by the current working tree QA: the Mini App now renders an explicit authenticated recovery state instead of silently continuing to the home shell after `/api/me` failure; account deletion is discoverable from Profile Summary, confirm-gated, calls the existing idempotent endpoint and renders a terminal success state; six operator-facing scripts bootstrap the repository root for direct invocation; CI runs the quality-script subset as a regression check; and the Mini App asset version was raised from 95 to 96 so the fixes are not hidden by stale client caches. These changes do not close the external Telegram, payment, legal, live-provider, monitoring or production restore gates.
+The following findings were fixed after the initial audit and are covered by the current working tree QA: the Mini App now renders an explicit authenticated recovery state instead of silently continuing to the home shell after `/api/me` failure; account deletion is discoverable from Profile Summary, confirm-gated, calls the existing idempotent endpoint and renders a terminal success state; **10 operator-facing scripts** bootstrap the repository root for direct invocation; CI runs **4 quality scripts** as a regression smoke; and the Mini App asset version is now **102** so the fixes are not hidden by stale client caches. These changes do not close the external Telegram, payment, legal, live-provider, monitoring or production restore gates.
 
 ## 6. Critical path walkthrough
 

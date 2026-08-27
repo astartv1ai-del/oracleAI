@@ -13,7 +13,6 @@ from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-
 ADAPTER_VERSION = "palm-full-scope-cv-v1"
 MAX_SIDE = 1280
 MAX_CANDIDATES = 64

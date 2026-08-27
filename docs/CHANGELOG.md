@@ -50,6 +50,7 @@
 - Добавлен явный authenticated boot recovery state: Mini App больше не показывает полноценный home shell после неуспешного `/api/me`, а предлагает повторить вход внутри Telegram.
 - Account deletion теперь доступен из Profile Summary через локализованный confirm-gated UI, вызывает существующий idempotent `/api/account/delete` и показывает terminal success state без повторного запроса данных удалённого профиля.
 - Standalone agent/skill benchmark scripts получили repository-root bootstrap; direct invocation добавлен в CI как regression contract.
+- Selfcheck limits path теперь явно подтверждает `age_confirmed=1` перед проверкой платного chat flow; design contract checker учитывает visual и payments CSS layers, а VISUAL QA больше не ссылается на отсутствующие generated artifacts.
 
 ## 2.0.0 — 2026-08-12
 
