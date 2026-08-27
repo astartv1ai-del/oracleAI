@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -744,7 +745,7 @@ def test_admin_demo_and_payment_health_ui_contract():
     mini_actions = (root / "miniapp" / "js" / "15-actions.js").read_text(encoding="utf-8")
     mini_payments = (root / "miniapp" / "js" / "17-payments.js").read_text(encoding="utf-8")
     mini_misc = (root / "miniapp" / "js" / "12-misc.js").read_text(encoding="utf-8")
-    assert "/static/styles.css?v=102" in mini_index
+    assert re.search(r"/static/styles\.css\?v=\d+", mini_index)
     assert "payment-history" in mini_actions and "account-privacy" in mini_actions
     assert "/api/shop/payment-history" in mini_payments
     assert "/api/account/export" in mini_misc
@@ -772,8 +773,8 @@ async def test_miniapp_index_uses_source_assets_in_dev(client, monkeypatch):
     monkeypatch.setattr(settings, "dev_mode", True)
     monkeypatch.delenv("BUNDLE_ASSETS", raising=False)
     html = (await client.get("/")).text
-    assert '/static/styles.css?v=102' in html
-    assert '/static/js/00-runtime.js?v=102' in html
+    assert re.search(r'/static/styles\.css\?v=\d+', html)
+    assert re.search(r'/static/js/00-runtime\.js\?v=\d+', html)
     assert '/static/dist/' not in html
 
 
@@ -791,8 +792,8 @@ async def test_miniapp_index_uses_hashed_bundles_in_production(client, monkeypat
     html = response.text
     assert f'/static/dist/{manifest["css"]}' in html
     assert f'/static/dist/{manifest["js"]}' in html
-    assert '/static/js/00-runtime.js?v=102' not in html
-    assert '/static/styles.css?v=102' not in html
+    assert not re.search(r'/static/js/00-runtime\.js\?v=\d+', html)
+    assert not re.search(r'/static/styles\.css\?v=\d+', html)
     bundle = await client.get(f'/static/dist/{manifest["js"]}')
     assert bundle.status_code == 200
     assert bundle.headers["cache-control"] == "public, max-age=31536000, immutable"
