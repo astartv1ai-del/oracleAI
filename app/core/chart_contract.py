@@ -7,14 +7,34 @@ UI, LLM and PDF consumers never infer settings from library defaults.
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+import hashlib
+import importlib.metadata
+import json
 from typing import Any
 
-CHART_CONTRACT_VERSION = 1
+CHART_CONTRACT_VERSION = 2
+CONFIGURATION_SCHEMA_VERSION = 1
 ORACLE_ENGINE_NAME = "OracleAI Engine"
 ORACLE_ENGINE_ADAPTER_VERSION = "oracleai-kerykeion-engine-v2"
 KERYKEION_VERSION = "5.12.9"
 EPHEMERIS_BACKEND = "Kerykeion"
 EPHEMERIS_NAME = "Swiss Ephemeris"
+
+
+def _package_version(name: str, fallback: str) -> str:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return fallback
+
+
+def runtime_versions() -> dict[str, str]:
+    """Return versions that can change numerical or timezone semantics."""
+    return {
+        "kerykeion": _package_version("kerykeion", KERYKEION_VERSION),
+        "swiss_ephemeris": _package_version("pyswisseph", "unknown"),
+        "tzdata": _package_version("tzdata", "system-zoneinfo"),
+    }
 
 ASPECT_ANGLES: dict[str, float] = {
     "conjunction": 0.0,
@@ -55,12 +75,22 @@ class CalculationConfig:
     ephemeris_engine: str = "Swiss Ephemeris via Kerykeion"
     active_points: tuple[str, ...] = ()
     aspect_policy: dict[str, Any] | None = None
+    node_policy: str = "true_lunar_nodes_plus_true_lilith"
+    precision_policy: str = "precision-state-v2"
 
     def as_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["active_points"] = list(self.active_points)
         data["aspect_policy"] = self.aspect_policy or ASPECT_POLICY
+        data["runtime_versions"] = runtime_versions()
+        data["configuration_schema_version"] = CONFIGURATION_SCHEMA_VERSION
         return data
+
+
+def configuration_fingerprint(config: dict[str, Any]) -> str:
+    """Hash every calculation-affecting setting, not presentation metadata."""
+    encoded = json.dumps(config, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
 
 
 def build_calculation_metadata(*, active_points: list[str] | tuple[str, ...],
@@ -72,9 +102,11 @@ def build_calculation_metadata(*, active_points: list[str] | tuple[str, ...],
         active_points=tuple(active_points),
         aspect_policy=ASPECT_POLICY,
     )
+    config_dict = config.as_dict()
     return {
         "contract_version": CHART_CONTRACT_VERSION,
-        "config": config.as_dict(),
+        "configuration_fingerprint": configuration_fingerprint(config_dict),
+        "config": config_dict,
         "input": dict(input_data),
         "precision": precision,
         "angular_data_available": bool(angular_data_available),

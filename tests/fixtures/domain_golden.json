@@ -371,7 +371,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -427,7 +428,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "1990-06-21",
@@ -439,9 +448,26 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "d875a5960f114f64",
+            "request_fingerprint": "f6a53c9d77004a95",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "normal"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "normal",
+            "candidate_instants": [
+              "1990-06-21T10:30:00+00:00"
+            ],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "exact",
+            "original_birth_time": "14:30",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [
+                "1990-06-21T10:30:00+00:00"
+              ],
+              "angular_data_available": true
+            }
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -818,7 +844,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -874,7 +901,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "2020-07-01",
@@ -886,9 +921,26 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "15dcd0787fe82186",
+            "request_fingerprint": "1d75a12310043eda",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "normal"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "normal",
+            "candidate_instants": [
+              "2020-07-01T10:00:00+00:00"
+            ],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "exact",
+            "original_birth_time": "12:00",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [
+                "2020-07-01T10:00:00+00:00"
+              ],
+              "angular_data_available": true
+            }
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -1265,7 +1317,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -1321,7 +1374,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "2020-01-15",
@@ -1333,9 +1394,26 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "1cbfaa3702fb855b",
+            "request_fingerprint": "7b4b517a1cf2cb44",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "normal"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "normal",
+            "candidate_instants": [
+              "2020-01-15T06:30:00+00:00"
+            ],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "exact",
+            "original_birth_time": "12:00",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [
+                "2020-01-15T06:30:00+00:00"
+              ],
+              "angular_data_available": true
+            }
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -1712,7 +1790,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -1768,7 +1847,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "2000-01-01",
@@ -1780,9 +1867,26 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "d00613e00f1a8b0d",
+            "request_fingerprint": "8481cba2f67d7b40",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "normal"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "normal",
+            "candidate_instants": [
+              "2000-01-01T00:00:00+00:00"
+            ],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "exact",
+            "original_birth_time": "00:00",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [
+                "2000-01-01T00:00:00+00:00"
+              ],
+              "angular_data_available": true
+            }
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -2159,7 +2263,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -2215,7 +2320,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "2000-03-20",
@@ -2227,9 +2340,26 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "0853faf04d60ecd6",
+            "request_fingerprint": "823b1ee3f28e839c",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "normal"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "normal",
+            "candidate_instants": [
+              "2000-03-20T21:00:00+00:00"
+            ],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "exact",
+            "original_birth_time": "12:00",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [
+                "2000-03-20T21:00:00+00:00"
+              ],
+              "angular_data_available": true
+            }
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -2606,7 +2736,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -2662,7 +2793,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "1990-06-21",
@@ -2674,9 +2813,26 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "f05588d10ee59a49",
+            "request_fingerprint": "3c92ecbf9acce091",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "normal"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "normal",
+            "candidate_instants": [
+              "1990-06-21T04:30:00+00:00"
+            ],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "exact",
+            "original_birth_time": "14:30",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [
+                "1990-06-21T04:30:00+00:00"
+              ],
+              "angular_data_available": true
+            }
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -3053,7 +3209,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -3109,7 +3266,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "2000-02-29",
@@ -3121,9 +3286,26 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "c70beb8dbb85b633",
+            "request_fingerprint": "0fbc1cd2bcce0cc3",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "normal"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "normal",
+            "candidate_instants": [
+              "2000-02-29T12:00:00+00:00"
+            ],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "exact",
+            "original_birth_time": "12:00",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [
+                "2000-02-29T12:00:00+00:00"
+              ],
+              "angular_data_available": true
+            }
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -3351,7 +3533,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -3407,7 +3590,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "1990-06-21",
@@ -3419,9 +3610,22 @@
             "time_known": false,
             "precision_reason": "date_only",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "ab29c7db47c1ed27",
+            "request_fingerprint": "5e7d2474da0e5455",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "not_applicable"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "provided",
+            "local_time_status": "not_applicable",
+            "candidate_instants": [],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "date_only",
+            "original_birth_time": null,
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [],
+              "angular_data_available": false
+            }
           },
           "precision": "date_only",
           "angular_data_available": false,
@@ -3657,7 +3861,8 @@
           }
         ],
         "calculation": {
-          "contract_version": 1,
+          "contract_version": 2,
+          "configuration_fingerprint": "d4ddae4a193c1a86",
           "config": {
             "zodiac_type": "Tropical",
             "house_system": "P",
@@ -3713,7 +3918,15 @@
                 "sextile": 6.0
               },
               "scope": "major aspects between active planets/points and angles"
-            }
+            },
+            "node_policy": "true_lunar_nodes_plus_true_lilith",
+            "precision_policy": "precision-state-v2",
+            "runtime_versions": {
+              "kerykeion": "5.12.9",
+              "swiss_ephemeris": "2.10.3.2",
+              "tzdata": "2026.3"
+            },
+            "configuration_schema_version": 1
           },
           "input": {
             "birth_date": "1990-06-21",
@@ -3725,9 +3938,22 @@
             "time_known": false,
             "precision_reason": "date_only_missing_timezone",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "ad4adf97971963f0",
+            "request_fingerprint": "685a913e94368b61",
+            "configuration_fingerprint": "d4ddae4a193c1a86",
             "location_reason": "valid",
-            "local_time_status": "no_timezone"
+            "coordinate_source": "unknown",
+            "coordinate_confidence": null,
+            "timezone_source": "missing",
+            "local_time_status": "no_timezone",
+            "candidate_instants": [],
+            "ambiguity_mode": "safe_date_only",
+            "precision_state": "date_only",
+            "original_birth_time": "14:30",
+            "uncertainty": {
+              "kind": "none",
+              "candidate_instants": [],
+              "angular_data_available": false
+            }
           },
           "precision": "date_only",
           "angular_data_available": false,

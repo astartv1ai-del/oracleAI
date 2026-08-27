@@ -76,10 +76,16 @@ async def get_thread(db, thread_id: int, tg_id: int):
     return await cur.fetchone()
 
 
-async def list_threads(db, tg_id: int, limit: int = 30) -> list[dict]:
-    cur = await db.execute(
+async def list_threads(db, tg_id: int, limit: int | None = 30) -> list[dict]:
+    query = (
         "SELECT * FROM threads WHERE tg_id=? AND archived=0 "
-        "ORDER BY COALESCE(last_at, created_at) DESC LIMIT ?", (tg_id, limit))
+        "ORDER BY COALESCE(last_at, created_at) DESC"
+    )
+    params: tuple[object, ...] = (tg_id,)
+    if limit is not None:
+        query += " LIMIT ?"
+        params += (limit,)
+    cur = await db.execute(query, params)
     return [dict(r) for r in await cur.fetchall()]
 
 
@@ -87,6 +93,16 @@ async def archive_thread(db, thread_id: int, tg_id: int) -> None:
     async with transaction(db):
         await db.execute("UPDATE threads SET archived=1 WHERE id=? AND tg_id=?",
                          (thread_id, tg_id))
+
+
+async def archive_all_threads(db, tg_id: int, agent: str) -> int:
+    """Archives all active sessions for one agent without deleting messages or memory."""
+    async with transaction(db):
+        cur = await db.execute(
+            "UPDATE threads SET archived=1 WHERE tg_id=? AND agent=? AND archived=0",
+            (tg_id, agent),
+        )
+    return max(int(cur.rowcount or 0), 0)
 
 
 # ────────────────────────────── сообщения ─────────────────────────────────────

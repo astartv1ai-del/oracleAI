@@ -606,7 +606,7 @@
           <span class="fc-ico">☉</span>
           <div class="fc-card-body">
             <h4 class="fc-t">${esc(exactChart ? profileT('signAndRise') : profileT('solarFoundation'))}</h4>
-            <div class="fc-desc"><b>${esc(profileT('sun'))} ${esc(c.sun && c.sun.sign || '')}</b> (${esc(c.sun && c.sun.element || '')}) — ${esc(profileT('signRiseCopy'))}${exactChart ? ` <b>${esc(profileT('ascendant'))} ${esc(c.ascendant && c.ascendant.sign || '—')}</b> (${esc(c.ascendant && c.ascendant.deg ? Math.round(c.ascendant.deg) : '—')}°) — ${esc(profileT('ascendantCopy'))} <b>MC ${esc(c.mc && c.mc.sign || '—')}</b> — ${esc(profileT('mcCopy'))}` : ` ${esc(profileT('noTimeAssumptions'))}`}</div>
+            <div class="fc-desc"><b>${esc(profileT('sun'))} ${esc(c.sun && c.sun.sign || '')}</b> (${esc(c.sun && c.sun.element || '')}) — ${esc(profileT('signRiseCopy'))}${exactChart ? ` <b>${esc(profileFormat('ascendant', { sign: c.ascendant && c.ascendant.sign || '—' }))}</b> (${esc(c.ascendant && c.ascendant.deg ? Math.round(c.ascendant.deg) : '—')}°) — ${esc(profileT('ascendantCopy'))} <b>MC ${esc(c.mc && c.mc.sign || '—')}</b> — ${esc(profileT('mcCopy'))}` : ` ${esc(profileT('noTimeAssumptions'))}`}</div>
           </div>
         </div>
         <div class="fc-card">

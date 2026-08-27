@@ -16,7 +16,7 @@
         ? 'Your ritual is complete for today. You can simply stay with that feeling.'
         : gendered(this.me, 'Ты уже выбрала себя сегодня. Можно просто побыть в этом ощущении.', 'Ты уже выбрал себя сегодня. Можно просто побыть в этом ощущении.', 'Сегодня ритуал уже завершён. Можно просто побыть в этом ощущении.'))
       : ritualCompleted === 1 ? homeT('ritualOneDone') : homeT('ritualNoneDone');
-    const welcome = oracleLang() === 'en'
+    const welcomeName = oracleLang() === 'en'
       ? (this.me && this.me.name ? `Glad you’re here, <em>${esc(this.me.name.split(' ')[0])}</em>.` : 'Glad you’re here.')
       : (this.me && this.me.name
         ? `${gendered(this.me, 'Рада видеть тебя', 'Рад видеть тебя', 'Рады видеть тебя')}, <em>${esc(this.me.name.split(' ')[0])}</em>.`
@@ -28,17 +28,22 @@
     const seasonal = seasonalMoments[seasonIndex];
     main.innerHTML = `
       <div class="screen">
-        <div class="hero-orb">
-          <div class="orb"></div>
-          <div class="hero-moon-orb" aria-hidden="true">${t && t.moon ? moonSvg(t.moon.emoji) : moonSvg('🌙')}</div>
-          <div class="hero-body" style="position:relative;z-index:2">
-            <div class="hero-date">${fmtDate()}</div>
-            <div class="hero-ritual-label">${homeT('ritualLabel')}</div>
-            <h1 class="hero-title">${welcome}</h1>
-            ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : `<div class="hero-moon-txt">${homeT('heroFallbackTitle')}<br><em>${homeT('heroFallbackCopy')}</em></div>`}
+        <section class="welcome-card" aria-label="${esc(homeT('ritualLabel'))}">
+          <div class="welcome-card__top">
+            <span class="welcome-card__kicker">${homeT('welcomeKicker')}</span>
+            <span class="welcome-card__date">${fmtDate()}</span>
           </div>
+          <div class="welcome-card__main">
+            <div class="welcome-card__signal" aria-hidden="true"><span></span><i>✦</i></div>
+            <div class="welcome-card__copy">
+              <div class="welcome-card__greeting">${welcomeName}</div>
+              <h1>${homeT('welcomeTitle')}</h1>
+              <p>${homeT('welcomeCopy')}</p>
+            </div>
+          </div>
+          <div class="welcome-card__prompt"><span class="welcome-card__prompt-mark" aria-hidden="true">↗</span><span>${homeT('welcomePrompt')}</span><span class="welcome-card__prompt-line" aria-hidden="true"></span></div>
           <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="${homeT('ritualCta')}"><span>${homeT('ritualCta')}</span><span aria-hidden="true">→</span></button>
-        </div>
+        </section>
 
         ${seasonalVariant === 'seasonal' ? `<section class="seasonal-moment" aria-label="${homeT('seasonalAria')}"><div class="seasonal-moment__sigil" aria-hidden="true">✦</div><div><div class="section-kicker">${homeT('seasonalKicker')}</div><h2>${seasonal.title}</h2><p>${seasonal.copy}</p></div></section>` : ''}
         <section class="daily-ritual daily-ritual--${ritualCompleted === 2 ? 'complete' : ritualCompleted ? 'in-progress' : 'begin'}" aria-label="${homeT('rhythmAria')}">

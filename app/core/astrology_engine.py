@@ -18,7 +18,13 @@ from datetime import date, datetime, time, timezone
 from typing import Any, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .chart_contract import ASPECT_ORBS, ORACLE_ENGINE_ADAPTER_VERSION
+from .chart_contract import (
+    ASPECT_ORBS,
+    ASPECT_POLICY,
+    ORACLE_ENGINE_ADAPTER_VERSION,
+    CalculationConfig,
+    configuration_fingerprint,
+)
 
 ENGINE_ADAPTER_VERSION = ORACLE_ENGINE_ADAPTER_VERSION
 _ASPECT_LABEL_TO_CODE = {
@@ -52,12 +58,20 @@ class ChartRequest:
     tz: str | None
     coordinates_known: bool
     location_reason: str
+    coordinate_source: str
+    coordinate_confidence: float | None
+    timezone_source: str
     local_time_status: str
+    candidate_instants: tuple[str, ...]
+    ambiguity_mode: str
     time_confirmed: bool
     precision_reason: str
+    active_points: tuple[str, ...]
 
     @property
     def precision(self) -> str:
+        if self.local_time_status == "ambiguous" and self.ambiguity_mode == "interval":
+            return "interval"
         if self.time_confirmed and self.coordinates_known:
             return "exact"
         if self.time_confirmed:
@@ -77,6 +91,7 @@ class ChartRequest:
     def fingerprint(self) -> str:
         payload = {
             "engine_adapter_version": ENGINE_ADAPTER_VERSION,
+            "configuration_fingerprint": self.configuration_fingerprint,
             "birth_date": self.birth_date.isoformat(),
             "birth_time": self.birth_time,
             "city": self.city,
@@ -85,19 +100,45 @@ class ChartRequest:
             "tz": self.tz,
             "coordinates_known": self.coordinates_known,
             "location_reason": self.location_reason,
+            "coordinate_source": self.coordinate_source,
+            "coordinate_confidence": self.coordinate_confidence,
+            "timezone_source": self.timezone_source,
             "local_time_status": self.local_time_status,
+            "candidate_instants": self.candidate_instants,
+            "ambiguity_mode": self.ambiguity_mode,
             "time_confirmed": self.time_confirmed,
             "precision_reason": self.precision_reason,
+            "active_points": self.active_points,
         }
         encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
+
+    @property
+    def configuration_fingerprint(self) -> str:
+        config = CalculationConfig(active_points=self.active_points, aspect_policy=ASPECT_POLICY).as_dict()
+        return configuration_fingerprint(config)
 
     def metadata(self) -> dict[str, Any]:
         return {
             "adapter_version": ENGINE_ADAPTER_VERSION,
             "request_fingerprint": self.fingerprint,
+            "configuration_fingerprint": self.configuration_fingerprint,
             "location_reason": self.location_reason,
+            "coordinate_source": self.coordinate_source,
+            "coordinate_confidence": self.coordinate_confidence,
+            "timezone_source": self.timezone_source,
             "local_time_status": self.local_time_status,
+            "candidate_instants": list(self.candidate_instants),
+            "ambiguity_mode": self.ambiguity_mode,
+            "precision_state": self.precision,
+            "original_birth_time": self.original_birth_time,
+            "uncertainty": {
+                "kind": ("ambiguous_local_time" if self.local_time_status == "ambiguous"
+                         else "nonexistent_local_time" if self.local_time_status == "nonexistent"
+                         else "none"),
+                "candidate_instants": list(self.candidate_instants),
+                "angular_data_available": self.angular_data_available,
+            },
         }
 
 
@@ -175,6 +216,11 @@ class OracleKerykeionEngine:
         tz: str | None,
         *,
         time_known: bool | None = None,
+        coordinate_source: str | None = None,
+        coordinate_confidence: float | None = None,
+        timezone_source: str | None = None,
+        ambiguity_mode: str = "safe_date_only",
+        active_points: tuple[str, ...] = (),
     ) -> ChartRequest:
         try:
             parsed_date = datetime.strptime(birth_date, "%Y-%m-%d").date()
@@ -185,6 +231,19 @@ class OracleKerykeionEngine:
         normalized_city = " ".join(city.split()) if isinstance(city, str) and city.strip() else None
         parsed_time = self._parse_time(normalized_time)
         self._validate_timezone(normalized_tz)
+        if ambiguity_mode not in {"safe_date_only", "interval"}:
+            raise AstrologyInputError("Режим неоднозначного времени должен быть safe_date_only или interval")
+        if coordinate_source is not None and coordinate_source not in {
+            "user", "manual", "geocoder", "builtin", "neutral_reference", "unknown",
+        }:
+            raise AstrologyInputError("Источник координат не распознан")
+        if coordinate_confidence is not None:
+            try:
+                coordinate_confidence = float(coordinate_confidence)
+            except (TypeError, ValueError) as exc:
+                raise AstrologyInputError("Уверенность координат должна быть числом от 0 до 1") from exc
+            if not math.isfinite(coordinate_confidence) or not 0 <= coordinate_confidence <= 1:
+                raise AstrologyInputError("Уверенность координат должна быть числом от 0 до 1")
         local_time_status = self._local_time_status(parsed_date, parsed_time, normalized_tz)
         coordinates_known = self._coordinates_known(lat, lon)
         normalized_lat = float(lat) if coordinates_known else None
@@ -194,6 +253,15 @@ class OracleKerykeionEngine:
             "missing" if lat is None and lon is None else
             "partial_or_invalid"
         )
+        coordinate_source = coordinate_source or ("unknown" if coordinates_known else "neutral_reference")
+        timezone_source = timezone_source or ("provided" if normalized_tz else "missing")
+        candidate_instants: tuple[str, ...] = ()
+        if parsed_time and normalized_tz and local_time_status in {"normal", "ambiguous"}:
+            zone = ZoneInfo(normalized_tz)
+            naive = datetime.combine(parsed_date, time(*parsed_time))
+            candidates = [naive.replace(tzinfo=zone, fold=fold).astimezone(timezone.utc).isoformat()
+                          for fold in ((0, 1) if local_time_status == "ambiguous" else (0,))]
+            candidate_instants = tuple(candidates)
         time_confirmed = bool(
             parsed_time and time_known is not False and normalized_tz
             and local_time_status == "normal"
@@ -217,9 +285,15 @@ class OracleKerykeionEngine:
             tz=normalized_tz,
             coordinates_known=coordinates_known,
             location_reason=location_reason,
+            coordinate_source=coordinate_source,
+            coordinate_confidence=coordinate_confidence,
+            timezone_source=timezone_source,
             local_time_status=local_time_status,
+            candidate_instants=candidate_instants,
+            ambiguity_mode=ambiguity_mode,
             time_confirmed=time_confirmed,
             precision_reason=precision_reason,
+            active_points=tuple(active_points),
         )
 
     def calculate(

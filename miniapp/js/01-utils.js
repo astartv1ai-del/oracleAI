@@ -264,7 +264,7 @@ const profileFormat = (key, values = {}) => Object.entries(values).reduce(
 
 const HOME_I18N = {
   ru: {
-    ritualLabel: 'Твой мягкий ритуал дня', ritualCta: 'Получить мой знак дня', heroFallbackTitle: 'Сегодня можно не искать идеальный ответ.', heroFallbackCopy: 'Выбери один бережный шаг для себя.', seasonalAria: 'Сезонный ритуал', seasonalKicker: 'Сезонный знак',
+    ritualLabel: 'Твой мягкий ритуал дня', ritualCta: 'Открыть разговор', welcomeKicker: 'СЕГОДНЯ — БЕЗ СПЕШКИ', welcomeTitle: 'Начни с того, что уже звучит внутри.', welcomeCopy: 'Один вопрос. Один бережный шаг. Остальное можно оставить на потом.', welcomePrompt: 'С чего хочется начать?', seasonalAria: 'Сезонный ритуал', seasonalKicker: 'Сезонный знак',
     rhythmAria: 'Твой ритм на сегодня', rhythmKicker: 'Твой ритм', rhythmTitle: 'Вернуться к себе', stepsAria: '{count} из 2 бережных шагов',
     diaryDoneAria: 'Дневник заполнен, открыть записи', diaryOpenAria: 'Открыть дневник состояния', diaryDone: 'Дневник уже заполнен', diaryOpen: 'Отметить своё состояние',
     diaryDoneCopy: 'Дневник уже ждёт тебя в личной библиотеке.', diaryPromptFallback: 'Одно честное предложение о том, как ты сейчас.',
@@ -280,7 +280,7 @@ const HOME_I18N = {
     seasonal: [['Зимний свет', 'Разреши себе меньше спешки и больше тёплых пауз.'], ['Время расцветать', 'Выбери один маленький шаг, который хочется начать для себя.'], ['Сезон полноты', 'Заметь, что уже стало твоей опорой, и поблагодари себя.'], ['Время бережно отпустить', 'Освободи место для того, что действительно важно сейчас.']],
   },
   en: {
-    ritualLabel: 'Your gentle daily ritual', ritualCta: 'Get my sign for today', heroFallbackTitle: 'You do not need to find the perfect answer today.', heroFallbackCopy: 'Choose one gentle step for yourself.', seasonalAria: 'Seasonal ritual', seasonalKicker: 'Seasonal sign',
+    ritualLabel: 'Your gentle daily ritual', ritualCta: 'Open the conversation', welcomeKicker: 'TODAY — WITHOUT RUSH', welcomeTitle: 'Start with what is already alive inside.', welcomeCopy: 'One question. One gentle step. The rest can wait.', welcomePrompt: 'What would you like to begin with?', seasonalAria: 'Seasonal ritual', seasonalKicker: 'Seasonal sign',
     rhythmAria: 'Your rhythm for today', rhythmKicker: 'Your rhythm', rhythmTitle: 'Return to yourself', stepsAria: '{count} of 2 gentle steps',
     diaryDoneAria: 'Diary completed, open entries', diaryOpenAria: 'Open mood diary', diaryDone: 'Diary completed', diaryOpen: 'Check in with yourself',
     diaryDoneCopy: 'Your entry is waiting in your private library.', diaryPromptFallback: 'One honest sentence about how you are right now.',
