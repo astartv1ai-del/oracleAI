@@ -13,7 +13,7 @@ than instructions to the model.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from ..data.session import transaction, utcnow
