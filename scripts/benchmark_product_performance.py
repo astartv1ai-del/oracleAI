@@ -13,7 +13,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.core import astro, memory, tarot  # noqa: E402
+from app.core import astro, memory, palm_lines, tarot  # noqa: E402
+from PIL import Image, ImageDraw  # noqa: E402
+import io  # noqa: E402
 from app.data.session import connect  # noqa: E402
 from app.pdfgen import builder  # noqa: E402
 from app.repo import users  # noqa: E402
@@ -73,6 +75,20 @@ async def main() -> int:
                     concurrency=1,
                 )
 
+            image = Image.new("RGB", (640, 640), (185, 135, 105))
+            draw = ImageDraw.Draw(image)
+            draw.ellipse((100, 40, 540, 620), fill=(220, 170, 140))
+            draw.arc((160, 190, 500, 560), 75, 290, fill=(80, 40, 30), width=7)
+            draw.arc((120, 180, 530, 420), 185, 350, fill=(80, 40, 30), width=6)
+            palm_buffer = io.BytesIO()
+            image.save(palm_buffer, format="JPEG", quality=92)
+            palm_bytes = palm_buffer.getvalue()
+            palm_status = {"status": "unavailable"}
+
+            def palm_line_op():
+                nonlocal palm_status
+                palm_status = palm_lines.analyze(palm_bytes)
+
             metrics = {
                 "chart_compute": summary(timed_sync(lambda: astro.compute_chart(
                     "1990-06-21", "14:30", "Казань", 55.79, 49.12, "Europe/Moscow"), repeats=5)),
@@ -80,6 +96,7 @@ async def main() -> int:
                     tarot.draw(5, seed="synthetic-performance"), "three"), repeats=20)),
                 "memory_recall": summary(await timed_async(memory_op, repeats=5)),
                 "pdf_html_generation": summary(await timed_async(pdf_op, repeats=2)),
+                "palm_line_segmentation": summary(timed_sync(palm_line_op, repeats=3)),
             }
         finally:
             await db.close()
@@ -89,6 +106,11 @@ async def main() -> int:
     result = {
         "synthetic": True,
         "metrics": metrics,
+        "palm_line_engine": {
+            "status": palm_status.get("status"),
+            "model": palm_status.get("model"),
+            "raw_mask_stored": palm_status.get("raw_mask_stored", False),
+        },
         "pass": all(item["runs"] > 0 for item in metrics.values()),
         "note": "Local directional baseline only; production SLOs require staging traffic and provider instrumentation.",
     }

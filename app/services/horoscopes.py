@@ -109,8 +109,10 @@ async def all_for_day(db, day: str | None = None) -> list[dict]:
 async def save(db, sign: str, day: str, text: str) -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO horoscopes(day, sign, text, posted_at, created_at) "
-            "VALUES(?,?,?,(SELECT posted_at FROM horoscopes WHERE day=? AND sign=?),?)",
+            "INSERT INTO horoscopes(day, sign, text, posted_at, created_at) "
+            "VALUES(?,?,?,(SELECT posted_at FROM horoscopes WHERE day=? AND sign=?),?) "
+            "ON CONFLICT(day, sign) DO UPDATE SET text=excluded.text, "
+            "created_at=excluded.created_at",
             (day, sign, text, day, sign, utcnow()))
 
 

@@ -135,6 +135,15 @@ const richMd = s => rich(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 const oracleLang = () => (window.app && app.me && app.me.lang) ||
   localStorage.getItem('oracle_lang') || 'ru';
 
+function syncDocumentLocale() {
+  const lang = oracleLang() === 'en' ? 'en' : 'ru';
+  document.documentElement.lang = lang;
+  document.documentElement.dir = 'ltr';
+  document.title = lang === 'en'
+    ? 'OracleAI — your gentle daily ritual'
+    : 'OracleAI — твой мягкий ритуал дня';
+}
+
 // Русский род используем только при явном выборе; отсутствие значения не означает женский род.
 function gendered(user, feminine, masculine, neutral) {
   if (user && user.gender === 'f') return feminine;

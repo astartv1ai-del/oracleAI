@@ -21,8 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import users as users_repo
-from . import agents, astro, chart_interpretation, chart_products, interpretation, llm, memory, skills, tarot
-from .agents.base import language_and_gender_guidance
+from . import agents, astro, chart_interpretation, chart_products, interpretation, llm, memory, shared_context, skills, tarot
 from .stable import stable_seed
 
 log = logging.getLogger("oracle.agent")
@@ -92,7 +91,14 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
             mems = await memory.recall(db, user["tg_id"], question or "", limit=3)
             who_block = ""
             if summary:
-                who_block += f"Контекст пользователя (сводка; факты расклада бери только из draw_tarot): {summary}\n"
+                who_block += (
+                    memory.untrusted_text_block(
+                        "Профиль пользователя (фон, не источник карт расклада)",
+                        summary,
+                        max_chars=3000,
+                    )
+                    + "\n"
+                )
             if mems:
                 who_block += f"{memory.prompt_block(mems)}\n"
             user_msg = (
@@ -172,6 +178,9 @@ async def daily_forecast_cached(db, user, chart: dict | None = None) -> str:
         text = await daily_forecast(db, user, chart if chart is not None
                                    else users_repo.chart_of(user))
         await readings_repo.save_forecast(db, user["tg_id"], day, text, lang=lang)
+        await shared_context.record_recommendation(
+            db, user, agent="oracle", text=text, source_ref=f"forecast:{day}"
+        )
         return text
 
 
@@ -179,15 +188,13 @@ async def daily_forecast(db, user, chart: dict) -> str:
     sky = astro.today_sky()
     if llm.enabled():
         try:
-            brief = (astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))
-                     if chart else "-")
-            memories = await dialog_repo.get_memories(db, user["tg_id"], limit=5)
-            oracle_name = user["oracle_name"] or "Лилит"
-            system = (f"Ты — {oracle_name}, личный оракул пользователя {user['name'] or 'без имени'}. "
-                      f"Карта пользователя: {brief}. Память: "
-                      f"{'; '.join(memories) or '-'}.\n\n"
-                      f"{language_and_gender_guidance(user)}\n\n"
-                      f"{await skills.guide(db, 'transit')}")
+            system = await agents.system_for(
+                db, user, agents.get("oracle"), question="прогноз дня",
+                extra_rules=(
+                    "Для прогноза используй только переданное детерминированное небо и карту дня; "
+                    "при конфликте дат не выбирай победителя, а опирайся на канонический снимок."
+                ),
+            )
             card = card_of_day(user)
             sphere_title, sphere_hint = _sphere_slot(user)
             moon = sky["moon"]

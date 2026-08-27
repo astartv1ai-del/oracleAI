@@ -117,6 +117,22 @@ async def test_tarot_finalization_is_owner_scoped_and_append_only(db):
     assert row["answer"] == "первый ответ"
 
 
+async def test_shared_chat_service_blocks_unconfirmed_and_deleted_users(db, user):
+    from app.services import chat, eligibility
+
+    unconfirmed = dict(user)
+    unconfirmed["age_confirmed"] = 0
+    with pytest.raises(eligibility.EligibilityDenied) as unconfirmed_error:
+        await chat.ask(db, unconfirmed, "безопасный тест")
+    assert unconfirmed_error.value.code == "age_confirmation_required"
+
+    deleted = dict(user)
+    deleted["status"] = "deleted"
+    with pytest.raises(eligibility.EligibilityDenied) as deleted_error:
+        await chat.ask(db, deleted, "безопасный тест")
+    assert deleted_error.value.code == "account_not_active"
+
+
 async def test_confirmed_age_dependency_blocks_unconfirmed_user(user):
     from app.api import deps
 

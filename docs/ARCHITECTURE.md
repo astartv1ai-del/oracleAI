@@ -65,6 +65,35 @@ sequenceDiagram
 
 Натальный visual использует Mode P: server-side Kerykeion ChartDrawer создаёт transient SVG, который немедленно преобразуется `resvg_py` в PNG/WebP. Raw SVG не сохраняется и не выходит в API, Mini App, share flow или PDF. Подробности находятся в [CHART_ENGINE_DECISION.md](CHART_ENGINE_DECISION.md) и [CHART_ENGINE_LICENSING.md](CHART_ENGINE_LICENSING.md).
 
+## AI Layer
+
+AI-слой разделён на четыре уровня: bounded short-term history, opt-in persistent memory, compact deterministic natal evidence и Shared Context Layer. `app/core/agents/context.py` не отправляет историю «как есть»: последние реплики сохраняются в исходном порядке, ранние пользовательские темы сжимаются в ограниченный блок, а текущий вопрос добавляется ровно один раз. Это детерминированное сокращение, а не семантическое резюме всей переписки.
+
+Persistent memory хранится в `memories` только после явного согласия пользователя. `app/core/memory.py` применяет дедупликацию, keyword/optional embedding recall, профильную сводку и ограниченный prompt block. При выключенной памяти сервер не передаёт личные факты, дневник или динамические рекомендации в промпт.
+
+Shared Context Layer реализован в `app/core/shared_context.py` и двух таблицах `shared_context_events` и `shared_context_snapshots`. Первый поток сохраняет последние рекомендации любого агента за 30 дней с полями `agent`, timestamp, bounded content и source reference. Второй поток кэширует единый дневной transit snapshot, построенный только через canonical `chart_products.build_transit_contract`; агенты не пересчитывают активные транзиты по-разному. Оба блока маркируются в prompt как недоверенные данные, не инструкции, и удаляются при self-delete пользователя.
+
+Каждый вызов `agents.system_for()` получает компактный `[NATAL_CONTEXT_JSON]` с версией схемы, precision, ключевыми планетами, узлами и, только при подтверждённом времени рождения, домами/ASC/MC. Полный расчёт остаётся доступен через канонические инструменты. Поэтому Мира также видит натальный контекст при каждом запросе, но её правила запрещают использовать его как доказательство линии ладони.
+
+```mermaid
+sequenceDiagram
+    participant Q as User question/photo
+    participant R as Agent runtime
+    participant SC as Shared Context
+    participant C as Canonical calculators/CV
+    participant L as LLM
+    participant P as Persistence
+    Q->>R: request
+    R->>SC: load natal JSON + recent recommendations + current transit snapshot
+    R->>C: call allow-listed deterministic tool or photo preflight
+    C-->>R: bounded evidence
+    R->>L: system prompt + bounded history + untrusted evidence
+    L-->>R: grounded answer/strict JSON
+    R->>P: save answer and publish recommendation/event
+```
+
+Инструменты объявлены централизованно в `app/core/skills.py`: schema description, allow-list и executor разделены. `tools_for()` выдаёт только доменные инструменты выбранного агента, а `execute()` возвращает безопасный fallback при неизвестном или упавшем инструменте. Для Миры порядок такой: `palm_vision` capture precheck → optional MediaPipe hand geometry + ONNX heart/head/life evidence → дорогой vision call только если кадр не отвергнут → strict JSON normalization/safety scrub → сохранение только структурированного анализа без raw image.
+
 ## Frontend modules
 
 Frontend намеренно не использует bundler: `miniapp/index.html` подключает нумерованные JavaScript-модули и CSS aggregator. Порядок загрузки является частью контракта.
@@ -99,6 +128,8 @@ Frontend намеренно не использует bundler: `miniapp/index.ht
 ## Data and migrations
 
 SQLite stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. DDL is defined in `app/data/schema.py`; changes to existing tables use `app/data/migrations.py`. Code must access `sqlite3.Row` by key/index and not call `.get()`.
+
+The legacy `messages.thread_id IS NULL` migration is idempotent: existing users are attached to an active default `oracle` thread, while orphan rows without a matching user are preserved. Composite indexes cover chat history by user/thread/agent and recency. Analytics, payment, event and memory-ranking indexes support the main milestone queries; `prune_analytics()` removes old events and LLM usage in batches. Connection startup runs `PRAGMA optimize`, and `SQLITE_BUSY_TIMEOUT_MS`, `SQLITE_WAL_AUTOCHECKPOINT` and `SQLITE_CACHE_SIZE_KB` are configurable through the environment.
 
 ## Operations and trust boundaries
 

@@ -98,6 +98,8 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     assert {row["topic"] for row in result["observations"]} == {"heart_line", "head_line"}
     assert seen["normalized_size"] == (2592, 1728)
     assert "видимыми признаками" in str(seen["system"])
+    assert "[SHARED_CONTEXT]" in str(seen["system"])
+    assert "[NATAL_CONTEXT_JSON]" in str(seen["system"])
     assert "DETERMINISTIC CAPTURE PRECHECK" in str(seen["user_text"])
     assert seen["kwargs"]["purpose"] == "palm:vision"
     assert seen["kwargs"]["tg_id"] == user["tg_id"]

@@ -2,7 +2,9 @@
 
 ## Current decision
 
-OracleAI остаётся модульным монолитом на SQLite WAL до измеренного триггера. Миграция на PostgreSQL не является автоматическим улучшением: сначала нужна доказанная нагрузка, dual-read/dual-write стратегия, checksum и rollback. Нельзя переключать production storage только потому, что PostgreSQL привычнее.
+OracleAI поддерживает два backend-пути: SQLite WAL для локальной разработки и обратимого rollback, PostgreSQL для production-использования с SQLAlchemy 2.0, asyncpg и Alembic. Переключение выполняется через `DATABASE_URL`; отсутствие этой переменной сохраняет SQLite fallback.
+
+Переход не является безвозвратным: сначала создаётся read-only snapshot SQLite, затем он импортируется в изолированную PostgreSQL-базу через `scripts/migrate_sqlite_to_postgres.py`, после чего проверяются counts, health, API-контракты и rollback. `pgvector` подключается отдельным DBA/Alembic-шагом; fixed-dimension HNSW/IVFFlat индекс добавляется только после фиксации embedding-модели и размерности.
 
 ## Operational measurements
 
@@ -28,6 +30,16 @@ python3 scripts/migration_manifest.py --db /srv/oracle/data/oracle.db > /tmp/sch
 | Morning jobs | job duration and overlap | interactive requests contend with forecast jobs | separate deterministic jobs from generation worker before scaling |
 
 A threshold is not an automatic migration command. The owner records the observation window, workload, release, user impact and rollback options in the incident/release note.
+
+## PostgreSQL rollout sequence
+
+1. Подготовить PostgreSQL 16+ и включить `vector` отдельным DBA-шагом.
+2. Запустить `DATABASE_URL=... alembic upgrade head` в target database.
+3. Создать и проверить SQLite backup; использовать только read-only snapshot.
+4. Выполнить `python -m scripts.migrate_sqlite_to_postgres --sqlite ... --database-url ...`.
+5. Проверить counts, `messages.thread_id IS NULL`, sequences, `pg_extension`, `alembic_version` и `/api/health`.
+6. Запустить API/бот с тем же `DATABASE_URL` на staging и выполнить offline/mock chat POST.
+7. При ошибке остановить запись, unset `DATABASE_URL` и вернуться к SQLite backup; не использовать destructive Alembic downgrade.
 
 ## Migration rehearsal sequence
 

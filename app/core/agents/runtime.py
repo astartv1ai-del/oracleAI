@@ -23,6 +23,7 @@ from ..personas import persona_style
 from .base import build_system_prompt
 from .context import build_bounded_history
 from .file_loader import skill_context
+from .. import shared_context
 from ..interpretation import validate_nonfatal_text
 from .specs import DEFAULT_AGENT, REGISTRY, get
 
@@ -78,10 +79,12 @@ async def _context(db, user, spec, question: str = ""):
         depth = free.get("memory_depth") or 5
 
     if not bool(user["memory_enabled"]):
-        return brief, matrix_brief, [], ""
+        shared = await shared_context.prompt_block(db, user, question)
+        return brief, matrix_brief, [], "", shared
     memories = await memory.recall(db, user["tg_id"], question, limit=depth)
     summary = await memory.get_summary(db, user["tg_id"]) if depth > 5 else ""
-    return brief, matrix_brief, memories, summary
+    shared = await shared_context.prompt_block(db, user, question)
+    return brief, matrix_brief, memories, summary, shared
 
 
 async def system_for(db, user, spec=None, *, allowance_line: str = "",
@@ -91,7 +94,23 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
     spec, style, rules = await resolve(db, spec.code)
     if spec.uses_persona:
         style = await persona_style(db, user)
-    brief, matrix_brief, memories, summary = await _context(db, user, spec, question)
+    context_data = await _context(db, user, spec, question)
+    # Keep compatibility with third-party/test harnesses that still return the
+    # pre-Shared-Context four-tuple.
+    if len(context_data) == 4:
+        brief, matrix_brief, memories, summary = context_data
+        shared = "[SHARED_CONTEXT] нет доступных динамических фактов."
+    else:
+        brief, matrix_brief, memories, summary, shared = context_data
+    try:
+        chart = users_repo.chart_of(user)
+    except (KeyError, TypeError, ValueError):
+        chart = {}
+    try:
+        time_known = bool(user["birth_time_known"])
+    except (KeyError, TypeError, IndexError):
+        time_known = False
+    natal_json = shared_context.natal_json(chart, time_known=time_known)
     language_rule = ("Reply in clear, warm English. Keep card and calculation names "
                      "recognisable; never pretend a translation is an exact calculation."
                      if user["lang"] == "en" else "")
@@ -104,7 +123,8 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
         spec, user=user, agent_name=spec.display_name(user), chart_brief=brief,
         matrix_brief=matrix_brief, memories=memories,
         allowance_line=allowance_line, style=style, rules=layered_rules,
-        profile_summary=summary, extra_rules=combined_extra_rules)
+        profile_summary=summary, natal_context_json=natal_json,
+        shared_context=shared, extra_rules=combined_extra_rules)
 
 
 async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,

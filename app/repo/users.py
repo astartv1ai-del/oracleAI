@@ -205,8 +205,9 @@ async def anonymize(db, tg_id: int) -> None:
         # Personal content and targeting records have no retention reason after
         # deletion. Keep the table names static so dynamic SQL cannot be injected.
         for table in (
-            "messages", "memories", "profile_summaries", "diary", "forecasts",
-            "tarot_readings", "palm_readings", "partners", "synastry_cache",
+            "messages", "memories", "profile_summaries", "shared_context_events",
+            "shared_context_snapshots", "diary", "forecasts", "tarot_readings",
+            "palm_readings", "partners", "synastry_cache",
             "reports", "threads", "deliveries", "practices", "user_notes",
             "user_tags", "broadcast_targets", "promo_redemptions",
         ):

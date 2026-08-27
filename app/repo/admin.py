@@ -66,8 +66,10 @@ async def add_admin(db, tg_id: int, role: str = "admin", *, title: str = "",
         raise ValueError(f"неизвестная роль: {role}")
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO admins(tg_id, role, title, added_by, created_at) "
-            "VALUES(?,?,?,?,COALESCE((SELECT created_at FROM admins WHERE tg_id=?),?))",
+            "INSERT INTO admins(tg_id, role, title, added_by, created_at) "
+            "VALUES(?,?,?,?,COALESCE((SELECT created_at FROM admins WHERE tg_id=?),?)) "
+            "ON CONFLICT(tg_id) DO UPDATE SET role=excluded.role, "
+            "title=excluded.title, added_by=excluded.added_by",
             (tg_id, role, title, added_by, tg_id, utcnow()))
 
 

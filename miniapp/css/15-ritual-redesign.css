@@ -4,24 +4,24 @@
    ============================================================================= */
 
 :root {
-  --ink-950: #0a0920;
-  --ink-900: #100e29;
-  --ink-800: #19153a;
-  --ink-700: #27204d;
-  --champagne-500: #eabf68;
-  --champagne-400: #f5d48b;
-  --champagne-300: #ffe9b4;
-  --lilac-500: #917df0;
-  --lilac-400: #b9a6ff;
-  --blush-400: #f5a9c7;
-  --mint-400: #7be0c5;
-  --text-main: #faf8ff;
-  --text-soft: #d4cee7;
-  --text-muted: #a39bbd;
+  --ink-950: var(--color-bg-primary);
+  --ink-900: var(--color-bg-secondary);
+  --ink-800: var(--color-bg-elevated);
+  --ink-700: var(--color-bg-elevated);
+  --champagne-500: var(--color-accent-deep);
+  --champagne-400: var(--color-accent);
+  --champagne-300: var(--color-accent-strong);
+  --lilac-500: var(--color-accent-secondary);
+  --lilac-400: var(--color-accent-secondary);
+  --blush-400: var(--color-error);
+  --mint-400: var(--color-success);
+  --text-main: var(--color-text-primary);
+  --text-soft: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
   --surface-soft: rgba(255, 255, 255, 0.055);
   --surface-raised: rgba(29, 24, 61, 0.78);
-  --line-soft: rgba(230, 219, 255, 0.14);
-  --line-bright: rgba(245, 212, 139, 0.38);
+  --line-soft: var(--color-border);
+  --line-bright: var(--color-border-strong);
   --r-xl: 30px;
   --r-lg: 24px;
   --r-md: 18px;
@@ -77,7 +77,7 @@ button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon
 }
 .bell-dot { background: var(--blush-400); box-shadow: 0 0 0 3px var(--ink-900); }
 .user-pill {
-  min-height: 42px; max-width: 138px; padding: 5px 10px 5px 5px; gap: 7px; border-radius: 999px;
+  min-height: var(--touch-target); max-width: 138px; padding: 5px 10px 5px 5px; gap: 7px; border-radius: 999px;
   color: var(--text-soft); background: rgba(255,255,255,.055); border: 1px solid var(--line-soft);
   font-size: 12.5px; font-weight: 700;
 }

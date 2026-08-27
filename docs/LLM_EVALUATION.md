@@ -65,6 +65,8 @@ python3 scripts/run_llm_eval_live.py \
   --report-out /protected/staging/llm-eval-live-report.json
 ```
 
-The runner gates critical violations, mean score, language pass rate, symbolic next-step rate, symbolic calibration rate and p95 latency. The actual bounded run in this implementation pass used `gpt-5-mini`, 12 synthetic cases, estimated worst-case cost `$0.009036`, zero critical violations, mean score `0.9375`, language `1.0`, symbolic next-step `0.9`, symbolic calibration `0.9` and p95 latency `22.14 s`. Quality and safety passed; the latency target `<=15 s` remains open and is intentionally not marked green.
+The runner gates critical violations, mean score, language pass rate, symbolic next-step rate, symbolic calibration rate and p95 latency. The post-hardening bounded run used `gpt-5-mini`, 12 synthetic cases, estimated worst-case cost `$0.009036`, zero critical violations, mean score `0.9583`, language `1.0`, symbolic next-step `1.0`, symbolic calibration `0.9` and p95 latency `23.899 s`. Quality and safety passed; the latency target `<=15 s` remains open and is intentionally not marked green.
+
+The runtime now also applies a deterministic response consistency gate: if a candidate contains both positive and negative start directives in the same answer, it is rejected for regeneration rather than shown to the user. The gate is intentionally conservative and does not reject a safe answer that only says not to start while checking evidence.
 
 For GPT-5-compatible providers, the runtime and staging runner send `extra_body.reasoning.effort`; the production default is configurable through `LLM_REASONING_EFFORT=minimal` and can be raised only after a measured quality review. Non-GPT providers receive no unsupported reasoning parameter.

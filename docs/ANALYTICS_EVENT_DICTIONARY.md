@@ -13,7 +13,7 @@
 | `surface` | Одно из `bot`, `miniapp`, `admin`, `system`; назначается server-side. |
 | `props_json` | Только перечисленные categorical/low-cardinality поля из таблицы ниже. |
 | `day` | UTC `YYYY-MM-DD` для агрегирования; не является датой рождения или пользовательским событием. |
-| Retention | Детальные `events` и `llm_usage` — rolling 120 дней; дневные агрегаты — отдельно после проверки юридической retention policy. |
+| Retention | Детальные `events`, `llm_usage` и `product_cost_events` — rolling 120 дней; дневные агрегаты — отдельно после проверки юридической retention policy. |
 | Deletion | Удаление аккаунта удаляет или анонимизирует связанные event rows в соответствии с утверждённой deletion policy. |
 
 ## Activation and retention funnel
@@ -47,6 +47,7 @@ D1/D7 — это milestone пользователя, а не количеств�
 | `web_payment` / `payment_success` | plan/sku and provider event category only | Payment completion and recovery. |
 | `safety_crisis` | category from safety enum | Safety volume and review; never expose excerpt in analytics. |
 | `llm_usage` | provider/model/purpose/tokens/cost/latency/ok | Quality, latency and unit economics; stored separately from product events. |
+| `product_cost_events` | Server-owned `event_kind`, `sku`, `catalog_version`, `channel`, `purpose`, `provider`, `model`, `result_category`, `status`, retries, tokens, latency/duration, artifact bytes, bounded cost, order/reference IDs and categorical reason | Product-level variable cost, delivery, refund and support coverage; never user text, question, chart/memory/image payload, payment secret or client-supplied SKU. |
 | `paywall_view` | `surface`, optional `result_category`, `price_variant` | Value-first paywall reach; server-owned only. |
 | `paywall_choice` | `surface`, `sku`, `price_variant`, `credit_band` | Chosen offer variant; never raw price text or free-form choice. |
 | `credit_pack_checkout_started` | `sku`, `channel`, `credit_band` | Crystal pack checkout intent before invoice; server catalog only. |
@@ -56,6 +57,12 @@ D1/D7 — это milestone пользователя, а не количеств�
 | `report_delivered` | `sku`, `result_category` | Successful premium result delivery, not merely entitlement purchase. |
 | `refund_requested` | `sku`, `reason` | Server-owned support/refund category; no payment payload or free text. |
 | `refund_completed` | `sku`, `reason` | Completed internal state transition after provider/refund workflow. |
+
+## Product-cost ledger
+
+`product_cost_events` is an append-only, server-owned telemetry table. `event_kind` is one of `llm`, `pdf`, `voice`, `tool`, `delivery`, `refund` or `support`; `channel` is one of `bot`, `miniapp`, `web` or `system`; and `status` is one of `succeeded`, `failed`, `delivered`, `refunded` or `pending`. Text-like dimensions are accepted only as bounded low-cardinality tokens containing letters, digits, `_`, `-`, `.`, `:` or `/`; invalid values are dropped or rejected by the repository boundary. The recorder is best-effort so analytics failures cannot fail a paid answer or refund.
+
+The product KPI endpoint groups by `sku` and `channel`, reports variable provider cost, tokens, retries, delivery count, failure count, cost coverage and gross booking Stars from paid server orders. Gross booking is joined by the pair `sku + order.surface` (with missing surface mapped to `system`), preventing the same SKU-level gross value from being repeated across bot and Mini App channel rows. Gross booking is explicitly not net revenue or profit. `net_revenue_estimate` and `contribution_margin_estimate` remain `null` until settlement realization, taxes/withholding, channel refunds/fees, support/tool/voice cost, fixed OPEX and paid marketing inputs are supplied and reviewed.
 
 ## Monetization event rules
 

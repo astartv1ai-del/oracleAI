@@ -17,6 +17,10 @@
 - Tarot finalization повторно проверяет владельца и не позволяет перезаписать уже сохранённую интерпретацию; malformed upload size headers для palm получают явный 400.
 - Добавлен формальный `tarot-replay-v1`: ledger восстанавливается из сохранённых карт, позиций и ориентаций, а checksum защищает исторический payload от незаметного изменения.
 - Добавлен `scripts.pdf_matrix` для локального PDF preflight: 6 детерминированных RU/EN exact/date-only, long-field и edge-latitude кейсов с внешними HTML/PDF артефактами и `summary.json`.
+- Добавлен privacy-safe `product_cost_events` ledger: server-owned SKU/catalog/channel/purpose dimensions, LLM retry/latency/token cost, delivery/refund/support categories, retention и product KPI aggregation; gross Stars не объявляются net revenue или contribution.
+- Product-cost gross booking теперь присоединяется по `sku + order.surface/channel`, поэтому одинаковый SKU не дублируется между bot и Mini App rows; добавлен regression test.
+- Добавлен воспроизводимый `scripts/domain_qa.py` и `ASTRONOMY_REFERENCE_QA.md`: 8/8 критических cross-implementation кейсов проходят, включая date-only и fail-closed ambiguous DST; external ephemeris authority comparison остаётся открытым.
+- Добавлен `P0_PRODUCTION_EXECUTION_PLAN.md` с owner-led процедурами, acceptance evidence, go/no-go gate, redaction policy и rollback для Telegram auth, payments, live LLM и backup/restore.
 
 
 ### Changed
@@ -36,9 +40,13 @@
 - Live LLM evaluation получил catalog discovery, stratified synthetic run, cost cap, safety/language/calibration/latency gates и provider-correct GPT-5 reasoning effort через `LLM_REASONING_EFFORT`.
 - English home fallback переведён в HOME_I18N; добавлены localization regression, Playwright visual/accessibility baseline и финальные per-check quality-gate artifacts.
 - Добавлены `NEXT_STEPS.md`, `UNIFIED_HISTORY.md` и `ORACLEAI_CONTINUATION_REPORT.md`; второй pass фиксирует выполненные локальные рекомендации, внешние launch blockers и незелёный LLM p95 latency gate.
+- Подготовлен research-only документ `MONETIZATION_STRATEGY.md`: Hybrid B, публичные pricing anchors, unit economics, ethical upsell guardrails и owner decisions; код, UI, цены и payment logic на этом этапе не изменялись.
 - Добавлены synthetic memory evaluator, API resilience matrix, PDF golden-case runner, Tarot contract tests, disposable backup/restore drill and directional chart/Tarot/memory/PDF performance benchmark.
 - Account deletion получил confirm-gated idempotent API contract; anonymization clears user history and disables memory, push and age flags. Memory recall cache now respects requested result limits.
 - Playwright visual baseline расширен до chart/history/memory/Tarot states, reduced-motion reference and seeded synthetic data; localized accessible names added for the previously failing inputs and tool controls.
+- Agent prompt/context hardening централизовал untrusted wrappers для memory, profile summaries, diary и evidence blocks; добавлен deterministic consistency gate против взаимоисключающих start/stop directives, а pre-tool fallback теперь intent-gated для chart/transit calls.
+- Mira получил topic-aware reshoot guidance, explicit `reading_id` retrieval и optional integrity-checked ONNX line evidence helper с vendored MIT model variants; raw masks не сохраняются, hard precheck skips heavy CV, а LLM остаётся авторитетом для видимого изображения и uncertainty.
+- Повторный live synthetic LLM run после hardening: 0 critical violations, mean 0.9583, language 1.0, next-step 1.0, calibration 0.9; p95 23.899 s против цели 15 s остаётся staging blocker. Palm-line CPU baseline: fp16 около 8.36 s p50, int8 около 0.45 s p50 с отдельным quality tradeoff.
 
 ## 2.0.0 — 2026-08-12
 

@@ -86,34 +86,114 @@ async def track_once(db, name: str, tg_id: int, *,
     return True
 
 
+_COST_EVENT_KINDS = {"llm", "pdf", "voice", "tool", "delivery", "refund", "support"}
+_COST_CHANNELS = {"bot", "miniapp", "web", "system"}
+_COST_STATUSES = {"succeeded", "failed", "delivered", "refunded", "pending"}
+
+
+def _safe_cost_token(value: str | None, *, limit: int = 96) -> str | None:
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value or len(value) > limit:
+        return None
+    if not all(char.isalnum() or char in "_-.:/" for char in value):
+        return None
+    return value
+
+
+async def record_product_cost_event(
+    db, *, event_kind: str, tg_id: int | None = None, sku: str | None,
+    catalog_version: str = "legacy", channel: str = "system",
+    purpose: str | None = None, provider: str | None = None,
+    model: str | None = None, result_category: str | None = None,
+    status: str = "succeeded", units: int = 1, input_tokens: int = 0,
+    output_tokens: int = 0, retry_count: int = 0, latency_ms: int = 0,
+    duration_ms: int = 0, artifact_bytes: int = 0,
+    cost_usd: float | None = None, reference_id: str | None = None,
+    order_id: int | None = None, reason: str | None = None) -> None:
+    """Persist server-owned cost evidence without free-form user content."""
+    if event_kind not in _COST_EVENT_KINDS:
+        raise ValueError("unknown product cost event kind")
+    if channel not in _COST_CHANNELS:
+        raise ValueError("unknown product cost channel")
+    if status not in _COST_STATUSES:
+        raise ValueError("unknown product cost status")
+    safe_sku = _safe_cost_token(sku) or "unattributed"
+    safe_catalog = _safe_cost_token(catalog_version, limit=32) or "legacy"
+    safe_purpose = _safe_cost_token(purpose)
+    safe_provider = _safe_cost_token(provider, limit=48)
+    safe_model = _safe_cost_token(model, limit=96)
+    safe_result = _safe_cost_token(result_category, limit=48)
+    safe_reference = _safe_cost_token(reference_id, limit=96)
+    safe_reason = _safe_cost_token(reason, limit=48)
+    def numeric(value) -> int:
+        return max(0, int(value or 0))
+
+    safe_cost = None if cost_usd is None else max(0.0, float(cost_usd))
+    now = datetime.now(timezone.utc)
+    async with transaction(db):
+        await db.execute(
+            "INSERT INTO product_cost_events("
+            "tg_id,event_kind,sku,catalog_version,channel,purpose,provider,model,"
+            "result_category,status,units,input_tokens,output_tokens,retry_count,"
+            "latency_ms,duration_ms,artifact_bytes,cost_usd,reference_id,order_id,"
+            "reason,day,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (tg_id, event_kind, safe_sku, safe_catalog, channel, safe_purpose,
+             safe_provider, safe_model, safe_result, status, numeric(units),
+             numeric(input_tokens), numeric(output_tokens), numeric(retry_count),
+             numeric(latency_ms), numeric(duration_ms), numeric(artifact_bytes),
+             safe_cost, safe_reference, order_id, safe_reason,
+             now.strftime("%Y-%m-%d"), now.isoformat()),
+        )
+
+
 async def _scalar(db, sql: str, *args):
     cur = await db.execute(sql, args)
     row = await cur.fetchone()
     return (row[0] if row else 0) or 0
 
 
-async def prune_analytics(db, days: int = 120) -> int:
-    """Apply bounded retention to operational and privacy-sensitive logs.
+async def prune_analytics(db, days: int = 120, *, batch_size: int = 5_000) -> int:
+    """Apply bounded retention in small write transactions.
 
     Product analytics and LLM cost detail use the requested rolling window.
     Crisis incidents, provider evidence and admin audit have explicit longer or
-    shorter windows so their retention does not accidentally follow one metric.
+    shorter windows. Batch deletes reduce writer-lock duration on large tables.
     """
+    if batch_size < 1:
+        raise ValueError("batch_size должен быть положительным")
     windows = {
         "events": max(1, days),
         "llm_usage": max(1, days),
+        "product_cost_events": max(1, days),
         "safety_events": min(max(1, days), 90),
         "webhook_events": max(max(1, days), 180),
         "admin_audit": max(max(1, days), 365),
     }
+    primary_keys = {
+        "events": "id",
+        "llm_usage": "id",
+        "product_cost_events": "id",
+        "safety_events": "id",
+        "webhook_events": "event_id",
+        "admin_audit": "id",
+    }
     total = 0
-    async with transaction(db):
-        for table, table_days in windows.items():
-            before = (datetime.now(timezone.utc)
-                      - timedelta(days=table_days)).isoformat()
-            cur = await db.execute(f"DELETE FROM {table} WHERE created_at < ?",
-                                   (before,))
-            total += cur.rowcount or 0
+    for table, table_days in windows.items():
+        key = primary_keys[table]
+        before = (datetime.now(timezone.utc)
+                  - timedelta(days=table_days)).isoformat()
+        while True:
+            async with transaction(db):
+                cur = await db.execute(
+                    f"DELETE FROM {table} WHERE {key} IN ("
+                    f"SELECT {key} FROM {table} WHERE created_at < ? "
+                    f"ORDER BY {key} LIMIT ?)", (before, batch_size))
+                removed = cur.rowcount or 0
+            total += removed
+            if removed < batch_size:
+                break
     return total
 
 
@@ -277,6 +357,12 @@ async def timeseries(db, days: int = 30) -> list[dict]:
 async def retention(db, cohort_days: int = 7) -> list[dict]:
     """Удержание по недельным когортам: доля вернувшихся на день 1/3/7/14/30."""
     out = []
+    age_days_sql = (
+        "EXTRACT(EPOCH FROM (e.created_at::timestamptz "
+        "- u.created_at::timestamptz)) / 86400"
+        if getattr(db, "is_postgres", False)
+        else "julianday(e.created_at) - julianday(u.created_at)"
+    )
     for week in range(cohort_days):
         start = (date.today() - timedelta(days=(week + 1) * 7)).isoformat()
         end = (date.today() - timedelta(days=week * 7)).isoformat()
@@ -289,10 +375,10 @@ async def retention(db, cohort_days: int = 7) -> list[dict]:
         for day_n in (1, 3, 7, 14, 30):
             back = await _scalar(
                 db,
-                "SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
-                "ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=? "
-                "AND substr(u.created_at,1,10)<? "
-                "AND julianday(e.created_at) - julianday(u.created_at) BETWEEN ? AND ?",
+                f"SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
+                f"ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=? "
+                f"AND substr(u.created_at,1,10)<? "
+                f"AND {age_days_sql} BETWEEN ? AND ?",
                 start, end, day_n, day_n + 1)
             row[f"d{day_n}"] = round(back * 100 / size, 1)
         out.append(row)
@@ -377,6 +463,67 @@ async def llm_costs(db, days: int = 30) -> dict:
     }
 
 
+async def product_cost_kpis(db, days: int = 30) -> dict:
+    """Aggregate variable cost and delivery coverage by trusted product labels.
+
+    Gross Stars are joined only for paid server orders. Net revenue and contribution
+    remain unavailable until settlement, tax, refunds and fixed-cost inputs exist.
+    """
+    since = _ago(days)
+    cur = await db.execute(
+        "SELECT sku, channel, COUNT(*) event_count, "
+        "SUM(CASE WHEN cost_usd IS NOT NULL THEN 1 ELSE 0 END) costed_events, "
+        "COALESCE(SUM(cost_usd),0) variable_cost_usd, "
+        "COALESCE(SUM(input_tokens),0) input_tokens, "
+        "COALESCE(SUM(output_tokens),0) output_tokens, "
+        "COALESCE(SUM(retry_count),0) retry_count, "
+        "COALESCE(SUM(CASE WHEN event_kind='delivery' THEN 1 ELSE 0 END),0) deliveries, "
+        "COALESCE(SUM(CASE WHEN status IN ('failed','pending') THEN 1 ELSE 0 END),0) failures "
+        "FROM product_cost_events WHERE created_at>=? GROUP BY sku, channel "
+        "ORDER BY variable_cost_usd DESC, event_count DESC", (since,))
+    rows = [dict(row) for row in await cur.fetchall()]
+    paid_cur = await db.execute(
+        "SELECT COALESCE(sku, kind) sku, COALESCE(surface, 'system') channel, "
+        "COALESCE(SUM(amount_stars),0) gross_stars FROM orders "
+        "WHERE status='paid' AND paid_at>=? "
+        "GROUP BY COALESCE(sku, kind), COALESCE(surface, 'system')",
+        (since,))
+    paid_by_product_channel = {
+        (row[0], row[1]): int(row[2] or 0)
+        for row in await paid_cur.fetchall()
+    }
+    for row in rows:
+        row["gross_booking_stars"] = paid_by_product_channel.get(
+            (row["sku"], row["channel"]), 0)
+        row["variable_cost_usd"] = round(float(row["variable_cost_usd"] or 0), 6)
+        row["cost_coverage_pct"] = round(
+            int(row["costed_events"] or 0) * 100 / int(row["event_count"] or 1), 1)
+    total_events = sum(int(row["event_count"] or 0) for row in rows)
+    costed_events = sum(int(row["costed_events"] or 0) for row in rows)
+    total_cost = sum(float(row["variable_cost_usd"] or 0) for row in rows)
+    unattributed = sum(
+        float(row["variable_cost_usd"] or 0) for row in rows
+        if row["sku"] == "unattributed")
+    return {
+        "days": days,
+        "status": "estimated_requires_settlement_inputs",
+        "event_count": total_events,
+        "costed_event_count": costed_events,
+        "cost_coverage_pct": round(costed_events * 100 / total_events, 1)
+        if total_events else 0.0,
+        "variable_cost_usd": round(total_cost, 6),
+        "unattributed_cost_usd": round(unattributed, 6),
+        "net_revenue_estimate": None,
+        "contribution_margin_estimate": None,
+        "by_product": rows,
+        "required_inputs": [
+            "provider_settlement_realization", "tax_and_withholding_rate",
+            "refund_rate_by_channel", "voice_tool_cost", "support_cost",
+            "fixed_opex", "paid_marketing",
+        ],
+    }
+
+
 async def monetization_kpis(db, days: int = 30) -> dict:
     """Revenue/cost KPI block with an explicit no-fabrication net boundary.
 
@@ -446,6 +593,7 @@ async def monetization_kpis(db, days: int = 30) -> dict:
         ],
         "by_sku": by_sku,
         "provider_cost_by_purpose": provider_cost,
+        "product_cost": await product_cost_kpis(db, days=days),
     }
 
 
@@ -504,6 +652,7 @@ async def rollup_day(db, day: str | None = None) -> dict:
     }
     async with transaction(db):
         await db.execute(
-            "INSERT OR REPLACE INTO daily_stats(day, stats_json, updated_at) "
-            "VALUES(?,?,?)", (day, json.dumps(stats, ensure_ascii=False), utcnow()))
+            "INSERT INTO daily_stats(day, stats_json, updated_at) VALUES(?,?,?) "
+            "ON CONFLICT(day) DO UPDATE SET stats_json=excluded.stats_json, "
+            "updated_at=excluded.updated_at", (day, json.dumps(stats, ensure_ascii=False), utcnow()))
     return stats
