@@ -12,6 +12,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ...services.billing import CRYPTO_ASSETS
+
 from ...repo import billing as billing_repo
 from ...services import analytics
 from ...services import billing as billing_svc
@@ -90,6 +92,7 @@ async def web_checkout(item: InvoiceIn, user=Depends(confirmed_age_user),
 
 class CryptoIn(BaseModel):
     sku: str = Field(min_length=1, max_length=40)
+    asset: str = Field(default="USDT", min_length=2, max_length=8)
 
 
 @router.post("/crypto-invoice", dependencies=[Depends(rate_limit("write"))])
@@ -99,13 +102,16 @@ async def crypto_invoice(item: CryptoIn, user=Depends(confirmed_age_user),
     from ...config import settings
     if not settings.cryptobot_api_token:
         raise HTTPException(503, "крипто-оплата не настроена")
+    asset = item.asset.strip().upper()
+    if asset not in CRYPTO_ASSETS:
+        raise HTTPException(400, "этот криптоактив пока недоступен")
     try:
         order = await billing_svc.checkout_crypto_crystals(
-            db, user["tg_id"], item.sku)
+            db, user["tg_id"], item.sku, asset=asset, surface="miniapp")
     except billing_svc.PurchaseError as exc:
         raise HTTPException(exc.status_code, str(exc)) from exc
     return {"link": order["link"], "sku": order["sku"],
-            "amount_usd": order["amount_usd"]}
+            "amount_usd": order["amount_usd"], "asset": order["asset"]}
 
 
 class CrystalsIn(BaseModel):

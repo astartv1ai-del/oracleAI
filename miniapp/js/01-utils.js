@@ -144,7 +144,7 @@ function gendered(user, feminine, masculine, neutral) {
 
 const I18N = {
   ru: {
-    today: 'Сегодня', chats: 'Диалоги', mine: 'Моё', ritual: 'Ритуал', guides: 'Проводники', profile: 'Профиль',
+    today: 'Сегодня', chats: 'Диалоги', mine: 'Моё', ritual: 'Ритуал', guides: 'Проводники', profile: 'Профиль', paymentTab: 'Оплата', paymentHint: 'Доступ и пакеты',
     language: 'Язык интерфейса', russian: 'Русский', english: 'English',
     languageCopy: 'Меняет язык основных экранов и новых сообщений. Сохранённые записи остаются на языке, на котором были созданы.',
     gender: 'Пол', female: 'Женский', male: 'Мужской', notSpecified: 'Не указан',
@@ -154,7 +154,7 @@ const I18N = {
     changeGender: 'Изменить пол', saved: 'Сохранено', changeLanguage: 'Сменить язык',
   },
   en: {
-    today: 'Today', chats: 'Guides', mine: 'Mine', ritual: 'Ritual', guides: 'Guides', profile: 'Profile',
+    today: 'Today', chats: 'Guides', mine: 'Mine', ritual: 'Ritual', guides: 'Guides', profile: 'Profile', paymentTab: 'Pay', paymentHint: 'Access and packs',
     language: 'App language', russian: 'Русский', english: 'English',
     languageCopy: 'Changes the language of core screens and new messages. Saved entries stay in their original language.',
     gender: 'Gender', female: 'Female', male: 'Male', notSpecified: 'Not specified',

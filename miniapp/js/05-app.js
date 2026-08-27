@@ -265,6 +265,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     return [
       { k: 'home', ico: 'home', t: t('today'), hint: t('ritual') },
       { k: 'hub', ico: 'hub', t: t('chats'), hint: t('guides') },
+      { k: 'payment', ico: 'monthly', t: t('paymentTab'), hint: t('paymentHint') },
       { k: 'profile', ico: 'profile', t: t('mine'), hint: t('profile') }
     ];
   };
@@ -287,6 +288,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     if (v === 'home') this.renderHome(main);
     else if (v === 'hub') this.renderHub(main);
     else if (v === 'profile') { this.renderProfile(main); }
+    else if (v === 'payment') { this.goPayment(); }
   };
 
 

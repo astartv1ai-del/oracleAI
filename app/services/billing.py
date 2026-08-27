@@ -156,13 +156,16 @@ async def checkout_web_plan(db, tg_id: int, plan_code: str, *,
             "plan": plan}
 
 
-#: USD-цены пакетов Кристаллов для крипто-оплаты. Источник цены — только сервер:
-#: клиент передаёт sku, всё остальное смотрим здесь.
+#: USD-цены пакетов Кристаллов для Crypto Pay. Источник цены — только
+#: сервер: клиент передаёт sku, всё остальное смотрим здесь.
 CRYSTAL_PACKS_USD = {"crystals_100": 5.49, "crystals_250": 11.49,
                      "crystals_600": 21.49}
+CRYPTO_ASSETS = frozenset({"USDT", "TON", "BTC", "ETH", "LTC", "BNB", "TRX", "USDC"})
 
 
-async def checkout_crypto_crystals(db, tg_id: int, sku: str) -> dict:
+async def checkout_crypto_crystals(db, tg_id: int, sku: str,
+                                   asset: str = "USDT", *,
+                                   surface: str = "bot") -> dict:
     """Pending-заказ + инвойс Crypto Pay на пакет Кристаллов.
 
     Выдача произойдёт только после подписанного вебхука — как у Stars/Paddle.
@@ -170,20 +173,24 @@ async def checkout_crypto_crystals(db, tg_id: int, sku: str) -> dict:
     product = await repo.get_product(db, sku)
     if not product or product["kind"] != "crystals":
         raise PurchaseError("Криптой можно пополнить только пакеты Кристаллов 💎")
+    asset = (asset or "USDT").strip().upper()
+    if asset not in CRYPTO_ASSETS:
+        raise PurchaseError("Этот криптоактив пока недоступен")
     amount_usd = CRYSTAL_PACKS_USD.get(sku)
     if not amount_usd:
         raise PurchaseError("Для этого пакета не задана крипто-цена 🌙")
     order = await repo.create_order(
         db, tg_id, "crystals", sku=sku, title=product["title"],
-        amount_stars=0, surface="bot",
+        amount_stars=0, surface=surface,
         meta={"grant_kind": "crystals", "grant_code": sku,
               "grant_qty": product["grant_qty"], "valid_days": None,
-              "provider": "cryptobot", "amount_usd": amount_usd})
+              "provider": "cryptobot", "amount_usd": amount_usd,
+              "asset": asset})
     from . import cryptobot
     try:
         created = await cryptobot.create_invoice(
             amount_usd=amount_usd, payload=order["payload"],
-            description=f"Oracle: {product['title']}")
+            description=f"Oracle: {product['title']}", asset=asset)
     except cryptobot.CryptoPayError as exc:
         await repo.mark_order_failed(db, order["payload"])
         raise PurchaseError(
@@ -191,10 +198,11 @@ async def checkout_crypto_crystals(db, tg_id: int, sku: str) -> dict:
             status_code=503) from exc
     await repo.set_order_meta(db, order["payload"],
                               cryptobot_invoice_id=created["invoice_id"])
-    await analytics.track(db, "crypto_checkout", tg_id, props={"sku": sku},
-                          surface="bot")
+    await analytics.track(db, "crypto_checkout", tg_id, props={"sku": sku, "asset": asset},
+                          surface=surface)
     return {**order, "link": created["link"],
             "amount_usd": amount_usd,
+            "asset": asset,
             "description": product["description"] or product["title"]}
 
 

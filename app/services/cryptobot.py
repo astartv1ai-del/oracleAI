@@ -65,19 +65,35 @@ async def _call(method: str, payload: dict) -> dict:
     return data.get("result") or {}
 
 
+SUPPORTED_ASSETS = frozenset({"USDT", "TON", "BTC", "ETH", "LTC", "BNB", "TRX", "USDC"})
+
+
 async def create_invoice(*, amount_usd: float, payload: str,
-                         description: str) -> dict:
-    """Инвойс в USD — пользователь платит любой монетой по курсу Crypto Bot."""
-    result = await _call("createInvoice", {
-        "currency_type": "fiat",
-        "fiat": "USD",
+                         description: str, asset: str | None = None) -> dict:
+    """Создаёт одноразовый Crypto Pay invoice.
+
+    Без ``asset`` используется прежний USD invoice, который Crypto Pay может
+    принять в любой доступной монете. При заданном asset цена фиксируется
+    сервером в USD и Crypto Pay конвертирует её в выбранный актив.
+    """
+    normalized_asset = (asset or "").strip().upper() or None
+    if normalized_asset and normalized_asset not in SUPPORTED_ASSETS:
+        raise CryptoPayError("неподдерживаемый crypto asset")
+    invoice = {
+        "currency_type": "crypto" if normalized_asset else "fiat",
         "amount": f"{amount_usd:.2f}",
         "description": description[:1024],
         "payload": payload[:4096],
-        # одноразовый инвойс: оплачен — больше не открывается
         "allow_anonymous": False,
-    })
-    pay_url = str(result.get("pay_url") or "")
+        "allow_comments": False,
+        "expires_in": 1800,
+    }
+    if normalized_asset:
+        invoice["asset"] = normalized_asset
+    else:
+        invoice["fiat"] = "USD"
+    result = await _call("createInvoice", invoice)
+    pay_url = str(result.get("bot_invoice_url") or result.get("pay_url") or "")
     invoice_id = result.get("invoice_id")
     if not pay_url or not invoice_id:
         raise CryptoPayError("Crypto Pay не вернул invoice_id/pay_url")
