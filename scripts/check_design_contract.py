@@ -29,9 +29,9 @@ def main() -> int:
     missing = sorted(token for token in REQUIRED_TOKENS
                      if not re.search(rf"{re.escape(token)}\s*:", tokens))
     imports = re.findall(r"@import\s+url\('css/([^']+)'", styles)
-    expected = [f"{idx:02d}-" for idx in range(17)]
-    import_order_ok = len(imports) == 17 and all(
-        imports[idx].startswith(expected[idx]) for idx in range(17)
+    expected = [f"{idx:02d}-" for idx in range(18)]
+    import_order_ok = len(imports) == 18 and all(
+        imports[idx].startswith(expected[idx]) for idx in range(18)
     )
     reduced_motion = "prefers-reduced-motion: reduce" in styles or any(
         "prefers-reduced-motion: reduce" in path.read_text(encoding="utf-8")
