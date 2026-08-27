@@ -148,6 +148,11 @@ async def orders(user=Depends(confirmed_age_user), db=Depends(get_db)):
     return await billing_repo.user_orders(db, user["tg_id"], limit=30)
 
 
+@router.get("/payment-history")
+async def payment_history(user=Depends(confirmed_age_user), db=Depends(get_db)):
+    return await billing_repo.payment_history(db, user["tg_id"], limit=30)
+
+
 @router.get("/crystals/history")
 async def crystals_history(user=Depends(confirmed_age_user), db=Depends(get_db)):
     return await billing_repo.crystal_history(db, user["tg_id"], limit=40)

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/admin/static/admin.css?v=__ADMIN_ASSET_VERSION__">
 </head>
 <body>
+<a class="skip-link" href="#app-main">К основному содержимому</a>
 
 <div id="gate" class="gate">
   <div class="gate-card">
@@ -20,10 +21,11 @@
 <div id="shell" class="shell hidden">
   <aside class="sidebar">
     <div class="brand"><span>🔮</span><b>Оракул</b></div>
-    <nav id="nav">
+    <nav id="nav" aria-label="Разделы панели">
       <button class="nav-item active" data-view="dashboard"><i>📊</i>Дашборд</button>
       <button class="nav-item" data-view="users"><i>👥</i>Клиентки</button>
       <button class="nav-item" data-view="orders"><i>💳</i>Заказы</button>
+      <button class="nav-item" data-view="reconciliation"><i>🧾</i>Сверка платежей</button>
       <button class="nav-item" data-view="catalog"><i>🏷</i>Тарифы и товары</button>
       <button class="nav-item" data-view="promo"><i>🎟</i>Промокоды</button>
       <button class="nav-item" data-view="broadcasts"><i>📣</i>Рассылки</button>
@@ -40,16 +42,16 @@
     </div>
   </aside>
 
-  <main class="main">
+  <main class="main" id="app-main" tabindex="-1">
     <header class="topbar">
       <h2 id="view-title">Дашборд</h2>
       <div class="topbar-actions">
-        <select id="period" class="input slim">
+        <label class="sr-only" for="period">Период аналитики</label><select id="period" class="input slim" aria-label="Период аналитики">
           <option value="7">7 дней</option>
           <option value="30" selected>30 дней</option>
           <option value="90">90 дней</option>
         </select>
-        <button id="demo-toggle" class="btn demo-toggle hidden" type="button">ДЕМО: выкл.</button>
+        <button id="demo-toggle" class="btn demo-toggle hidden" type="button" aria-pressed="false">ДЕМО: выкл.</button>
         <button id="refresh" class="btn ghost">↻ Обновить</button>
       </div>
     </header>
@@ -66,7 +68,8 @@
 
       <div class="card payment-health-card">
         <div class="card-head"><h3>Платёжный контур</h3><span id="payment-health-updated" class="muted small"></span></div>
-        <div id="payment-health" class="payment-health"></div>
+                  <div id="payment-health" class="payment-health" aria-live="polite"></div>
+
       </div>
 
       <div class="row-2">
@@ -140,6 +143,21 @@
         </select>
       </div>
       <div class="card"><div id="orders-table" class="table-wrap"></div></div>
+    </section>
+
+    <!-- СВЕРКА ПЛАТЕЖЕЙ -->
+    <section class="view" id="view-reconciliation">
+      <div class="card">
+        <div class="card-head"><div><h3>Сверка платежей</h3><p class="muted small">Только owner. Действия не меняют статус оплаты.</p></div>
+          <button id="reconciliation-export" class="btn ghost" type="button">Экспорт агрегатов</button></div>
+        <div id="reconciliation-summary" class="payment-health"></div>
+        <div id="reconciliation-table" class="table-wrap" aria-live="polite"></div>
+        <div id="reconciliation-detail" class="card-subsection" hidden></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3>Уведомления владельца</h3><p class="muted small">Cooldown, тихие часы и опциональный второй webhook-канал.</p></div></div>
+        <div id="payment-notification-form" class="form" aria-live="polite"></div>
+      </div>
     </section>
 
     <!-- КАТАЛОГ -->

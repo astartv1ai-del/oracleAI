@@ -43,3 +43,29 @@
 [1]: https://core.telegram.org/bots/api "Telegram Bot API"
 [2]: https://help.send.tg/en/articles/10279948-crypto-pay-api "Crypto Pay API"
 [3]: https://developer.paddle.com/webhooks/overview "Paddle Webhooks"
+
+## Расширенный owner workflow
+
+В payment-health карточке теперь отображается bounded timeline последних webhook events: provider, event kind, received/failed status и время. Payload, invoice ID, Telegram ID и произвольные provider fields не выводятся. Кнопка `Открыть сверку` ведёт в owner-only экран `Сверка платежей`.
+
+Экран reconciliation показывает только безопасные order identifiers и тип аномалии. Owner может запросить повторную server-side сверку конкретного заказа, пометить его `manual_review` и скачать aggregate JSON export. Review action изменяет только bounded metadata заказа и пишет audit event; он не меняет `paid`, `failed`, `refunded`, payment rows или entitlement.
+
+В настройках уведомлений доступны отдельные cooldown для `DEGRADED` и `CRITICAL`, тихие часы и опциональный второй webhook-канал. `PAYMENT_ALERT_SECONDARY_URL` задаётся только через environment; URL не сохраняется в БД и не отображается в admin response. Второй канал получает только text/status summary.
+
+## User payment history и privacy center
+
+Mini App теперь запрашивает `/api/shop/payment-history`, который строит этапы исключительно из server-side order/payment/entitlement records: `created` → `paid` → `entitlement`. Callback `Telegram.WebApp.openInvoice` не считается доказательством успешного платежа; он только инициирует обновление UI.
+
+В профиле добавлен account/privacy center с объяснением anonymization policy, категориями данных и `/api/account/export`. Экспорт ограничен профилем и безопасной историей платежей; raw chats, memory, diary, provider payloads и Telegram identifiers туда не включаются. Удаление аккаунта остаётся явным и необратимым anonymization flow.
+
+## TON finality boundary
+
+Прямой TON Connect по-прежнему не включён. До появления отдельного transaction monitor с проверкой masterchain finality, replay protection, recipient/amount validation и reconciliation нельзя показывать неподтверждённую wallet transaction как успешную. Рабочий путь для TON — Crypto Pay invoice и его server-side webhook.
+
+Официальная документация TON уточняет границу: TON Connect — это протокол подключения dApp к wallet; сам protocol не предоставляет blockchain integration, поэтому приложению всё равно нужен собственный on-chain lookup/verification.[4] `sendTransaction` возвращает broadcast BoC, а не доказательство успешного бизнес-платежа; документация отдельно рекомендует lookup transaction on-chain.[5] Для payment processing нужно проверять включение shardchain transaction в masterchain block перед финальным зачислением.[6]
+
+[4]: https://docs.ton.org/applications/ton-connect/overview "TON Connect overview"
+[5]: https://docs.ton.org/applications/ton-connect/how-to/send-transaction "How to send a transaction with TON Connect"
+[6]: https://docs.ton.org/applications/payments/overview "TON payment processing overview"
+
+Для ссылок на кабинеты provider можно задать `TELEGRAM_STARS_DASHBOARD_URL`, `CRYPTOBOT_DASHBOARD_URL` и `PADDLE_DASHBOARD_URL`. Сервер принимает только HTTP(S) URL без username/password, обрезает длину и отдаёт их как обычные external links с `noopener noreferrer`; если переменная не задана, кнопка не отображается.

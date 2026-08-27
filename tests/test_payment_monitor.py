@@ -58,6 +58,34 @@ async def test_monitor_reconciles_recovery_and_failure_journal_is_safe(db):
 
 
 @pytest.mark.asyncio
+async def test_monitor_timeline_quiet_hours_and_review_marker(db):
+    from app.repo import billing
+    from app.api.routers.webhooks import _failure
+
+    now = datetime(2026, 8, 27, 12, 0, tzinfo=timezone.utc)
+    await users.ensure(db, 1001, "Покупатель")
+    await db.execute(
+        "INSERT INTO webhook_events(event_id, provider, kind, payload, created_at) VALUES(?,?,?,?,?)",
+        ("evt-safe", "cryptobot", "invoice_paid", "PRIVATE RAW", now.isoformat()),
+    )
+    await _failure(db, "cryptobot", "signature_rejected", status_code=401)
+    snapshot = await payment_monitor.build_snapshot(db, now=now, external=False)
+    timeline = snapshot["checks"]["webhook_timeline"]
+    assert any(row["event"] == "invoice_paid" for row in timeline)
+    assert "PRIVATE RAW" not in str(timeline)
+    assert payment_monitor._in_quiet_hours(now.replace(hour=23), {
+        "quiet_hours_start": "22:00", "quiet_hours_end": "07:00"})
+    assert not payment_monitor._in_quiet_hours(now, {
+        "quiet_hours_start": "22:00", "quiet_hours_end": "07:00"})
+    order = await billing.create_order(db, 1001, "product", sku="demo", title="Demo")
+    marked = await payment_monitor.mark_for_review(db, order["id"], 1)
+    assert marked["marked_for_review"] is True
+    assert marked["status"] == "pending"
+    row = await billing.get_order(db, order["id"])
+    assert "manual_review" in (row["meta_json"] or "")
+
+
+@pytest.mark.asyncio
 async def test_demo_payload_has_requested_figures_and_is_in_memory():
     from app.services.analytics import demo_dashboard
 

@@ -235,6 +235,60 @@ async def user_orders(db, tg_id: int, limit: int = 50) -> list[dict]:
     return [dict(r) for r in await cur.fetchall()]
 
 
+async def payment_history(db, tg_id: int, limit: int = 30) -> list[dict]:
+    """User-safe order history with stages derived only from server records."""
+    cur = await db.execute(
+        "SELECT o.id, o.kind, o.sku, o.title, o.amount_stars, o.status, o.surface, "
+        "o.created_at, o.paid_at, p.provider, p.currency, p.created_at AS payment_at, "
+        "(SELECT COUNT(*) FROM entitlements e WHERE e.order_id=o.id) AS grants "
+        "FROM orders o LEFT JOIN payments p ON p.id=(SELECT MAX(p2.id) FROM payments p2 "
+        "WHERE p2.order_id=o.id) WHERE o.tg_id=? ORDER BY o.id DESC LIMIT ?", (tg_id, limit))
+    result = []
+    for row in await cur.fetchall():
+        item = dict(row)
+        stages = [{"key": "created", "at": item["created_at"], "state": "done"}]
+        if item["status"] in {"paid", "refunded"} and item["paid_at"]:
+            stages.append({"key": "paid", "at": item["paid_at"], "state": "done"})
+            if item["grants"] or item["kind"] in {"plan", "crystals"}:
+                stages.append({"key": "entitlement", "at": item["paid_at"], "state": "done"})
+            if item["status"] == "refunded":
+                stages.append({"key": "refunded", "at": item["paid_at"], "state": "done"})
+        elif item["status"] == "failed":
+            stages.append({"key": "paid", "at": None, "state": "failed"})
+        else:
+            stages.append({"key": "paid", "at": None, "state": "pending"})
+        item["stages"] = stages
+        item["amount_stars"] = int(item["amount_stars"] or 0)
+        item["grant_recorded"] = bool(item["grants"] or item["kind"] in {"plan", "crystals"}
+                                      and item["status"] in {"paid", "refunded"})
+        # Do not expose internal join/count implementation details.
+        item.pop("grants", None)
+        result.append(item)
+    return result
+
+
+async def set_order_review(db, order_id: int, admin_id: int | None = None) -> bool:
+    """Mark only review metadata; never changes payment/order state."""
+    from datetime import datetime, timezone
+    import json
+    async with transaction(db):
+        cur = await db.execute("SELECT meta_json FROM orders WHERE id=?", (order_id,))
+        row = await cur.fetchone()
+        if not row:
+            return False
+        try:
+            meta = json.loads(row["meta_json"] or "{}")
+        except (TypeError, ValueError):
+            meta = {}
+        if meta.get("review_status") == "manual_review":
+            return False
+        meta.update({"review_status": "manual_review",
+                     "reviewed_at": datetime.now(timezone.utc).isoformat()})
+        cur = await db.execute("UPDATE orders SET meta_json=? WHERE id=?",
+                               (json.dumps(meta, ensure_ascii=False), order_id))
+        return bool(cur.rowcount)
+
+
 async def recent_orders(db, *, status: str | None = None, limit: int = 100) -> list[dict]:
     sql = ["SELECT o.*, u.name, u.username FROM orders o "
            "LEFT JOIN users u ON u.tg_id = o.tg_id WHERE 1=1"]

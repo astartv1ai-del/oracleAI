@@ -1,10 +1,11 @@
 """Профиль, настройки, рефералка, health."""
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from ...config import settings
@@ -147,6 +148,42 @@ async def experiment_exposure(item: ExperimentExposureIn, user=Depends(current_u
 class AccountDeletionIn(BaseModel):
     """Explicit confirmation prevents accidental irreversible deletion."""
     confirm: bool = Field(default=False)
+
+
+@router.get("/account/privacy")
+async def account_privacy(user=Depends(current_user)):
+    return {
+        "status": user["status"],
+        "anonymization": {
+            "delete_mode": "anonymize",
+            "kept": ["settlement-safe payment/order trace", "aggregated analytics"],
+            "removed_or_replaced": ["name", "username", "birth data", "private content", "memory text"],
+            "note": "Payment records may be retained when legally or financially required; they are not used to restore the account.",
+        },
+        "categories": [
+            {"key": "profile", "label": "Профиль и настройки", "exportable": True},
+            {"key": "payment_history", "label": "История заказов и статусы", "exportable": True},
+            {"key": "private_content", "label": "Чаты, память, дневник и расклады", "exportable": False},
+            {"key": "accounting_trace", "label": "Служебный платёжный trace", "exportable": False},
+        ],
+    }
+
+
+@router.get("/account/export")
+async def export_account(user=Depends(current_user), db=Depends(get_db)):
+    """Export a bounded, user-safe account view; never include raw private content."""
+    payment_history = await billing.payment_history(db, user["tg_id"], limit=100)
+    payload = {
+        "export_version": 1,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "profile": {"name": user["name"], "lang": user["lang"], "tz": user["tz"],
+                    "created_at": user["created_at"], "status": user["status"]},
+        "payment_history": payment_history,
+        "privacy": "Raw chats, memory text, diary text and provider payloads are excluded from this export.",
+    }
+    return JSONResponse(content=payload, headers={
+        "Content-Disposition": 'attachment; filename="oracle-account-export.json"'
+    })
 
 
 @router.post("/account/delete", dependencies=[Depends(rate_limit("write"))])

@@ -175,10 +175,19 @@
   app.retryPayments = function () { paymentState().data = null; this.loadPayments(); };
 
   app.showPaymentOrders = async function () {
+    this.showModal(`<h3>История оплат</h3><button class="m-close" data-act="modal-close" aria-label="Закрыть">✕</button><div id="payment-history-body" class="pay-orders"><div class="loader-ring"></div></div>`);
+    await this.loadPaymentHistory();
+  };
+
+  app.loadPaymentHistory = async function () {
+    const body = document.getElementById('payment-history-body');
+    if (!body) return;
     try {
-      const orders = await api('/api/shop/orders');
-      const rows = (orders || []).slice(0, 10).map(order => `<div class="pay-order"><span>${esc(order.title || order.sku || 'Покупка')}</span><b>${esc(order.status || 'pending')}</b></div>`).join('');
-      this.showModal(`<h3>История заказов</h3><button class="m-close" data-act="modal-close">✕</button><div class="pay-orders">${rows || '<p class="pay-note">Заказов пока нет.</p>'}</div>`);
-    } catch (e) { this.toast(friendlyError(e)); }
+      const orders = await api('/api/shop/payment-history');
+      const labels = { created: 'Заказ создан', paid: 'Платёж подтверждён', entitlement: 'Доступ или покупка выданы', refunded: 'Оформлен возврат' };
+      const rows = (orders || []).slice(0, 10).map(order => `<article class="pay-order pay-order--timeline"><div class="pay-order__head"><strong>${esc(order.title || order.sku || 'Покупка')}</strong><span>${esc(order.status || 'pending')}</span></div><div class="pay-order__meta">${order.amount_stars ? stars(order.amount_stars) : '—'} · ${esc(order.provider || 'ожидается')}</div><ol class="pay-timeline">${(order.stages || []).map(stage => `<li class="pay-timeline__item is-${esc(stage.state)}"><span class="pay-timeline__dot" aria-hidden="true"></span><span><b>${esc(labels[stage.key] || stage.key)}</b><small>${stage.at ? esc(new Date(stage.at).toLocaleString('ru-RU')) : 'Ожидается подтверждение сервера'}</small></span></li>`).join('')}</ol></article>`).join('');
+      body.innerHTML = rows || '<p class="pay-note">Заказов пока нет.</p>';
+      if (rows) body.insertAdjacentHTML('afterbegin', '<p class="pay-note">Статус обновляется с сервера. Закрытие окна не меняет платёж.</p>');
+    } catch (e) { body.innerHTML = `<p class="pay-note">${esc(friendlyError(e, 'История оплат временно недоступна.'))}</p><button class="btn btn-ghost" data-act="payment-history-refresh">Повторить</button>`; }
   };
 }());

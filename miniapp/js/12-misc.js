@@ -114,6 +114,13 @@
           <div class="spacer"></div>
           <div id="profile-referral"></div>
           <div class="spacer"></div>
+          <section class="glass account-center" aria-labelledby="account-center-title">
+            <div class="section-kicker">АККАУНТ И ПРИВАТНОСТЬ</div>
+            <div class="account-center__title" id="account-center-title">Твои данные и оплаты</div>
+            <p class="account-center__copy">История платежей строится по серверному статусу. Экспорт не включает тексты чатов, память, дневник или payload провайдера.</p>
+            <div class="btn-row"><button class="btn btn-ghost" type="button" data-act="payment-history">История оплат</button><button class="btn btn-ghost" type="button" data-act="account-privacy">Центр приватности</button></div>
+          </section>
+          <div class="spacer"></div>
           <section class="glass account-danger" aria-labelledby="account-danger-title">
             <div class="section-kicker">${profileT('account')}</div>
             <div class="account-danger__title" id="account-danger-title">${profileT('deleteAccount')}</div>
@@ -456,6 +463,32 @@
     if (empty) empty.hidden = visible !== 0;
   };
 
+
+  app.openPrivacyCenter = async function() {
+    this.showModal(`<h3>Центр приватности</h3><button class="m-close" data-act="modal-close" aria-label="Закрыть">✕</button><div id="privacy-body" class="modal-body"><div class="loader-ring"></div></div>`);
+    try {
+      const privacy = await api('/api/account/privacy');
+      const categories = (privacy.categories || []).map(item => `<div class="privacy-row"><b>${esc(item.label)}</b><span>${item.exportable ? 'доступно в экспорте' : 'не входит в экспорт'}</span></div>`).join('');
+      document.getElementById('privacy-body').innerHTML = `<p class="modal-soft-copy">Удаление аккаунта анонимизирует профиль, а settlement-safe payment trace может сохраниться для финансовой отчётности. Анонимизация необратима.</p><div class="privacy-list">${categories}</div><div class="btn-row" style="margin-top:12px"><button class="btn btn-primary" data-act="account-export">Скачать мой экспорт</button><button class="btn btn-danger" data-act="modal-close">Закрыть</button></div>`;
+    } catch (e) { document.getElementById('privacy-body').innerHTML = `<p class="modal-soft-copy">${esc(friendlyError(e, 'Центр приватности временно недоступен.'))}</p>`; }
+  };
+
+  app.exportAccount = async function() {
+    try {
+      let url = '/api/account/export';
+      const dev = new URLSearchParams(location.search).get('dev_user');
+      if (dev) url += '?dev_user=' + encodeURIComponent(dev);
+      const headers = { Accept: 'application/json' };
+      const initData = tg() && tg().initData;
+      if (initData) headers['X-Init-Data'] = initData;
+      const response = await fetch(url, { headers });
+      if (!response.ok) throw new Error('Не удалось подготовить экспорт');
+      const blob = await response.blob();
+      const href = URL.createObjectURL(blob); const link = document.createElement('a');
+      link.href = href; link.download = 'oracle-account-export.json'; document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 1000); this.toast('Экспорт подготовлен');
+    } catch (e) { this.toast(friendlyError(e, 'Экспорт временно недоступен.')); }
+  };
 
   app.deleteAccount = async function() {
     if (!window.confirm(profileT('deleteAccountConfirm'))) return;

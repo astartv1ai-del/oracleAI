@@ -17,6 +17,7 @@ from app.api.deps import get_db  # noqa: E402
 from app.api.main import app  # noqa: E402
 from app.api.security import parse_init_data  # noqa: E402
 from app.repo import dialog, readings, users  # noqa: E402
+from app.services import billing as billing_svc  # noqa: E402
 
 
 @pytest.fixture
@@ -579,6 +580,26 @@ async def test_admin_demo_is_owner_only_and_does_not_mutate_data(client, db, use
     assert forbidden.status_code == 403
 
 
+async def test_payment_history_privacy_and_export_are_server_owned(client, db, user):
+    order = await billing_svc.checkout_plan(db, user["tg_id"], "vip", surface="miniapp")
+    await billing_svc.apply_payment(db, order["payload"], charge_id="history-charge",
+                                    amount_stars=order["amount_stars"])
+    history = await client.get("/api/shop/payment-history", params=as_user(user))
+    assert history.status_code == 200
+    item = history.json()[0]
+    assert [stage["key"] for stage in item["stages"]] == ["created", "paid", "entitlement"]
+    assert "tg_id" not in item and "payload" not in item
+    privacy = await client.get("/api/account/privacy", params=as_user(user))
+    assert privacy.status_code == 200
+    assert privacy.json()["anonymization"]["delete_mode"] == "anonymize"
+    exported = await client.get("/api/account/export", params=as_user(user))
+    assert exported.status_code == 200
+    body = exported.json()
+    assert body["payment_history"][0]["status"] == "paid"
+    assert "PRIVATE" not in json.dumps(body)
+    assert '"payload":' not in json.dumps(body).lower()
+
+
 async def test_admin_payment_health_is_aggregated_and_read_only(client, db):
     await users.ensure(db, 1, "Владелец")
     result = await client.get("/api/admin/payment-health", params={"dev_user": 1})
@@ -587,6 +608,24 @@ async def test_admin_payment_health_is_aggregated_and_read_only(client, db):
     assert "checks" in body and "providers" in body
     assert "payload" not in str(body).lower()
     assert "tg_id" not in str(body).lower()
+
+
+async def test_admin_reconciliation_and_notification_settings_are_owner_only(client, db, user):
+    await users.ensure(db, 1, "Владелец")
+    settings = await client.get("/api/admin/payment-notifications", params={"dev_user": 1})
+    assert settings.status_code == 200
+    assert settings.json()["critical_cooldown_hours"] == 1
+    updated = await client.patch("/api/admin/payment-notifications", params={"dev_user": 1}, json={
+        "degraded_cooldown_hours": 8, "critical_cooldown_hours": 2,
+        "quiet_hours_start": "22:00", "quiet_hours_end": "06:00", "secondary_enabled": False,
+    })
+    assert updated.status_code == 200
+    assert updated.json()["degraded_cooldown_hours"] == 8
+    recon = await client.get("/api/admin/reconciliation", params={"dev_user": 1})
+    assert recon.status_code == 200
+    assert "items" in recon.json()
+    forbidden = await client.get("/api/admin/reconciliation", params={"dev_user": user["tg_id"]})
+    assert forbidden.status_code == 403
 
 
 async def test_admin_dashboard_and_users(client, db, user):
@@ -687,9 +726,22 @@ def test_admin_demo_and_payment_health_ui_contract():
     assert 'id="demo-toggle"' in html
     assert 'ДЕМО-РЕЖИМ · тестовые данные' in html
     assert 'id="payment-health"' in html
+    assert 'data-view="reconciliation"' in html
+    assert 'id="reconciliation-export"' in html
+    assert 'class="skip-link"' in html
     assert "/api/admin/dashboard/demo" in js
     assert "/api/admin/payment-health" in js
+    assert "/api/admin/reconciliation" in js
     assert "state.role !== 'owner'" in js
+
+    mini_index = (root / "miniapp" / "index.html").read_text(encoding="utf-8")
+    mini_actions = (root / "miniapp" / "js" / "15-actions.js").read_text(encoding="utf-8")
+    mini_payments = (root / "miniapp" / "js" / "17-payments.js").read_text(encoding="utf-8")
+    mini_misc = (root / "miniapp" / "js" / "12-misc.js").read_text(encoding="utf-8")
+    assert "/static/styles.css?v=100" in mini_index
+    assert "payment-history" in mini_actions and "account-privacy" in mini_actions
+    assert "/api/shop/payment-history" in mini_payments
+    assert "/api/account/export" in mini_misc
 
 
 async def test_cache_control_on_assets(client):

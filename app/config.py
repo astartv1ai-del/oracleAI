@@ -36,6 +36,10 @@ class Settings:
     bot_token: str = os.getenv("BOT_TOKEN", "")
     admin_id: int = _int("ADMIN_ID", 0)
     webapp_url: str = os.getenv("WEBAPP_URL", "").rstrip("/")
+    payment_alert_secondary_url: str = os.getenv("PAYMENT_ALERT_SECONDARY_URL", "").rstrip("/")
+    cryptobot_dashboard_url: str = os.getenv("CRYPTOBOT_DASHBOARD_URL", "").rstrip("/")
+    paddle_dashboard_url: str = os.getenv("PADDLE_DASHBOARD_URL", "").rstrip("/")
+    telegram_stars_dashboard_url: str = os.getenv("TELEGRAM_STARS_DASHBOARD_URL", "").rstrip("/")
 
     # ── LLM ──
     llm_provider: str = os.getenv("LLM_PROVIDER", "auto")  # auto|custom|anthropic|openai|off

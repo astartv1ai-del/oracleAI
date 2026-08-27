@@ -199,6 +199,7 @@ $('demo-toggle').addEventListener('click', () => {
   if (state.role !== 'owner') return;
   state.demo = !state.demo;
   $('demo-toggle').textContent = state.demo ? 'ДЕМО: вкл.' : 'ДЕМО: выкл.';
+  $('demo-toggle').setAttribute('aria-pressed', state.demo ? 'true' : 'false');
   $('demo-toggle').classList.toggle('active', state.demo);
   loadDashboard().catch(fail);
 });
@@ -216,6 +217,7 @@ const LOADERS = {
   safety: loadSafety,
   settings: loadSettings,
   audit: loadAudit,
+  reconciliation: loadReconciliation,
 };
 
 function loadView(name) {
@@ -330,6 +332,18 @@ async function loadDashboard() {
   ], d.top_referrers, { empty: 'Приглашений пока нет' });
 }
 
+async function downloadAdminFile(path, filename) {
+  const url = new URL(path, location.origin);
+  if (DEV_USER) url.searchParams.set('dev_user', DEV_USER);
+  const res = await fetch(url, { headers: { 'X-Init-Data': tg?.initData || '' } });
+  if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+  const blob = await res.blob();
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob); link.download = filename;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
 function renderPaymentHealth(h) {
   const checks = h?.checks || {};
   const recon = checks.reconciliation || {};
@@ -341,18 +355,67 @@ function renderPaymentHealth(h) {
   const providers = Object.entries(h?.providers || {}).map(([name, p]) => {
     const cls = p.status === 'ok' ? 'on' : p.status === 'degraded' ? 'warn' : 'off';
     const balance = (p.balances || []).map((b) => `${esc(b.asset)}: ${esc(b.available)}`).join(', ');
-    return `<span class="health-provider"><b>${esc(name)}</b><span class="badge ${cls}">${esc(p.status || 'unknown')}</span>${balance ? `<span>${balance}</span>` : ''}</span>`;
+    const dashboard = p.dashboard_url ? `<a class="health-dashboard-link" href="${esc(p.dashboard_url)}" target="_blank" rel="noopener noreferrer">кабинет</a>` : '';
+    return `<span class="health-provider"><b>${esc(name)}</b><span class="badge ${cls}">${esc(p.status || 'unknown')}</span>${balance ? `<span>${balance}</span>` : ''}${dashboard}</span>`;
   }).join('');
   $('payment-health-updated').textContent = h?.checked_at ? `проверено ${date(h.checked_at, true)}` : 'проверка ещё не запускалась';
+  const timeline = checks.webhook_timeline || [];
+  const timelineHtml = timeline.length ? `<div class="health-timeline" aria-label="Последние события webhook">${timeline.slice(0, 8).map((item) => `
+    <div class="health-timeline-row"><span class="badge ${item.status === 'failed' ? 'bad' : 'on'}">${item.status === 'failed' ? 'ошибка' : 'получен'}</span><b>${esc(item.provider)}</b><span>${esc(item.event)}</span><time>${date(item.at, true)}</time></div>`).join('')}</div>` : '<div class="muted small">Webhook-событий за последние 24 часа нет.</div>';
   $('payment-health').innerHTML = `
-    <div class="payment-health-summary"><span class="badge ${statusClass}">${esc(statusLabel)}</span><span class="muted small">Проверки выполняются автоматически каждые 10 минут в активном bot process.</span></div>
+    <div class="payment-health-summary"><span class="badge ${statusClass}">${esc(statusLabel)}</span><span class="muted small">Проверки выполняются автоматически каждые 10 минут в активном bot process.</span><button id="open-reconciliation" class="btn ghost" type="button">Открыть сверку</button></div>
     <div class="payment-health-grid">
       <div class="health-stat"><span>Зависшие pending &gt; ${num(h?.stale_pending_threshold_hours || 2)} ч</span><b>${num(checks.pending_orders_stale)}</b></div>
       <div class="health-stat"><span>Ошибки webhook за 24 ч</span><b>${num(failures)}</b></div>
       <div class="health-stat"><span>Ошибки заказов за 24 ч</span><b>${num(checks.failed_orders_24h)}</b></div>
       <div class="health-stat"><span>Аномалии сверки</span><b>${num(anomalies)}</b></div>
     </div>
-    <div class="health-provider">Поставщики: ${providers || '<span>не настроены</span>'}</div>`;
+    <div class="health-provider">Поставщики: ${providers || '<span>не настроены</span>'}</div>
+    <div class="health-timeline-title">Последние webhook events</div>${timelineHtml}`;
+  $('open-reconciliation')?.addEventListener('click', () => switchView('reconciliation'));
+}
+
+async function loadReconciliation() {
+  if (state.role !== 'owner') {
+    $('reconciliation-summary').innerHTML = '<div class="empty">Раздел доступен только владельцу.</div>';
+    return;
+  }
+  const [data, prefs] = await Promise.all([get('/api/admin/reconciliation'), get('/api/admin/payment-notifications')]);
+  $('reconciliation-summary').innerHTML = `<div class="payment-health-grid"><div class="health-stat"><span>Аномальные записи</span><b>${num(data.count)}</b></div><div class="health-stat"><span>Ledger mismatches</span><b>${num(data.ledger_mismatches)}</b></div></div>`;
+  const tableEl = $('reconciliation-table');
+  tableEl.innerHTML = table([
+    { title: 'Заказ', num: true, render: (r) => num(r.order_id) },
+    { title: 'Проблема', render: (r) => esc(r.issue) },
+    { title: 'SKU', render: (r) => esc(r.sku || '—') },
+    { title: 'Создан', render: (r) => date(r.created_at, true) },
+    { title: 'Действие', render: (r) => `<button class="btn ghost btn-small" type="button" data-recheck="${r.order_id}">Проверить</button>` },
+  ], data.items || [], { empty: 'Аномалий не найдено' });
+  tableEl.querySelectorAll('[data-recheck]').forEach((button) => button.addEventListener('click', () => openReconciliationOrder(button.dataset.recheck)));
+  $('reconciliation-export').onclick = () => downloadAdminFile('/api/admin/reconciliation/export', 'payment-reconciliation.json').catch(fail);
+  $('payment-notification-form').innerHTML = `<div class="form-grid">
+    <label>DEGRADED cooldown, часов<input id="pref-degraded" class="input" type="number" min="1" max="168" value="${prefs.degraded_cooldown_hours}"></label>
+    <label>CRITICAL cooldown, часов<input id="pref-critical" class="input" type="number" min="1" max="168" value="${prefs.critical_cooldown_hours}"></label>
+    <label>Тихие часы с<input id="pref-start" class="input" type="time" value="${prefs.quiet_hours_start}"></label>
+    <label>Тихие часы до<input id="pref-end" class="input" type="time" value="${prefs.quiet_hours_end}"></label>
+  </div><label class="check"><input id="pref-secondary" type="checkbox" ${prefs.secondary_enabled ? 'checked' : ''} ${prefs.secondary_configured ? '' : 'disabled'}> Второй webhook-канал${prefs.secondary_configured ? '' : ' (URL не настроен)'}</label>
+  <button id="pref-save" class="btn gold" type="button">Сохранить настройки</button><span id="pref-status" class="muted small" role="status"></span>`;
+  $('pref-save').onclick = async () => {
+    try {
+      await patch('/api/admin/payment-notifications', { degraded_cooldown_hours: +$('pref-degraded').value, critical_cooldown_hours: +$('pref-critical').value, quiet_hours_start: $('pref-start').value, quiet_hours_end: $('pref-end').value, secondary_enabled: $('pref-secondary').checked });
+      $('pref-status').textContent = 'Сохранено';
+    } catch (e) { fail(e); }
+  };
+}
+
+async function openReconciliationOrder(orderId) {
+  const detail = $('reconciliation-detail'); detail.hidden = false; detail.innerHTML = '<div class="loader-ring"></div>';
+  try {
+    const item = await get(`/api/admin/reconciliation/${encodeURIComponent(orderId)}`);
+    detail.innerHTML = `<div class="card-head"><h3>Заказ #${num(item.order_id)}</h3><button class="btn ghost btn-small" type="button" data-mark-review ${item.review_status === 'manual_review' ? 'disabled' : ''}>${item.review_status === 'manual_review' ? 'Уже на review' : 'Пометить для review'}</button></div><p class="muted small">${esc(item.title || item.sku || 'Покупка')} · ${esc(item.status || '—')} · ${num(item.amount_stars)} ⭐</p><p>Провайдер: <b>${esc(item.provider || '—')}</b> · payments: <b>${num(item.payment_count)}</b></p><p>${item.issues?.length ? 'Проблемы: ' + item.issues.map(esc).join(', ') : 'Критичных проблем не найдено.'}</p>`;
+    detail.querySelector('[data-mark-review]')?.addEventListener('click', async () => {
+      try { await post(`/api/admin/reconciliation/${encodeURIComponent(orderId)}/review`); toast('Заказ помечен для ручной сверки'); await openReconciliationOrder(orderId); } catch (e) { fail(e); }
+    });
+  } catch (e) { detail.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 
 /* ══════ клиентки ══════ */

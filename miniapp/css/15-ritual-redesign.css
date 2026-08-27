@@ -2380,3 +2380,12 @@ html { scroll-behavior: smooth; }
 .account-danger__button:hover,
 .account-danger__button:focus-visible { border-color: var(--color-error); color: var(--text-main); }
 .account-danger__button:disabled { opacity: .58; cursor: wait; }
+
+
+.account-center { padding: 15px 16px; border-color: rgba(123,224,197,.22); background: linear-gradient(145deg, rgba(123,224,197,.08), rgba(255,255,255,.035)); }
+.account-center__title { margin-top: 6px; color: var(--text-main); font: 700 17px/1.2 var(--font-display); }
+.account-center__copy { margin: 7px 0 12px; color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.privacy-list { display: grid; gap: 7px; margin-top: 12px; }
+.privacy-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 1px solid var(--line-soft); border-radius: 10px; color: var(--text-soft); font-size: 11px; }
+.privacy-row span { color: var(--text-muted); text-align: right; }
+@media (prefers-reduced-motion: reduce) { .modal-overlay, .modal { animation: none !important; } }

@@ -10,6 +10,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ...config import settings
@@ -98,6 +99,77 @@ async def demo_dashboard(days: int = Query(default=30, ge=1, le=365),
 async def payment_health(ctx=Depends(require("dashboard")), db=Depends(get_db)):
     """Aggregated payment/webhook health; no IDs, payloads or user PII."""
     return await payment_monitor.admin_snapshot(db)
+
+
+@router.get("/reconciliation")
+async def reconciliation(ctx=Depends(current_admin), db=Depends(get_db)):
+    if ctx.role != "owner":
+        raise HTTPException(403, "сверка доступна только владельцу")
+    return await payment_monitor.reconciliation(db)
+
+
+@router.get("/reconciliation/{order_id}")
+async def reconciliation_order(order_id: int, ctx=Depends(current_admin), db=Depends(get_db)):
+    if ctx.role != "owner":
+        raise HTTPException(403, "сверка доступна только владельцу")
+    return await payment_monitor.recheck_order(db, order_id)
+
+
+@router.post("/reconciliation/{order_id}/review")
+async def reconciliation_review(order_id: int, ctx=Depends(current_admin), db=Depends(get_db)):
+    if ctx.role != "owner":
+        raise HTTPException(403, "сверка доступна только владельцу")
+    result = await payment_monitor.mark_for_review(db, order_id, ctx.tg_id)
+    await admin_repo.audit(db, ctx.tg_id, "payment.mark_for_review",
+                           target=str(order_id), payload={"changed": result.get("marked_for_review", False)})
+    return result
+
+
+@router.get("/reconciliation/export")
+async def reconciliation_export(ctx=Depends(current_admin), db=Depends(get_db)):
+    if ctx.role != "owner":
+        raise HTTPException(403, "экспорт сверки доступен только владельцу")
+    snapshot = await payment_monitor.admin_snapshot(db)
+    recon = await payment_monitor.reconciliation(db)
+    payload = {
+        "export_version": 1,
+        "checked_at": snapshot.get("checked_at"),
+        "status": snapshot.get("status"),
+        "provider_statuses": {key: value.get("status") for key, value in (snapshot.get("providers") or {}).items()},
+        "reconciliation": {"anomaly_count": recon.get("count", 0),
+                            "ledger_mismatches": recon.get("ledger_mismatches", 0)},
+        "timeline_events": len((snapshot.get("checks") or {}).get("webhook_timeline") or []),
+    }
+    await admin_repo.audit(db, ctx.tg_id, "payment.reconciliation_export",
+                           target="aggregate", payload={"status": payload["status"]})
+    return Response(content=json.dumps(payload, ensure_ascii=False), media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="payment-reconciliation.json"'})
+
+
+class NotificationPreferencesIn(BaseModel):
+    degraded_cooldown_hours: int = Field(default=6, ge=1, le=168)
+    critical_cooldown_hours: int = Field(default=1, ge=1, le=168)
+    quiet_hours_start: str = Field(default="23:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    quiet_hours_end: str = Field(default="07:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    secondary_enabled: bool = False
+
+
+@router.get("/payment-notifications")
+async def payment_notifications(ctx=Depends(current_admin), db=Depends(get_db)):
+    if ctx.role != "owner":
+        raise HTTPException(403, "настройки уведомлений доступны только владельцу")
+    return await payment_monitor.notification_preferences(db)
+
+
+@router.patch("/payment-notifications")
+async def update_payment_notifications(item: NotificationPreferencesIn,
+                                        ctx=Depends(current_admin), db=Depends(get_db)):
+    if ctx.role != "owner":
+        raise HTTPException(403, "настройки уведомлений доступны только владельцу")
+    result = await payment_monitor.save_notification_preferences(db, item.model_dump())
+    await admin_repo.audit(db, ctx.tg_id, "payment.notifications.update",
+                           target="payment_monitor", payload={key: result[key] for key in item.model_fields})
+    return result
 
 
 @router.get("/events")

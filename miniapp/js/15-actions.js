@@ -23,6 +23,8 @@
     'pay-crypto': (el, data) => call('payCrypto', el, data),
     'payment-retry': () => call('retryPayments'),
     'payment-orders': () => call('showPaymentOrders'),
+    'payment-history': () => call('showPaymentOrders'),
+    'payment-history-refresh': () => call('loadPaymentHistory'),
     chat: (el, data) => call('openChat', data.chat),
     'chat-fn': (el, data) => {
       call('setToolbox', false);
@@ -102,7 +104,9 @@
     'share-chart': () => call('shareChart'),
     'share-compat': (el, data) => call('shareCompat', data.pdate, data.pname, data.rel),
     'modal-close': () => call('closeModal'),
-    'account-delete': () => call('deleteAccount')
+    'account-delete': () => call('deleteAccount'),
+    'account-privacy': () => call('openPrivacyCenter'),
+    'account-export': () => call('exportAccount')
   };
 
   app.actionHandlers = actionHandlers;
