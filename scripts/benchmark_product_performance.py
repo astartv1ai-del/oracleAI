@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import statistics
 import sys
 import tempfile
 import time
@@ -39,13 +38,29 @@ def timed_sync(fn, repeats: int = 5) -> list[float]:
     return values
 
 
-def summary(values: list[float]) -> dict:
+def _percentile(values: list[float], percentile: float) -> float:
     ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * percentile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * weight
+
+
+def summary(values: list[float]) -> dict:
+    if not values:
+        raise ValueError("benchmark requires at least one sample")
+    sample_size = len(values)
     return {
-        "runs": len(values),
-        "p50_ms": round(statistics.median(values), 2),
-        "p95_ms": round(ordered[max(0, int(len(ordered) * 0.95) - 1)], 2),
+        "runs": sample_size,
+        "p50_ms": round(_percentile(values, 0.50), 2),
+        "p95_ms": round(_percentile(values, 0.95), 2),
         "max_ms": round(max(values), 2),
+        "percentiles_valid_for_slo": sample_size >= 20,
+        "percentile_note": ("p95/p99 are directional only below n=20"
+                            if sample_size < 20 else "sample size supports directional SLO comparison"),
     }
 
 
@@ -95,7 +110,7 @@ async def main() -> int:
                 "tarot_draw": summary(timed_sync(lambda: tarot.reading_ledger(
                     tarot.draw(5, seed="synthetic-performance"), "three"), repeats=20)),
                 "memory_recall": summary(await timed_async(memory_op, repeats=5)),
-                "pdf_html_generation": summary(await timed_async(pdf_op, repeats=2)),
+                "pdf_html_generation": summary(await timed_async(pdf_op, repeats=20)),
                 "palm_line_segmentation": summary(timed_sync(palm_line_op, repeats=3)),
             }
         finally:

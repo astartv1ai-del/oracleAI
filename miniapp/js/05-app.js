@@ -7,7 +7,7 @@ app.state = window.OracleRuntime
       me: null, agents: [], today: null, spreads: null, moonWeek: null,
       dailyPulse: null, view: 'home',
       chat: { key: null, spec: null, messages: [], pending: null,
-              busy: false, tid: null, sessions: [], draft: '' }
+              busy: false, request: null, tid: null, sessions: [], draft: '' }
     };
 if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 
@@ -32,7 +32,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
         const name = pill.querySelector('.user-name');
         if (avatar) avatar.textContent = this.me.name[0].toUpperCase();
         if (name) name.textContent = this.me.name;
-        pill.setAttribute('aria-label', 'Открыть профиль: ' + this.me.name);
+        pill.setAttribute('aria-label', (oracleLang() === 'en' ? 'Open profile: ' : 'Открыть профиль: ') + this.me.name);
       }
     } catch (e) {
       this.renderAuthRequired();
@@ -276,13 +276,35 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
           <span class="brand-mark" aria-hidden="true">${sigilIcon('brand')}</span>
           <span class="brand-title">ORACLE<small>AI</small></span>
         </div>
-        <button class="bell" data-act="bell" aria-label="Открыть уведомления" title="Уведомления">
+        <button class="bell" data-act="bell" aria-label="${oracleLang() === 'en' ? 'Open notifications' : 'Открыть уведомления'}" title="${oracleLang() === 'en' ? 'Notifications' : 'Уведомления'}">
           ${sigilIcon('bell')}<span class="bell-dot" aria-hidden="true"></span>
         </button>
       </header>
       <div id="app-main"></div>
-      <nav class="app-nav" aria-label="Основная навигация"><div class="main-nav" id="main-nav"></div></nav>`;
+      <nav class="app-nav" aria-label="${oracleLang() === 'en' ? 'Main navigation' : 'Основная навигация'}"><div class="main-nav" id="main-nav"></div></nav>`;
     this.renderNav();
+    this.refreshBellDot();
+  };
+
+  // Точка-непрочитанное на колокольчике: видна один раз за день,
+  // пока пользователь не открыл панель уведомлений (флаг в localStorage).
+  app.refreshBellDot = function() {
+    const bell = document.querySelector('.bell');
+    if (!bell) return;
+    let unread = false;
+    try {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      unread = localStorage.getItem('oracle_bell_seen') !== todayKey;
+    } catch (e) { unread = false; }
+    bell.classList.toggle('has-unread', !!unread);
+    bell.setAttribute('aria-label', unread
+      ? (oracleLang() === 'en' ? 'Notifications · 1 new' : 'Уведомления · есть новое')
+      : (oracleLang() === 'en' ? 'Open notifications' : 'Открыть уведомления'));
+  };
+
+  app.markBellSeen = function() {
+    try { localStorage.setItem('oracle_bell_seen', new Date().toISOString().slice(0, 10)); } catch (e) {}
+    this.refreshBellDot();
   };
 
 
@@ -297,7 +319,12 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 
   app.renderNav = function() {
     const active = this.chat.key ? 'hub' : this.view;
-    document.getElementById('main-nav').innerHTML = this.navItems().map(n => `
+    const nav = document.getElementById('main-nav');
+    const items = this.navItems();
+    const activeIndex = Math.max(0, items.findIndex(n => n.k === active));
+    nav.style.setProperty('--nav-index', activeIndex);
+    nav.style.setProperty('--nav-count', items.length);
+    nav.innerHTML = items.map(n => `
       <button class="nav-btn ${active === n.k ? 'active' : ''}" data-act="go" data-goto="${n.k}" aria-current="${active === n.k ? 'page' : 'false'}" aria-label="${esc(n.t)}: ${esc(n.hint)}">
         <span class="nav-ico">${sigilIcon(n.ico)}</span>
         <span class="nav-copy"><b>${esc(n.t)}</b><small>${esc(n.hint)}</small></span>

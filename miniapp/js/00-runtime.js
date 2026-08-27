@@ -22,6 +22,7 @@
         messages: [],
         pending: null,
         busy: false,
+        request: null,
         tid: null,
         sessions: [],
         draft: ''
