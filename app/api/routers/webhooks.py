@@ -260,13 +260,21 @@ async def cryptobot_webhook(request: Request, db=Depends(get_db)):
     if expected_invoice and expected_invoice != invoice_id:
         log.error("крипто-вебхук %s не совпал с invoice_id заказа", invoice_id)
         return {"ok": True, "unmatched": True}
+    expected_asset = str(order_meta.get("asset") or "").upper()
+    actual_asset = str(invoice.get("asset") or "").upper()
+    if expected_asset and actual_asset and actual_asset != expected_asset:
+        log.error("крипто-вебхук %s не совпал с asset заказа", invoice_id)
+        return {"ok": True, "unmatched": True}
+    if str(invoice.get("status") or "paid").lower() != "paid":
+        return {"ok": True, "unmatched": True}
 
     result = await billing_svc.apply_payment(
         db, order["payload"], charge_id=f"crypto:{invoice_id}",
         amount_stars=0, provider="cryptobot",
         currency=str(invoice.get("fiat") or invoice.get("asset") or "USD"))
     await analytics.track(db, "crypto_payment", order["tg_id"],
-                          props={"sku": order["sku"], "invoice_id": invoice_id},
+                          props={"sku": order["sku"], "invoice_id": invoice_id,
+                                 "asset": actual_asset or expected_asset or "crypto"},
                           surface="bot")
     duplicate = await _already_seen(
         db, f"{invoice_id}:paid", "cryptobot", "invoice_paid",

@@ -17,12 +17,14 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
       tg().expand && tg().expand();
       try { tg().setHeaderColor && tg().setHeaderColor('#08070f'); } catch (e) {}
     }
+    syncDocumentLocale();
     this.renderFrame();
     try {
       this.me = await api('/api/me');
       if (this.me) {
         const flags = this.me.flags ? this.me.flags : {};
         this.me.flags = flags;
+        syncDocumentLocale();
       }
       try {
         const lang = this.me.lang || (localStorage.getItem('oracle_lang') || 'ru');
@@ -291,6 +293,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     return [
       { k: 'home', ico: 'home', t: t('today'), hint: t('ritual') },
       { k: 'hub', ico: 'hub', t: t('chats'), hint: t('guides') },
+      { k: 'payment', ico: 'monthly', t: t('paymentTab'), hint: t('paymentHint') },
       { k: 'profile', ico: 'profile', t: t('mine'), hint: t('profile') }
     ];
   };
@@ -317,6 +320,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     if (v === 'home') this.renderHome(main);
     else if (v === 'hub') this.renderHub(main);
     else if (v === 'profile') { this.renderProfile(main); }
+    else if (v === 'payment') { this.goPayment(); }
   };
 
 

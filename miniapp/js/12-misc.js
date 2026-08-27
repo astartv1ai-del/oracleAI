@@ -677,6 +677,7 @@
       localStorage.setItem('oracle_lang', lang);
       try { document.documentElement.lang = lang; } catch (e) {}
       this.me = Object.assign({}, this.me, { lang });
+      syncDocumentLocale();
       this.closeModal();
       this.renderFrame();
       this.go(this.view || 'profile');

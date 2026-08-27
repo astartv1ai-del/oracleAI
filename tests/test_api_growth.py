@@ -280,3 +280,63 @@ async def test_paddle_webhook_grants_only_bound_pending_order(client, db, user, 
     second = await client.post("/api/webhooks/paddle", content=body, headers=headers)
     assert second.status_code == 200
     assert second.json()["duplicate"] is True
+
+
+async def test_crypto_invoice_binds_server_selected_ton_asset(client, user, monkeypatch):
+    from app.config import settings
+    from app.services import cryptobot
+
+    monkeypatch.setattr(settings, "cryptobot_api_token", "test-token")
+    captured = {}
+
+    async def fake_create_invoice(*, amount_usd, payload, description, asset=None):
+        captured.update(amount_usd=amount_usd, payload=payload, description=description, asset=asset)
+        return {"invoice_id": 991, "link": "https://t.me/CryptoBot?start=invoice-991"}
+
+    monkeypatch.setattr(cryptobot, "create_invoice", fake_create_invoice)
+    response = await client.post(
+        "/api/shop/crypto-invoice", params=as_user(user),
+        json={"sku": "crystals_100", "asset": "TON"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["asset"] == "TON"
+    assert captured["asset"] == "TON"
+    assert captured["amount_usd"] > 0
+
+
+async def test_crypto_invoice_rejects_unknown_asset(client, user, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "cryptobot_api_token", "test-token")
+    response = await client.post(
+        "/api/shop/crypto-invoice", params=as_user(user),
+        json={"sku": "crystals_100", "asset": "DOGE"},
+    )
+    assert response.status_code == 400
+
+
+async def test_crypto_webhook_rejects_asset_mismatch(client, db, user, monkeypatch):
+    import hashlib
+    import hmac
+    import json
+
+    from app.config import settings
+    from app.repo import billing as billing_repo
+
+    secret = "crypto-test-secret"
+    monkeypatch.setattr(settings, "cryptobot_api_token", secret)
+    order = await billing_repo.create_order(
+        db, user["tg_id"], "crystals", sku="crystals_100", title="100 Кристаллов",
+        meta={"grant_kind": "crystals", "grant_code": "crystals_100", "grant_qty": 100,
+              "provider": "cryptobot", "asset": "TON", "cryptobot_invoice_id": 991},
+    )
+    body = json.dumps({"payload": {"update_type": "invoice_paid", "payload": {
+        "invoice_id": 991, "payload": order["payload"], "status": "paid", "asset": "USDT",
+    }}}, separators=(",", ":")).encode()
+    signature = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    response = await client.post(
+        "/api/webhooks/cryptobot", content=body,
+        headers={"crypto-pay-api-signature": signature},
+    )
+    assert response.status_code == 200
+    assert response.json()["unmatched"] is True

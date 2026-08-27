@@ -61,7 +61,7 @@ def test_specialist_tools_are_domain_scoped():
         "get_chart", "get_transits", "get_career_windows", "get_compatibility"
     }
     assert {tool["name"] for tool in skills.tools_for(get("chiromant").skills)} == {
-        "palm_scanner", "palm_photo_guide", "palm_history"
+        "activate_palm_skill", "palm_scanner", "palm_photo_guide", "palm_history"
     }
 
 

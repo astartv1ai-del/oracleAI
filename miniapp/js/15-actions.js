@@ -17,6 +17,12 @@
 
   const actionHandlers = {
     go: (el, data) => call('go', data.goto),
+    'payment-method': (el, data) => call('selectPaymentMethod', data.method),
+    'payment-asset': (el, data) => call('selectPaymentAsset', data.asset),
+    'pay-stars': (el, data) => call('payStars', el, data),
+    'pay-crypto': (el, data) => call('payCrypto', el, data),
+    'payment-retry': () => call('retryPayments'),
+    'payment-orders': () => call('showPaymentOrders'),
     chat: (el, data) => call('openChat', data.chat),
     'chat-fn': (el, data) => {
       call('setToolbox', false);

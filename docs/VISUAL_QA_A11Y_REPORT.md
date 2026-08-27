@@ -1,7 +1,8 @@
 # OracleAI — детальный отчёт по мобильной/десктопной версии, контрастности и a11y
 
 **Дата проверки:** 27 августа 2026 года.  
-**Коммит:** `0323801` — `feat: complete visual QA polish pass`.  
+**Базовый коммит:** `0323801` — `feat: complete visual QA polish pass`.
+**Расширенный аудит:** `f435951` — `feat: extend wcag and desktop visual QA`.
 **Проверенные локали:** RU и EN.  
 **Проверенные ширины:** 375px, 768px, 1440px и 1920px.  
 **Проверенные состояния:** age gate, onboarding, Сегодня, Диалоги, чат проводника, Профиль, вкладки Chart/History/Memory, memory modal и Tarot entry.
@@ -95,3 +96,76 @@ git diff --check
 [2]: [MDN, `prefers-reduced-motion`](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion)
 [3]: [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)
 [4]: [`docs/VISUAL_QA.md`](VISUAL_QA.md)
+
+## 8. Дополнительные проверки, которые целесообразно выполнить
+
+Ниже приведены проверки, которые расширяют текущий DOM/CSS-аудит до полноценного pre-production accessibility и Telegram Mini Apps review. Они разделены на **WCAG 2.1 AA**, дополнительные критерии WCAG 2.2 и платформенные проверки Telegram. Это важно, потому что Target Size (Minimum) относится к WCAG 2.2, а не к WCAG 2.1 AA.[5]
+
+| Область | Стандарт / критерий | Что проверять в OracleAI | Приоритет |
+|---|---|---|---|
+| Keyboard | WCAG 2.1 2.1.1, 2.1.2 | Полный Tab/Shift+Tab маршрут через header, nav, cards, tabs, composer, tool sheet и modal; отсутствие keyboard trap; Enter/Space не должны вызывать неожиданные действия. | P0 |
+| Focus order | WCAG 2.1 2.4.3 | DOM-порядок должен совпадать с визуальным: header → content → modal/sheet → close/action; после закрытия modal фокус возвращается к trigger. | P0 |
+| Focus visible | WCAG 2.1 2.4.7; дополнительно WCAG 2.2 2.4.11/2.4.13 | Проверить реальный `:focus-visible` в Chromium и Telegram WebView, включая focus на тёмной карточке, активном tab и светлой CTA. | P0 |
+| Reflow / zoom | WCAG 2.1 1.4.4, 1.4.10 | Проверить 200% zoom и CSS text-only zoom; контент не должен требовать горизонтального scroll при ширине 320 CSS px и не должен терять controls. | P0 |
+| Text spacing | WCAG 2.1 1.4.12 | Подменить line-height 1.5, paragraph spacing 2em, letter-spacing .12em, word-spacing .16em; проверить отсутствие обрезания и наложений в RU/EN. | P1 |
+| Non-text contrast | WCAG 2.1 1.4.11 | Измерить contrast 3:1 для borders, focus rings, icons, active tab indicator, progress track/fill и error controls на фактических поверхностях, а не только на base token. | P0 |
+| Hover/focus content | WCAG 2.1 1.4.13 | Проверить tooltip/title-like UI: его можно dismiss, он не закрывается при перемещении курсора к нему и не перекрывает обязательный контент. | P1 |
+| Input purpose | WCAG 2.1 1.3.5 и 3.3.2 | Добавить/проверить `autocomplete`, programmatic labels и инструкции для даты рождения, времени, города, вопроса и memory input. | P1 |
+| Label in name | WCAG 2.1 2.5.3 | Accessible name кнопки должен содержать видимый label; особенно проверить icon-only share, close, bell, send, delete и back controls. | P0 |
+| Errors | WCAG 2.1 3.3.1–3.3.3 | Проверить inline error с `aria-describedby`, `aria-invalid`, понятной причиной и retry; текст формы не должен исчезать после ошибки сети. | P0 |
+| Live updates | WCAG 2.1 4.1.2; практический ARIA review | Для toast, loading, chat response и success state определить `role=status`/`role=alert` только там, где это нужно, без повторного чтения всей страницы. | P1 |
+| Language | WCAG 2.1 3.1.1/3.1.2 | Проверить `html[lang]` и language of parts для смешанных RU/EN labels; runtime locale switch должен обновлять metadata. | P0 |
+| Reduced motion | WCAG 2.1 2.3.3 и platform review | Проверить не только CSS, но и JS-driven swipe, haptic, card flip, chart draw и loading loops при reduced-motion. | P1 |
+| Pointer input | WCAG 2.1 2.5.2/2.5.3 | Проверить pointer cancellation, label-in-name, отсутствие действий только через drag/swipe, корректную работу tap/click на cards и tabs. | P0 |
+| Screen reader semantics | WCAG 2.1 1.3.1/4.1.2 | NVDA/VoiceOver/TalkBack pass: landmark structure, headings, dialog naming, tab selection, button names, progress semantics, image alternatives. | P0 |
+| Telegram theme | Telegram Mini Apps | Проверить runtime `themeParams`, синхронизацию `bg_color`, `secondary_bg_color`, `text_color`, `button_color`, `button_text_color`, `bottom_bar_bg_color`; проверить light/dark themes. | P0 |
+| Telegram viewport | Telegram Mini Apps | Проверить `viewportHeight`, `viewportStableHeight`, `viewportChanged`, fullscreen and keyboard transitions; composer/nav не должны прыгать. | P0 |
+| Telegram safe area | Telegram Mini Apps | Проверить `safeAreaInset` и `contentSafeAreaInset` в fullscreen portrait/landscape на iOS и Android, включая home indicator и notch. | P0 |
+| Native controls | Telegram Mini Apps | Проверить `BackButton`, `BottomButton`/MainButton, close confirmation, haptic feedback and whether native controls duplicate in-app CTA. | P1 |
+| Platform QA | Telegram clients | Прогнать Telegram iOS, Android, macOS/Windows desktop WebView; проверить long press, text selection, keyboard, orientation and network recovery. | P0 |
+
+## 9. Реестр компонентов с обновлёнными touch targets и focus states
+
+Размеры ниже реализованы в `miniapp/css/16-visual-qa.css` и токенах `miniapp/css/00-tokens.css`. Базовый токен `--touch-target` равен **44px**. Для компонентов, у которых явно задана ширина/высота меньше 44px ради визуального glyph-box, действует глобальный `min-height: var(--touch-target)`; перед production release такие icon-only элементы всё равно следует подтвердить измерением реального bounding box.
+
+| Компонент / селекторы | Touch target после обновления | Focus behavior после обновления | Состояния |
+|---|---:|---|---|
+| Header profile pill `.user-pill` | `min-height: 44px`; width fluid, name ellipsis | Global `button:focus-visible`, 2px outline, 3px offset | default, compact, long name, focus, disabled |
+| Header notifications `.bell` | `44 × 44px` | Same visible outline plus semantic `aria-label` | default, hover, active, focus |
+| Bottom navigation `.nav-btn` | `min-height: 54px` | Focus ring on full nav item, active state uses contrast + fill | default, active, pressed, focus |
+| Primary/secondary buttons `.btn`, `.btn-primary`, `.btn-ghost` | `min-height: 44px` | Focus ring plus hover/active/disabled transition contract | hover, active, focus, disabled, loading |
+| Ritual CTA `.ritual-cta` | `min-height: 46px` | Inherits focus-visible, preserves high-contrast dark label on champagne | default, active, focus |
+| Inputs `.ipt`, `input`, `textarea`, `select` | `min-height: 44px`, radius 14px | Border changes to strong semantic border plus `--focus-ring`; placeholder uses muted token | default, focus, error, success, disabled |
+| Profile tabs `.ptab` | `min-height: 44px` | Focus ring; selected state has fill, contrast and active tab semantics | default, selected, focus |
+| Chat tabs `.atab` | `min-height: 44px` | Focus ring on tab button; active state not color-only | default, active, focus |
+| Chips `.chip`, `.ask-chip`, `.rel-chip` | `min-height: 44px` through shared rule; compact visual padding retained | Focus ring and active scale; selected state uses border/background | default, selected, disabled, focus |
+| Agent cards `.agent-card`, home cards `.dock-item` | `min-height: 44px`; full card click surface | Focus ring on card action surface; active scale limited to .985 | default, hover/active, focus |
+| Tool rows `.tool`, `.te-chip` | `min-height: 44px`; tool sheet row uses 60px | Focus ring on full row and no gesture-only dependency | default, open, selected, focus |
+| Chat composer `.tool-btn`, `.send-btn` | `44 × 44px` | Focus ring and `focus-within` border on composer | empty, typing, sending, error, focus |
+| Chat header `.back`, `.chat-reset` | CSS min-height 44px despite compact glyph box | Visible outline and semantic label/title | default, active, focus |
+| Modal close `.m-close`, `.te-close` | Global button min-height 44px; sheet close zone target preserved | Outline offset kept inside visible overlay and close action named | enter, active, focus, exit |
+| Memory actions `.memory-open`, `.mem-del`, `.memory-add` | Shared button min-height 44px; delete/send icon actions require runtime bounding-box verification | Visible focus outline and accessible name | default, add, delete, success, error |
+| Toast/status `.toast`, status badges | Not pointer targets by default; dismiss action follows `.btn` contract | Status color paired with text/icon; no color-only message | success, error, info, warning |
+
+## 10. Дополнительные desktop-исправления в текущем проходе
+
+В рамках этой дополнительной проверки исправлены три конкретных desktop/mobile-webview риска. Во-первых, `.screen` на tablet/desktop получил дополнительный bottom clearance до 144px и `scrollbar-gutter: stable`, поэтому последняя карточка или секция не должны визуально упираться в нижнюю навигацию. Во-вторых, `#app-root` на desktop получил тонкую semantic frame border, контролируемый фон и мягкую тень; это отделяет 480px Mini App canvas от фонового artwork, не растягивая контент. В-третьих, runtime теперь синхронизирует `document.documentElement.lang`, `dir` и `document.title` с выбранным RU/EN языком. В ходе проверки обнаружен и исправлен реальный accessibility-дефект: `.user-pill` имел высоту 42px и был поднят до 44px.
+
+## 11. Ограничения текущего automated pass
+
+Текущий harness доказывает отсутствие ряда структурных ошибок, но не заменяет полный ручной accessibility pass. В частности, необходимо отдельно пройти NVDA/VoiceOver/TalkBack, проверить реальное отображение `:focus-visible` при Tab, keyboard trap и возврат фокуса после закрытия modal, проверить контраст non-text borders на каждом gradient surface, а также открыть приложение внутри реальных Telegram iOS/Android WebView с dynamic viewport, fullscreen и ThemeParams. Эти проверки включены в таблицу выше как P0/P1, но требуют соответствующих клиентов и устройств.
+
+## References
+
+[5]: [W3C, Web Content Accessibility Guidelines (WCAG) 2.1](https://www.w3.org/TR/WCAG21/)
+[6]: [Telegram, Telegram Mini Apps — official documentation](https://core.telegram.org/bots/webapps)
+
+## 12. Итог расширенного прохода после исправлений
+
+После дополнительного прохода standards harness зафиксировал **24 проверенных DOM-состояния** в RU/EN на 375px и 1440px. Итог: `small_targets=0`, `unnamed=0`, `images_without_alt=0`, `inputs_without_label=0`, `positiveTabindex=0`; для английской локали установлены `html[lang]=en` и заголовок `OracleAI — your gentle daily ritual`, для русской — `html[lang]=ru` и русскоязычный title. Telegram WebApp-мок присутствует, `isExpanded=true`, а viewport height корректно доступен runtime-слою.
+
+Desktop capture дополнительно проверил 1440px и 1920px в top/bottom scroll states для Home, Guides и Profile. App frame сохраняет 480px Telegram-first ширину, горизонтальный scroll отсутствует, а `screen` получает 144px bottom clearance и способен прокрутиться до terminal content. Это устраняет риск того, что последний card/section окажется недоступен из-за нижней навигации.
+
+## 13. Что требуется проверить на реальных клиентах перед production
+
+Headless-проверка не может сама доказать корректность системного screen reader, фактический возврат фокуса после закрытия modal или поведение iOS/Android WebView при клавиатуре и fullscreen. Перед production рекомендуется выполнить короткий smoke-test на Telegram iOS и Android: пройти Tab/VoiceOver/TalkBack эквивалентный focus-flow, открыть/закрыть modal, вызвать composer с клавиатурой, изменить тему Telegram, включить fullscreen portrait/landscape и проверить `safeAreaInset`/`contentSafeAreaInset`. Это не найденные ошибки текущего прохода, а следующий уровень platform validation согласно официальной документации Telegram.[6]

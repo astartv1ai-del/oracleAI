@@ -4,7 +4,7 @@
    не держать два расходящихся обработчика для touch и pen.
    ============================================================================= */
 (function () {
-  const VIEW_ORDER = ['home', 'hub', 'profile'];
+  const VIEW_ORDER = ['home', 'hub', 'payment', 'profile'];
   const INTERACTIVE = [
     'input', 'textarea', 'select', 'button', 'a', '[contenteditable="true"]',
     '[data-act]', '.chat-messages', '.suggest-chips', '.agent-tabs',

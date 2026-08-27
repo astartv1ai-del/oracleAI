@@ -33,8 +33,10 @@ def main() -> None:
             assert case.get("must_contain")
             assert case.get("must_not_contain")
             context = skill_context(legacy_code, str(case["prompt"]), limit=3)
-            assert "ACTIVE_SKILL: anti-barnum-protocol" in context
-            assert context.count("ACTIVE_SKILL:") <= 3
+            assert "[SKILL_INDEX]" in context
+            assert "anti-barnum-protocol" in context
+            assert expected in context
+            assert "ACTIVE_SKILL:" not in context
             total += 1
         print(eval_path.parent.parent.name, "cases=", len(cases), "ok")
     assert total == 54, total

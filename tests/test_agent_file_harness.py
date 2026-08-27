@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.core.agents.file_loader import (
+    activate_skill,
     load_profiles,
     profile_for_legacy,
     select_skills,
@@ -57,11 +58,19 @@ def test_russian_queries_select_relevant_specialist_skill():
 
 def test_skill_context_is_bounded_and_legacy_registry_is_unchanged():
     context = skill_context("chiromant", "фото ладони и линия сердца", limit=3)
-    assert context.count("ACTIVE_SKILL:") <= 3
-    assert "DOMAIN_PLAYBOOK" in context
-    assert len(context) < 24000
+    assert "[SKILL_INDEX]" in context
+    assert "AVAILABLE_SKILL_CARDS" in context
+    assert "ROUTED_SKILL_HINTS" in context
+    assert "ACTIVE_SKILL:" not in context
+    assert "heart-line" in context and "heart-line-depth" in context
+    assert len(context) < 12000
+    activated = activate_skill("chiromant", "heart-line")
+    assert "[ACTIVATED_SKILL]" in activated
+    assert "ACTIVE_SKILL: heart-line" in activated
+    assert "ANTI-BARNUM" in activated.upper() or "evidence" in activated.lower()
     assert codes() == ("oracle", "astro", "tarot", "chiromant")
     assert get("chiromant").skills == (
+        "activate_palm_skill",
         "palm_scanner",
         "palm_photo_guide",
         "palm_history",
@@ -84,8 +93,9 @@ async def test_runtime_places_active_skills_before_safety_tail(monkeypatch):
     monkeypatch.setattr(runtime, "resolve", fake_resolve)
     monkeypatch.setattr(runtime, "_context", fake_context)
     prompt = await runtime.system_for(None, user, spec, question="транзиты планет")
-    assert "ACTIVE_SKILL: anti-barnum-protocol" in prompt
-    assert prompt.index("ACTIVE_SKILL:") < prompt.index("Правила безопасности")
+    assert "[SKILL_INDEX]" in prompt
+    assert "ACTIVE_SKILL:" not in prompt
+    assert prompt.index("[SKILL_INDEX]") < prompt.index("Правила безопасности")
 
 
 def test_offline_fallback_is_domain_specific():
