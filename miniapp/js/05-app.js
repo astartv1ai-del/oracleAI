@@ -12,6 +12,14 @@ app.state = window.OracleRuntime
 if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 
   app.boot = async function() {
+    const qaParams = new URLSearchParams(location.search);
+    const qaMode = qaParams.get('qa') === '1';
+    const qaView = qaParams.get('qa_view') || 'home';
+    const qaTab = qaParams.get('qa_tab') || '';
+    if (qaMode) {
+      document.documentElement.dataset.qa = '1';
+      try { localStorage.setItem('oracle_intro_seen', '1'); localStorage.setItem('oracle_chat_guide_v2', '1'); } catch (e) {}
+    }
     if (tg()) {
       tg().ready && tg().ready();
       tg().expand && tg().expand();
@@ -41,10 +49,17 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     this.loadAgents();
     this.loadToday();
     this.go('home');
+    if (qaMode) {
+      if (qaView === 'chat') this.openChat(qaParams.get('qa_agent') || 'oracle');
+      else if (['home', 'hub', 'profile'].includes(qaView)) this.go(qaView);
+      if (qaView === 'profile' && ['summary', 'chart', 'history', 'memory'].includes(qaTab)) {
+        setTimeout(() => document.querySelector(`.ptab[data-tab="${qaTab}"]`)?.click(), 120);
+      }
+    }
     this.initSwipe();
     this.initViewport();
-    if (this.me && !this.me.age_confirmed) this.showAgeGate();
-    else this.maybeIntro();
+    if (!qaMode && this.me && !this.me.age_confirmed) this.showAgeGate();
+    else if (!qaMode) this.maybeIntro();
   };
   app.renderAuthRequired = function() {
     const main = document.getElementById('app-main');
@@ -272,7 +287,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
           <span class="avatar" aria-hidden="true">${initial}</span>
           <span class="user-name">${esc(name)}</span>
         </button>
-        <div class="brand-lockup" aria-label="OracleAI — личное пространство ритуалов">
+        <div class="brand-lockup" role="img" aria-label="OracleAI — личное пространство ритуалов">
           <span class="brand-mark" aria-hidden="true">${sigilIcon('brand')}</span>
           <span class="brand-title">ORACLE<small>AI</small></span>
         </div>
@@ -280,7 +295,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
           ${sigilIcon('bell')}<span class="bell-dot" aria-hidden="true"></span>
         </button>
       </header>
-      <div id="app-main"></div>
+      <main id="app-main" tabindex="-1"></main>
       <nav class="app-nav" aria-label="${oracleLang() === 'en' ? 'Main navigation' : 'Основная навигация'}"><div class="main-nav" id="main-nav"></div></nav>`;
     this.renderNav();
     this.refreshBellDot();
