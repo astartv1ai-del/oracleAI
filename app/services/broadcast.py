@@ -93,10 +93,11 @@ async def run(bot, db, broadcast_id: int, *, batch: int = 100) -> dict:
                 continue
             except (TelegramForbiddenError, TelegramBadRequest) as e:
                 # заблокировала бота или чат удалён — повторять бессмысленно
-                await comms.mark_target(db, broadcast_id, tg_id, "skipped", str(e))
+                await comms.mark_target(db, broadcast_id, tg_id, "skipped", type(e).__name__)
             except Exception as e:  # noqa: BLE001
-                await comms.mark_target(db, broadcast_id, tg_id, "failed", str(e))
-                log.warning("рассылка %s → %s: %s", broadcast_id, tg_id, e)
+                error_type = type(e).__name__
+                await comms.mark_target(db, broadcast_id, tg_id, "failed", error_type)
+                log.warning("рассылка %s не удалась: %s", broadcast_id, error_type)
             await asyncio.sleep(pause)
 
     progress = await comms.broadcast_progress(db, broadcast_id)

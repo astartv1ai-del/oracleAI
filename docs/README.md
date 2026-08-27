@@ -30,6 +30,45 @@
 
 | Area | Canonical document | Related code |
 |---|---|---|
+| [PRODUCT.md](PRODUCT.md) | Product, support, маркетинг | Чтобы понять аудиторию, границы обещания и пользовательские сценарии. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Разработка, техлид, QA | Чтобы менять код, API, модели данных или интеграции. |
+| [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Дизайн, frontend, QA | Чтобы добавлять экраны, компоненты и motion без визуального дрейфа. |
+| [API.md](API.md) | Frontend, backend, интеграции | Чтобы вызывать или изменять HTTP-контракты. |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | DevOps, владелец продукта | Чтобы подготовить окружение, выпустить релиз и откатить его. |
+| [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
+| [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
+| [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
+| [LLM_AGENT_TECHNICAL_AUDIT.md](LLM_AGENT_TECHNICAL_AUDIT.md) | AI, backend, QA, privacy | Полная карта agent prompts, memory/context integrity, tools/skills, conflict handling и palm vision pipeline. |
+| [PALM_ENGINE_RESEARCH.md](PALM_ENGINE_RESEARCH.md) | AI, CV, legal, product | Исследование palm-line engines, лицензий, model contracts и безопасного integration boundary. |
+| [LAUNCH_GOVERNANCE.md](RELEASE/LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
+| [PRODUCTION_READINESS.md](RELEASE/PRODUCTION_READINESS.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |
+| [P0_PRODUCTION_EXECUTION_PLAN.md](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) | Release, security, payments, AI quality, operations | Чтобы закрыть P0-001—P0-004 по процедурам, evidence, go/no-go и rollback. |
+| [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) | Product, astrology, backend, QA | Чтобы реализовать будущие composite и planetary returns без неявных precision-правил. |
+| [DESIGN_COMPONENT_INVENTORY.md](DESIGN_COMPONENT_INVENTORY.md) | Design, frontend, QA | Чтобы сохранять состояния компонентов, accessibility и visual regression matrix. |
+| [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять SQLite/WAL triggers и репетировать migration без production риска. |
+| [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md) | Frontend, backend, agent, QA | Чтобы вызывать текущие natal, synastry и transit contracts одинаково. |
+| [CHART_TYPE_CAPABILITIES.md](CHART_TYPE_CAPABILITIES.md) | Product, astrology, release owner | Чтобы отличать enabled product paths от upstream capabilities. |
+| [BILLING.md](FEATURES/BILLING.md) | Product, billing, finance | Чтобы сверить текущие планы, SKU, платёжные пути и открытые gaps без PII. |
+| [MONETIZATION_UNIT_ECONOMICS.md](MONETIZATION_UNIT_ECONOMICS.md) | Product, finance, operations | Чтобы считать net revenue, variable COGS, contribution, ARPPU, CAC и break-even по сценариям. |
+| [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
+| [MONETIZATION_EXTERNAL_SOURCES.md](MONETIZATION_EXTERNAL_SOURCES.md) | Finance, legal, billing | Чтобы проверять официальные platform/payment sources и не подменять settlement data сниппетами. |
+| [ASTRONOMY_REFERENCE_QA.md](ASTRONOMY_REFERENCE_QA.md) | Domain, astrology, QA | Чтобы воспроизвести cross-implementation проверки критических timezone, precision и boundary cases. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
+| [CONTRACTS.md](DOMAIN/CONTRACTS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](FEATURES/MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
+| [PDF_SYSTEM.md](PDF_SYSTEM.md), [PDF_TEMPLATE_CATALOG.md](PDF_TEMPLATE_CATALOG.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, product-specific template gates, visual regression и проверочные слои. |
+| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](RELEASE/TASKS.md), [TRACEABILITY_MATRIX.md](EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md), [BASELINE.md](EVIDENCE/BASELINE_2026-08-26.md), [NEXT_STEPS.md](ARCHIVE/NEXT_STEPS_2026-08-26.md), [ORACLEAI_CONTINUATION_REPORT.md](EVIDENCE/ORACLEAI_CONTINUATION_REPORT_2026-08-26.md) | Все владельцы | Surface matrix, backlog, evidence, next steps, baseline и итоговый implementation report. |
+| [HISTORY.md](FEATURES/HISTORY.md) | Frontend, backend, privacy, QA | Cross-tool archive read model, deep links, deletion ownership and palm boundary. |
+| [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md), `product_cost_events` | Product, finance, privacy, operations | Privacy-safe product cost, delivery, refund and support dimensions without user content. |
+| [MEMORY_EVALUATION.md](MEMORY_EVALUATION.md) | AI, privacy, QA | Synthetic relevance, pause, isolation, contradiction and prompt-injection evaluation. |
+| [LOCALIZATION_GLOSSARY.md](LOCALIZATION_GLOSSARY.md) | Product, frontend, content, QA | RU/EN technical labels, truth states, Tarot terms and pluralization rules. |
+| [API_RESILIENCE_MATRIX.md](API_RESILIENCE_MATRIX.md) | Backend, frontend, QA | Negative-path, rate-limit, backend-error and owner-scope checks. |
+| [PERFORMANCE_BASELINE.md](EVIDENCE/PERFORMANCE_BASELINE_2026-08-27.md) | Performance, operations, QA | Local p50/p95 directional measurements and live LLM latency blocker. |
+| [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) | Operations, database, security | Disposable integrity, restore, snapshot and isolation drill. |
+| [PRODUCTION_GAUNTLET.md](PRODUCTION_GAUNTLET.md) | Release, security, reliability, operations | Full audit matrix, findings, local evidence and external gates. |
+| [PRODUCTION_FINAL_REVIEW.md](PRODUCTION_FINAL_REVIEW.md) | Release owner, product, operations | Evidence-based final review and exact BLOCKED/SHIP IT verdict. |
+| [`models/THIRD_PARTY_NOTICES.md`](../models/THIRD_PARTY_NOTICES.md) | Legal, release, ML | Provenance, MIT notice, checksums and limitations for the vendored palm-line models. |
+| [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
+| [CHANGELOG.md](RELEASE/CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 | Domain index | [`DOMAIN/README.md`](DOMAIN/README.md) | `app/core/` |
 | Shared calculation/evidence policy | [`DOMAIN/CONTRACTS.md`](DOMAIN/CONTRACTS.md) | `app/core/astro.py`, `chart_contract.py`, `tarot.py`, `palm.py` |
 | Astrology and chart products | [`DOMAIN/ASTROLOGY.md`](DOMAIN/ASTROLOGY.md) and [`CHART_PRODUCT_CONTRACTS.md`](CHART_PRODUCT_CONTRACTS.md) | `app/core/astro.py`, `vedic.py`, `chart_products.py` |

@@ -1,7 +1,7 @@
 # OracleAI — WebView, Load и Palm Quality Report
 
-Дата запуска: **2026-08-27**  
-Окружение: локальный FastAPI preview, isolated SQLite load DB, Chromium headless для WebView emulation.  
+Дата запуска: **2026-08-27**
+Окружение: локальный FastAPI preview, isolated SQLite load DB, Chromium headless для WebView emulation.
 Автор: **Manus AI**
 
 ## Executive summary

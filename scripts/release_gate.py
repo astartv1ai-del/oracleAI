@@ -16,6 +16,10 @@ REQUIRED_DOCS = (
     ROOT / "docs" / "LLM_EVALUATION.md",
     ROOT / "docs" / "RELEASE/LAUNCH_GOVERNANCE.md",
     ROOT / "docs" / "RELEASE/PRODUCTION_READINESS.md",
+    ROOT / "docs" / "RELEASE/CURRENT_STATUS.md",
+    ROOT / "docs" / "PRODUCTION_GAUNTLET.md",
+    ROOT / "docs" / "PRODUCTION_FINAL_REVIEW.md",
+    ROOT / "docs" / "UI_PIXEL_AUDIT.md",
 )
 
 
@@ -57,9 +61,19 @@ def check_production_env() -> list[str]:
         errors.append("DEV_MODE must be disabled")
     if not os.getenv("WEBAPP_URL", "").startswith("https://"):
         errors.append("WEBAPP_URL must be an HTTPS URL")
-    for name in ("BOT_TOKEN", "ADMIN_ID"):
+    for name in ("BOT_TOKEN", "ADMIN_ID", "POSTGRES_PASSWORD", "DATABASE_URL", "RELEASE_ID"):
         if not os.getenv(name):
             errors.append(f"{name} is missing")
+    password = os.getenv("POSTGRES_PASSWORD", "").strip().lower()
+    if password in {"oracle", "change_me", "password", "postgres"}:
+        errors.append("POSTGRES_PASSWORD uses an unsafe template value")
+    database_url = os.getenv("DATABASE_URL", "").lower()
+    if database_url and "postgresql" not in database_url:
+        errors.append("DATABASE_URL must point to PostgreSQL")
+    if os.getenv("CELERY_ENABLED", "0") == "1" and not os.getenv("REDIS_URL", "").strip():
+        errors.append("REDIS_URL is required when CELERY_ENABLED=1")
+    if os.getenv("RELEASE_ID", "").strip().lower() == "local":
+        errors.append("RELEASE_ID must identify the deployed commit/tag")
     return errors
 
 

@@ -3,11 +3,11 @@
 **Дата:** 27 августа 2026 года  
 **Область проверки:** Mini App, RU/EN, shell, home/ritual, guide hub, chat, profile, profile tabs, Tarot entry state, modal/sheet, loading/empty/recovery patterns.  
 **Контрольные ширины:** 375px, 768px, 1440px и 1920px.  
-**Evidence:** [`EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md`](EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md), [`EVIDENCE/VISUAL_QA_A11Y_REPORT_2026-08-27.md`](EVIDENCE/VISUAL_QA_A11Y_REPORT_2026-08-27.md) и воспроизводимый capture script [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py). Generated JSON/PNG outputs остаются за пределами release tree и должны прикладываться к конкретному CI/run artifact.
+**Evidence:** [`EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md`](EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md), [`EVIDENCE/VISUAL_QA_A11Y_REPORT_2026-08-27.md`](EVIDENCE/VISUAL_QA_A11Y_REPORT_2026-08-27.md), [`UI_PIXEL_AUDIT.md`](UI_PIXEL_AUDIT.md) и воспроизводимые capture scripts [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py), [`scripts/capture_visual_baseline.py`](../scripts/capture_visual_baseline.py) и [`scripts/admin_visual_contract.py`](../scripts/admin_visual_contract.py). Generated JSON/PNG outputs остаются за пределами release tree и должны прикладываться к конкретному CI/run artifact.
 
 ## Методика
 
-Аудит выполнен сквозным способом: сначала проверялись общие визуальные аспекты по всем экранным модулям, затем проходились пользовательские состояния и локализации. Для воспроизводимости добавлен [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py), который открывает синтетического dev-пользователя, принимает age gate, пропускает onboarding, посещает home/chat/profile/profile tabs и сохраняет DOM-контракт. Отдельно проверяются отсутствие горизонтального overflow, именованные focusable-элементы, `alt` у изображений и reduced-motion.
+Аудит выполнен сквозным способом: сначала проверялись общие визуальные аспекты по всем экранным модулям, затем проходились пользовательские состояния и локализации. Для воспроизводимости добавлены [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py) и [`scripts/capture_visual_baseline.py`](../scripts/capture_visual_baseline.py). Второй harness дополнительно сохраняет geometry snapshots для viewport, app frame, header, screen, hero, cards, CTA и bottom navigation. Отдельно проверяются отсутствие горизонтального overflow, именованные focusable-элементы, `alt` у изображений и reduced-motion. Admin Dashboard дополнительно проверяется в desktop `1280×900` и mobile `390×844`; `scripts/admin_visual_contract.py` проверяет overflow, accessible names, image alt и 44px control target.
 
 > Важно: атмосферные `.starfield`-элементы намеренно могут выходить за границы собственного canvas для мягкого bleed-эффекта. QA считает это декоративным bleed, если `body.scrollWidth` не превышает viewport и UI-элементы не создают overflow.
 
@@ -53,6 +53,7 @@
 | 22 | Visual hierarchy | Основной CTA и вторичные действия не были формально описаны по всем поверхностям. | Design System закрепляет один primary CTA на смысловой блок и шампань как его семантическую роль. | Исправлено |
 | 23 | Accessibility | Не было отдельного скрипта для численной проверки core token contrast. | Добавлен `scripts/check_visual_contrast.py`; все четыре core-пары проходят AA. | Исправлено |
 | 24 | Decorative bleed | Некоторые фоновые элементы намеренно выступают за внутреннюю область app frame. | Это оставлено как художественное исключение, поскольку не увеличивает `scrollWidth` и не перекрывает UI. | Осознанное исключение |
+| 25 | Pixel reconstruction | Mobile home/chat/profile/Tarot и admin dashboard нуждались в измеримых frame, section rhythm, card family, nav clearance и responsive control rules. | Добавлены `18-pixel-reconstruction.css`, `admin/pixel-reconstruction.css`, geometry snapshots и explicit admin aria labels. | Исправлено; local desktop/mobile retest pass |
 
 ## Состояния по экранным сценариям
 
@@ -67,6 +68,7 @@
 | Натальная карта / modal | RU/EN, 4 ширины | Кнопка закрытия, scrollable content, focus anchor и semantic action order зафиксированы. |
 | Память / modal | RU/EN, 4 ширины | Empty/add/search/delete states имеют объяснение и не используют цвет как единственный сигнал. |
 | Tarot entry | RU/EN, 4 ширины | Onboarding/reading entry не обрезает CTA и сохраняет reduced-motion behavior. |
+| Admin Dashboard | RU/EN not applicable; desktop/mobile | Sidebar, KPI grid, controls, payment card, no overflow, no unnamed focusables and 44px controls verified locally. |
 
 ## Финальный проход
 

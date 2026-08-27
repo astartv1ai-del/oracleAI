@@ -55,12 +55,13 @@ chmod 600 .env
 
 | Группа | Переменные | Требование production |
 |---|---|---|
-| Режим и URL | `APP_ENV`, `DEV_MODE`, `WEBAPP_URL` | В production `DEV_MODE=0`; `WEBAPP_URL` — публичный HTTPS URL без credentials. При отсутствии `BOT_TOKEN`, `ADMIN_ID` или `WEBAPP_URL` API не стартует. |
+| Режим и URL | `APP_ENV`, `DEV_MODE`, `WEBAPP_URL`, `RELEASE_ID` | В production `APP_ENV=production`, `DEV_MODE=0`; `WEBAPP_URL` — публичный HTTPS URL без credentials; `RELEASE_ID` — approved commit/tag. При отсутствии обязательных значений API и release gate завершаются fail-closed. |
 | Telegram | `BOT_TOKEN`, `ADMIN_ID` | Реальные значения; не логировать и не передавать на клиент. |
 | LLM | `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `CUSTOM_*` | Достаточно ключа выбранного провайдера; offline fallback остаётся аварийным режимом. |
 | Платежи | `PADDLE_API_KEY`, `PADDLE_API_URL`, `PADDLE_CHECKOUT_URL`, `PADDLE_PRICE_IDS`, `PADDLE_WEBHOOK_SECRET` | Нужны вместе при включении web checkout; `PADDLE_PRICE_IDS` связывает внутренние планы с `pri_...` на сервере. |
 | Наблюдаемость | `SENTRY_DSN`, `LOG_LEVEL`, `RELEASE_ID`, `LOG_FILE` | JSONL logs идут в stdout; `LOG_FILE` опционален и должен быть writable. Sentry — опционально, но рекомендован для production. |
 | Резервное копирование | `BACKUP_ENCRYPTION_KEY_HOST_PATH`, `BACKUP_REQUIRE_ENCRYPTION`, `BACKUP_KEEP` | Профиль `backup` требует отдельный host key, encrypted PostgreSQL dump, checksum, off-site copy и restore drill. |
+| Хранилище/очередь | `DATABASE_URL`, `POSTGRES_PASSWORD`, `REDIS_URL`, `CELERY_ENABLED` | Production требует PostgreSQL URL, непустой непредсказуемый пароль и Redis URL при включённом Celery; шаблонные значения (`oracle`, `CHANGE_ME`, `password`, `postgres`) блокируются. |
 
 Конфигурация читается dataclass-настройками в `app/config.py`; неизвестные или небезопасные значения не следует «исправлять» прямо в контейнере.[2]
 

@@ -1,7 +1,7 @@
 # OracleAI — Visual Polish Gauntlet
 
-**Дата:** 27 августа 2026 года  
-**Ветка:** `master`  
+**Дата:** 27 августа 2026 года
+**Ветка:** `master`
 **Исходный commit:** `6b8e767f3e01455ef5f0829927f866c4932bb6ae`
 
 ## Цель и границы прохода
@@ -84,10 +84,10 @@ The product was not made louder or more decorative. The final change set removes
 
 ## References
 
-[1]: [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) — token, geometry, motion and responsive contracts.  
-[2]: [`docs/VISUAL_QA.md`](VISUAL_QA.md) — existing visual QA methodology and acceptance surface.  
-[3]: [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py) — reproducible RU/EN breakpoint capture.  
-[4]: [`scripts/check_visual_contrast.py`](../scripts/check_visual_contrast.py) — numerical contrast check.  
+[1]: [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) — token, geometry, motion and responsive contracts.
+[2]: [`docs/VISUAL_QA.md`](VISUAL_QA.md) — existing visual QA methodology and acceptance surface.
+[3]: [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py) — reproducible RU/EN breakpoint capture.
+[4]: [`scripts/check_visual_contrast.py`](../scripts/check_visual_contrast.py) — numerical contrast check.
 
 ## Follow-up audit after remote sync
 

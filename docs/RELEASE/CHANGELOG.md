@@ -6,6 +6,9 @@
 
 ### Added
 
+- Добавлены `UI_PIXEL_AUDIT.md` и geometry snapshots в visual baseline harness для измерения frame, header, cards, CTA и bottom navigation.
+- Добавлены `18-pixel-reconstruction.css` для Mini App и `admin/pixel-reconstruction.css` для bounded desktop/mobile dashboard layout.
+- Добавлены `PRODUCTION_GAUNTLET.md` и `PRODUCTION_FINAL_REVIEW.md` с полной phase matrix, локальными evidence и явными внешними release blockers.
 - Добавлены `AI_ONBOARDING_GAUNTLET.md` и `AI_SYSTEM_FINAL_REVIEW.md` как evidence contracts для AI, onboarding, Telegram и admin release review.
 - Добавлены regression tests для invalid-time, unknown-city и chart-failure recovery в Telegram onboarding.
 - Добавлен runtime regression test на отказ от model-generated tool call вне allow-list текущего агента.
@@ -34,6 +37,7 @@
 
 ### Security
 
+- CRM tag mutations в admin API теперь записываются в `admin_audit`; production startup/release gate блокируют шаблонные PostgreSQL credentials, неполную DB/Redis конфигурацию и отсутствующий release identity; operational logs больше не интерполируют Telegram IDs, invoice payloads, charge IDs или сырые provider errors в проверенных путях.
 - Синастрия использует только owner-scoped `partner_id`; birth data не принимаются через GET URL и не появляются в публичных cache keys.
 - Unknown-time natal charts не получают выдуманные дома, ASC, MC или колесо.
 - Transit day snapshots явно маркируются как дневные и не выдаются за точный момент Луны.
@@ -55,6 +59,7 @@
 - Account deletion теперь доступен из Profile Summary через локализованный confirm-gated UI, вызывает существующий idempotent `/api/account/delete` и показывает terminal success state без повторного запроса данных удалённого профиля.
 - Standalone agent/skill benchmark scripts получили repository-root bootstrap; direct invocation добавлен в CI как regression contract.
 - Selfcheck limits path теперь явно подтверждает `age_confirmed=1` перед проверкой платного chat flow; design contract checker учитывает visual и payments CSS layers, а VISUAL QA больше не ссылается на отсутствующие generated artifacts.
+- Pixel reconstruction pass нормализует content frame, section rhythm, card families, 48px controls, safe-area/nav clearance и wide-screen bounds; Admin Dashboard получил responsive stacking, 44px controls и явные `aria-label` для dynamic form fields.
 
 ## 2.0.0 — 2026-08-12
 

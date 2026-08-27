@@ -1,8 +1,8 @@
 # OracleAI — Final Release Certification
 
-**Дата проверки:** 27 августа 2026.  
-**Аудируемая ветка:** `master`.  
-**Исходный audited commit:** `3b8f578f033d7073e6b399039edc0effd44cbd8a`.  
+**Дата проверки:** 27 августа 2026.
+**Аудируемая ветка:** `master`.
+**Исходный audited commit:** `3b8f578f033d7073e6b399039edc0effd44cbd8a`.
 **Финальный verdict:** **BLOCKED**.
 
 ## Build

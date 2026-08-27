@@ -717,10 +717,7 @@ async def analyze_and_save(
         }
     else:
         cv_started = time.perf_counter()
-        line_result, hand_result = await asyncio.gather(
-            asyncio.to_thread(palm_lines.analyze, image),
-            asyncio.to_thread(palm_landmarks.analyze, image),
-        )
+        hand_result = await asyncio.to_thread(palm_landmarks.analyze, image)
         full_scope = await asyncio.to_thread(
             palm_full_scope.analyze, image, hand_geometry=hand_result
         )

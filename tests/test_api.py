@@ -660,6 +660,17 @@ async def test_admin_user_card_and_actions(client, db, user):
                              params={"dev_user": 1}, json={"text": "Просила скидку"})
     assert note.status_code == 200
 
+    added_tag = await client.post(f"/api/admin/users/{user['tg_id']}/tags",
+                                  params={"dev_user": 1}, json={"tag": " VIP "})
+    assert added_tag.status_code == 200
+    assert "vip" in added_tag.json()["tags"]
+
+    removed_tag = await client.delete(
+        f"/api/admin/users/{user['tg_id']}/tags/vip",
+        params={"dev_user": 1})
+    assert removed_tag.status_code == 200
+    assert "vip" not in removed_tag.json()["tags"]
+
     grant = await client.post(f"/api/admin/users/{user['tg_id']}/grant",
                               params={"dev_user": 1},
                               json={"kind": "crystals", "qty": 25,
@@ -668,7 +679,14 @@ async def test_admin_user_card_and_actions(client, db, user):
     assert grant.json()["amount"] == 25
 
     audit = await client.get("/api/admin/audit", params={"dev_user": 1})
-    assert any(a["action"] == "user.grant" for a in audit.json())
+    audit_rows = audit.json()
+    assert any(a["action"] == "user.grant" for a in audit_rows)
+    assert any(a["action"] == "tag.add" and a["target"] == str(user["tg_id"])
+               and json.loads(a["payload_json"]) == {"tag": "vip"}
+               for a in audit_rows)
+    assert any(a["action"] == "tag.delete" and a["target"] == str(user["tg_id"])
+               and json.loads(a["payload_json"]) == {"tag": "vip"}
+               for a in audit_rows)
 
 
 async def test_admin_grant_validates_kind(client, db, user):
