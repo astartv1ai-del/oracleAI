@@ -208,6 +208,8 @@ def _cache_control(path: str, response) -> None:
         response.headers.setdefault("Cache-Control", "private, max-age=3600, must-revalidate")
     elif path.startswith("/static/dist/") and re.search(r"\.[0-9a-f]{12}\.min\.(?:js|css)$", path):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.startswith("/admin/static/src/") or path.startswith("/admin/static/styles/"):
+        response.headers["Cache-Control"] = "public, max-age=0, must-revalidate"
     elif path.startswith("/static/") or path.startswith("/admin/static/"):
         response.headers["Cache-Control"] = "public, max-age=3600"
     elif path.count("/") <= 1 and path.rsplit(".", 1)[-1].lower() in _ASSET_EXTS:
@@ -263,10 +265,11 @@ async def admin_index():
         return JSONResponse({"detail": "не найдено"}, status_code=404)
     # JS/CSS живут в CDN-кеше час, поэтому имя выдачи получает версию от их
     # mtime. После любого деплоя HTML no-cache подхватит новые ассеты сразу.
-    asset_version = str(max(
-        (ADMIN_DIR / "admin.js").stat().st_mtime_ns,
-        (ADMIN_DIR / "admin.css").stat().st_mtime_ns,
-    ))
+    asset_files = [
+        path for path in ADMIN_DIR.rglob("*")
+        if path.is_file() and path.suffix.lower() in {".js", ".css", ".html"}
+    ]
+    asset_version = str(max((path.stat().st_mtime_ns for path in asset_files), default=0))
     return HTMLResponse(path.read_text(encoding="utf-8").replace(
         "__ADMIN_ASSET_VERSION__", asset_version))
 

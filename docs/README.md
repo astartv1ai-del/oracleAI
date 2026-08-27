@@ -19,6 +19,7 @@
 | Architecture | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Change data flow, modules, storage, agents or client loading order. | `app/`, `miniapp/`, `infra/` |
 | AI system | [`AI_SYSTEM.md`](AI_SYSTEM.md) | Change agents, skills, tools, context, memory, safety or provider behavior. | `app/core/agents/`, `app/core/skills.py`, `app/core/llm.py` |
 | Design | [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Change screens, tokens, components, motion, localization or accessibility. | `miniapp/css/`, `miniapp/js/`, `miniapp/index.html` |
+| Admin architecture | [`ADMIN_ARCHITECTURE.md`](ADMIN_ARCHITECTURE.md) | Extend admin features, API wiring, layouts or styles without returning to monoliths. | `admin/src/`, `admin/styles/`, `admin/index.html` |
 | API | [`API.md`](API.md) | Add or change an HTTP route, request, response, auth or error contract. | `app/api/`, `app/services/` |
 | Security | [`SECURITY.md`](SECURITY.md) | Change identity, owner scope, consent, privacy, uploads, payments or safety. | `app/api/deps.py`, `app/api/security.py`, `app/core/safety.py` |
 | Deployment | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Build, configure, migrate, deploy or roll back the stack. | `Makefile`, `infra/`, `.env*.example` |

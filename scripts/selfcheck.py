@@ -186,7 +186,18 @@ def frontend_assets():
         "miniapp/css/16-visual-qa.css", "miniapp/css/16-payments.css",
         "miniapp/css/18-pixel-reconstruction.css",
         "admin/index.html", "admin/admin.js", "admin/admin.css",
-        "admin/pixel-reconstruction.css", "scripts/admin_visual_contract.py",
+        "admin/pixel-reconstruction.css", "admin/src/app.js",
+        "admin/src/layout/template.js", "admin/src/core/runtime.js",
+        "admin/src/components/charts.js",
+        "admin/src/features/dashboard.js", "admin/src/features/users.js",
+        "admin/src/features/commerce.js", "admin/src/features/engagement.js",
+        "admin/src/features/content.js", "admin/src/features/settings.js",
+        "admin/src/features/observability.js",
+        "admin/styles/00-foundations.css", "admin/styles/10-shell.css",
+        "admin/styles/20-components.css", "admin/styles/30-feature-surfaces.css",
+        "admin/styles/40-responsive-accessibility.css",
+        "admin/styles/50-pixel-reconstruction.css",
+        "scripts/admin_visual_contract.py",
     ]
     missing = [p for p in required if not (ROOT / p).is_file()]
     if missing:

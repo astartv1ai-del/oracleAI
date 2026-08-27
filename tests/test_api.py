@@ -747,17 +747,25 @@ def test_admin_demo_and_payment_health_ui_contract():
 
     root = Path(__file__).resolve().parents[1]
     html = (root / "admin" / "index.html").read_text(encoding="utf-8")
-    js = (root / "admin" / "admin.js").read_text(encoding="utf-8")
-    assert 'id="demo-toggle"' in html
-    assert 'ДЕМО-РЕЖИМ · тестовые данные' in html
-    assert 'id="payment-health"' in html
-    assert 'data-view="reconciliation"' in html
-    assert 'id="reconciliation-export"' in html
-    assert 'class="skip-link"' in html
-    assert "/api/admin/dashboard/demo" in js
-    assert "/api/admin/payment-health" in js
-    assert "/api/admin/reconciliation" in js
-    assert "state.role !== 'owner'" in js
+    layout = (root / "admin" / "src" / "layout" / "template.js").read_text(encoding="utf-8")
+    entrypoint = (root / "admin" / "admin.js").read_text(encoding="utf-8")
+    app = (root / "admin" / "src" / "app.js").read_text(encoding="utf-8")
+    dashboard = (root / "admin" / "src" / "features" / "dashboard.js").read_text(encoding="utf-8")
+    commerce = (root / "admin" / "src" / "features" / "commerce.js").read_text(encoding="utf-8")
+    assert 'id="demo-toggle"' in layout
+    assert 'ДЕМО-РЕЖИМ · тестовые данные' in layout
+    assert 'id="payment-health"' in layout
+    assert 'data-view="reconciliation"' in layout
+    assert 'id="reconciliation-export"' in layout
+    assert 'class="skip-link"' in layout
+    assert 'type="module"' in html
+    assert 'id="admin-root"' in html
+    assert "./src/app.js" in entrypoint
+    assert "class AdminApplication" in app
+    assert "/api/admin/dashboard/demo" in dashboard
+    assert "/api/admin/payment-health" in dashboard
+    assert "/api/admin/reconciliation" in commerce
+    assert "state.role !== 'owner'" in commerce
 
     mini_index = (root / "miniapp" / "index.html").read_text(encoding="utf-8")
     mini_actions = (root / "miniapp" / "js" / "15-actions.js").read_text(encoding="utf-8")
