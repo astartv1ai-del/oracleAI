@@ -410,3 +410,16 @@ html[data-qa="1"] *::after {
 @media (prefers-reduced-motion: reduce) {
   .welcome-card *, .sess-panel, .suggest-chips .chip { transition: none !important; animation: none !important; }
 }
+
+
+/* The seasonal signal belongs to the welcome narrative, not a separate competing card. */
+.welcome-card__season { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(230,219,255,.11); }
+.welcome-card__season-sigil { display: grid; place-items: center; flex: 0 0 26px; width: 26px; height: 26px; border: 1px solid rgba(245,212,139,.28); border-radius: 9px; color: var(--champagne-200); background: rgba(245,212,139,.07); font-size: 13px; }
+.welcome-card__season > div { display: grid; min-width: 0; gap: 2px; }
+.welcome-card__season > div > span { color: var(--champagne-300); font-size: 8px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.welcome-card__season b { overflow: hidden; color: var(--text-main); font: 700 12px/1.2 var(--font-family-display); text-overflow: ellipsis; white-space: nowrap; }
+.welcome-card__season p { overflow: hidden; max-width: 260px; margin: 0; color: var(--text-muted); font-size: 9.5px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 380px) {
+  .welcome-card__season { margin-top: 12px; padding-top: 10px; }
+  .welcome-card__season p { max-width: 218px; }
+}
