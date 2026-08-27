@@ -7,7 +7,7 @@ app.state = window.OracleRuntime
       me: null, agents: [], today: null, spreads: null, moonWeek: null,
       dailyPulse: null, view: 'home',
       chat: { key: null, spec: null, messages: [], pending: null,
-              busy: false, tid: null, sessions: [], draft: '' }
+              busy: false, request: null, tid: null, sessions: [], draft: '' }
     };
 if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
 

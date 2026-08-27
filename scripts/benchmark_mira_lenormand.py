@@ -4,9 +4,11 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from app.core.agents.file_loader import profile_for_legacy, select_skills
+from app.core.agents.file_loader import profile_for_legacy, select_skills  # noqa: E402
 
 CASES = [
     ("chiromant", "Разбери мою ладонь по этому снимку: что реально видно и какая уверенность?", "visual-evidence-protocol"),

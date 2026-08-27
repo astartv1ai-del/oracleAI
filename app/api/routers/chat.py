@@ -1,7 +1,7 @@
 """Чаты с агентами: список, история, вопрос."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from ...core import agents
 from ...repo import dialog
 from ...services import chat as chat_svc
@@ -33,14 +33,17 @@ async def chat_history(agent: str, user=Depends(confirmed_age_user), db=Depends(
 
 @router.post("/chat/{agent}", dependencies=[Depends(rate_limit("llm"))])
 async def ask_agent(agent: str, item: AskIn, user=Depends(confirmed_age_user),
-                    db=Depends(get_db)):
+                    db=Depends(get_db), x_idempotency_key: str | None = Header(default=None)):
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
     try:
         return await chat_svc.ask(db, user, item.text, agent=agent,
-                                  surface="miniapp", allow_paid=item.allow_paid)
+                                  surface="miniapp", allow_paid=item.allow_paid,
+                                  idempotency_key=x_idempotency_key)
     except chat_svc.ChatDenied as e:
         raise access_denied(e.verdict) from e
+    except chat_svc.ChatRequestInProgress as e:
+        raise HTTPException(409, detail={"code": "request_in_progress", "message": str(e)}) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 
@@ -117,15 +120,20 @@ async def session_history(agent: str, thread_id: int, user=Depends(confirmed_age
 @router.post("/chat/{agent}/sessions/{thread_id}",
              dependencies=[Depends(rate_limit("llm"))])
 async def ask_session(agent: str, thread_id: int, item: AskIn,
-                      user=Depends(confirmed_age_user), db=Depends(get_db)):
+                      user=Depends(confirmed_age_user), db=Depends(get_db),
+                      x_idempotency_key: str | None = Header(default=None)):
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
     try:
         return await chat_svc.ask(db, user, item.text, agent=agent,
-                                  surface="miniapp", allow_paid=item.allow_paid,
-                                  thread_id=thread_id)
+                                  surface="miniapp",                                   allow_paid=item.allow_paid,
+                                  thread_id=thread_id,
+                                  idempotency_key=x_idempotency_key)
+
     except chat_svc.ChatDenied as e:
         raise access_denied(e.verdict) from e
+    except chat_svc.ChatRequestInProgress as e:
+        raise HTTPException(409, detail={"code": "request_in_progress", "message": str(e)}) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 

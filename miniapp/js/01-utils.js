@@ -39,6 +39,13 @@ function widAlive(key, view, pend) {
 }
 
 /* ── API-клиент ─────────────────────────────────────────────────────────── */
+function newRequestKey() {
+  try {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  } catch (e) {}
+  return 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+}
+
 async function api(path, opts = {}) {
   const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
   const initData = tg() && tg().initData;

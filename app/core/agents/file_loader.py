@@ -366,6 +366,24 @@ def select_skills(profile: FileProfile, question: str, limit: int = 3) -> tuple[
             {"выбрать", "уточнить", "question", "what", "select"} & query
         ):
             score -= 16
+        # Intent tie-breaks: prefer the requested workflow over a broad skill
+        # that happens to share one noun such as "card", "line" or "spread".
+        if skill.name == "palm-line-topology" and {
+            "continuity", "breaks", "branches", "path"
+        } & query:
+            score += 48
+        if skill.name == "capture-rectification" and {
+            "take", "children", "видны"
+        } & query:
+            score += 42
+        if skill.name == "combination-synthesis" and {
+            "adjacent", "pair", "repeated", "suit", "together", "orientation"
+        } & query:
+            score += 52
+        if skill.name == "tarot-proof-safety" and {"checksum", "proof", "доказывает"} & query:
+            score += 52
+        if skill.name == "question-to-spread" and {"journal", "daily", "one-card", "выбрать"} & query:
+            score += 42
         scored.append((score, -index, skill))
     scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
     selected = [item[2] for item in scored[:limit] if item[0] > 0]
