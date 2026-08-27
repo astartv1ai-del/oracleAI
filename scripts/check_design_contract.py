@@ -31,9 +31,16 @@ def main() -> int:
     missing = sorted(token for token in REQUIRED_TOKENS
                      if not re.search(rf"{re.escape(token)}\s*:", tokens))
     imports = re.findall(r"@import\s+url\('css/([^']+)'", styles)
-    expected = [f"{idx:02d}-" for idx in range(18)]
-    import_order_ok = len(imports) == 18 and all(
-        imports[idx].startswith(expected[idx]) for idx in range(18)
+    # Order is validated by prefix sequence; two features may share a numeric
+    # prefix (16-visual-qa + 16-payments); total count must match files on disk.
+    expected_prefixes = ["00-", "01-", "02-", "03-", "04-", "05-", "06-", "07-",
+                         "08-", "09-", "10-", "11-", "12-", "13-", "14-", "15-",
+                         "16-", "16-", "17-"]
+    import_order_ok = (
+        len(imports) == len(expected_prefixes)
+        and len(imports) == len(list((ROOT / "miniapp" / "css").glob("*.css")))
+        and all(imports[idx].startswith(expected_prefixes[idx])
+                for idx in range(len(expected_prefixes)))
     )
     reduced_motion = "prefers-reduced-motion: reduce" in styles or any(
         "prefers-reduced-motion: reduce" in path.read_text(encoding="utf-8")

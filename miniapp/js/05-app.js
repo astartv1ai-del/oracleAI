@@ -26,10 +26,6 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
         this.me.flags = flags;
         syncDocumentLocale();
       }
-      try {
-        const lang = this.me.lang || (localStorage.getItem('oracle_lang') || 'ru');
-        document.documentElement.lang = (lang === 'en' ? 'en' : 'ru');
-      } catch (e) {}
       const pill = document.querySelector('.user-pill');
       if (pill && this.me.name) {
         const avatar = pill.querySelector('.avatar');
@@ -304,6 +300,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     const items = this.navItems();
     const activeIndex = Math.max(0, items.findIndex(n => n.k === active));
     nav.style.setProperty('--nav-index', activeIndex);
+    nav.style.setProperty('--nav-count', items.length);
     nav.innerHTML = items.map(n => `
       <button class="nav-btn ${active === n.k ? 'active' : ''}" data-act="go" data-goto="${n.k}" aria-current="${active === n.k ? 'page' : 'false'}" aria-label="${esc(n.t)}: ${esc(n.hint)}">
         <span class="nav-ico">${sigilIcon(n.ico)}</span>
