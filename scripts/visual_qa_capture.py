@@ -2,15 +2,21 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "artifacts" / "visual-qa"
-BASE_URL = "http://127.0.0.1:8080/?dev_user=10001&qa=1&qa_view=home"
+BASE_URL = os.getenv("ORACLEAI_QA_VISUAL_URL", "http://127.0.0.1:8080/?dev_user=10001&qa=1&qa_view=home")
 VIEWPORTS = {
+    "mobile-320": (320, 720),
+    "mobile-360": (360, 800),
     "mobile-375": (375, 812),
+    "mobile-390": (390, 844),
+    "mobile-430": (430, 932),
     "tablet-768": (768, 1024),
+    "desktop-1024": (1024, 768),
     "desktop-1440": (1440, 900),
     "wide-1920": (1920, 1080),
 }
@@ -50,7 +56,7 @@ def contract(page: object) -> dict:
             imagesWithoutAlt: [...document.images].filter((img) => !img.hasAttribute('alt')).length,
             visiblePrimaryActions: [...document.querySelectorAll('.btn-primary, [data-primary]')].filter(visible).length,
             visible: {
-              screen: rect('.screen'), header: rect('.app-header'), hero: rect('.hero-orb'),
+              screen: rect('.screen, .chat-shell'), header: rect('.app-header'), hero: rect('.hero-orb'),
               agentCard: rect('.agent-card'), nav: rect('.main-nav'), modal: rect('.modal-overlay, .intro-overlay, .age-overlay')
             },
             bodyFont: getComputedStyle(body).fontFamily,

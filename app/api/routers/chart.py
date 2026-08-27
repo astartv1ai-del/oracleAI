@@ -13,7 +13,14 @@ from pydantic import BaseModel, Field
 from ...core import agent as agent_core
 from ...core import product_cost
 from ...core import astro, chart_rendering, geo, memory
-from ...core.chart_contract import public_calculation_contract
+from ...core.chart_contract import (
+    EPHEMERIS_BACKEND,
+    EPHEMERIS_NAME,
+    KERYKEION_VERSION,
+    ORACLE_ENGINE_ADAPTER_VERSION,
+    ORACLE_ENGINE_NAME,
+    public_calculation_contract,
+)
 from ...core.matrix import compute_matrix
 from ...core.observability import log_event
 from ...repo import billing, readings, users
@@ -73,11 +80,21 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
     одинаково понимать, можно ли показывать дома, ASC и MC.
     """
     known = bool(user["birth_time_known"]) if time_known is None else bool(time_known)
+    calculation_contract = public_calculation_contract(data)
     payload = {
         "natal_schema_version": 2,
         "mode": data.get("mode", "lite"),
         "precision": data.get("precision", "sun_only"),
         "engine": data.get("engine", astro.EPHEMERIS_ENGINE),
+        "engine_provenance": {
+            "product_engine": ORACLE_ENGINE_NAME,
+            "adapter_version": ((calculation_contract.get("input") or {}).get("adapter_version")
+                                 or ORACLE_ENGINE_ADAPTER_VERSION),
+            "backend": EPHEMERIS_BACKEND,
+            "backend_version": KERYKEION_VERSION,
+            "ephemeris": EPHEMERIS_NAME,
+            "license_notice": "AGPL-3.0/commercial licensing obligations apply to the selected distribution model.",
+        },
         "zodiac_type": data.get("zodiac_type", astro.ZODIAC_TYPE),
         "house_system": data.get("house_system", astro.HOUSE_SYSTEM_IDENTIFIER),
         "house_system_name": data.get("house_system_name", astro.HOUSE_SYSTEM_NAME),
@@ -92,7 +109,7 @@ def _chart_payload(data: dict, user, *, birth_date=_UNSET,
         "lunar_nodes": _canonical_lunar_nodes(data),
         "additional_points": data.get("additional_points", []),
         "note": data.get("note"),
-        "calculation": public_calculation_contract(data),
+        "calculation": calculation_contract,
         "sections": astro.chart_sections(data, time_known=known),
         "birth": {
             "date": user["birth_date"] if birth_date is _UNSET else birth_date,

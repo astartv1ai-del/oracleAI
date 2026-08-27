@@ -29,6 +29,7 @@ jobs:
           npm ci --ignore-scripts
           npm run build:frontend
           python scripts/check_frontend_build.py
+          python scripts/check_frontend_provenance.py
           python scripts/check_static_asset_references.py
 
       - name: Системные библиотеки WeasyPrint
@@ -64,6 +65,8 @@ jobs:
           python scripts/check_agent_stability.py
           python scripts/benchmark_vedic_routing.py >/tmp/vedic-routing.json
           python scripts/benchmark_mira_lenormand.py >/tmp/mira-lenormand.json
+          python scripts/palm_accuracy_gauntlet.py >/tmp/palm-accuracy.json
+          python scripts/palm_independent_critic.py >/tmp/palm-critic.json
 
       - name: Cache-busting policy
         run: python scripts/check_cache_busting.py
@@ -76,6 +79,15 @@ jobs:
           mkdir -p artifacts
           python scripts/palm_accuracy_gauntlet.py \
             --output artifacts/palm-accuracy-matrix.json
+
+      - name: Palm golden corpus schema and critic readiness
+        run: |
+          mkdir -p artifacts
+          python scripts/validate_palm_corpus.py \
+            --manifest data/palm_golden/manifest.template.jsonl \
+            --schema-only
+          python scripts/palm_independent_critic.py \
+            > artifacts/palm-independent-critic.json
 
       - name: LLM golden-set evaluator smoke
         run: |
@@ -110,6 +122,7 @@ jobs:
           path: |
             artifacts/llm-eval-report.json
             artifacts/palm-accuracy-matrix.json
+            artifacts/palm-independent-critic.json
           if-no-files-found: ignore
 
   frontend-quality:
@@ -145,6 +158,7 @@ jobs:
         run: |
           npm run build:frontend
           python scripts/check_frontend_build.py
+          python scripts/check_frontend_provenance.py
           python scripts/check_static_asset_references.py
 
       - name: JavaScript syntax

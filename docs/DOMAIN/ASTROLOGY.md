@@ -31,6 +31,20 @@ raw request
 
 The improved adapter owns strict date/time/timezone/coordinate normalization and does not let downstream callers infer exactness from a non-empty clock string. Its bounded in-memory cache is keyed by a versioned request fingerprint and returns defensive copies, so a consumer cannot mutate a cached chart for another request. The adapter never interprets astrology results and never calls an LLM. Cache contents are process-local and are not a historical evidence store; persisted reports must retain their own versioned snapshot.
 
+## Backend disclosure
+
+The public chart response exposes `engine_provenance` alongside the backward-compatible `engine` field and repeats the same object inside the stable `calculation` contract. The disclosure is intentionally explicit:
+
+| Field | Value |
+|---|---|
+| `product_engine` | `OracleAI Engine` |
+| `adapter_version` | `oracleai-kerykeion-engine-v2` |
+| `backend` | `Kerykeion` |
+| `backend_version` | `5.12.9` |
+| `ephemeris` | `Swiss Ephemeris` |
+
+The response also carries a license notice. This is a provenance disclosure, not a claim that OracleAI owns Kerykeion or that AGPL/commercial obligations disappear. Changing the backend, Kerykeion version or adapter contract requires a version bump, golden review and updated notices.
+
 ## Improved engine invariants
 
 | Invariant | Behavior |

@@ -300,3 +300,103 @@ def test_improved_engine_cache_evicts_oldest_request_deterministically():
     engine.calculate(second, calculator)
     engine.calculate(first, calculator)
     assert calls == [first.fingerprint, second.fingerprint, first.fingerprint]
+
+
+
+def test_public_calculation_contract_discloses_backend_provenance():
+    from app.core.chart_contract import public_calculation_contract
+
+    chart = astro.compute_chart(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    provenance = public_calculation_contract(chart)["engine_provenance"]
+
+    assert provenance == {
+        "product_engine": "OracleAI Engine",
+        "adapter_version": "oracleai-kerykeion-engine-v2",
+        "backend": "Kerykeion",
+        "backend_version": "5.12.9",
+        "ephemeris": "Swiss Ephemeris",
+        "license_notice": "AGPL-3.0/commercial licensing obligations apply to the selected distribution model.",
+    }
+
+
+
+def test_improved_engine_canonicalizes_equivalent_text_inputs():
+    from app.core.astrology_engine import ENGINE
+
+    first = ENGINE.normalize("1990-06-21", " 14:30 ", "  Kazan  ", 55.79, 49.12, " Europe/Moscow ", time_known=True)
+    second = ENGINE.normalize("1990-06-21", "14:30", "Kazan", 55.7900, 49.1200, "Europe/Moscow", time_known=True)
+
+    assert first.city == "Kazan"
+    assert first.tz == "Europe/Moscow"
+    assert first.fingerprint == second.fingerprint
+
+
+def test_post_kerykeion_validator_rejects_non_finite_or_out_of_range_points():
+    from app.core.astrology_engine import AstrologyOutputError, ENGINE, validate_chart_result
+
+    request = ENGINE.normalize(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    chart = astro.compute_chart(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    chart["planets"][0]["abs_deg_exact"] = 360.0
+
+    with pytest.raises(AstrologyOutputError, match="outside zodiac bounds"):
+        validate_chart_result(request, chart)
+
+
+def test_malformed_backend_is_downgraded_to_bounded_sun_only(monkeypatch):
+    from app.core.astrology_engine import ENGINE
+
+    ENGINE.clear_cache()
+
+    def malformed(*args, **kwargs):
+        return {"mode": "full", "precision": "exact", "calculation": {}}
+
+    monkeypatch.setattr(astro, "_full_chart", malformed)
+    result = astro.compute_chart(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    ENGINE.clear_cache()
+
+    assert result["mode"] == "lite"
+    assert result["precision"] == "sun_only"
+    assert result["planets"] == []
+    assert result["calculation"]["angular_data_available"] is False
+
+
+@pytest.mark.parametrize(
+    ("birth_date", "birth_time", "expected_status", "expected_reason"),
+    (
+        ("2024-03-31", "02:30", "nonexistent", "date_only_nonexistent_local_time"),
+        ("2024-10-27", "02:30", "ambiguous", "date_only_ambiguous_local_time"),
+    ),
+)
+def test_engine_does_not_silently_choose_dst_gap_or_fold(
+    birth_date, birth_time, expected_status, expected_reason,
+):
+    from app.core.astrology_engine import ENGINE
+
+    request = ENGINE.normalize(
+        birth_date, birth_time, "Berlin", 52.52, 13.405, "Europe/Berlin", time_known=True,
+    )
+
+    assert request.local_time_status == expected_status
+    assert request.time_confirmed is False
+    assert request.precision == "date_only"
+    assert request.precision_reason == expected_reason
+
+
+def test_engine_accepts_unambiguous_dst_local_time():
+    from app.core.astrology_engine import ENGINE
+
+    request = ENGINE.normalize(
+        "2024-03-31", "04:30", "Berlin", 52.52, 13.405, "Europe/Berlin", time_known=True,
+    )
+
+    assert request.local_time_status == "normal"
+    assert request.time_confirmed is True
+    assert request.precision == "exact"

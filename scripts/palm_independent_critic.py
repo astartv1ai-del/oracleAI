@@ -1,14 +1,15 @@
 """Independent, context-light critic for the Palm/Mira accuracy gauntlet.
 
-This is intentionally separate from the implementation tests: it reviews the
-source contract from observable invariants and returns BLOCKED when a semantic
-golden corpus is absent, rather than treating mocks as accuracy evidence.
+The critic checks deterministic source guardrails and reports whether a human/
+domain review has actually supplied semantic evidence. It never treats mocks
+or the absence of a manifest as accuracy data.
 """
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
-
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,7 +19,21 @@ def require(text: str, needle: str, label: str, failures: list[str]) -> None:
         failures.append(f"missing {label}: {needle}")
 
 
+def _load_review_report(path: Path | None) -> dict[str, Any] | None:
+    if path is None or not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"semantic_signoff": "INVALID", "block_reasons": ["review report is unreadable"]}
+    return value if isinstance(value, dict) else {"semantic_signoff": "INVALID"}
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument("--review-report", type=Path, default=None)
+    args = parser.parse_args()
     failures: list[str] = []
     palm = (ROOT / "app/core/palm.py").read_text(encoding="utf-8")
     landmarks = (ROOT / "app/core/palm_landmarks.py").read_text(encoding="utf-8")
@@ -41,10 +56,6 @@ def main() -> int:
         ("provider_content_stored", "provider content retention flag"),
         ("_UNTRUSTED_TEXT", "prompt-injection sanitizer"),
     ]:
-        # The schema check below is handled by a direct source token because
-        # the surrounding Python object is not evaluated here.
-        if isinstance(needle, bool):
-            continue
         require(palm, needle, label, failures)
     require(palm, '"additionalProperties": False', "strict closed schema", failures)
     require(palm, '"evidence_state"', "observation evidence state", failures)
@@ -66,12 +77,47 @@ def main() -> int:
     ]:
         require(tests, needle, label, failures)
 
+    review_files = {
+        "corpus_schema": ROOT / "data/palm_golden/schema.json",
+        "annotation_handbook": ROOT / "data/palm_golden/README.md",
+        "manifest_template": ROOT / "data/palm_golden/manifest.template.jsonl",
+        "predictions_template": ROOT / "data/palm_golden/predictions.template.jsonl",
+        "corpus_validator": ROOT / "scripts/validate_palm_corpus.py",
+        "review_runner": ROOT / "scripts/run_palm_human_review.py",
+    }
+    review_block_reasons = [f"missing review asset: {name}" for name, path in review_files.items() if not path.is_file()]
+    manifest_path = args.manifest or (ROOT / "data/palm_golden/manifest.jsonl")
+    if not manifest_path.is_file():
+        review_block_reasons.append(f"adjudicated manifest not supplied: {manifest_path}")
+    else:
+        try:
+            records = [line for line in manifest_path.read_text(encoding="utf-8").splitlines() if line.strip() and not line.lstrip().startswith("#")]
+        except OSError:
+            records = []
+        if not records:
+            review_block_reasons.append("golden manifest is empty")
+    review_report = _load_review_report(args.review_report)
+    if args.review_report is None:
+        review_block_reasons.append("no human-review report supplied")
+    elif not review_report or review_report.get("semantic_signoff") != "PASS":
+        review_block_reasons.extend((review_report or {}).get("block_reasons") or ["human-review report is not PASS"])
+
     result = {
-        "critic": "palm-independent-static-critic-v1",
+        "critic": "palm-independent-static-critic-v3",
         "blocking_failures": failures,
         "deterministic_contract": "PASS" if not failures else "BLOCKED",
-        "semantic_accuracy": "BLOCKED: no consented/synthetic golden corpus with region labels and expected limitations",
-        "ship_verdict": "BLOCKED" if failures else "SHIP WITH ACCURACY GATE",
+        "semantic_accuracy": "PASS" if not review_block_reasons else "BLOCKED",
+        "semantic_block_reasons": list(dict.fromkeys(review_block_reasons)),
+        "required_for_semantic_signoff": [
+            "two independent annotators per record",
+            "domain-reviewer adjudication for test/challenge records",
+            "immutable image hashes and exact prediction/manifest coverage",
+            "zero critical false-observed promotions",
+        ],
+        "review_assets": {name: path.is_file() for name, path in review_files.items()},
+        "review_manifest": {"path": str(manifest_path), "present": manifest_path.is_file()},
+        "review_report": {"path": str(args.review_report) if args.review_report else None, "present": review_report is not None},
+        "ship_verdict": "BLOCKED" if failures else ("SEMANTIC SIGNOFF PASS" if not review_block_reasons else "SHIP WITH ACCURACY GATE"),
         "reason": "A passing contract critic proves guardrails, not semantic palm-reading accuracy.",
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -12,7 +12,12 @@ import math
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .astrology_engine import ENGINE, ENGINE_ADAPTER_VERSION, ChartRequest
+from .astrology_engine import (
+    ENGINE,
+    ENGINE_ADAPTER_VERSION,
+    ChartRequest,
+    validate_chart_result,
+)
 from .chart_contract import ASPECT_ORBS, build_calculation_metadata
 
 log = logging.getLogger("oracle.astro")
@@ -252,7 +257,7 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
         )
 
     try:
-        return ENGINE.calculate(request, calculate)
+        return ENGINE.calculate(request, calculate, validator=validate_chart_result)
     except Exception as exc:  # noqa: BLE001
         log.warning("полная карта недоступна (%s), считаю упрощённо", exc)
         sign, sym, element = sun_sign_precise(request.birth_date)

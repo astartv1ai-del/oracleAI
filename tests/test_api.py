@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -762,7 +763,7 @@ def test_admin_demo_and_payment_health_ui_contract():
     mini_actions = (root / "miniapp" / "js" / "15-actions.js").read_text(encoding="utf-8")
     mini_payments = (root / "miniapp" / "js" / "17-payments.js").read_text(encoding="utf-8")
     mini_misc = (root / "miniapp" / "js" / "12-misc.js").read_text(encoding="utf-8")
-    assert "/static/styles.css?v=" in mini_index
+    assert re.search(r"/static/styles\.css\?v=\d+", mini_index)
     assert "payment-history" in mini_actions and "account-privacy" in mini_actions
     assert "/api/shop/payment-history" in mini_payments
     assert "/api/account/export" in mini_misc
@@ -790,8 +791,8 @@ async def test_miniapp_index_uses_source_assets_in_dev(client, monkeypatch):
     monkeypatch.setattr(settings, "dev_mode", True)
     monkeypatch.delenv("BUNDLE_ASSETS", raising=False)
     html = (await client.get("/")).text
-    assert '/static/styles.css?v=' in html
-    assert '/static/js/00-runtime.js?v=' in html
+    assert re.search(r'/static/styles\.css\?v=\d+', html)
+    assert re.search(r'/static/js/00-runtime\.js\?v=\d+', html)
     assert '/static/dist/' not in html
 
 
@@ -809,8 +810,8 @@ async def test_miniapp_index_uses_hashed_bundles_in_production(client, monkeypat
     html = response.text
     assert f'/static/dist/{manifest["css"]}' in html
     assert f'/static/dist/{manifest["js"]}' in html
-    assert '/static/js/00-runtime.js?v=' not in html
-    assert '/static/styles.css?v=' not in html
+    assert not re.search(r'/static/js/00-runtime\.js\?v=\d+', html)
+    assert not re.search(r'/static/styles\.css\?v=\d+', html)
     bundle = await client.get(f'/static/dist/{manifest["js"]}')
     assert bundle.status_code == 200
     assert bundle.headers["cache-control"] == "public, max-age=31536000, immutable"
@@ -1058,3 +1059,19 @@ async def test_account_delete_cannot_be_triggered_for_another_owner(client, db, 
     assert response.status_code == 200
     assert (await users.get(db, user["tg_id"]))["status"] != "deleted"
     assert (await users.get(db, other["tg_id"]))["status"] == "deleted"
+
+
+async def test_chart_discloses_oracleai_engine_backend_provenance(client, user):
+    response = await client.get("/api/chart", params=as_user(user))
+    assert response.status_code == 200
+    body = response.json()
+    expected = {
+        "product_engine": "OracleAI Engine",
+        "adapter_version": "oracleai-kerykeion-engine-v2",
+        "backend": "Kerykeion",
+        "backend_version": "5.12.9",
+        "ephemeris": "Swiss Ephemeris",
+        "license_notice": "AGPL-3.0/commercial licensing obligations apply to the selected distribution model.",
+    }
+    assert body["engine_provenance"] == expected
+    assert body["calculation"]["engine_provenance"] == expected
