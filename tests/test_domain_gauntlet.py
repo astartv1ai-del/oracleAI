@@ -177,3 +177,126 @@ async def test_monthly_report_persists_versioned_privacy_safe_snapshot(db, user,
     assert isinstance(metadata["readings_count"], int)
     assert isinstance(metadata["diary_count"], int)
     assert "raw diary" in metadata["privacy_note"]
+
+
+
+def test_improved_engine_normalizes_truth_state_and_fingerprint():
+    from app.core.astrology_engine import ENGINE, ENGINE_ADAPTER_VERSION
+
+    request = ENGINE.normalize(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, None, time_known=True,
+    )
+
+    assert request.precision == "date_only"
+    assert request.time_confirmed is False
+    assert request.angular_data_available is False
+    assert request.precision_reason == "date_only_missing_timezone"
+    assert len(request.fingerprint) == 16
+    assert request.metadata()["adapter_version"] == ENGINE_ADAPTER_VERSION
+
+
+def test_improved_engine_cache_returns_defensive_copies():
+    from app.core.astrology_engine import OracleKerykeionEngine
+
+    engine = OracleKerykeionEngine(max_cache_entries=2)
+    request = engine.normalize(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    calls = []
+
+    def calculator(normalized):
+        calls.append(normalized.fingerprint)
+        return {"precision": normalized.precision, "nested": {"value": 1}}
+
+    first = engine.calculate(request, calculator)
+    first["nested"]["value"] = 99
+    second = engine.calculate(request, calculator)
+
+    assert calls == [request.fingerprint]
+    assert second == {"precision": "exact", "nested": {"value": 1}}
+
+
+def test_improved_engine_rejects_invalid_time_and_timezone():
+    from app.core.astrology_engine import AstrologyInputError, ENGINE
+
+    with pytest.raises(AstrologyInputError, match="ЧЧ:ММ"):
+        ENGINE.normalize("1990-06-21", "25:90", "Kazan", 55.79, 49.12, "Europe/Moscow")
+    with pytest.raises(AstrologyInputError, match="IANA"):
+        ENGINE.normalize("1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Not/AZone")
+
+
+
+def test_compute_chart_exposes_improved_engine_provenance():
+    from app.core.astrology_engine import ENGINE_ADAPTER_VERSION
+
+    chart = astro.compute_chart(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    calculation_input = chart["calculation"]["input"]
+
+    assert chart["precision"] == "exact"
+    assert calculation_input["adapter_version"] == ENGINE_ADAPTER_VERSION
+    assert len(calculation_input["request_fingerprint"]) == 16
+    assert chart["calculation"]["angular_data_available"] is True
+
+
+@pytest.mark.parametrize(
+    ("lat", "lon", "coordinates_known"),
+    [(-90.0, -180.0, True), (90.0, 180.0, True), (0.0, 0.0, True), (float("inf"), 0.0, False), (0.0, float("nan"), False)],
+)
+def test_improved_engine_coordinate_boundaries_are_explicit(lat, lon, coordinates_known):
+    from app.core.astrology_engine import ENGINE
+
+    request = ENGINE.normalize(
+        "2000-01-01", "12:00", "boundary", lat, lon, "UTC", time_known=True,
+    )
+    assert request.coordinates_known is coordinates_known
+    assert request.angular_data_available is coordinates_known
+
+
+@pytest.mark.parametrize("aspect_name", ["conjunction", "opposition", "trine", "square", "sextile"])
+def test_each_configured_aspect_orb_has_inside_boundary_and_outside_cases(aspect_name):
+    from app.core.chart_contract import ASPECT_ANGLES, ASPECT_ORBS
+
+    angle = ASPECT_ANGLES[aspect_name]
+    orb = ASPECT_ORBS[aspect_name]
+    inside = astro.synastry_aspects(
+        [{"name": "Солнце", "abs_deg": 0}],
+        [{"name": "Луна", "abs_deg": (angle + orb - 0.0001) % 360}],
+    )
+    boundary = astro.synastry_aspects(
+        [{"name": "Солнце", "abs_deg": 0}],
+        [{"name": "Луна", "abs_deg": (angle + orb) % 360}],
+    )
+    outside = astro.synastry_aspects(
+        [{"name": "Солнце", "abs_deg": 0}],
+        [{"name": "Луна", "abs_deg": (angle + orb + 0.0001) % 360}],
+    )
+    assert inside and boundary and not outside
+
+
+def test_nodes_lilith_and_retrograde_are_named_source_fields():
+    chart = astro.compute_chart(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    assert chart["lunar_nodes"]["mode"] == "true"
+    assert {item["name"] for item in chart["nodes"]} >= {"Раху (Северный узел)", "Кету (Южный узел)"}
+    assert all(isinstance(item["retro"], bool) for item in chart["planets"] + chart["nodes"])
+
+
+def test_improved_engine_cache_evicts_oldest_request_deterministically():
+    from app.core.astrology_engine import OracleKerykeionEngine
+
+    engine = OracleKerykeionEngine(max_cache_entries=1)
+    first = engine.normalize("2000-01-01", None, None, None, None, None)
+    second = engine.normalize("2000-01-02", None, None, None, None, None)
+    calls = []
+
+    def calculator(request):
+        calls.append(request.fingerprint)
+        return {"fingerprint": request.fingerprint}
+
+    engine.calculate(first, calculator)
+    engine.calculate(second, calculator)
+    engine.calculate(first, calculator)
+    assert calls == [first.fingerprint, second.fingerprint, first.fingerprint]
