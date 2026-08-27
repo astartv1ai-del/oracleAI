@@ -34,7 +34,7 @@
           <div class="hero-body" style="position:relative;z-index:2">
             <div class="hero-date">${fmtDate()}</div>
             <div class="hero-ritual-label">${homeT('ritualLabel')}</div>
-            <div class="hero-title">${welcome}</div>
+            <h1 class="hero-title">${welcome}</h1>
             ${t && t.moon ? `<div class="hero-moon-txt">${esc(t.moon.name)} · ${t.moon.day}-й лунный день<br><em>${esc(t.moon.advice)}</em></div>` : `<div class="hero-moon-txt">${homeT('heroFallbackTitle')}<br><em>${homeT('heroFallbackCopy')}</em></div>`}
           </div>
           <button class="ritual-cta" data-act="chat" data-chat="oracle" aria-label="${homeT('ritualCta')}"><span>${homeT('ritualCta')}</span><span aria-hidden="true">→</span></button>
@@ -42,7 +42,7 @@
 
         ${seasonalVariant === 'seasonal' ? `<section class="seasonal-moment" aria-label="${homeT('seasonalAria')}"><div class="seasonal-moment__sigil" aria-hidden="true">✦</div><div><div class="section-kicker">${homeT('seasonalKicker')}</div><h2>${seasonal.title}</h2><p>${seasonal.copy}</p></div></section>` : ''}
         <section class="daily-ritual daily-ritual--${ritualCompleted === 2 ? 'complete' : ritualCompleted ? 'in-progress' : 'begin'}" aria-label="${homeT('rhythmAria')}">
-          <div class="daily-ritual-head"><div><div class="section-kicker">${homeT('rhythmKicker')}</div><h2>${homeT('rhythmTitle')}</h2></div><div class="daily-ritual-score" aria-label="${homeFormat('stepsAria', { count: ritualCompleted })}">${ritualCompleted}<span>/2</span></div></div>
+          <div class="daily-ritual-head"><div><div class="section-kicker">${homeT('rhythmKicker')}</div><h2>${homeT('rhythmTitle')}</h2></div><output class="daily-ritual-score" aria-label="${homeFormat('stepsAria', { count: ritualCompleted })}">${ritualCompleted}<span>/2</span></output></div>
           <div class="daily-ritual-progress" aria-hidden="true"><i style="--ritual-progress:${ritualCompleted / 2}"></i></div>
           <p class="daily-ritual-status">${ritualTone}</p>
           <div class="daily-ritual-grid">
@@ -197,7 +197,7 @@
                   <div class="agent-role">${esc(a.title || a.code)}</div>
                   <div class="agent-outcome">${esc(outcomes[a.code] || (oracleLang() === 'en' ? 'A gentle next step' : 'Бережный следующий шаг'))}</div>
                   <div class="agent-last">${esc(a.last_text || a.tagline || homeT('listening'))}</div>
-                  <div class="agent-proof-row" aria-label="${homeT('profileQuality')}">
+                  <div class="agent-proof-row" role="group" aria-label="${homeT('profileQuality')}">
                     <span class="agent-proof-badge">✦ ${homeT('evidenceFirst')}</span>
                     ${(a.capabilities && a.capabilities.length) ? `<span class="agent-proof-count">${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
                   </div>
@@ -219,7 +219,7 @@
                   </button>`).join('')}
               </div>
               ${a.code === 'astro' ? `<section class="vedic-surface" aria-label="${oracleLang() === 'en' ? 'Vedic capabilities' : 'Ведические возможности'}">
-                <div class="vedic-surface__head"><div><div class="section-kicker">${oracleLang() === 'en' ? 'Vedic / Lahiri' : 'Ведическая · Лахири'}</div><h3>${oracleLang() === 'en' ? 'Calculated, then interpreted' : 'Сначала расчёт, потом смысл'}</h3></div><span class="vedic-proof">29 tools · evidence</span></div>
+                <div class="vedic-surface__head"><div><div class="section-kicker">${oracleLang() === 'en' ? 'Vedic / Lahiri' : 'Ведическая · Лахири'}</div><h2>${oracleLang() === 'en' ? 'Calculated, then interpreted' : 'Сначала расчёт, потом смысл'}</h2></div><span class="vedic-proof">29 tools · evidence</span></div>
                 <div class="vedic-grid">
                   <button class="vedic-card" data-act="chat-fn" data-chat="astro" data-fn="featureVedicChart"><b>☊</b><span>${oracleLang() === 'en' ? 'Kundli' : 'Кундали'}</span><small>${oracleLang() === 'en' ? 'Lahiri sidereal chart' : 'Сидерическая карта Лахири'}</small></button>
                   <button class="vedic-card" data-act="chat-fn" data-chat="astro" data-fn="featureVedicDasha"><b>◷</b><span>Vimshottari</span><small>${oracleLang() === 'en' ? 'Dasha timeline' : 'Таймлайн даша'}</small></button>

@@ -283,9 +283,9 @@
           <button class="back" data-act="back" aria-label="Вернуться к проводникам" title="К проводникам">‹</button>
           <div class="agent-avatar" style="${this.agentThemeStyle(a, a.code)}">${agentSprite(a, cheer)}</div>
           <div style="flex:1;min-width:0">
-            <div class="cname">${esc(a.name || 'Лилит')}</div>
+            <h1 class="cname">${esc(a.name || 'Лилит')}</h1>
             <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
-            <div class="chat-proof-strip" aria-label="${homeT('profileQuality')}">
+            <div class="chat-proof-strip" role="group" aria-label="${homeT('profileQuality')}">
               <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
             </div>
           </div>
@@ -338,7 +338,7 @@
             ${busy ? '<button class="send-btn" id="send-btn" data-act="cancel-chat" aria-label="Остановить запрос">×</button>' : '<button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение">➤</button>'}
           </div>
           ${suggest.length ? `
-          <div class="suggest-chips" aria-label="Идеи для своего вопроса">
+          <div class="suggest-chips" role="group" aria-label="Идеи для своего вопроса">
             ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
           </div>` : ''}
         </div>

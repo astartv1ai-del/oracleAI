@@ -72,7 +72,7 @@
       <div class="screen">
         <div class="profile-hero">
           <div class="profile-kicker">${profileT('space')}</div>
-          <div class="profile-name">${firstName}, ${profileT('path')}</div>
+          <h1 class="profile-name">${firstName}, ${profileT('path')}</h1>
           <div class="profile-copy">${profileT('spaceCopy')}</div>
           <div class="ritual-meter"><span class="ritual-meter-label">${streak ? profileFormat('streakLabel', { count: streak }) : profileT('firstRitual')}</span><span class="ritual-meter-track"><span class="ritual-meter-fill" style="width:${Math.min(100, Math.max(18, streak ? 18 + streak * 8 : 18))}%"></span></span></div>
         </div>
