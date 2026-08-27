@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core import palm_landmarks, palm_lines, palm_vision  # noqa: E402
+from app.core import palm_full_scope, palm_landmarks, palm_lines, palm_vision  # noqa: E402
 
 
 IMAGE_PATHS = [
@@ -53,6 +53,9 @@ def main() -> None:
         # Backward-compatible alias used by earlier benchmark reports.
         item["line_segmentation"] = item["line_segmentation_fp16"]
         item["hand_geometry"] = palm_landmarks.analyze(image)
+        item["full_scope"] = palm_full_scope.analyze(
+            image, hand_geometry=item["hand_geometry"]
+        )
         rows.append(item)
     print(json.dumps({"count": len(rows), "results": rows}, ensure_ascii=False, indent=2))
 

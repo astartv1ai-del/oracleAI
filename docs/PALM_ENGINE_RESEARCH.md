@@ -19,7 +19,7 @@ OracleAI не должен обещать, что текущая или люба
 
 ## Practical same-image benchmark
 
-`scripts/benchmark_palm_cv.py` runs the same 15 real repository/public fixture images through `palm_vision`, MediaPipe, the vendored ONNX fp16 model and ONNX int8 model. The full JSON artifact is `docs/palm_cv_benchmark.json`. It contains no user-uploaded images and is not a labelled accuracy set.
+`scripts/benchmark_palm_cv.py` runs the same 15 real repository/public fixture images through `palm_vision`, MediaPipe, the vendored ONNX fp16/int8 models and `palm_full_scope` OpenCV candidate search. The full JSON artifact is `docs/palm_cv_benchmark.json`. It contains no user-uploaded images and is not a labelled accuracy set.
 
 | Component | Result on 15 images |
 |---|---:|
@@ -28,6 +28,9 @@ OracleAI не должен обещать, что текущая или люба
 | ONNX fp16 line status `detected` | 12/15 |
 | ONNX int8 line status `detected` | 12/15 |
 | fp16/int8 status agreement | 15/15 |
+| Full-scope candidate evidence | 15/15 |
+| Candidate segments | 798 total |
+| Named line catalog | 16 line zones |
 
 The result proves that the local adapters execute and that fp16/int8 have stable coarse status agreement on this fixture set. It does **not** prove line-detection accuracy because no human ground truth exists. The strict `usable` gate is intentionally conservative: weak or flat captures receive reshoot guidance rather than a fabricated palm reading.
 
@@ -37,7 +40,7 @@ The inspected `palm-line-reader` fp16 model is SHA-256 `e2c9f826676b3aaf0a715f30
 
 ## Final integration boundary
 
-The production path is a hybrid: `palm_vision` checks decoding, exposure, contrast, blur, crop and aspect; MediaPipe supplies hand geometry and handedness; ONNX supplies bounded summaries (`coverage`, `bbox`, `confidence`) for heart/head/life; the vision LLM sees the normalized image and receives CV results as untrusted evidence. A disagreement or weak capture becomes `needs_photo`. Relationship, children and travel lines are not covered by the model and require a folded-edge photo as described in Mira’s prompt.
+The production path is a hybrid: `palm_vision` checks decoding, exposure, contrast, blur, crop and aspect; MediaPipe supplies hand geometry and handedness; ONNX supplies bounded summaries (`coverage`, `bbox`, `confidence`) for heart/head/life; `palm_full_scope` performs bounded candidate-crease search across all 16 named line zones plus mounts, fingers and markings; the vision LLM sees the normalized image and receives all CV results as untrusted evidence. The vision model is the final visual adjudicator and the LLM explains only confirmed observations. A disagreement or weak capture becomes `needs_photo`. Relationship, children and travel lines are flagged as folded-edge dependent when the capture is an open palm.
 
 The LLM may interpret only visible, supported evidence. It must not infer health, age, pregnancy, death, income, profession, exact timing, guaranteed relationships or deterministic fate. Any malformed or unsafe model JSON is repaired/normalized or converted to a safe `needs_photo` result. Raw image bytes and raw segmentation masks are not stored.
 

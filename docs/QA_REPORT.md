@@ -25,7 +25,7 @@
 
 ## Palm CV benchmark
 
-Скрипт `scripts/benchmark_palm_cv.py` запускает на одном и том же наборе 15 фото: capture precheck, MediaPipe Hand Landmarker, ONNX fp16 и ONNX int8 line segmentation. Official MediaPipe model asset находится в `models/hand_landmarker.task`; ONNX models имеют checksum allow-list.
+Скрипт `scripts/benchmark_palm_cv.py` запускает на одном и том же наборе 15 фото: capture precheck, MediaPipe Hand Landmarker, ONNX fp16/int8 line segmentation и full-scope OpenCV candidate search. Official MediaPipe model asset находится в `models/hand_landmarker.task`; ONNX models имеют checksum allow-list. Full-scope engine каталогизирует все 16 именованных line zones и дополнительно mounts/fingers/markings, но выдаёт только bounded candidate segments; semantic line identity остаётся за vision adjudicator.
 
 | Метрика | Результат |
 |---|---:|
@@ -35,17 +35,21 @@
 | ONNX fp16 `detected` | 12 |
 | ONNX int8 `detected` | 12 |
 | fp16/int8 status agreement | 15/15 |
+| Full-scope candidate evidence | 15/15 фото |
+| Full-scope candidate segments | 798 суммарно |
+| Full line catalog | 16 named line zones |
+| Open-palm view classification | 13/15 |
 
 Это **не accuracy study**: для fixtures нет human-annotated ground truth. Результат подтверждает только запускаемость, bounded output and conservative gating. Перед public launch нужен consented dataset 15–20+ images with ground-truth labels, left/right and folded-edge metadata.
 
 ## Mira skill and tool-routing verification
 
-Мира обнаруживает **34 file-backed skills**. В initial system prompt не попадают полные тела всех skills: `skill_context()` выдаёт компактный `[SKILL_INDEX]`, короткие description/version/tool/dependency cards, routed hints и сокращённый handbook synopsis. Полное тело появляется только после явного tool call `activate_palm_skill` с именем из индекса. Dependency resolution сохраняет обязательные зависимости, например `heart-line-depth` активирует `anti-barnum-protocol` перед собственным workflow.
+Все четыре агента обнаруживают свои file-backed skills: Mira — **34**, Lilith — 31, Lenormand — 35, Urania — 39. В initial system prompt не попадают полные тела всех skills: `skill_context()` выдаёт компактный `[SKILL_INDEX]`, короткие description/version/tool/dependency cards, routed hints и сокращённый handbook synopsis. Полное тело появляется только после явного generic tool call `activate_skill({skill_name})`; домен подставляется runtime-сервером. Dependency resolution сохраняет обязательные зависимости, например `heart-line-depth` активирует `anti-barnum-protocol` перед собственным workflow.
 
-Целевой regression subset после подключения lazy activation: **37 passed**. Проверены file-profile discovery, routing top-3, компактность prompt, отсутствие `ACTIVE_SKILL` bodies в initial prompt, реальный executor activation, Mira allow-list из `activate_palm_skill`, `palm_scanner`, `palm_photo_guide`, `palm_history`, strict palm integration и placement/safety cases. Initial Mira skill index был 8,426 символов на вопросе «фото ладони и линия сердца», что ниже прежней полной body-injection модели; `activate_palm_skill` возвращает только запрошенный skill и его зависимости.
+Целевой regression subset после подключения lazy activation и full-scope CV: **39 passed**. Проверены file-profile discovery для всех агентов, routing top-3, компактность prompt, отсутствие `ACTIVE_SKILL` bodies в initial prompt, реальный executor activation во всех четырёх доменах, Mira allow-list из `activate_skill`, `palm_scanner`, `palm_photo_guide`, `palm_history`, strict palm integration и placement/safety cases. Initial Mira skill index был 8,426 символов на вопросе «фото ладони и линия сердца»; `activate_skill` возвращает только запрошенный skill и его зависимости.
 
 ## Known limitations and release gates
 
-Мира не получает raw mask и не делает palmistry claims из segmentation confidence. ONNX covers heart/head/life only; relationship, children and travel lines require folded-edge capture and remain vision evidence only. MediaPipe detects geometry but does not interpret palmistry. No end-to-end third-party palmistry engine was accepted as a production dependency.
+Мира не получает raw mask, raw edge map и не делает palmistry claims из segmentation confidence. ONNX covers heart/head/life only; `palm_full_scope` searches candidate creases across all named line zones plus mounts/fingers/markings, но не присваивает им семантический label. Relationship, children and travel lines require folded-edge capture and remain vision-adjudicated evidence only. MediaPipe detects geometry but does not interpret palmistry. No end-to-end third-party palmistry engine was accepted as a production dependency.
 
 Не выполнены и намеренно не объявлены закрытыми следующие внешние gates: live provider quality evaluation, mobile-device QA, production Docker/deployment, legal/privacy review for uploaded palm photos, and licensing review for every redistributable model. Existing `PALM_SYSTEM` fallback remains available when optional CV dependencies fail.

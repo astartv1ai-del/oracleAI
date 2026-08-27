@@ -16,6 +16,7 @@ tier: main
 max_tokens: 1500
 history_limit: 14
 tools:
+- activate_skill
 - get_chart
 - get_matrix
 - get_placement

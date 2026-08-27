@@ -53,7 +53,7 @@ ORACLE = AgentSpec(
         "шаги: назови себе план, добудь данные по каждому шагу инструментом и только "
         "потом отвечай — не обобщай по памяти, если расчёт можно получить."
     ),
-    skills=("get_chart", "get_matrix", "get_placement", "get_all_placements",
+    skills=("activate_skill", "get_chart", "get_matrix", "get_placement", "get_all_placements",
             "get_life_path", "get_chinese_zodiac", "suggest_practice", "recall_diary",
             "list_partners", "save_memory", "recall_memory"),
     greeting=("Я рядом. Расскажи, что болит или о чём думаешь, — вместе разберёмся, "
@@ -91,7 +91,7 @@ TAROLOGIST = AgentSpec(
         "даты — к Астрологу (Урании); арканы Матрицы, практики, дневник — к Оракулу "
         "(Лилит). Назови их по имени и мягко отправь."
     ),
-    skills=("draw_tarot", "save_memory", "recall_memory"),
+    skills=("activate_skill", "draw_tarot", "save_memory", "recall_memory"),
     greeting=("Сформулируй вопрос — и я разложу карты. Точный вопрос даёт "
               "точный ответ 🎴"),
     suggestions=("Что мне сейчас мешает?", "Стоит ли мне соглашаться?",
@@ -139,7 +139,7 @@ ASTROLOGER = AgentSpec(
         "Ленорман); практики, дневник, разбор Матрицы по-человечески — к Оракулу "
         "(Лилит). Назови их по имени и мягко отправь."
     ),
-    skills=("get_chart", "get_placement", "get_all_placements", "get_life_path",
+    skills=("activate_skill", "get_chart", "get_placement", "get_all_placements", "get_life_path",
             "get_chinese_zodiac", "get_transits", "get_moon_week",
             "get_career_windows", "get_compatibility", "list_partners",
             "save_memory", "recall_memory"),
@@ -187,7 +187,7 @@ CHIROMANT = AgentSpec(
         "9. Структура ответа: качество кадра → видимая зона → вопрос для самонаблюдения → один "
         "реалистичный микро-шаг. При здоровье, деньгах, праве или кризисе следуй safety-политике."
     ),
-    skills=("activate_palm_skill", "palm_scanner", "palm_photo_guide", "palm_history"),
+    skills=("activate_skill", "palm_scanner", "palm_photo_guide", "palm_history"),
     greeting=("Я Мира — проводник по ладони. Пришли чёткий снимок ладони целиком — прочитаю "
               "линии, холмы и форму руки по правилам хиромантии ✋"),
     suggestions=("Прочитай мою ладонь по фото", "Что говорит линия сердца на моём снимке?",

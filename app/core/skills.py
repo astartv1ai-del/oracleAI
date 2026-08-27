@@ -486,22 +486,35 @@ async def _run_get_chinese_zodiac(db, user, args) -> str:
 PALM_TOPIC_LABELS = {
     "heart_line": "линия сердца", "head_line": "линия головы",
     "life_line": "линия жизни", "fate_line": "линия судьбы",
-    "sun_line": "линия Солнца", "mercury_line": "линия Меркурия (здоровья)",
+    "sun_line": "линия Солнца", "mercury_line": "линия Меркурия",
     "relationship_line": "линии брака и отношений",
-    "children_lines": "линии детей",
-    "travel_lines": "линии путешествий",
-    "girdle_of_venus": "кольцо Венеры", "bracelets": "браслеты запястья",
-    "mounts": "холмы", "fingers": "пальцы",
+    "children_lines": "линии детей", "travel_lines": "линии путешествий",
+    "girdle_of_venus": "кольцо Венеры", "ring_of_solomon": "кольцо Соломона",
+    "ring_of_apollo": "кольцо Аполлона", "via_lasciva": "линия Via Lasciva",
+    "mars_lines": "линии Марса", "influence_lines": "линии влияния",
+    "bracelets": "браслеты запястья", "mounts": "холмы", "fingers": "пальцы",
+    "markings": "знаки на ладони",
 }
 
-async def _run_activate_palm_skill(db, user, args) -> str:
-    """Load one Mira skill body only after the model explicitly selects it."""
+async def _run_activate_skill(db, user, args) -> str:
+    """Load one skill for the server-selected current agent domain."""
     from .agents.file_loader import activate_skill
 
-    name = str((args or {}).get("skill_name") or "").strip().lower()
+    payload = args or {}
+    code = str(payload.get("_agent_code") or "").strip().lower()
+    name = str(payload.get("skill_name") or "").strip().lower()
+    if code not in {"oracle", "astro", "tarot", "chiromant"}:
+        return "skill domain unavailable"
     if not name:
         return "укажи skill_name из [SKILL_INDEX]"
-    return activate_skill("chiromant", name)
+    return activate_skill(code, name)
+
+
+async def _run_activate_palm_skill(db, user, args) -> str:
+    """Legacy Mira-only alias kept for older integrations."""
+    payload = dict(args or {})
+    payload["_agent_code"] = "chiromant"
+    return await _run_activate_skill(db, user, payload)
 
 
 async def _run_palm_scanner(db, user, args) -> str:
@@ -1216,6 +1229,18 @@ SKILLS: dict[str, dict] = {
             "name": "get_chinese_zodiac",
             "description": "Рассчитать китайское животное и элемент с учётом китайского Нового года.",
             "input_schema": {"type": "object", "properties": {}},
+        },
+    },
+    "activate_skill": {
+        "run": _run_activate_skill,
+        "schema": {
+            "name": "activate_skill",
+            "description": ("Загрузить полное тело одного specialist skill текущего агента по точному "
+                            "имени из [SKILL_INDEX]. Вызывай только когда вопрос требует конкретного "
+                            "workflow; доступный домен и permissions задаются runtime."),
+            "input_schema": {"type": "object", "properties": {
+                "skill_name": {"type": "string", "description": "Точное имя skill из [SKILL_INDEX]"}},
+                             "required": ["skill_name"]},
         },
     },
     "activate_palm_skill": {

@@ -17,7 +17,7 @@ tier: main
 max_tokens: 1500
 history_limit: 14
 tools:
-- activate_palm_skill
+- activate_skill
 - palm_scanner
 - palm_photo_guide
 - palm_history
