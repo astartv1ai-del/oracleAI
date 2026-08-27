@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -87,31 +88,17 @@ def test_cache_busting_policy_and_public_legal_pages():
         assert (ROOT / "web" / name).is_file()
 
 
-def test_ops_alerts_recognize_postgres_backup_and_offsite_failure(tmp_path, monkeypatch, capsys):
+async def test_ops_alerts_recognize_postgres_backup_and_offsite_failure(db, tmp_path, monkeypatch, capsys):
+    """Backup alerts fire from backup-status.json while scheduler is healthy."""
+    from app.data.session import utcnow
+
+    await db.execute(
+        "INSERT INTO scheduler_leases(name, last_status, last_finished_at, "
+        "failure_count, last_error) VALUES(?,?,?,?,?)",
+        ("main", "ok", utcnow(), 0, None),
+    )
     backup_dir = tmp_path / "backups"
     backup_dir.mkdir()
-    db_path = tmp_path / "ops.db"
-    import sqlite3
-
-    db = sqlite3.connect(db_path)
-    db.executescript(
-        """
-        CREATE TABLE llm_usage (created_at TEXT, ok INTEGER);
-        CREATE TABLE scheduler_leases (
-            name TEXT PRIMARY KEY,
-            last_status TEXT,
-            last_finished_at TEXT,
-            failure_count INTEGER,
-            last_error TEXT
-        );
-        """
-    )
-    db.execute(
-        "INSERT INTO scheduler_leases VALUES ('main', 'ok', ?, 0, NULL)",
-        (datetime.now(timezone.utc).isoformat(),),
-    )
-    db.commit()
-    db.close()
     (backup_dir / "oracle-20260827-150000.dump.enc").write_bytes(b"encrypted")
     (backup_dir / "backup-status.json").write_text(
         json.dumps({
@@ -123,10 +110,12 @@ def test_ops_alerts_recognize_postgres_backup_and_offsite_failure(tmp_path, monk
         encoding="utf-8",
     )
     monkeypatch.setattr(sys, "argv", [
-        "ops_alerts", "--backup-dir", str(backup_dir), "--db-path", str(db_path)
+        "ops_alerts", "--backup-dir", str(backup_dir)
     ])
 
-    assert ops_alerts.main() == 1
+    # ops_alerts reads PostgreSQL through its own asyncpg connection inside
+    # main(), so main() must run in a fresh thread, not the test's event loop.
+    assert await asyncio.to_thread(ops_alerts.main) == 1
     result = json.loads(capsys.readouterr().out)
     assert "backup_stale_or_missing" not in result["alerts"]
     assert "backup_offsite_unavailable" in result["alerts"]
@@ -134,38 +123,43 @@ def test_ops_alerts_recognize_postgres_backup_and_offsite_failure(tmp_path, monk
     status = json.loads((backup_dir / "backup-status.json").read_text(encoding="utf-8"))
     status["offsite_ok"] = True
     (backup_dir / "backup-status.json").write_text(json.dumps(status), encoding="utf-8")
-    assert ops_alerts.main() == 0
+    assert await asyncio.to_thread(ops_alerts.main) == 0
     healthy = json.loads(capsys.readouterr().out)
     assert healthy["ok"] is True
 
 
-def test_ops_alert_db_counts_include_scheduler_status(tmp_path):
-    db_path = tmp_path / "ops.db"
-    import sqlite3
+async def test_ops_alert_db_counts_include_scheduler_status(db, tmp_path, monkeypatch, capsys):
+    """The script reads llm_usage/scheduler_leases from PostgreSQL (via DATABASE_URL)."""
+    from app.data.session import utcnow
 
-    db = sqlite3.connect(db_path)
-    db.executescript(
-        """
-        CREATE TABLE llm_usage (created_at TEXT, ok INTEGER);
-        CREATE TABLE scheduler_leases (
-            name TEXT PRIMARY KEY,
-            last_status TEXT,
-            last_finished_at TEXT,
-            failure_count INTEGER,
-            last_error TEXT
-        );
-        """
+    stamp = utcnow()
+    await db.execute(
+        "INSERT INTO scheduler_leases(name, last_status, last_finished_at, "
+        "failure_count, last_error) VALUES(?,?,?,?,?)",
+        ("main", "ok", stamp, 0, None),
     )
-    stamp = datetime.now(timezone.utc).isoformat()
-    db.execute(
-        "INSERT INTO scheduler_leases VALUES ('main', 'ok', ?, 0, NULL)", (stamp,)
+    await db.executemany(
+        "INSERT INTO llm_usage(tg_id, purpose, ok, created_at) VALUES(?,?,?,?)",
+        [(1001, "answer:oracle", 1, stamp), (1001, "answer:oracle", 0, stamp)],
     )
-    db.commit()
-    db.close()
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    (backup_dir / "oracle-20260827-150000.dump.enc").write_bytes(b"encrypted")
+    (backup_dir / "backup-status.json").write_text(
+        json.dumps({
+            "last_attempt_utc": stamp,
+            "local_backup_ok": True,
+            "offsite_required": False,
+            "offsite_ok": True,
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys, "argv", ["ops_alerts", "--backup-dir", str(backup_dir)])
 
-    counts = ops_alerts._db_counts(
-        db_path, ops_alerts._now() - timedelta(minutes=15)
-    )
-    assert counts["scheduler_status"] == "ok"
-    assert counts["scheduler_age_s"] >= 0
-    assert counts["scheduler_failures"] == 0
+    await asyncio.to_thread(ops_alerts.main)
+    result = json.loads(capsys.readouterr().out)
+    assert result["scheduler_status"] == "ok"
+    assert result["scheduler_age_minutes"] is not None
+    assert result["scheduler_failures"] == 0
+    assert result["llm_calls"] == 2
+    assert result["llm_failed"] == 1

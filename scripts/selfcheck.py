@@ -4,7 +4,7 @@
 
 Проверяет то, что ломается чаще всего и дороже всего: структуру БД после
 миграций, идемпотентность оплаты, лимиты и живой ответ LLM-цепочки. Работает на
-временной базе — боевые данные не трогает.
+общей базе DATABASE_URL, очищая её между секциями — боевые данные не трогает.
 """
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ import asyncio
 import os
 import pathlib
 import sys
-import tempfile
 import traceback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -66,7 +65,7 @@ def imports_all():
     import importlib
     modules = [
         "app.config", "app.data.session", "app.data.schema", "app.data.seed",
-        "app.data.migrations", "app.repo", "app.services", "app.core.agent",
+        "app.data.pg_schema", "app.repo", "app.services", "app.core.agent",
         "app.core.agents", "app.core.llm", "app.core.skills", "app.core.astro",
         "app.core.tarot", "app.core.matrix", "app.core.memory", "app.core.safety",
         "app.core.practices", "app.core.cards", "app.core.geo", "app.db",
@@ -227,37 +226,58 @@ def core_smoke():
             f"карта mode={chart['mode']}, пара {compat['score']}/100")
 
 
-# ─────────────────────────── проверки на временной БД ─────────────────────────
+# ─────────────────────────── проверки на общей БД ─────────────────────────────
+# Раньше каждая секция ставила собственную временную SQLite-базу. Теперь бэкенд
+# один — PostgreSQL из DATABASE_URL, поэтому секции делят одну базу и перед
+# прогоном очищают её через TRUNCATE (кроме миграционных таблиц).
+
+async def _truncate_all(db) -> None:
+    """Очищает все таблицы кроме alembic_version и migrations_applied, затем
+    заново засевает дефолты: раньше каждая секция получала свежую базу с сидом,
+    теперь делим одну и возвращаем ей состояние «засеяна с нуля»."""
+    cur = await db.execute(
+        "SELECT tablename FROM pg_tables WHERE schemaname='public'")
+    tables = [row["tablename"] for row in await cur.fetchall()]
+    keep = {"alembic_version", "migrations_applied"}
+    drop = [t for t in tables if t not in keep]
+    if drop:
+        await db.execute(
+            "TRUNCATE TABLE " + ", ".join('"' + t + '"' for t in drop)
+            + " RESTART IDENTITY CASCADE")
+    from app.data.seed import seed_defaults
+    async with db.transaction():
+        await seed_defaults(db)
+
 
 async def db_smoke():
     from app.data.session import connect, healthcheck
     from app.repo import billing, dialog, users
 
-    with tempfile.TemporaryDirectory() as tmp:
-        db = await connect(f"{tmp}/selfcheck.db")
-        try:
-            state = await healthcheck(db)
-            assert state["ok"], f"целостность БД: {state['integrity']}"
-            assert state["journal_mode"].lower() == "wal", "WAL не включён"
-            assert state["schema_tables"] >= 20, "схема неполная"
+    db = await connect(seed=False)
+    try:
+        await _truncate_all(db)
+        state = await healthcheck(db)
+        assert state["ok"], f"целостность БД: {state['integrity']}"
+        assert state["journal_mode"] == "postgresql", "бэкенд не PostgreSQL"
+        assert state["schema_tables"] >= 20, "схема неполная"
 
-            await users.ensure(db, 999000111, "Тест")
-            await users.update(db, 999000111, onboarded=1, birth_date="1990-06-21",
-                               sub_level="vip")
-            assert await dialog.save_memory(db, 999000111, "тестовый факт")
+        await users.ensure(db, 999000111, "Тест")
+        await users.update(db, 999000111, onboarded=1, birth_date="1990-06-21",
+                           sub_level="vip")
+        assert await dialog.save_memory(db, 999000111, "тестовый факт")
 
-            assert not await dialog.save_memory(db, 999000111, "тестовый факт"), \
-                "дубликаты памяти не отсекаются"
+        assert not await dialog.save_memory(db, 999000111, "тестовый факт"), \
+            "дубликаты памяти не отсекаются"
 
-            plans = await billing.list_plans(db)
-            products = await billing.list_products(db)
-            assert any(p["code"] == "vip" for p in plans), "тарифы не засеяны"
-            assert any(p["kind"] == "spread" for p in products), \
-                "одиночные расклады не засеяны"
-            return (f"{state['schema_tables']} таблиц, {len(plans)} тарифов, "
-                    f"{len(products)} товаров")
-        finally:
-            await db.close()
+        plans = await billing.list_plans(db)
+        products = await billing.list_products(db)
+        assert any(p["code"] == "vip" for p in plans), "тарифы не засеяны"
+        assert any(p["kind"] == "spread" for p in products), \
+            "одиночные расклады не засеяны"
+        return (f"{state['schema_tables']} таблиц, {len(plans)} тарифов, "
+                f"{len(products)} товаров")
+    finally:
+        await db.close()
 
 
 async def money_smoke():
@@ -266,30 +286,30 @@ async def money_smoke():
     from app.repo import billing, users
     from app.services import billing as billing_svc
 
-    with tempfile.TemporaryDirectory() as tmp:
-        db = await connect(f"{tmp}/money.db")
-        try:
-            await users.ensure(db, 999000222, "Плательщица")
-            order = await billing_svc.checkout_plan(db, 999000222, "vip")
-            first = await billing_svc.apply_payment(db, order["payload"],
-                                                    charge_id="ch_test",
-                                                    amount_stars=order["amount_stars"])
-            second = await billing_svc.apply_payment(db, order["payload"],
-                                                     charge_id="ch_test",
-                                                     amount_stars=order["amount_stars"])
-            assert first, "первая оплата не применилась"
-            assert second is None, "повторная оплата выдала товар второй раз"
+    db = await connect(seed=False)
+    try:
+        await _truncate_all(db)
+        await users.ensure(db, 999000222, "Плательщица")
+        order = await billing_svc.checkout_plan(db, 999000222, "vip")
+        first = await billing_svc.apply_payment(db, order["payload"],
+                                                charge_id="ch_test",
+                                                amount_stars=order["amount_stars"])
+        second = await billing_svc.apply_payment(db, order["payload"],
+                                                 charge_id="ch_test",
+                                                 amount_stars=order["amount_stars"])
+        assert first, "первая оплата не применилась"
+        assert second is None, "повторная оплата выдала товар второй раз"
 
-            fresh = await users.get(db, 999000222)
-            assert users.sub_active(fresh), "подписка не активировалась"
+        fresh = await users.get(db, 999000222)
+        assert users.sub_active(fresh), "подписка не активировалась"
 
-            await users.update(db, 999000222, crystals=30)
-            assert await billing.spend_crystals(db, 999000222, 20, "test")
-            assert not await billing.spend_crystals(db, 999000222, 20, "test"), \
-                "баланс ✦ ушёл в минус"
-            return f"оплата идемпотентна, подписка до {fresh['sub_until'][:10]}"
-        finally:
-            await db.close()
+        await users.update(db, 999000222, crystals=30)
+        assert await billing.spend_crystals(db, 999000222, 20, "test")
+        assert not await billing.spend_crystals(db, 999000222, 20, "test"), \
+            "баланс ✦ ушёл в минус"
+        return f"оплата идемпотентна, подписка до {fresh['sub_until'][:10]}"
+    finally:
+        await db.close()
 
 
 async def limits_smoke():
@@ -297,29 +317,29 @@ async def limits_smoke():
     from app.repo import dialog, users
     from app.services import chat, limits
 
-    with tempfile.TemporaryDirectory() as tmp:
-        db = await connect(f"{tmp}/limits.db")
-        try:
-            await users.ensure(db, 999000333, "Спрашивающая")
-            await users.update(db, 999000333, onboarded=1, age_confirmed=1,
-                               birth_date="1990-06-21", sub_level="vip")
-            user = await users.get(db, 999000333)
+    db = await connect(seed=False)
+    try:
+        await _truncate_all(db)
+        await users.ensure(db, 999000333, "Спрашивающая")
+        await users.update(db, 999000333, onboarded=1, age_confirmed=1,
+                           birth_date="1990-06-21", sub_level="vip")
+        user = await users.get(db, 999000333)
 
-            allowance = await limits.allowance(db, user)
-            assert allowance.limit == 3, f"лимит VIP должен быть 3, а не {allowance.limit}"
+        allowance = await limits.allowance(db, user)
+        assert allowance.limit == 3, f"лимит VIP должен быть 3, а не {allowance.limit}"
 
-            result = await chat.ask(db, user, "Что меня ждёт?")
-            assert result["answer"], "агент не ответил"
+        result = await chat.ask(db, user, "Что меня ждёт?")
+        assert result["answer"], "агент не ответил"
 
-            for _ in range(3):
-                await dialog.save_message(db, 999000333, "user", "вопрос",
-                                          is_question=True)
-            await users.update(db, 999000333, crystals=0)
-            verdict = await limits.check(db, await users.get(db, 999000333))
-            assert not verdict.allowed, "лимит не срабатывает"
-            return f"лимит {allowance.limit}/день, отказ работает"
-        finally:
-            await db.close()
+        for _ in range(3):
+            await dialog.save_message(db, 999000333, "user", "вопрос",
+                                      is_question=True)
+        await users.update(db, 999000333, crystals=0)
+        verdict = await limits.check(db, await users.get(db, 999000333))
+        assert not verdict.allowed, "лимит не срабатывает"
+        return f"лимит {allowance.limit}/день, отказ работает"
+    finally:
+        await db.close()
 
 
 async def practices_smoke():
@@ -328,30 +348,30 @@ async def practices_smoke():
     from app.repo import users
     from app.services import practices as practices_svc
 
-    with tempfile.TemporaryDirectory() as tmp:
-        db = await connect(f"{tmp}/practices.db")
-        try:
-            await users.ensure(db, 999000444, "Практикующая")
-            await users.update(db, 999000444, onboarded=1, birth_date="1990-06-21")
-            user = await users.get(db, 999000444)
+    db = await connect(seed=False)
+    try:
+        await _truncate_all(db)
+        await users.ensure(db, 999000444, "Практикующая")
+        await users.update(db, 999000444, onboarded=1, birth_date="1990-06-21")
+        user = await users.get(db, 999000444)
 
-            items = await practices_svc.list_for_user(db, user)
-            assert items, "каталог практик пуст — раздел не наполнен"
-            code = items[0]["code"]
+        items = await practices_svc.list_for_user(db, user)
+        assert items, "каталог практик пуст — раздел не наполнен"
+        code = items[0]["code"]
 
-            started = await practices_svc.start(db, user, code)
-            assert started["started"], "практика не запустилась"
-            assert started["today_step"], "нет шага на первый день"
+        started = await practices_svc.start(db, user, code)
+        assert started["started"], "практика не запустилась"
+        assert started["today_step"], "нет шага на первый день"
 
-            first = await practices_svc.mark_done(db, user, code)
-            assert first["streak"] == 1 and not first["already"], "первый день не засчитан"
-            again = await practices_svc.mark_done(db, user, code)
-            assert again["already"], "вторая отметка за день накрутила стрик"
+        first = await practices_svc.mark_done(db, user, code)
+        assert first["streak"] == 1 and not first["already"], "первый день не засчитан"
+        again = await practices_svc.mark_done(db, user, code)
+        assert again["already"], "вторая отметка за день накрутила стрик"
 
-            assert await practices_svc.stop(db, user, code), "практика не останавливается"
-            return f"{len(items)} практик, стрик и остановка работают"
-        finally:
-            await db.close()
+        assert await practices_svc.stop(db, user, code), "практика не останавливается"
+        return f"{len(items)} практик, стрик и остановка работают"
+    finally:
+        await db.close()
 
 
 async def horoscopes_smoke():
@@ -359,21 +379,21 @@ async def horoscopes_smoke():
     from app.data.session import connect
     from app.services import horoscopes
 
-    with tempfile.TemporaryDirectory() as tmp:
-        db = await connect(f"{tmp}/horoscopes.db")
-        try:
-            assert len(horoscopes.SIGNS) == 12, "знаков должно быть двенадцать"
-            text = await horoscopes.get_or_build(db, "Овен")
-            assert len(text) > 60, "гороскоп подозрительно короткий"
-            again = await horoscopes.get_or_build(db, "Овен")
-            assert again == text, "гороскоп не закешировался — платим дважды"
-            result = await horoscopes.build_day(db)
-            assert result["built"] == 11, \
-                f"собрано {result['built']} знаков вместо 11 оставшихся"
-            return f"12 знаков, кеш держит, каналов настроено: " \
-                   f"{len(horoscopes.channel_map())}"
-        finally:
-            await db.close()
+    db = await connect(seed=False)
+    try:
+        await _truncate_all(db)
+        assert len(horoscopes.SIGNS) == 12, "знаков должно быть двенадцать"
+        text = await horoscopes.get_or_build(db, "Овен")
+        assert len(text) > 60, "гороскоп подозрительно короткий"
+        again = await horoscopes.get_or_build(db, "Овен")
+        assert again == text, "гороскоп не закешировался — платим дважды"
+        result = await horoscopes.build_day(db)
+        assert result["built"] == 11, \
+            f"собрано {result['built']} знаков вместо 11 оставшихся"
+        return f"12 знаков, кеш держит, каналов настроено: " \
+               f"{len(horoscopes.channel_map())}"
+    finally:
+        await db.close()
 
 
 async def webhook_smoke():
@@ -402,15 +422,15 @@ async def webhook_smoke():
     assert not verify_paddle(raw, f"ts={old};h1={old_digest}", secret), \
         "просроченная подпись принята"
 
-    with tempfile.TemporaryDirectory() as tmp:
-        db = await connect(f"{tmp}/hooks.db")
-        try:
-            assert not await _already_seen(db, "evt_1", "paddle", "test", "{}"), \
-                "первое событие сочли повтором"
-            assert await _already_seen(db, "evt_1", "paddle", "test", "{}"), \
-                "повтор события не отсечён — товар выдался бы дважды"
-        finally:
-            await db.close()
+    db = await connect(seed=False)
+    try:
+        await _truncate_all(db)
+        assert not await _already_seen(db, "evt_1", "paddle", "test", "{}"), \
+            "первое событие сочли повтором"
+        assert await _already_seen(db, "evt_1", "paddle", "test", "{}"), \
+            "повтор события не отсечён — товар выдался бы дважды"
+    finally:
+        await db.close()
     return "подпись проверяется, повтор отсекается"
 
 

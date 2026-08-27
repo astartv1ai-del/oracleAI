@@ -11,6 +11,20 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: oracle
+          POSTGRES_USER: oracle
+          POSTGRES_PASSWORD: oracle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oracle -d oracle"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +53,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev sqlite3
+            libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev
 
       - name: Зависимости (закреплённые версии)
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
@@ -63,7 +77,6 @@ jobs:
         run: |
           python scripts/check_p004_infrastructure.py
           bash -n infra/backup-postgres.sh infra/restore-postgres.sh
-          python scripts/check_backup_restore_drill.py
 
       - name: Standalone quality script smoke
         run: |
@@ -156,6 +169,20 @@ jobs:
   frontend-quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: oracle
+          POSTGRES_USER: oracle
+          POSTGRES_PASSWORD: oracle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oracle -d oracle"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -174,7 +201,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             chromium \
-            libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev sqlite3
+            libcairo2 libpango-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev
 
       - name: Python-зависимости для QA-сервера
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
@@ -199,10 +226,10 @@ jobs:
 
       - name: Seed isolated QA user and start server
         env:
-          QA_DB: ${{ runner.temp }}/oracleai-qa.db
+          DATABASE_URL: postgresql+asyncpg://oracle:oracle@localhost:5432/oracle
         run: |
-          python scripts/seed_visual_user.py --db "$QA_DB"
-          APP_ENV=dev DEV_MODE=1 BUNDLE_ASSETS=1 DB_PATH="$QA_DB" \
+          python scripts/seed_visual_user.py
+          APP_ENV=dev DEV_MODE=1 BUNDLE_ASSETS=1 \
             nohup python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8080 \
             >"${RUNNER_TEMP}/oracleai-api.log" 2>&1 &
           for attempt in $(seq 1 30); do

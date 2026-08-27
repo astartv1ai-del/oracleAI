@@ -1,19 +1,29 @@
 """Проверка operational сигналов для cron/monitoring.
 
-Источник HTTP/webhook сигналов — JSONL logs, источник LLM/freshness — SQLite.
+Источник HTTP/webhook сигналов — JSONL logs, источник LLM/freshness — PostgreSQL.
 Скрипт не выводит строки сообщений, diary, memory или webhook payload.
 """
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
-import sqlite3
+import os
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _dsn() -> str:
+    url = os.getenv("DATABASE_URL", "").strip()
+    if not url:
+        raise RuntimeError("DATABASE_URL не задан")
+    # SQLAlchemy-style "postgresql+asyncpg://..." -> asyncpg "postgresql://..."
+    return re.sub(r"^postgresql\+\w+://", "postgresql://", url)
 
 
 def _parse_time(value: str) -> datetime | None:
@@ -42,48 +52,54 @@ def _log_counts(path: Path, cutoff: datetime) -> dict[str, int]:
     return counts
 
 
-def _db_counts(db_path: Path, cutoff: datetime) -> dict[str, float | int | str | None]:
-    empty = {
+def _empty_counts() -> dict[str, float | int | str | None]:
+    return {
         "llm_calls": 0, "llm_failed": 0, "last_backup_age_s": -1,
         "scheduler_status": "missing", "scheduler_age_s": -1,
         "scheduler_failures": 0, "scheduler_error": None,
     }
-    if not db_path.is_file():
+
+
+async def _db_counts(cutoff: datetime) -> dict[str, float | int | str | None]:
+    empty = _empty_counts()
+    try:
+        import asyncpg
+
+        conn = await asyncpg.connect(_dsn())
+    except Exception:  # noqa: BLE001 — недоступная БД приравнивается к "missing"
         return empty
-    db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
     try:
         stamp = cutoff.isoformat()
-        calls = db.execute(
-            "SELECT COUNT(*) FROM llm_usage WHERE created_at>=?", (stamp,)
-        ).fetchone()[0]
-        failed = db.execute(
-            "SELECT COUNT(*) FROM llm_usage WHERE created_at>=? AND ok=0", (stamp,)
-        ).fetchone()[0]
+        calls = await conn.fetchval(
+            "SELECT COUNT(*) FROM llm_usage WHERE created_at >= $1", stamp) or 0
+        failed = await conn.fetchval(
+            "SELECT COUNT(*) FROM llm_usage WHERE created_at >= $1 AND ok = 0",
+            stamp) or 0
+        scheduler = None
         try:
-            scheduler = db.execute(
+            scheduler = await conn.fetchrow(
                 "SELECT last_status, last_finished_at, failure_count, last_error "
-                "FROM scheduler_leases WHERE name='main'"
-            ).fetchone()
-        except sqlite3.Error:
+                "FROM scheduler_leases WHERE name = 'main'")
+        except asyncpg.UndefinedTableError:
             scheduler = None
     finally:
-        db.close()
+        await conn.close()
     result = dict(empty)
     result.update({"llm_calls": calls, "llm_failed": failed})
     if scheduler:
-        finished = _parse_time(scheduler[1])
+        finished = _parse_time(scheduler["last_finished_at"])
         result.update({
-            "scheduler_status": scheduler[0] or "unknown",
-            "scheduler_age_s": max(0, (_now() - finished).total_seconds()) if finished else -1,
-            "scheduler_failures": int(scheduler[2] or 0),
-            "scheduler_error": scheduler[3],
+            "scheduler_status": scheduler["last_status"] or "unknown",
+            "scheduler_age_s": max(0, (_now() - finished).total_seconds())
+            if finished else -1,
+            "scheduler_failures": int(scheduler["failure_count"] or 0),
+            "scheduler_error": scheduler["last_error"],
         })
     return result
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db-path", default="data/oracle.db")
     parser.add_argument("--log-file", default="")
     parser.add_argument("--backup-dir", default="backups")
     parser.add_argument("--window-minutes", type=int, default=15)
@@ -100,7 +116,7 @@ def main() -> int:
     log_counts = _log_counts(Path(args.log_file), cutoff) if args.log_file else {
         "http_5xx": 0, "webhook_failure": 0, "llm_fallback": 0, "llm_request": 0,
     }
-    db_counts = _db_counts(Path(args.db_path), cutoff)
+    db_counts = asyncio.run(_db_counts(cutoff))
     completed_llm = log_counts["llm_fallback"] + log_counts["llm_request"]
     total_llm = max(completed_llm, int(db_counts["llm_calls"]))
     failed_llm = int(db_counts["llm_failed"])
@@ -109,9 +125,10 @@ def main() -> int:
     backup_dir = Path(args.backup_dir)
     backups = sorted(
         [
-            *backup_dir.glob("oracle-*.db"),
-            *backup_dir.glob("oracle-*.db.enc"),
+            *backup_dir.glob("oracle-*.dump"),
             *backup_dir.glob("oracle-*.dump.enc"),
+            *backup_dir.glob("oracle-*.dump.enc.sha256"),
+            *backup_dir.glob("oracle-*.custom"),
         ],
         key=lambda path: path.stat().st_mtime,
         reverse=True,

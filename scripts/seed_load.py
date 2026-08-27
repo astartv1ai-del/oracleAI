@@ -5,12 +5,11 @@
 сидом, прогоны воспроизводимы. Сеть не нужна: города с зашитыми координатами,
 геокодинг не вызывается.
 
-    python -m scripts.seed_load --count 10000 --db /tmp/load.db
-    python -m scripts.seed_load --count 5000 --db /tmp/http-load.db --all-active --age-confirmed --active-subscription
-    python -m scripts.seed_load --count 1000  --db /tmp/load.db --force  # переткнуть
+    python -m scripts.seed_load --count 10000
+    python -m scripts.seed_load --count 5000 --all-active --age-confirmed --active-subscription
 
-По умолчанию цель — data/load_seed.db. Боевую data/oracle.db перepисать можно
-только явным --force: фиктивные юзеры не должны попасть в прод-статистику.
+Цель — база из DATABASE_URL. Фиктивные юзеры пишутся в неё же; перезапуск без
+риска дублей благодаря upsert по tg_id.
 """
 from __future__ import annotations
 
@@ -100,39 +99,43 @@ async def _seed(db, count: int, *, all_active: bool = False,
                age_confirmed: bool = False, active_subscription: bool = False,
                force_onboarded: bool = False) -> None:
     await db.executemany(
-        "INSERT OR REPLACE INTO users(tg_id, name, username, lang, tz, birth_date, "
+        "INSERT INTO users(tg_id, name, username, lang, tz, birth_date, "
         "birth_time, birth_time_known, birth_city, birth_lat, birth_lon, sub_level, "
         "sub_until, crystals, onboarded, morning_push, memory_enabled, age_confirmed, "
         "goal, source, last_seen, status, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+        "ON CONFLICT(tg_id) DO UPDATE SET "
+        "name=EXCLUDED.name, username=EXCLUDED.username, lang=EXCLUDED.lang, "
+        "tz=EXCLUDED.tz, birth_date=EXCLUDED.birth_date, "
+        "birth_time=EXCLUDED.birth_time, "
+        "birth_time_known=EXCLUDED.birth_time_known, "
+        "birth_city=EXCLUDED.birth_city, birth_lat=EXCLUDED.birth_lat, "
+        "birth_lon=EXCLUDED.birth_lon, sub_level=EXCLUDED.sub_level, "
+        "sub_until=EXCLUDED.sub_until, crystals=EXCLUDED.crystals, "
+        "onboarded=EXCLUDED.onboarded, morning_push=EXCLUDED.morning_push, "
+        "memory_enabled=EXCLUDED.memory_enabled, "
+        "age_confirmed=EXCLUDED.age_confirmed, goal=EXCLUDED.goal, "
+        "source=EXCLUDED.source, last_seen=EXCLUDED.last_seen, "
+        "status=EXCLUDED.status, created_at=EXCLUDED.created_at)",
         _rows(count, all_active=all_active, age_confirmed=age_confirmed,
               active_subscription=active_subscription, force_onboarded=force_onboarded))
     await db.commit()
 
 
-async def main(count: int, db_path: str, force: bool, all_active: bool,
-               age_confirmed: bool, active_subscription: bool, force_onboarded: bool) -> None:
-    from app.config import settings
-    path = Path(db_path)
-    if not force and path.resolve() == Path(settings.db_path).resolve():
-        raise SystemExit(
-            f"отказываюсь трогать боевую базу {db_path}: нужен --force "
-            f"(фиктивные юзеры испортят прод-аналитику)")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    db = await connect(path)
+async def main(count: int, all_active: bool, age_confirmed: bool,
+               active_subscription: bool, force_onboarded: bool) -> None:
+    db = await connect()
     try:
         await _seed(db, count, all_active=all_active, age_confirmed=age_confirmed,
                     active_subscription=active_subscription, force_onboarded=force_onboarded)
     finally:
         await db.close()
-    print(f"засеяно {count} юзеров в {db_path}")
+    print(f"засеяно {count} юзеров в DATABASE_URL")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--count", type=int, default=10_000)
-    ap.add_argument("--db", default="data/load_seed.db")
-    ap.add_argument("--force", action="store_true")
     ap.add_argument("--all-active", action="store_true",
                     help="не добавлять заблокированные профили (для HTTP-потока)")
     ap.add_argument("--age-confirmed", action="store_true",
@@ -143,5 +146,5 @@ if __name__ == "__main__":
                     help="пометить synthetic users как прошедших onboarding")
     args = ap.parse_args()
     import asyncio
-    asyncio.run(main(args.count, args.db, args.force, args.all_active,
-                      args.age_confirmed, args.active_subscription, args.onboarded))
+    asyncio.run(main(args.count, args.all_active, args.age_confirmed,
+                      args.active_subscription, args.onboarded))

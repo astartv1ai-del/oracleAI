@@ -21,17 +21,62 @@ os.environ["LLM_PROVIDER"] = "off"
 os.environ["EMBED_MODEL"] = ""
 os.environ.setdefault("BOT_TOKEN", "test:token")
 os.environ.setdefault("ADMIN_ID", "1")
-os.environ.setdefault("DEV_MODE", "1")
+# Composer ровняет реальные DEV_MODE/ADMIN_ID из .env через env_file, и setdefault
+# их не перезапишет — dev-вход и админ-наборы тестов ловили 403. Включаем явно.
+os.environ["DEV_MODE"] = "1"
 # Legacy fixtures intentionally opt into the historical trial; production defaults off.
-os.environ.setdefault("AUTO_TRIAL", "1")
+os.environ["AUTO_TRIAL"] = "1"
+
+
+async def _ensure_vector_extension() -> None:
+    """Заводит pgvector-расширение на тестовой базе до применения схемы."""
+    import re
+
+    import asyncpg
+
+    url = os.environ["DATABASE_URL"]
+    dsn = re.sub(r"^postgresql\+\w+://", "postgresql://", url)
+    conn = await asyncpg.connect(dsn)
+    try:
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    finally:
+        await conn.close()
 
 
 @pytest.fixture
-async def db(tmp_path):
+async def db():
+    """Пустая-но-посевочная база для одного теста, в общей PostgreSQL.
+
+    Единственный бэкенд — PostgreSQL (env DATABASE_URL). Каждый тест получает
+    все таблицы схемы, очищенные до посева, чтобы тесты денег и лимитов не
+    зависели от порядка запуска.
+    """
+    if not os.environ.get("DATABASE_URL"):
+        pytest.fail("DATABASE_URL не задан: тесты требуют общую PostgreSQL-базу")
     from app.data.session import connect
-    connection = await connect(str(tmp_path / "test.db"))
-    yield connection
-    await connection.close()
+    from app.data.seed import seed_defaults
+
+    # Схема требует pgvector (memories.embedding). В проде расширение создаёт
+    # alembic-миграция; на общей тестовой базе его обязан поставить сам контур
+    # ДО применения схемы — отдельным подключением, чтобы не зависеть от того,
+    # кто создавал тестовую БД.
+    await _ensure_vector_extension()
+
+    connection = await connect(seed=False)
+    try:
+        cur = await connection.execute(
+            "SELECT tablename FROM pg_tables WHERE schemaname=current_schema()")
+        tables = [row[0] for row in await cur.fetchall()
+                  if row[0] not in ("alembic_version", "migrations_applied")]
+        if tables:
+            quoted = ", ".join(f'"{t}"' for t in tables)
+            await connection.execute(
+                f"TRUNCATE {quoted} CASCADE")
+        async with connection.transaction():
+            await seed_defaults(connection)
+        yield connection
+    finally:
+        await connection.close()
 
 
 @pytest.fixture

@@ -88,7 +88,6 @@ def run_checks() -> list[dict]:
         ("accessibility_design_contract", "check_design_contract.py"),
         ("visual_contrast_contract", "check_visual_contrast.py"),
         ("report_golden_cases", "check_pdf_golden_cases.py"),
-        ("backup_restore_isolation", "check_backup_restore_drill.py"),
     ):
         ok, detail = run_script(script_name)
         checks.append(_check(check_name, ok, detail))

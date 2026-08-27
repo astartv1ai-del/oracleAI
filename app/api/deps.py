@@ -15,8 +15,7 @@ from .security import parse_init_data
 
 log = logging.getLogger("oracle.api")
 
-# Одно соединение на процесс: aiosqlite сериализует запросы сама, а WAL позволяет
-# API и боту работать с файлом одновременно.
+# Одно соединение на процесс: пул PostgreSQL-адаптера живёт в db_ объекта.
 _db = None
 
 

@@ -25,7 +25,7 @@ _ACTIVE_STATUS = "active"
 
 
 def _value(user: Mapping[str, object], key: str, default=None):
-    """Read both dict-like mappings and sqlite3.Row objects."""
+    """Read both dict-like mappings and PostgresRow-compatible objects."""
     getter = getattr(user, "get", None)
     if getter is not None:
         return getter(key, default)

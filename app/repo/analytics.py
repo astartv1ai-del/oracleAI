@@ -65,7 +65,7 @@ async def track_once(db, name: str, tg_id: int, *,
                      props: dict | None = None, surface: str = "miniapp") -> bool:
     """Записывает milestone только один раз для владельца события.
 
-    SELECT и INSERT выполняются в одной транзакции через aiosqlite connection;
+    SELECT и INSERT выполняются в одной транзакции через соединение;
     milestone names не зависят от client-supplied event names и props остаются
     ограниченными вызывающим server-side кодом.
     """

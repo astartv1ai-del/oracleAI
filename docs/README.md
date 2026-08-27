@@ -46,7 +46,7 @@
 | [P0_PRODUCTION_EXECUTION_PLAN.md](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) | Release, security, payments, AI quality, operations | Чтобы закрыть P0-001—P0-004 по процедурам, evidence, go/no-go и rollback. |
 | [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) | Product, astrology, backend, QA | Чтобы реализовать будущие composite и planetary returns без неявных precision-правил. |
 | [DESIGN_COMPONENT_INVENTORY.md](DESIGN_COMPONENT_INVENTORY.md) | Design, frontend, QA | Чтобы сохранять состояния компонентов, accessibility и visual regression matrix. |
-| [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять SQLite/WAL triggers и репетировать migration без production риска. |
+| [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять PostgreSQL/pgvector нагрузку и репетировать migration без production риска. |
 | [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md) | Frontend, backend, agent, QA | Чтобы вызывать текущие natal, synastry и transit contracts одинаково. |
 | [CHART_TYPE_CAPABILITIES.md](CHART_TYPE_CAPABILITIES.md) | Product, astrology, release owner | Чтобы отличать enabled product paths от upstream capabilities. |
 | [BILLING.md](FEATURES/BILLING.md) | Product, billing, finance | Чтобы сверить текущие планы, SKU, платёжные пути и открытые gaps без PII. |
@@ -141,7 +141,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-A local development mode is available for interface inspection. It accepts `dev_user` and must never be exposed on a public address.
+A local development mode is available for interface inspection. It accepts `dev_user` and must never be exposed on a public address. A manual run needs a reachable PostgreSQL and a `DATABASE_URL`; the SQLite dev/test fallback no longer exists — `make test` runs the suite against the Compose PostgreSQL stack.
 
 ```bash
 APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080

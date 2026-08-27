@@ -21,7 +21,7 @@ Use `APP_ENV=dev DEV_MODE=1` only on a loopback development server. The `dev_use
 |---|---|
 | Client | Telegram Mini App, vanilla JavaScript, modular CSS and Telegram WebApp API. |
 | Server | Python, FastAPI, Pydantic and aiogram. |
-| Data | SQLite/WAL for offline/dev/tests; PostgreSQL + pgvector path for the Docker production shape. |
+| Data | PostgreSQL + pgvector (SQLite/WAL fallback was removed). |
 | AI | Server-owned agents, deterministic evidence, bounded tools, provider fallback and safety checks. |
 | Operations | Docker Compose, Caddy, Redis/Celery scaffolding, migrations, health checks and release gates. |
 
@@ -30,12 +30,16 @@ The bot and Mini App share services, core calculations, repositories and safety 
 ## Validation
 
 ```bash
+make test             # runs the suite against the Compose stack (PostgreSQL)
+# or, given a reachable PostgreSQL and DATABASE_URL:
 pytest -q
 python3 -m scripts.selfcheck
 python3 -m scripts.release_gate
 ruff check app scripts tests
 python3 -m compileall -q app scripts tests
 ```
+
+Tests require a PostgreSQL server and `DATABASE_URL`; the SQLite dev/test fallback no longer exists.
 
 ## Documentation
 

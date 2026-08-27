@@ -277,7 +277,7 @@ def _segment_sql(segment: str) -> tuple[str, list]:
     where = SEGMENTS.get(segment or "all", SEGMENTS["all"])
     params: list = []
     values = _segment_params()
-    # именованные :placeholder → ? в порядке появления (aiosqlite любит позиционные)
+    # именованные :placeholder → позиционные в порядке появления
     for name, value in values.items():
         token = f":{name}"
         while token in where:

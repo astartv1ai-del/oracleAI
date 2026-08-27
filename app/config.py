@@ -100,7 +100,6 @@ class Settings:
     log_level: str = os.getenv("LOG_LEVEL", "INFO").upper()
     log_file: str = os.getenv("LOG_FILE", "")
     release_id: str = os.getenv("RELEASE_ID", "local")
-    db_path: str = os.getenv("DB_PATH") or str(DATA_DIR / "oracle.db")
     database_url: str = os.getenv("DATABASE_URL", "").strip()
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0").strip()
     rate_limit_backend: str = os.getenv("RATE_LIMIT_BACKEND", "memory").strip().lower()

@@ -221,32 +221,6 @@ async def test_product_cost_drops_free_form_reference_and_reason(db):
     assert row["reason"] is None
 
 
-async def test_legacy_sqlite_connect_creates_product_cost_table(tmp_path):
-    from app.data.session import connect
-
-    path = tmp_path / "legacy-product-cost.db"
-    first = await connect(str(path))
-    await first.execute("DROP INDEX IF EXISTS idx_product_cost_day_sku")
-    await first.execute("DROP INDEX IF EXISTS idx_product_cost_created")
-    await first.execute("DROP INDEX IF EXISTS idx_product_cost_order")
-    await first.execute("DROP TABLE product_cost_events")
-    await first.commit()
-    await first.close()
-
-    second = await connect(str(path))
-    cur = await second.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-        ("product_cost_events",),
-    )
-    assert (await cur.fetchone())[0] == "product_cost_events"
-    cur = await second.execute(
-        "SELECT name FROM sqlite_master WHERE type='index' AND name=?",
-        ("idx_product_cost_day_sku",),
-    )
-    assert (await cur.fetchone())[0] == "idx_product_cost_day_sku"
-    await second.close()
-
-
 async def test_product_cost_gross_booking_is_attributed_by_sku_and_channel(db):
     from app.data.session import utcnow
 

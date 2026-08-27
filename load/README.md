@@ -13,12 +13,12 @@
 ## Запуск
 
 ```bash
-# 1) база на 10k — фейк-юзеры в отдельный файл, не в прод
-python scripts/seed_load.py --count 10000 --db /tmp/load.db
+# 1) база на 10k — фейк-юзеры в DATABASE_URL (отдельная тестовая БД, не прод)
+python scripts/seed_load.py --count 10000
 
 # 2) бот-сценарии (LLM в офлайне/стаб — меряем механику, не сеть провайдера)
-python load/simulate.py --db /tmp/load.db          # быстрая проверка
-python load/simulate.py --db /tmp/load.db --full   # целевые цифры G29
+python load/simulate.py                # быстрая проверка
+python load/simulate.py --full         # целевые цифры G29
 
 # 3) API Mini App — Locust, сервер в DEV_MODE (без подписи Telegram)
 DEV_MODE=1 .venv/bin/python -m uvicorn app.api.main:app --port 8000
