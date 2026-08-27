@@ -260,3 +260,64 @@ html[data-qa="1"] *::after {
   scroll-behavior: auto !important;
   transition-duration: 0.001ms !important;
 }
+
+/* Final polish: interactive chips must resolve inside the bounded frame. */
+.agent-ask-chips,
+.suggest-chips {
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+.agent-ask-chips .ask-chip,
+.suggest-chips .chip {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 calc(50% - var(--space-2) / 2);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  line-height: 1.3;
+}
+
+/* Start page: one calm invitation before the secondary rhythm surfaces. */
+.hero-orb {
+  min-height: 304px;
+}
+.hero-body {
+  padding: 20px 20px 78px;
+}
+.hero-ritual-label {
+  margin-top: 12px;
+}
+.hero-moon-txt {
+  max-width: min(220px, calc(100% - 4px));
+  margin-top: 12px;
+  padding: 9px 11px;
+  line-height: 1.35;
+}
+.ritual-cta {
+  right: 16px;
+  bottom: 14px;
+  left: 16px;
+  min-height: var(--touch-target);
+}
+
+@media (max-width: 380px) {
+  .agent-ask-chips .ask-chip,
+  .suggest-chips .chip {
+    flex-basis: 100%;
+  }
+  .hero-orb {
+    min-height: 312px;
+  }
+  .hero-body {
+    padding: 18px 16px 74px;
+  }
+  .hero-ritual-label {
+    margin-top: 10px;
+  }
+  .hero-moon-txt {
+    max-width: calc(100% - 2px);
+    margin-top: 10px;
+  }
+}

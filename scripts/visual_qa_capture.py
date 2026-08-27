@@ -50,7 +50,7 @@ def contract(page: object) -> dict:
             imagesWithoutAlt: [...document.images].filter((img) => !img.hasAttribute('alt')).length,
             visiblePrimaryActions: [...document.querySelectorAll('.btn-primary, [data-primary]')].filter(visible).length,
             visible: {
-              screen: rect('.screen'), header: rect('.app-header'), hero: rect('.hero-orb'),
+              screen: rect('.screen, .chat-shell'), header: rect('.app-header'), hero: rect('.hero-orb'),
               agentCard: rect('.agent-card'), nav: rect('.main-nav'), modal: rect('.modal-overlay, .intro-overlay, .age-overlay')
             },
             bodyFont: getComputedStyle(body).fontFamily,
