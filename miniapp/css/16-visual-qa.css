@@ -186,3 +186,67 @@ button:disabled,
 @media (min-width: 1440px) {
   .starfield { overflow: hidden; }
 }
+
+/* Desktop polish: the navigation is a shell element, so the scrollable content
+   must always have enough clearance to reveal its final card/section. */
+@media (min-width: 768px) {
+  #app-root {
+    border-left: 1px solid rgba(230, 219, 255, .10);
+    border-right: 1px solid rgba(230, 219, 255, .10);
+    background: linear-gradient(180deg, rgba(10, 9, 32, .20), rgba(10, 9, 32, .42));
+    box-shadow: 0 0 70px rgba(5, 4, 16, .38);
+  }
+  #app-main { background: linear-gradient(180deg, rgba(10, 9, 32, .05), rgba(10, 9, 32, .16)); }
+  .screen { padding-bottom: calc(144px + env(safe-area-inset-bottom)); scrollbar-gutter: stable; }
+  .app-nav { border-top: 1px solid rgba(230, 219, 255, .16); }
+}
+
+@media (min-width: 1440px) {
+  #app-root { border-color: rgba(245, 212, 139, .16); box-shadow: 0 0 90px rgba(5, 4, 16, .46); }
+}
+
+/* Compact feature overrides must not undercut the mobile interaction contract. */
+button,
+summary,
+[role="button"] { min-height: var(--touch-target); }
+
+.agent-card .btn-ghost,
+.cg-btns .btn,
+.diary-mood,
+.diary-send,
+.diary-summary-action,
+.memory-switch,
+.memory-add .send-btn,
+.sess-create,
+.te-agent-switch,
+.te-more > summary,
+.te-sheet .te-close,
+.palm-quick-upload,
+.palm-preview__clear,
+.placement-result-card__actions .btn,
+.mem-del,
+.memory-open { min-height: var(--touch-target); }
+
+.chat-head .back,
+.chat-reset,
+.te-close,
+.tool-btn,
+.send-btn,
+.diary-send,
+.memory-add .send-btn,
+.mem-del { width: var(--touch-target); min-width: var(--touch-target); height: var(--touch-target); }
+
+/* A focus indicator is a visible shape, not only a color change. */
+button:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[data-act]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 3px;
+  box-shadow: var(--focus-ring);
+}
+
+.soft-empty__action .btn { min-height: var(--touch-target); }

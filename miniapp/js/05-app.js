@@ -17,12 +17,14 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
       tg().expand && tg().expand();
       try { tg().setHeaderColor && tg().setHeaderColor('#08070f'); } catch (e) {}
     }
+    syncDocumentLocale();
     this.renderFrame();
     try {
       this.me = await api('/api/me');
       if (this.me) {
         const flags = this.me.flags ? this.me.flags : {};
         this.me.flags = flags;
+        syncDocumentLocale();
       }
       const pill = document.querySelector('.user-pill');
       if (pill && this.me.name) {

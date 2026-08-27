@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TOKENS = ROOT / "miniapp" / "css" / "00-tokens.css"
 STYLES = ROOT / "miniapp" / "styles.css"
 INVENTORY = ROOT / "docs" / "DESIGN_COMPONENT_INVENTORY.md"
+VISUAL_QA = ROOT / "miniapp" / "css" / "16-visual-qa.css"
 
 REQUIRED_TOKENS = {
     "--bg-0", "--bg-1", "--bg-2", "--gold", "--gold-bright", "--violet",
@@ -26,6 +27,7 @@ def main() -> int:
     tokens = TOKENS.read_text(encoding="utf-8")
     styles = STYLES.read_text(encoding="utf-8")
     inventory = INVENTORY.read_text(encoding="utf-8")
+    visual_qa = VISUAL_QA.read_text(encoding="utf-8")
     missing = sorted(token for token in REQUIRED_TOKENS
                      if not re.search(rf"{re.escape(token)}\s*:", tokens))
     imports = re.findall(r"@import\s+url\('css/([^']+)'", styles)
@@ -42,15 +44,19 @@ def main() -> int:
         "Tarot widget", "Chart widget", "Compatibility widget", "Safety banner",
     ]
     missing_components = [item for item in required_components if item not in inventory]
-    if missing or not import_order_ok or not reduced_motion or missing_components:
+    touch_target_ok = bool(re.search(r"--touch-target\s*:\s*44px", tokens))
+    focus_contract_ok = all(marker in visual_qa for marker in (":focus-visible", "outline: 2px", "outline-offset: 3px"))
+    if missing or not import_order_ok or not reduced_motion or missing_components or not touch_target_ok or not focus_contract_ok:
         print({
             "missing_tokens": missing,
             "import_order_ok": import_order_ok,
             "reduced_motion": reduced_motion,
             "missing_components": missing_components,
+            "touch_target_ok": touch_target_ok,
+            "focus_contract_ok": focus_contract_ok,
         })
         return 1
-    print("design contract ok: tokens, import order, reduced motion, component inventory")
+    print("design contract ok: tokens, import order, reduced motion, component inventory, touch target, focus ring")
     return 0
 
 

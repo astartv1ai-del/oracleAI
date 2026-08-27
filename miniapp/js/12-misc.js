@@ -676,6 +676,7 @@
       await api('/api/profile', { method: 'POST', body: JSON.stringify({ lang }) });
       localStorage.setItem('oracle_lang', lang);
       this.me = Object.assign({}, this.me, { lang });
+      syncDocumentLocale();
       this.closeModal();
       this.renderFrame();
       this.go(this.view || 'profile');
