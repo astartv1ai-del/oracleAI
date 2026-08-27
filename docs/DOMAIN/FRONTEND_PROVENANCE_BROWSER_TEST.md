@@ -35,3 +35,9 @@ The browser test therefore covers both localized values and the cache-busting fi
 ## Chat helper assertion
 
 The RU chat route was opened with the seeded user and a real `/api/chart?dev_user=10001` payload was fetched in the browser context. Calling the production `app.chartHtml(c)` helper returned HTML containing `.chart-provenance`, `OracleAI Engine`, the Russian localized license copy, no raw English license sentence, and no `open` attribute on `<details>` (collapsed by default). This confirms the chat rendering path independently of the local offline/LLM answer response.
+
+## Final v2 browser smoke — 2026-08-27
+
+After the engine v2 contract changes, the browser QA route was opened again with synthetic RU user `10001` and synthetic EN user `10002` on cache-bust `v105`. Clicking the full-chart control opened the modal in both locales. Clicking the native `Calculation source`/`Источник расчёта` summary expanded the details. The DOM showed `OracleAI Engine`, `Kerykeion`, adapter `oracleai-kerykeion-engine-v2`, `Swiss Ephemeris`, and localized AGPL/commercial license copy. The full-chart copy showed the resolved localized Ascendant label (`Асцендент Весы` / `Ascendant Весы`) and no literal `{sign}` placeholder. The browser found the placeholder once before the fix; the source was corrected in `miniapp/js/12-misc.js`, the static checker was strengthened, and asset query versions were bumped from `v104` to `v105` to bypass the already-cached module.
+
+The final frontend build emitted the deterministic hashed artifacts recorded by `miniapp/dist/manifest.json`. The local server's `/api/chart?dev_user=10001` response remained HTTP 200 and retained the v2 calculation contract with configuration fingerprint and coordinate/timezone evidence. No real personal data was used.

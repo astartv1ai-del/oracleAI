@@ -231,7 +231,11 @@ def _has_valid_coordinates(lat: float | None, lon: float | None) -> bool:
 
 def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
                   lat: float | None, lon: float | None,
-                  tz: str | None = None, *, time_known: bool | None = None) -> dict:
+                  tz: str | None = None, *, time_known: bool | None = None,
+                  coordinate_source: str | None = None,
+                  coordinate_confidence: float | None = None,
+                  timezone_source: str | None = None,
+                  ambiguity_mode: str = "safe_date_only") -> dict:
     """Calculate a chart through the improved Kerykeion engine boundary.
 
     The boundary normalizes input, derives the truth state and fingerprints the
@@ -240,6 +244,11 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
     """
     request = ENGINE.normalize(
         birth_date, birth_time, city, lat, lon, tz, time_known=time_known,
+        coordinate_source=coordinate_source,
+        coordinate_confidence=coordinate_confidence,
+        timezone_source=timezone_source,
+        ambiguity_mode=ambiguity_mode,
+        active_points=tuple(ACTIVE_POINTS),
     )
 
     def calculate(normalized: ChartRequest) -> dict:
@@ -253,6 +262,7 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
             coordinates_known=normalized.coordinates_known,
             time_confirmed=normalized.time_confirmed,
             precision_reason=normalized.precision_reason,
+            precision=normalized.precision,
             request_metadata=normalized.metadata(),
         )
 
@@ -296,14 +306,22 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
 async def compute_chart_async(birth_date: str, birth_time: str | None,
                               city: str | None, lat: float | None,
                               lon: float | None, tz: str | None = None,
-                              *, time_known: bool | None = None) -> dict:
+                              *, time_known: bool | None = None,
+                              coordinate_source: str | None = None,
+                              coordinate_confidence: float | None = None,
+                              timezone_source: str | None = None,
+                              ambiguity_mode: str = "safe_date_only") -> dict:
     """`compute_chart` в отдельном потоке.
 
     Расчёт эфемерид занимает сотни миллисекунд и держит GIL: из async-хендлера
     это означало, что на время построения карты бот не отвечал никому.
     """
     return await asyncio.to_thread(compute_chart, birth_date, birth_time, city,
-                                   lat, lon, tz, time_known=time_known)
+                                   lat, lon, tz, time_known=time_known,
+                                   coordinate_source=coordinate_source,
+                                   coordinate_confidence=coordinate_confidence,
+                                   timezone_source=timezone_source,
+                                   ambiguity_mode=ambiguity_mode)
 
 
 def _aspects(subject) -> list[dict]:
@@ -332,7 +350,7 @@ def _aspects(subject) -> list[dict]:
 
 def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
                 *, coordinates_known: bool, time_confirmed: bool,
-                precision_reason: str = "date_only",
+                precision_reason: str = "date_only", precision: str | None = None,
                 request_metadata: dict | None = None) -> dict:
     from kerykeion import AstrologicalSubjectFactory  # type: ignore
 
@@ -431,13 +449,16 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
         })
     rahu = next((point for point in nodes if point["name"].startswith("Раху")), None)
     ketu = next((point for point in nodes if point["name"].startswith("Кету")), None)
-    precision = "exact" if angular_data_available else (
+    precision = precision or ("exact" if angular_data_available else (
         "time_without_location" if time_confirmed else "date_only"
-    )
+    ))
     note = ""
     if precision == "date_only":
         note = ("Время рождения не указано: показаны эфемеридные положения планет; "
                 "дома, ASC и MC намеренно скрыты.")
+    elif precision == "interval":
+        note = ("Локальное время неоднозначно из-за перехода часового пояса: "
+                "углы и дома скрыты, а time-specific выводы требуют подтверждения fold.")
     elif precision == "time_without_location":
         note = ("Время рождения указано, но координаты или таймзона не подтверждены: "
                 "дома, ASC и MC намеренно скрыты.")

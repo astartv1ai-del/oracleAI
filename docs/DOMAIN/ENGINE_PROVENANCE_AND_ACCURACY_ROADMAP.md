@@ -4,6 +4,7 @@
 
 **Ветка:** `master`
 **Текущий backend:** `OracleAI Engine` v2 → Kerykeion 5.12.9 → Swiss Ephemeris
+**Полный completion plan:** [ENGINE_COMPLETION_PLAN.md](ENGINE_COMPLETION_PLAN.md)
 
 ## 1. Результат проверки `engine_provenance`
 
@@ -68,31 +69,31 @@ Frontend не должен копировать provenance в localStorage, user
 
 `chartProvenanceHtml(c)` is used in chat and full-chart surfaces, RU/EN keys are present, values are escaped, fallback behavior is bounded, keyboard focus is visible, the hashed bundle was rebuilt, and CI now runs the provenance contract checker. Browser evidence is recorded in `FRONTEND_PROVENANCE_BROWSER_TEST.md`.
 
-### Phase B — normalization correctness — first iteration completed
+### Phase B — normalization correctness — v2 completed
 
-The canonical `ChartRequest` now normalizes surrounding whitespace in time, timezone and city, canonicalizes valid finite coordinates, rejects non-string/invalid IANA timezone identifiers before backend calls, and records `location_reason`. It classifies local times as `normal`, `nonexistent`, `ambiguous`, `no_timezone` or `not_applicable`; spring-forward gaps and fall-back folds downgrade to date-only rather than silently selecting an instant. Missing timezone is never replaced by the server timezone. Remaining work is typed coordinate source/confidence and candidate intervals for user-confirmed ambiguous times.
+The canonical `ChartRequest` now normalizes surrounding whitespace in time, timezone and city, canonicalizes valid finite coordinates, rejects non-string/invalid IANA timezone identifiers before backend calls, and records `location_reason`. It classifies local times as `normal`, `nonexistent`, `ambiguous`, `no_timezone` or `not_applicable`; spring-forward gaps and fall-back folds downgrade to date-only rather than silently selecting an instant. Missing timezone is never replaced by the server timezone. Typed coordinate source/confidence, timezone provenance, candidate UTC instants and explicit `interval` mode are now implemented. The default remains safe date-only for ambiguous local time; interval mode exposes candidates while keeping angles/houses unavailable.
 
-### Phase C — calculation integrity — first iteration completed
+### Phase C — calculation integrity — v2 completed
 
-The OracleAI Engine now runs a post-Kerykeion validation layer on both fresh and cached results. It validates finite numeric outputs, degree ranges, the ten-planet inventory, house/angle availability, expected precision, public aspect orbs, house-number bounds and true-node opposition; malformed backend output is downgraded to bounded Sun-only fallback. Exact values remain separate from presentation rounding. Remaining work is full configuration fingerprinting and typed product-specific errors.
+The OracleAI Engine now runs a post-Kerykeion validation layer on both fresh and cached results. It validates finite numeric outputs, degree ranges, the ten-planet inventory, house/angle availability, expected precision, public aspect orbs, house-number bounds and true-node opposition; malformed backend output is downgraded to bounded Sun-only fallback. Exact values remain separate from presentation rounding. Configuration fingerprinting now includes calculation policy and runtime versions; product-specific validators cover synastry, transit, composite and solar-return contracts. Typed product errors and evidence snapshots are emitted before downstream use.
 
 ### Phase D — accuracy evidence
 
 The deterministic corpus now includes normalization metadata and DST boundary tests, while the tracked generator remains the only way to refresh numeric snapshots. Expand it into separate deterministic regression fixtures and external comparison artifacts. Use direct `pyswisseph` only as a same-kernel adapter check; use NASA/JPL Horizons where settings are comparable for planetary positions; leave ASC/MC/Placidus/nodes/Lilith/retrograde fields open when the reference does not expose equivalent semantics. No external comparison should be used to claim scientific or universal predictive accuracy.
 
-### Phase E — products and release
+### Phase E — products and release — product contract iteration completed
 
-Apply the same evidence envelope to transits, synastry, composite and solar returns. Add property tests for date boundaries, longitude wraparound, aspect thresholds, coordinate extremes and repeated serialization. Release only when local tests, differential reports, frontend disclosure, licensing notices and manual cross-surface review agree. A backend version bump must be visible in API metadata and documented in the release record.
+The same evidence envelope now reaches transits, synastry, composite and solar returns, with validators for precision, source fingerprints, exact longitudes, aspect roles, midpoint determinism and solar-return root ordering. The remaining release work is broader adversarial/property/differential corpus expansion and final rollout evidence. Add property tests for date boundaries, longitude wraparound, aspect thresholds, coordinate extremes and repeated serialization. Release only when local tests, differential reports, frontend disclosure, licensing notices and manual cross-surface review agree. A backend version bump must be visible in API metadata and documented in the release record.
 
 ## 4. Proposed next implementation ticket
 
-The frontend disclosure ticket, first normalization iteration and first output-integrity validator are complete. The next implementation ticket is **uncertainty envelope + configuration fingerprint P0/P1**:
+The frontend disclosure ticket, normalization v2, uncertainty envelope, configuration fingerprint, output-integrity validator and first product-validator iteration are complete. The remaining implementation ticket is **expanded evidence corpus + release rollout P1/P2**:
 
-1. Add typed `coordinate_source`/confidence and user-visible geocoder provenance.
-2. Represent ambiguous local times as bounded candidate instants when the user explicitly requests interval mode; never silently choose a fold.
-3. Include Kerykeion, Swiss Ephemeris, tzdata, zodiac, house, node/Lilith and aspect configuration in the calculation-affecting fingerprint.
-4. Extend node/point cross-field validation and add product-specific validators for transits, synastry, composite and solar returns.
-5. Expand the external differential corpus beyond the representative JPL run and retain all non-comparable fields explicitly.
+1. Expand deterministic adversarial/property corpus to historical timezone transitions, leap days, high latitudes, wraparound and serialization mutation cases.
+2. Add a separate differential artifact format with comparable/non-comparable field classification and configuration snapshot.
+3. Add browser smoke for interval disclosure and cross-surface API/PDF/history parity.
+4. Add migration notes, canary metrics and rollback target for any future Kerykeion/Swiss Ephemeris/tzdata update.
+5. Keep independent external evidence bounded to comparable planetary UTC fields; do not generalize same-kernel checks into universal accuracy claims.
 
 The current browser audit finds the frontend disclosure visible and localized. The algorithmic roadmap is still not a claim of universal or scientific predictive accuracy: Kerykeion/Swiss Ephemeris remain the disclosed numerical backend, while OracleAI improvements target input truthfulness, reproducibility, integrity validation and product semantics.
 

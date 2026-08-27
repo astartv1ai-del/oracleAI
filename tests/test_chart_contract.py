@@ -105,6 +105,48 @@ def test_chart_brief_contains_contract_provenance_for_followups():
         "Europe/Moscow", time_known=True,
     )
     brief = astro.chart_brief(chart, time_known=True)
-    assert "Канонический контракт v1" in brief
+    assert "Канонический контракт v2" in brief
     assert "узлы: True Node" in brief
     assert "conjunction 8.0°" in brief
+
+
+def test_calculation_records_coordinate_provenance_and_fingerprints_config():
+    chart = astro.compute_chart(
+        "1990-06-21", "14:30", "Казань", 55.79, 49.12,
+        "Europe/Moscow", time_known=True, coordinate_source="manual",
+        coordinate_confidence=0.95, timezone_source="manual",
+    )
+    calculation = chart["calculation"]
+    assert calculation["configuration_fingerprint"]
+    assert calculation["input"]["coordinate_source"] == "manual"
+    assert calculation["input"]["coordinate_confidence"] == 0.95
+    assert calculation["input"]["timezone_source"] == "manual"
+    assert calculation["input"]["precision_state"] == "exact"
+    assert calculation["input"]["uncertainty"]["kind"] == "none"
+
+
+def test_ambiguous_fold_interval_is_explicit_and_has_no_angles():
+    chart = astro.compute_chart(
+        "2024-10-27", "02:30", "Berlin", 52.52, 13.40,
+        "Europe/Berlin", time_known=True, ambiguity_mode="interval",
+    )
+    assert chart["precision"] == "interval"
+    assert chart["ascendant"] is None
+    assert chart["houses"] == []
+    uncertainty = chart["calculation"]["input"]["uncertainty"]
+    assert uncertainty["kind"] == "ambiguous_local_time"
+    assert len(uncertainty["candidate_instants"]) == 2
+
+
+def test_configuration_change_invalidates_engine_request_fingerprint():
+    from app.core.astrology_engine import ENGINE
+    first = ENGINE.normalize(
+        "1990-06-21", "14:30", "Казань", 55.79, 49.12, "Europe/Moscow",
+        time_known=True, active_points=tuple(astro.ACTIVE_POINTS),
+    )
+    second = ENGINE.normalize(
+        "1990-06-21", "14:30", "Казань", 55.79, 49.12, "Europe/Moscow",
+        time_known=True, active_points=("Sun",),
+    )
+    assert first.configuration_fingerprint != second.configuration_fingerprint
+    assert first.fingerprint != second.fingerprint

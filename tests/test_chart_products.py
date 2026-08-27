@@ -228,3 +228,38 @@ async def test_agent_returns_tool_includes_versioned_evidence(monkeypatch, db, u
     assert "Детерминированное returns evidence" in evidence
     assert '"returns_schema_version": 1' in evidence
     assert '"target_year": 2027' in evidence
+
+
+def test_composite_validator_rejects_corrupted_midpoint():
+    from app.core.chart_products import validate_composite_contract
+    contract = build_composite_contract(_chart(), _chart(offset=120), partner_id=7, partner_label="Алексей")
+    contract["points"][0]["abs_deg_exact"] = (contract["points"][0]["abs_deg_exact"] + 1) % 360
+    with pytest.raises(ChartProductError, match="midpoint"):
+        validate_composite_contract(contract)
+
+
+def test_transit_validator_rejects_unknown_aspect_role():
+    from app.core.chart_products import validate_transit_contract
+    contract = build_transit_contract(_chart(), as_of=date(2026, 8, 26))
+    if contract["aspects_to_natal"]:
+        contract["aspects_to_natal"][0]["first_role"] = "owner"
+        with pytest.raises(ChartProductError, match="Роль"):
+            validate_transit_contract(contract)
+
+
+def test_returns_validator_rejects_unsorted_matches():
+    from app.core.chart_products import validate_returns_contract
+    contract = {
+        "returns_schema_version": 1,
+        "product": "returns",
+        "precision": "exact",
+        "planet": "Sun",
+        "natal_longitude_deg": 10.0,
+        "match_count": 2,
+        "matches": [
+            {"return_at_utc": "2026-09-01T00:00:00+00:00", "return_longitude_deg": 10.0},
+            {"return_at_utc": "2026-08-01T00:00:00+00:00", "return_longitude_deg": 10.0},
+        ],
+    }
+    with pytest.raises(ChartProductError, match="отсортированы"):
+        validate_returns_contract(contract)

@@ -52,7 +52,9 @@ assert_all(
 if CHART.count("${this.chartProvenanceHtml(c)}") != 1:
     raise SystemExit("chat chart surface: expected one provenance render")
 
-assert_all(MISC, ("${this.chartProvenanceHtml(c)}",), "full chart provenance render")
+assert_all(MISC, ("${this.chartProvenanceHtml(c)}", "profileFormat('ascendant'"), "full chart provenance render")
+if "${esc(profileT('ascendant'))}" in MISC or "{sign}" in MISC:
+    raise SystemExit("full chart surface: unresolved localization placeholder")
 assert_all(
     CSS,
     (
