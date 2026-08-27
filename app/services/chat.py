@@ -22,7 +22,7 @@ from ..core.agents.routing import DEFAULT_AGENT, route_agent
 from ..repo import analytics as analytics_repo
 from ..repo import billing as billing_repo
 from ..repo import dialog, readings, users
-from . import analytics, catalog, limits
+from . import analytics, catalog, eligibility, limits
 
 log = logging.getLogger("oracle.chat")
 
@@ -87,6 +87,7 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     `thread_id` — конкретная сессия (многочатовой режим Mini App). Без него —
     активный тред агента (один диалог на агента, как в боте).
     """
+    eligibility.require_eligible_user(user, operation="chat")
     question = (text or "").strip()[:MAX_QUESTION_LEN]
     if not question:
         raise ValueError("пустой вопрос")

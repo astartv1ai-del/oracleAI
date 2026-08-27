@@ -533,7 +533,7 @@ CREATE TABLE IF NOT EXISTS broadcast_targets (
 CREATE TABLE IF NOT EXISTS task_jobs (
     id           TEXT PRIMARY KEY,
     kind         TEXT NOT NULL,
-    status       TEXT NOT NULL DEFAULT 'queued', -- queued|running|succeeded|failed|retry
+    status       TEXT NOT NULL DEFAULT 'queued', -- queued|running|succeeded|failed|retry|rejected
     tg_id        INTEGER,
     payload_json TEXT,
     result_json  TEXT,

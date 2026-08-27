@@ -13,7 +13,7 @@ from celery import Task
 from ..config import settings
 from ..data.session import connect
 from ..repo import jobs as jobs_repo, users
-from ..services import analytics
+from ..services import analytics, eligibility
 from .celery_app import celery_app
 
 
@@ -62,10 +62,22 @@ async def _chat(task_id: str, tg_id: int, text: str, *, agent: str,
                 thread_id: int | None, allow_paid: bool):
     db = await connect(seed=False)
     try:
-        await jobs_repo.mark_running(db, task_id)
+        claimed = await jobs_repo.mark_running(db, task_id)
+        if not claimed:
+            existing = await jobs_repo.get(db, task_id)
+            if existing and existing["status"] in jobs_repo.TERMINAL_STATUSES:
+                return existing.get("result") or {
+                    "status": existing["status"],
+                    "code": ((existing.get("error") or "").split(":", 1)[0]
+                             or existing["status"]),
+                }
+            raise RuntimeError("job is already running or unavailable")
         user = await users.get(db, tg_id)
-        if not user:
-            raise ValueError("user not found")
+        try:
+            eligibility.require_eligible_user(user, operation="queued_chat")
+        except eligibility.EligibilityDenied as exc:
+            await jobs_repo.mark_rejected(db, task_id, exc.code, str(exc))
+            return {"status": "rejected", "code": exc.code}
         from ..services import chat as chat_service
         result = await chat_service.ask(
             db, user, text, agent=agent, surface="miniapp",

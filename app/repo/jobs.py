@@ -11,7 +11,7 @@ from typing import Any
 
 from ..data.session import transaction, utcnow
 
-TERMINAL_STATUSES = frozenset({"succeeded", "failed"})
+TERMINAL_STATUSES = frozenset({"succeeded", "failed", "rejected"})
 
 
 async def create(db, task_id: str, kind: str, *, tg_id: int | None = None,
@@ -27,19 +27,21 @@ async def create(db, task_id: str, kind: str, *, tg_id: int | None = None,
              now, now, now))
 
 
-async def mark_running(db, task_id: str) -> None:
+async def mark_running(db, task_id: str) -> bool:
     async with transaction(db):
-        await db.execute(
+        cur = await db.execute(
             "UPDATE task_jobs SET status='running', attempts=attempts+1, "
-            "started_at=COALESCE(started_at, ?), updated_at=? WHERE id=?",
+            "started_at=COALESCE(started_at, ?), updated_at=? WHERE id=? "
+            "AND status NOT IN ('succeeded','failed','rejected')",
             (utcnow(), utcnow(), task_id))
+        return bool(cur.rowcount)
 
 
 async def mark_retry(db, task_id: str, error: str, available_at: str) -> None:
     async with transaction(db):
         await db.execute(
             "UPDATE task_jobs SET status='retry', error=?, available_at=?, "
-            "updated_at=? WHERE id=? AND status NOT IN ('succeeded','failed')",
+            "updated_at=? WHERE id=? AND status NOT IN ('succeeded','failed','rejected')",
             (error[:1000], available_at, utcnow(), task_id))
 
 
@@ -47,16 +49,29 @@ async def mark_succeeded(db, task_id: str, result: Any = None) -> None:
     async with transaction(db):
         await db.execute(
             "UPDATE task_jobs SET status='succeeded', result_json=?, error=NULL, "
-            "finished_at=?, updated_at=? WHERE id=?",
+            "finished_at=?, updated_at=? WHERE id=? AND status NOT IN "
+            "('succeeded','failed','rejected')",
             (json.dumps(result, ensure_ascii=False) if result is not None else None,
              utcnow(), utcnow(), task_id))
+
+
+async def mark_rejected(db, task_id: str, code: str, reason: str) -> None:
+    """Persist a non-retryable policy rejection without storing user input."""
+    error = f"{code}: {reason}"[:2000]
+    async with transaction(db):
+        await db.execute(
+            "UPDATE task_jobs SET status='rejected', result_json=NULL, error=?, "
+            "finished_at=?, updated_at=? WHERE id=? AND status NOT IN "
+            "('succeeded','failed','rejected')",
+            (error, utcnow(), utcnow(), task_id),
+        )
 
 
 async def mark_failed(db, task_id: str, error: str) -> None:
     async with transaction(db):
         await db.execute(
             "UPDATE task_jobs SET status='failed', error=?, finished_at=?, "
-            "updated_at=? WHERE id=? AND status <> 'succeeded'",
+            "updated_at=? WHERE id=? AND status NOT IN ('succeeded','failed','rejected')",
             (error[:2000], utcnow(), utcnow(), task_id))
 
 

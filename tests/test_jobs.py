@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from app.api.deps import get_db
 from app.api.main import app
 from app.config import settings
-from app.repo import jobs
+from app.repo import jobs, users
 from app.services import jobs as jobs_service
 
 
@@ -51,6 +51,75 @@ async def test_task_jobs_status_lifecycle(db, user):
 
     await jobs.mark_failed(db, task_id, "late failure must not overwrite success")
     assert (await jobs.get(db, task_id))["status"] == "succeeded"
+
+
+async def test_jobs_api_rejects_unconfirmed_user_before_enqueue(client, db, user, monkeypatch):
+    monkeypatch.setattr(settings, "celery_enabled", True)
+    await users.update(db, user["tg_id"], age_confirmed=0)
+
+    response = await client.post(
+        "/api/jobs/chat/oracle",
+        params={"dev_user": user["tg_id"]},
+        json={"text": "queued question"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "age_confirmation_required"
+    cur = await db.execute("SELECT COUNT(*) AS count FROM task_jobs")
+    assert (await cur.fetchone())["count"] == 0
+
+
+async def test_worker_rejects_stale_age_without_calling_chat(db, user, monkeypatch):
+    from app.services import chat as chat_service
+    from app.tasks import tasks
+
+    task_id = "job-age-revoked-1"
+    await jobs.create(db, task_id, "llm.chat", tg_id=user["tg_id"],
+                      payload={"text": "private prompt", "agent": "oracle"})
+    await users.update(db, user["tg_id"], age_confirmed=0)
+
+    class NonClosingConnection:
+        def __getattr__(self, name):
+            return getattr(db, name)
+
+        async def close(self):
+            return None
+
+    async def fake_connect(*args, **kwargs):
+        return NonClosingConnection()
+
+    called = False
+
+    async def forbidden_chat(*args, **kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("stale queued chat must not reach chat service")
+
+    monkeypatch.setattr(tasks, "connect", fake_connect)
+    monkeypatch.setattr(chat_service, "ask", forbidden_chat)
+
+    result = await tasks._chat(
+        task_id, user["tg_id"], "private prompt", agent="oracle",
+        thread_id=None, allow_paid=False,
+    )
+
+    row = await jobs.get(db, task_id)
+    assert result == {"status": "rejected", "code": "age_confirmation_required"}
+    assert row["status"] == "rejected"
+    assert row["result"] is None
+    assert row["error"].startswith("age_confirmation_required:")
+    assert called is False
+
+
+async def test_rejected_job_cannot_be_overwritten_by_success(db, user):
+    task_id = "job-rejected-terminal-1"
+    await jobs.create(db, task_id, "llm.chat", tg_id=user["tg_id"], payload={"agent": "oracle"})
+    await jobs.mark_rejected(db, task_id, "age_confirmation_required", "age required")
+    await jobs.mark_succeeded(db, task_id, {"answer": "must not persist"})
+
+    row = await jobs.get(db, task_id)
+    assert row["status"] == "rejected"
+    assert row["result"] is None
 
 
 async def test_jobs_api_returns_503_when_queue_disabled(client, user, monkeypatch):

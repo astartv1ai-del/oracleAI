@@ -6,7 +6,7 @@ from ...core import agents
 from ...repo import jobs as jobs_repo
 from ...services import jobs as jobs_service
 from ..contracts.chat import AskIn
-from ..deps import current_user, get_db, rate_limit
+from ..deps import confirmed_age_user, current_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api/jobs", tags=["background-jobs"])
 
@@ -23,7 +23,7 @@ def _public_job(job: dict) -> dict:
 @router.post("/chat/{agent}", status_code=status.HTTP_202_ACCEPTED,
              dependencies=[Depends(rate_limit("llm"))])
 async def enqueue_chat(agent: str, item: AskIn, thread_id: int | None = Query(default=None),
-                       user=Depends(current_user), db=Depends(get_db)):
+                       user=Depends(confirmed_age_user), db=Depends(get_db)):
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
     try:
