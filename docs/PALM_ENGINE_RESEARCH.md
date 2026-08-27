@@ -1,35 +1,55 @@
 # Palm-analysis engine research
 
-**Дата исследования:** 26 августа 2026
+**Дата исследования:** 27 августа 2026
 
 ## Вывод
 
-OracleAI не должен обещать, что существующая модель полностью «понимает хиромантию». Текущий `app/core/palm_vision.py` измеряет только качество кадра; `app/core/palm_landmarks.py` опционально даёт hand pose/handedness/21 landmarks, но не распознаёт palm lines. Для безопасного улучшения выбран архитектурный паттерн **CV evidence helper → strict multimodal LLM interpretation**: компьютерное зрение указывает геометрию/видимость, а LLM интерпретирует только подтверждённые evidence и просит пересъёмку при недостатке данных.
+OracleAI не должен обещать, что текущая или любая найденная модель «понимает хиромантию». Зрелые CV-компоненты дают hand pose, handedness, геометрию и ограниченную сегментацию основных линий; смысловое чтение остаётся отдельным multimodal LLM use case с safety-правилами. Выбран паттерн **capture precheck → CV evidence helper → strict multimodal LLM interpretation → bounded structured persistence**.
 
-## Кандидаты
+## Кандидаты и лицензии
 
-| Источник | Что реально делает | Сигнал зрелости | Решение OracleAI |
-|---|---|---|---|
-| [MediaPipe Hands](https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/hands.md) | Palm detector + 21 3D hand landmarks, normalized image/world coordinates и handedness; это pose, не palm-line segmentation. | Официальный активно используемый open-source stack; документация описывает single-shot palm detector и landmark model. | Использовать как optional pose/crop/hand-side helper; не выдавать landmarks за линии. |
-| [yeonsumia/palmistry](https://github.com/yeonsumia/palmistry) | Warping, principal-line detection, classification и length measurement; MediaPipe + deep model + K-means. | Apache-2.0, но 52 stars, 46 commits, основная часть — старые notebooks; production API/model packaging отсутствуют. | Не интегрировать напрямую; использовать как research reference. |
-| [lakshay102/Palm-Astro-Application](https://github.com/lakshay102/Palm-Astro-Application) | U-Net/ResNet18 segmentation demo для background/heart/head/life lines и геометрических features. | 3 stars, 2 commits, ориентирован на training/demo; нет доказательства production robustness. | Не интегрировать напрямую; не считать verified engine. |
-| [samuelwbarber/palm-line-reader](https://github.com/samuelwbarber/palm-line-reader) | MIT-licensed 5.55M-param ONNX U-Net; fixed 512×512 RGB input, four classes background/heart/head/life; browser/WASM/WebGPU inference. README states validation foreground Dice 0.8098 and explicitly says its fortune reading is nonsense. | Reproducible model contract, training pack, browser demo, MIT license; current repository has only 2 commits/0 stars, so independent validation is still required. | Лучший candidate for optional helper, but only as segmentation evidence. Requires model provenance, benchmark on OracleAI capture distribution, confidence/quality gates and legal notice before public activation. |
-| [Efficient Palm-Line Segmentation with U-Net Context Fusion Module](https://arxiv.org/abs/2102.12127) | Research U-Net/context-fusion palm-line segmentation; reports F1 about 99.42% and mIoU 0.584 on its handcrafted dataset. | Peer-reviewed conference reference, CC BY 4.0 arXiv license; dataset/domain generalization and production code are not established by the abstract. | Research baseline only; not a drop-in production engine. |
-| [MediaPipe Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker) | Current task-oriented hand landmark API suitable for image/video/live-stream modes. | Official Google AI Edge documentation. | Compatible with existing lazy `palm_landmarks.py` adapter once the model asset and optional dependency are supplied. |
+| Источник | Что реально делает | Сигнал зрелости | Лицензия/экономика | Решение OracleAI |
+|---|---|---|---|---|
+| [yeonsumia/palmistry][1] | Warping, principal-line detection, classification и length measurement; MediaPipe + deep model + K-means | 52 stars, 25 forks, 46 commits; latest visible commit 30 Apr 2026; notebook-heavy | Apache-2.0 | Research reference; не production dependency |
+| [samuelwbarber/palm-line-reader][2] | ONNX U-Net, 5.55M params; fixed 512×512 RGB; classes background/heart/head/life; browser WASM/WebGPU demo | 0 stars, 2 commits; reproducible model contract; README explicitly separates segmentation from palmistry reading | MIT | Лучший local helper; только auxiliary evidence |
+| [MediaPipe Hand Landmarker][3] | Hand presence, handedness, image/world landmarks, 21 keypoints; still/video/live-stream API | Official Google AI Edge task; documented CPU benchmark for full model | Official model/task terms; review before redistribution | Use for geometry, crop, hand side and capture guidance |
+| [OpenPose][4] | 2×21 hand keypoints and broader pose stack | 34.4k stars, 8k forks, 716 commits; mature but heavy | Free for non-commercial use; commercial license required | Не использовать commercial без отдельной лицензии |
+| [AstrologyAPI Palm Reading][5] | Commercial end-to-end palm scan, structured reading and overlay claims | Public REST/API landing page; no independent benchmark verified | Commercial terms | Fallback only after vendor trial, DPA/privacy and quality review |
+| [Astrology-API.io Palm Reading][6] | Commercial detection/readings API; advertises 4 major lines and confidence scores | Public product/pricing page; no independent benchmark verified | Vendor page: 100 credits/request, Ultra $37/mo/550 requests, Business $99/mo/2,200 requests | Not primary; claims are vendor claims, not accepted accuracy |
+
+## Practical same-image benchmark
+
+`scripts/benchmark_palm_cv.py` runs the same 15 real repository/public fixture images through `palm_vision`, MediaPipe, the vendored ONNX fp16 model and ONNX int8 model. The full JSON artifact is `docs/palm_cv_benchmark.json`. It contains no user-uploaded images and is not a labelled accuracy set.
+
+| Component | Result on 15 images |
+|---|---:|
+| Capture precheck classified `usable` | 4/15 |
+| MediaPipe hand detected | 13/15 |
+| ONNX fp16 line status `detected` | 12/15 |
+| ONNX int8 line status `detected` | 12/15 |
+| fp16/int8 status agreement | 15/15 |
+
+The result proves that the local adapters execute and that fp16/int8 have stable coarse status agreement on this fixture set. It does **not** prove line-detection accuracy because no human ground truth exists. The strict `usable` gate is intentionally conservative: weak or flat captures receive reshoot guidance rather than a fabricated palm reading.
 
 ## Candidate ONNX contract
 
-The inspected `palm-line-reader` model is `student_fp16.onnx` (11,284,720 bytes; SHA-256 `e2c9f826676b3aaf0a715f3087fcd4fc0b4dccd8c53de05fd26696a8399f8dd6`). Input is float32 NCHW `[1,3,512,512]`, RGB, plain resize without letterbox, ImageNet mean/std normalization. Output is raw float32 logits `[1,4,512,512]`; argmax classes are `0=background`, `1=heart_line`, `2=head_line`, `3=life_line`. The model is fixed-shape opset 17. The source README reports the fp16 student as the recommended size/quality tradeoff and says it is distilled from a teacher using pseudo-labels; it also warns that accuracy drops on off-distribution framing.
+The inspected `palm-line-reader` fp16 model is SHA-256 `e2c9f826676b3aaf0a715f3087fcd4fc0b4dccd8c53de05fd26696a8399f8dd6`; the int8 model is SHA-256 `14bcf11d75c790ac0c147f3335b2772d53bc558e8af54aaadc7a148f8cf8db0c`. Input is float32 NCHW `[1,3,512,512]`, RGB, plain resize, ImageNet mean/std normalization. Output is float32 logits `[1,4,512,512]`; classes are `0=background`, `1=heart_line`, `2=head_line`, `3=life_line`. OracleAI verifies these checksums and never persists or returns a raw mask.
 
-## Integration safety decision
+## Final integration boundary
 
-The model must never directly produce personality, health, future, relationship, age, death, pregnancy, income or deterministic fate claims. The adapter should return only segmentation summary: class coverage, connected-component count, bounding boxes/path summaries and confidence/quality metadata. Mira’s LLM receives this block as untrusted CV evidence, must cross-check it against the image and deterministic capture/landmark metadata, and must return `needs_photo` if the crop or line evidence is weak. Relationship/children/travel lines are outside this three-line model and still require the folded-edge capture flow.
+The production path is a hybrid: `palm_vision` checks decoding, exposure, contrast, blur, crop and aspect; MediaPipe supplies hand geometry and handedness; ONNX supplies bounded summaries (`coverage`, `bbox`, `confidence`) for heart/head/life; the vision LLM sees the normalized image and receives CV results as untrusted evidence. A disagreement or weak capture becomes `needs_photo`. Relationship, children and travel lines are not covered by the model and require a folded-edge photo as described in Mira’s prompt.
+
+The LLM may interpret only visible, supported evidence. It must not infer health, age, pregnancy, death, income, profession, exact timing, guaranteed relationships or deterministic fate. Any malformed or unsafe model JSON is repaired/normalized or converted to a safe `needs_photo` result. Raw image bytes and raw segmentation masks are not stored.
+
+## Release gates
+
+Before public launch, collect at least 15–20 additional consented images with human labels for line visibility/continuity, left/right hand and folded-edge cases. Report per-line precision/recall or IoU, hand detection failure rate, `needs_photo` false-positive rate and latency. Also complete legal/privacy review of palm images, model redistribution review, mobile-device QA and live vision-provider evaluation.
 
 ## References
 
-[1]: https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/hands.md "MediaPipe Hands documentation"
-[2]: https://github.com/yeonsumia/palmistry "Fortune On Your Hand: View-Invariant Machine Palmistry"
-[3]: https://github.com/lakshay102/Palm-Astro-Application "Palm-Astro Application"
-[4]: https://github.com/samuelwbarber/palm-line-reader "Palm Line Reader"
-[5]: https://arxiv.org/abs/2102.12127 "Efficient Palm-Line Segmentation with U-Net Context Fusion Module"
-[6]: https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker "MediaPipe Hand Landmarker"
+[1]: https://github.com/yeonsumia/palmistry "Fortune On Your Hand: View-Invariant Machine Palmistry"
+[2]: https://github.com/samuelwbarber/palm-line-reader "Palm Line Reader"
+[3]: https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker "MediaPipe Hand Landmarker"
+[4]: https://github.com/CMU-Perceptual-Computing-Lab/openpose "OpenPose repository and licensing"
+[5]: https://astrologyapi.com/palm-reading-api "AstrologyAPI Palm Reading API"
+[6]: https://astrology-api.io/p/palm-reading-api "Astrology-API.io Palm Reading API and pricing"

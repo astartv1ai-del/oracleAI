@@ -94,6 +94,26 @@ CREATE TABLE IF NOT EXISTS profile_summaries (
     facts_count INTEGER DEFAULT 0,          -- на скольких фактах собрана
     built_at    TEXT
 );
+CREATE TABLE IF NOT EXISTS shared_context_events (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id       INTEGER NOT NULL,
+    event_type  TEXT NOT NULL,              -- recommendation|palm_observation|decision
+    agent       TEXT NOT NULL,
+    content     TEXT NOT NULL,              -- bounded assistant guidance; rendered as untrusted data
+    source_ref  TEXT,
+    created_at  TEXT NOT NULL,
+    expires_at  TEXT
+);
+CREATE TABLE IF NOT EXISTS shared_context_snapshots (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id         INTEGER NOT NULL,
+    snapshot_type TEXT NOT NULL,            -- transits
+    snapshot_key  TEXT NOT NULL,            -- user-local date or explicit version key
+    payload_json  TEXT NOT NULL,
+    created_at    TEXT NOT NULL,
+    expires_at    TEXT,
+    UNIQUE (tg_id, snapshot_type, snapshot_key)
+);
 CREATE TABLE IF NOT EXISTS diary (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     tg_id      INTEGER NOT NULL,
@@ -542,6 +562,8 @@ CREATE INDEX IF NOT EXISTS idx_thread_user_recent  ON threads(
 CREATE INDEX IF NOT EXISTS idx_reports_user  ON reports(tg_id, kind);
 CREATE INDEX IF NOT EXISTS idx_mem_user        ON memories(tg_id);
 CREATE INDEX IF NOT EXISTS idx_mem_user_rank   ON memories(tg_id, weight DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_shared_event_user_time ON shared_context_events(tg_id, event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_shared_snapshot_user_key ON shared_context_snapshots(tg_id, snapshot_type, snapshot_key);
 CREATE INDEX IF NOT EXISTS idx_diary_user      ON diary(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_read_user     ON tarot_readings(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_read_created  ON tarot_readings(created_at);

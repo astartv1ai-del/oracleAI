@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 from ..core import agent as agent_core
 from ..core import product_cost
-from ..core import agents, safety, tarot
+from ..core import agents, safety, shared_context, tarot
 from ..core.agents.routing import DEFAULT_AGENT, route_agent
 from ..repo import analytics as analytics_repo
 from ..repo import billing as billing_repo
@@ -157,6 +157,9 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     await dialog.save_message(db, user["tg_id"], "assistant", answer,
                               thread_id=thread["id"], agent=spec.code,
                               surface=surface)
+    await shared_context.record_recommendation(
+        db, user, agent=spec.code, text=answer, source_ref=f"thread:{thread['id']}"
+    )
     await analytics.track(db, analytics.E_QUESTION, user["tg_id"],
                           props={"agent": spec.code, "charge": verdict.charge},
                           surface=surface)
@@ -313,6 +316,9 @@ async def interpret(db, user, reading_id: int, *, surface: str = "bot") -> str:
             db, user, item["title"], cards, positions,
             question=row["question"] or None)
     await readings.finish_reading(db, reading_id, user["tg_id"], answer)
+    await shared_context.record_recommendation(
+        db, user, agent="tarot", text=answer, source_ref=f"reading:{reading_id}"
+    )
     thread = await dialog.ensure_thread(db, user["tg_id"], "tarot")
     await dialog.save_message(db, user["tg_id"], "assistant", answer,
                               thread_id=thread["id"], agent="tarot",

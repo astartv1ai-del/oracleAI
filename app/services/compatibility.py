@@ -6,7 +6,7 @@ CompatibilityDenied. HTTP-статусы и тексты ошибок остаю
 from __future__ import annotations
 
 from ..core import agent as agent_core
-from ..core import memory, skills
+from ..core import memory, shared_context, skills
 from ..repo import dialog, readings
 from . import analytics, limits
 
@@ -51,6 +51,9 @@ async def explain(db, user, partner_date: str, *, partner_name: str = "",
     await dialog.save_message(db, user["tg_id"], "assistant", text,
                               thread_id=thread["id"], agent="astro",
                               surface="miniapp")
+    await shared_context.record_recommendation(
+        db, user, agent="astro", text=text, source_ref=f"thread:{thread['id']}"
+    )
     if name:
         if bool(user["memory_enabled"]):
             await memory.remember(db, user["tg_id"],
