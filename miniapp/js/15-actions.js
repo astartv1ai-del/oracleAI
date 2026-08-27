@@ -58,6 +58,7 @@
     'new-session': () => call('newSession'),
     'open-session': (el, data) => call('openSession', parseInt(data.tid, 10)),
     'del-session': (el, data) => call('delSession', parseInt(data.tid, 10)),
+    'delete-all-sessions': () => call('deleteAllSessions'),
     send: (el, data) => call('doSend', data.val || undefined),
     'cancel-chat': () => call('cancelChatRequest'),
     'retry-chat': () => call('loadThread', app.chat.key),

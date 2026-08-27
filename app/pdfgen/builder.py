@@ -187,7 +187,7 @@ def _matrix_display(item: dict, lang: str) -> tuple[str, str, str]:
 def _display_precision(value: str, lang: str) -> str:
     if _lang(lang) == "ru":
         return value
-    return {"exact": "exact", "date_only": "date only", "time_without_location": "time without location", "sun_only": "Sun only"}.get(value, value)
+    return {"exact": "exact", "date_only": "date only", "interval": "interval", "time_without_location": "time without location", "sun_only": "Sun only"}.get(value, value)
 
 
 @dataclass
@@ -213,11 +213,17 @@ async def build_report_data(order: Order) -> dict:
     """Считает всё, что нужно разбору: карту, арканы, небо. Без модели."""
     lat = lon = None
     tz = None
+    geo_info = {"coordinate_source": "unknown", "coordinate_confidence": 0.0,
+                "timezone_source": "missing"}
     if order.birth_city:
-        lat, lon, tz = await geo.resolve_city_async(order.birth_city)
+        geo_info = await geo.resolve_city_info_async(order.birth_city)
+        lat, lon, tz = geo_info["lat"], geo_info["lon"], geo_info["tz"]
     chart = await astro.compute_chart_async(
         order.birth_date, order.birth_time or "12:00", order.birth_city,
         lat, lon, tz, time_known=order.time_known,
+        coordinate_source=geo_info["coordinate_source"],
+        coordinate_confidence=geo_info["coordinate_confidence"],
+        timezone_source=geo_info["timezone_source"],
     )
     matrix = compute_matrix(order.birth_date)
     return {

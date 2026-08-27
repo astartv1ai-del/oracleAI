@@ -32,6 +32,17 @@ class ChartProductError(ValueError):
 
 
 
+def _chart_evidence(chart: dict[str, Any]) -> dict[str, Any]:
+    calculation = chart.get("calculation") or {}
+    return {
+        "contract_version": calculation.get("contract_version"),
+        "configuration_fingerprint": calculation.get("configuration_fingerprint"),
+        "request_fingerprint": (calculation.get("input") or {}).get("request_fingerprint"),
+        "precision": chart.get("precision"),
+        "engine": (calculation.get("config") or {}).get("ephemeris_engine", chart.get("engine")),
+    }
+
+
 def _planet_rows(chart: dict[str, Any]) -> list[dict[str, Any]]:
     """Return only canonical planetary rows, preserving exact longitudes."""
     rows = []
@@ -81,6 +92,7 @@ def _aspect_row(aspect: dict[str, Any], *, first_role: str,
         "label": aspect.get("aspect"),
         "glyph": aspect.get("glyph"),
         "orb_deg": aspect.get("orb"),
+        "orb_exact": aspect.get("orb_exact", aspect.get("orb")),
     }
 
 
@@ -116,7 +128,7 @@ def build_synastry_contract(owner_chart: dict[str, Any], partner_chart: dict[str
     owner_planets = _planet_rows(owner_chart)
     partner_planets = _planet_rows(partner_chart)
     raw_aspects = astro.synastry_aspects(owner_planets, partner_planets, limit=20)
-    return {
+    result = {
         "synastry_schema_version": SYNASTRY_SCHEMA_VERSION,
         "product": "synastry",
         "precision": "exact",
@@ -124,6 +136,7 @@ def build_synastry_contract(owner_chart: dict[str, Any], partner_chart: dict[str
             "role": "owner",
             "label": "Я",
             "chart_precision": owner_chart.get("precision"),
+            "evidence": _chart_evidence(owner_chart),
             "planets": owner_planets,
         },
         "partner": {
@@ -131,6 +144,7 @@ def build_synastry_contract(owner_chart: dict[str, Any], partner_chart: dict[str
             "partner_id": partner_id,
             "label": partner_label or "Партнёр",
             "chart_precision": partner_chart.get("precision"),
+            "evidence": _chart_evidence(partner_chart),
             "planets": partner_planets,
         },
         "aspects": [
@@ -141,6 +155,8 @@ def build_synastry_contract(owner_chart: dict[str, Any], partner_chart: dict[str
             "Показываются мажорные межпланетные аспекты; дома, углы и композитная карта не строятся.",
         ],
     }
+    validate_synastry_contract(result)
+    return result
 
 
 
@@ -175,7 +191,7 @@ def circular_midpoint(first: float, second: float) -> float:
 def _composite_aspects(points: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Reuse the canonical major-aspect policy and remove reverse duplicates."""
     aspect_points = [
-        {"name": point["label"], "abs_deg": point["abs_deg"]}
+        {"name": point["label"], "abs_deg": point["abs_deg_exact"]}
         for point in points
     ]
     raw = astro.synastry_aspects(aspect_points, aspect_points, limit=200)
@@ -230,17 +246,19 @@ def build_composite_contract(owner_chart: dict[str, Any], partner_chart: dict[st
     ]
     if missing:
         limitations.append("Недоступные точки пропущены: " + ", ".join(missing) + ".")
-    return {
+    result = {
         "composite_schema_version": COMPOSITE_SCHEMA_VERSION,
         "product": "composite",
         "precision": "exact",
         "sources": {
-            "owner": {"role": "owner", "chart_precision": owner_chart.get("precision")},
+            "owner": {"role": "owner", "chart_precision": owner_chart.get("precision"),
+                      "evidence": _chart_evidence(owner_chart)},
             "partner": {
                 "role": "partner",
                 "partner_id": partner_id,
                 "label": partner_label or "Партнёр",
                 "chart_precision": partner_chart.get("precision"),
+                "evidence": _chart_evidence(partner_chart),
             },
         },
         "points": points,
@@ -250,6 +268,8 @@ def build_composite_contract(owner_chart: dict[str, Any], partner_chart: dict[st
         ],
         "limitations": limitations,
     }
+    validate_composite_contract(result)
+    return result
 
 
 
@@ -277,13 +297,15 @@ def build_transit_contract(natal_chart: dict[str, Any], *, as_of: date,
     precision = "instant" if clock is not None else "day"
     if clock is None:
         limitations.insert(0, "Без времени показан дневной срез на 12:00 UTC; положение Луны внутри дня может меняться.")
-    return {
+    result = {
         "transit_schema_version": TRANSIT_SCHEMA_VERSION,
         "product": "transits",
         "as_of": as_of.isoformat(),
         "sampled_at": sampled_at.isoformat(),
         "precision": precision,
         "natal_precision": natal_chart.get("precision"),
+        "natal_evidence": _chart_evidence(natal_chart),
+        "transit_evidence": _chart_evidence(transit_chart),
         "transit_planets": transit_planets,
         "aspects_to_natal": [
             _aspect_row(item, first_role="transit", second_role="natal")
@@ -291,6 +313,8 @@ def build_transit_contract(natal_chart: dict[str, Any], *, as_of: date,
         ],
         "limitations": limitations,
     }
+    validate_transit_contract(result)
+    return result
 
 
 
@@ -426,13 +450,14 @@ def build_returns_contract(natal_chart: dict[str, Any], *, target_year: int,
     ]
     if len(serialized_matches) > 1:
         limitations.append("В заданном году найдено несколько пересечений; все моменты перечислены в matches.")
-    return {
+    result = {
         "returns_schema_version": RETURNS_SCHEMA_VERSION,
         "product": "returns",
         "planet": planet_id,
         "planet_label": astro.PLANET_RU[planet_id],
         "target_year": target_year,
         "precision": "exact",
+        "natal_evidence": _chart_evidence(natal_chart),
         "natal_longitude_deg": natal_longitude,
         "return_longitude_deg": first["return_longitude_deg"],
         "return_at_utc": first["return_at_utc"],
@@ -443,3 +468,109 @@ def build_returns_contract(natal_chart: dict[str, Any], *, target_year: int,
         "matches": serialized_matches,
         "limitations": limitations,
     }
+    validate_returns_contract(result)
+    return result
+
+
+
+def _finite_degree(value: Any) -> bool:
+    try:
+        return math.isfinite(float(value)) and 0 <= float(value) < 360
+    except (TypeError, ValueError):
+        return False
+
+
+def _validate_aspect_rows(rows: Any, *, allowed_roles: set[tuple[str, str]]) -> None:
+    if not isinstance(rows, list):
+        raise ChartProductError("invalid_product_contract", "Список аспектов имеет неверный формат.")
+    for row in rows:
+        if not isinstance(row, dict) or row.get("code") not in astro.ASPECT_RU:
+            raise ChartProductError("invalid_product_contract", "Аспект не соответствует policy.")
+        if tuple((row.get("first_role"), row.get("second_role"))) not in allowed_roles:
+            raise ChartProductError("invalid_product_contract", "Роль точки в аспекте не соответствует contract.")
+        if not _finite_degree(float(row.get("orb_exact", -1))):
+            raise ChartProductError("invalid_product_contract", "Орб аспекта имеет неверный формат.")
+        if float(row["orb_exact"]) > astro.ASPECT_ORBS[row["code"]] + 1e-9:
+            raise ChartProductError("invalid_product_contract", "Орб аспекта превышает product policy.")
+
+
+def validate_synastry_contract(result: dict[str, Any]) -> None:
+    if result.get("synastry_schema_version") != SYNASTRY_SCHEMA_VERSION or result.get("product") != "synastry":
+        raise ChartProductError("invalid_product_contract", "Неверная версия synastry contract.")
+    if result.get("precision") != "exact":
+        raise ChartProductError("exact_charts_required", "Synastry contract требует exact precision.")
+    for role in ("person", "partner"):
+        block = result.get(role) or {}
+        planets = block.get("planets")
+        if block.get("role") not in {"owner", "partner"} or not isinstance(planets, list) or not planets:
+            raise ChartProductError("invalid_product_contract", "Synastry source block неполон.", [role])
+        ids = [item.get("id") for item in planets if isinstance(item, dict)]
+        if len(ids) != len(set(ids)):
+            raise ChartProductError("invalid_product_contract", "В synastry source есть duplicate points.", [role])
+        if any(not _finite_degree(item.get("abs_deg_exact", item.get("abs_deg"))) for item in planets):
+            raise ChartProductError("invalid_product_contract", "В synastry source есть невалидная долгота.", [role])
+    _validate_aspect_rows(result.get("aspects"), allowed_roles={("owner", "partner")})
+
+
+def validate_composite_contract(result: dict[str, Any]) -> None:
+    if result.get("composite_schema_version") != COMPOSITE_SCHEMA_VERSION or result.get("product") != "composite":
+        raise ChartProductError("invalid_product_contract", "Неверная версия composite contract.")
+    if result.get("precision") != "exact":
+        raise ChartProductError("exact_charts_required", "Composite contract требует exact precision.")
+    points = result.get("points")
+    if not isinstance(points, list) or not points:
+        raise ChartProductError("invalid_product_contract", "Composite points отсутствуют.")
+    ids = [point.get("id") for point in points if isinstance(point, dict)]
+    if len(ids) != len(set(ids)):
+        raise ChartProductError("invalid_product_contract", "Composite содержит duplicate points.")
+    for point in points:
+        source = point.get("source") or {}
+        first = source.get("owner_abs_deg_exact")
+        second = source.get("partner_abs_deg_exact")
+        expected = circular_midpoint(float(first), float(second))
+        actual = point.get("abs_deg_exact")
+        if not _finite_degree(first) or not _finite_degree(second) or not _finite_degree(actual):
+            raise ChartProductError("invalid_product_contract", "Composite longitude is invalid.")
+        if _circular_distance(expected, float(actual)) > 1e-9:
+            raise ChartProductError("invalid_product_contract", "Composite midpoint is not shortest-arc deterministic.")
+    _validate_aspect_rows(result.get("aspects"), allowed_roles={("composite", "composite")})
+
+
+def validate_transit_contract(result: dict[str, Any]) -> None:
+    if result.get("transit_schema_version") != TRANSIT_SCHEMA_VERSION or result.get("product") != "transits":
+        raise ChartProductError("invalid_product_contract", "Неверная версия transit contract.")
+    if result.get("precision") not in {"day", "instant"}:
+        raise ChartProductError("invalid_product_contract", "Transit precision должен быть day или instant.")
+    if not isinstance(result.get("as_of"), str) or not isinstance(result.get("sampled_at"), str):
+        raise ChartProductError("invalid_product_contract", "Transit timestamps отсутствуют.")
+    planets = result.get("transit_planets")
+    if not isinstance(planets, list) or not planets or any(
+        not _finite_degree(item.get("abs_deg_exact", item.get("abs_deg"))) for item in planets
+    ):
+        raise ChartProductError("invalid_product_contract", "Transit planet inventory invalid.")
+    _validate_aspect_rows(result.get("aspects_to_natal"), allowed_roles={("transit", "natal")})
+
+
+def validate_returns_contract(result: dict[str, Any]) -> None:
+    if result.get("returns_schema_version") != RETURNS_SCHEMA_VERSION or result.get("product") != "returns":
+        raise ChartProductError("invalid_product_contract", "Неверная версия returns contract.")
+    if result.get("precision") != "exact" or result.get("planet") not in RETURNS_SUPPORTED_PLANETS:
+        raise ChartProductError("invalid_product_contract", "Returns contract имеет несовместимую precision или planet.")
+    matches = result.get("matches")
+    if not isinstance(matches, list) or not matches or result.get("match_count") != len(matches):
+        raise ChartProductError("invalid_product_contract", "Solar-return matches неполны.")
+    parsed: list[datetime] = []
+    for match in matches:
+        try:
+            instant = datetime.fromisoformat(match["return_at_utc"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ChartProductError("invalid_product_contract", "UTC return timestamp invalid.") from exc
+        if instant.tzinfo is None or not _finite_degree(match.get("return_longitude_deg")):
+            raise ChartProductError("invalid_product_contract", "Solar-return match has invalid timestamp/longitude.")
+        parsed.append(instant.astimezone(timezone.utc))
+    if parsed != sorted(parsed):
+        raise ChartProductError("invalid_product_contract", "Solar-return matches должны быть отсортированы.")
+    target = result.get("natal_longitude_deg")
+    for match in matches:
+        if _circular_distance(float(target), float(match["return_longitude_deg"])) > 0.2:
+            raise ChartProductError("invalid_product_contract", "Solar-return root не подтверждён точностью поиска.")

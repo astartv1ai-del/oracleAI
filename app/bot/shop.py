@@ -258,7 +258,8 @@ async def paid(message: Message, db):
         amount_stars=payment.total_amount)
     if not result:
         # повторная доставка апдейта: товар уже выдан
-        log.info("повторная оплата %s пропущена", payment.invoice_payload)
+        log.info("повторная оплата пропущена",
+                 extra={"event": "payment_duplicate"})
         await message.answer("Эта оплата уже зачтена ✨",
                              reply_markup=await _menu(db, message.from_user.id))
         return

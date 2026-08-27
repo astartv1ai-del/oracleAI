@@ -1,4 +1,4 @@
-"""Capture synthetic Mini App visual baselines and lightweight accessibility signals.
+"""Capture deterministic Mini App states for visual and accessibility QA.
 
 The harness is intentionally deterministic: it uses the local dev identity,
 accepts the self-confirmed age gate, never stores real user data, and writes only
@@ -27,7 +27,13 @@ LOCALES = {"ru": "ru-RU", "en": "en-US"}
 
 
 def locale_contract(page, locale_key: str) -> dict:
+    # The ritual marker is the accessible name of the visible welcome card, so
+    # body.inner_text() alone would incorrectly report a localization failure.
     body_text = page.locator("body").inner_text()
+    aria_text = " ".join(page.locator("[aria-label]:visible").evaluate_all(
+        "els => els.map(el => el.getAttribute('aria-label') || '')"
+    ))
+    accessible_text = f"{body_text} {aria_text}"
     expected = {
         "ru": ("Твой мягкий ритуал дня", "Диалоги"),
         "en": ("Your gentle daily ritual", "Guides"),
@@ -35,9 +41,9 @@ def locale_contract(page, locale_key: str) -> dict:
     opposite = "Your gentle daily ritual" if locale_key == "ru" else "Твой мягкий ритуал дня"
     return {
         "expected_markers": list(expected),
-        "expected_present": all(marker in body_text for marker in expected),
-        "opposite_marker_absent": opposite not in body_text,
-        "pass": all(marker in body_text for marker in expected) and opposite not in body_text,
+        "expected_present": all(marker in accessible_text for marker in expected),
+        "opposite_marker_absent": opposite not in accessible_text,
+        "pass": all(marker in accessible_text for marker in expected) and opposite not in accessible_text,
     }
 
 
@@ -50,8 +56,11 @@ def dom_contract(page) -> dict:
             'button, a[href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
           )];
           const unnamed = focusable.filter((el) => {
-            const label = (el.getAttribute('aria-label') || el.innerText || el.value || '').trim();
-            return !label;
+            const id = el.id;
+            return !(el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') ||
+              el.getAttribute('title') || el.innerText || el.value ||
+              (id && document.querySelector(`label[for="${CSS.escape(id)}"]`)) ||
+              el.closest('label'));
           });
           const imagesWithoutAlt = [...document.images].filter((img) =>
             !img.hasAttribute('alt')
@@ -74,11 +83,48 @@ def dom_contract(page) -> dict:
     )
 
 
+def geometry_contract(page) -> dict:
+    return page.evaluate(
+        """
+        () => {
+          const selectors = [
+            ['appRoot', '#app-root'], ['header', '.app-header'],
+            ['main', '#app-main'], ['screen', '.screen'],
+            ['hero', '.hero-orb'], ['seasonal', '.seasonal-moment'],
+            ['dailyRitual', '.daily-ritual'], ['agentCard', '.agent-card'],
+            ['profileHero', '.profile-hero'], ['nav', '.app-nav'],
+            ['navButton', '.nav-btn'], ['primary', '.btn-primary']
+          ];
+          const rect = (selector) => {
+            const el = document.querySelector(selector);
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            const cs = getComputedStyle(el);
+            return {
+              x: Math.round(r.x * 10) / 10,
+              y: Math.round(r.y * 10) / 10,
+              width: Math.round(r.width * 10) / 10,
+              height: Math.round(r.height * 10) / 10,
+              padding: cs.padding,
+              gap: cs.gap,
+              borderRadius: cs.borderRadius
+            };
+          };
+          return Object.fromEntries(selectors.map(([name, selector]) => [name, rect(selector)]));
+        }
+        """
+    )
+
+
+def snapshot(page) -> dict:
+    return {**dom_contract(page), "geometry": geometry_contract(page)}
+
+
 def capture() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict] = {}
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True, executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+        browser = playwright.chromium.launch(headless=True, executable_path="/usr/bin/chromium", args=["--no-sandbox"])
         for locale_key, locale in LOCALES.items():
             base_url = BASE_URL_TEMPLATE.format(dev_user=LOCALE_USERS[locale_key])
             for name, (width, height) in VIEWPORTS.items():
@@ -103,7 +149,7 @@ def capture() -> int:
                     skip.first.click()
                     page.wait_for_timeout(250)
                 page.screenshot(path=str(OUT / f"{locale_key}-{name}-home.png"), full_page=True)
-                states = {"home": dom_contract(page)}
+                states = {"home": snapshot(page)}
                 states["home"]["localeContract"] = locale_contract(page, locale_key)
                 try:
                     for view_name, state_name in (("hub", "chat"), ("payment", "payment"), ("profile", "profile")):
@@ -113,25 +159,23 @@ def capture() -> int:
                         nav_button.first.click(force=True)
                         page.wait_for_timeout(350)
                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-{state_name}.png"), full_page=True)
-                        states[state_name] = dom_contract(page)
+                        states[state_name] = snapshot(page)
                         if view_name != "profile":
                             continue
-
-                        # Navigate through the actual profile tabs before capturing their states.
                         for tab_name, tab_state_name in (("chart", "chart-tab"), ("history", "history"), ("memory", "memory-tab")):
                             tab = page.locator(f'.ptab[data-tab="{tab_name}"]')
                             if tab.count() and tab.first.is_visible():
                                 tab.first.click(force=True)
                                 page.wait_for_timeout(350)
                                 page.screenshot(path=str(OUT / f"{locale_key}-{name}-{tab_state_name}.png"), full_page=True)
-                                states[tab_state_name] = dom_contract(page)
+                                states[tab_state_name] = snapshot(page)
                                 if tab_name == "chart":
                                     full_chart = page.locator('[data-act="full-chart"]')
                                     if full_chart.count() and full_chart.first.is_visible():
                                         full_chart.first.click(force=True)
                                         page.wait_for_timeout(250)
                                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-chart-modal.png"), full_page=True)
-                                        states["chart-modal"] = dom_contract(page)
+                                        states["chart-modal"] = snapshot(page)
                                         page.evaluate("window.app && app.closeModal && app.closeModal()")
                                         page.wait_for_timeout(100)
                                 elif tab_name == "memory":
@@ -140,17 +184,16 @@ def capture() -> int:
                                         memory_button.first.click(force=True)
                                         page.wait_for_timeout(250)
                                         page.screenshot(path=str(OUT / f"{locale_key}-{name}-memory-modal.png"), full_page=True)
-                                        states["memory-modal"] = dom_contract(page)
+                                        states["memory-modal"] = snapshot(page)
                                         page.evaluate("window.app && app.closeModal && app.closeModal()")
                                         page.wait_for_timeout(100)
 
-                    # Tarot is a chat action from the home surface; invoke the same callback directly.
                     page.evaluate("window.app && app.go && app.go('home')")
                     page.wait_for_timeout(250)
                     page.evaluate("window.app && app.openChat && app.openChat('tarot', () => app.featureTarot())")
                     page.wait_for_timeout(450)
                     page.screenshot(path=str(OUT / f"{locale_key}-{name}-tarot.png"), full_page=True)
-                    states["tarot"] = dom_contract(page)
+                    states["tarot"] = snapshot(page)
                     page.evaluate("window.app && app.closeChat && app.closeChat()")
                 except PlaywrightError as exc:
                     states["navigation_error"] = str(exc)

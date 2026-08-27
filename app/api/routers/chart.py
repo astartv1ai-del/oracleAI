@@ -253,10 +253,15 @@ async def build_chart(item: ChartBuildIn | None = None, user=Depends(confirmed_a
                mode="full", precision="exact" if time_known else "date_only",
                time_known=time_known, cache_hit=False, live=True, status="started",
                user_state="recompute")
-    lat, lon, tz = await geo.resolve_city_async(city, db)
+    geo_info = await geo.resolve_city_info_async(city, db)
+    lat, lon, tz = geo_info["lat"], geo_info["lon"], geo_info["tz"]
     try:
-        chart = await astro.compute_chart_async(birth_date, compute_time, city, lat, lon, tz,
-                                                 time_known=time_known)
+        chart = await astro.compute_chart_async(
+            birth_date, compute_time, city, lat, lon, tz, time_known=time_known,
+            coordinate_source=geo_info["coordinate_source"],
+            coordinate_confidence=geo_info["coordinate_confidence"],
+            timezone_source=geo_info["timezone_source"],
+        )
     except Exception as exc:  # noqa: BLE001
         _log_astro(logging.ERROR, "astro_chart_compute_failed", "расчёт натальной карты завершился ошибкой", started,
                    mode="full", precision="exact" if time_known else "date_only",

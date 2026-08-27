@@ -76,16 +76,14 @@ async def clear_thread(agent: str, user=Depends(confirmed_age_user), db=Depends(
 
 # ─────────────────── многочатовые сессии (как ChatGPT) ───────────────────────
 
-MAX_SESSIONS = 5
-
 
 @router.get("/chat/{agent}/sessions")
 async def list_sessions(agent: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
-    """Чаты-сессии агента (до MAX_SESSIONS) — новые впереди."""
+    """Все активные чаты агента — новые впереди, без искусственного лимита."""
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
-    rows = [dict(r) for r in await dialog.list_threads(db, user["tg_id"])
-            if r["agent"] == agent][:MAX_SESSIONS]
+    rows = [dict(r) for r in await dialog.list_threads(db, user["tg_id"], limit=None)
+            if r["agent"] == agent]
     return rows
 
 
@@ -93,15 +91,19 @@ async def list_sessions(agent: str, user=Depends(confirmed_age_user), db=Depends
 async def new_session(agent: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
-    rows = [r for r in await dialog.list_threads(db, user["tg_id"])
-            if r["agent"] == agent]
-    if len(rows) >= MAX_SESSIONS:
-        raise HTTPException(400,
-                            f"максимум {MAX_SESSIONS} чатов — заверши один или удали")
     spec = agents.get(agent)
     thread = await dialog.create_thread(db, user["tg_id"], spec.code,
                                         title=spec.title)
     return {"thread_id": thread["id"], "title": spec.title}
+
+
+@router.delete("/chat/{agent}/sessions", dependencies=[Depends(rate_limit("write"))])
+async def delete_all_sessions(agent: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
+    """Архивирует все чаты агента; сообщения и личная память сохраняются."""
+    if agent not in agents.codes():
+        raise HTTPException(404, "нет такого собеседника")
+    archived = await dialog.archive_all_threads(db, user["tg_id"], agent)
+    return {"ok": True, "archived": archived, "memory_preserved": True}
 
 
 @router.get("/chat/{agent}/sessions/{thread_id}")

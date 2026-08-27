@@ -660,6 +660,17 @@ async def test_admin_user_card_and_actions(client, db, user):
                              params={"dev_user": 1}, json={"text": "Просила скидку"})
     assert note.status_code == 200
 
+    added_tag = await client.post(f"/api/admin/users/{user['tg_id']}/tags",
+                                  params={"dev_user": 1}, json={"tag": " VIP "})
+    assert added_tag.status_code == 200
+    assert "vip" in added_tag.json()["tags"]
+
+    removed_tag = await client.delete(
+        f"/api/admin/users/{user['tg_id']}/tags/vip",
+        params={"dev_user": 1})
+    assert removed_tag.status_code == 200
+    assert "vip" not in removed_tag.json()["tags"]
+
     grant = await client.post(f"/api/admin/users/{user['tg_id']}/grant",
                               params={"dev_user": 1},
                               json={"kind": "crystals", "qty": 25,
@@ -668,7 +679,14 @@ async def test_admin_user_card_and_actions(client, db, user):
     assert grant.json()["amount"] == 25
 
     audit = await client.get("/api/admin/audit", params={"dev_user": 1})
-    assert any(a["action"] == "user.grant" for a in audit.json())
+    audit_rows = audit.json()
+    assert any(a["action"] == "user.grant" for a in audit_rows)
+    assert any(a["action"] == "tag.add" and a["target"] == str(user["tg_id"])
+               and json.loads(a["payload_json"]) == {"tag": "vip"}
+               for a in audit_rows)
+    assert any(a["action"] == "tag.delete" and a["target"] == str(user["tg_id"])
+               and json.loads(a["payload_json"]) == {"tag": "vip"}
+               for a in audit_rows)
 
 
 async def test_admin_grant_validates_kind(client, db, user):
@@ -1057,3 +1075,25 @@ async def test_chart_discloses_oracleai_engine_backend_provenance(client, user):
     }
     assert body["engine_provenance"] == expected
     assert body["calculation"]["engine_provenance"] == expected
+
+
+async def test_chat_sessions_are_unlimited_and_bulk_delete_preserves_memory(client, db, user):
+    for _ in range(6):
+        created = await client.post("/api/chat/oracle/sessions", params=as_user(user))
+        assert created.status_code == 200
+
+    sessions = await client.get("/api/chat/oracle/sessions", params=as_user(user))
+    assert sessions.status_code == 200
+    assert len(sessions.json()) == 6
+
+    await dialog.save_memory(db, user["tg_id"], "Люблю тихие утра")
+    memories_before = await dialog.memories_full(db, user["tg_id"])
+    deleted = await client.delete("/api/chat/oracle/sessions", params=as_user(user))
+    assert deleted.status_code == 200
+    assert deleted.json()["memory_preserved"] is True
+    assert deleted.json()["archived"] == 6
+
+    remaining = await client.get("/api/chat/oracle/sessions", params=as_user(user))
+    assert remaining.json() == []
+    memories_after = await dialog.memories_full(db, user["tg_id"])
+    assert memories_after == memories_before

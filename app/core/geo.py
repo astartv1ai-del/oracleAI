@@ -142,51 +142,75 @@ def resolve_city(city: str) -> tuple[float | None, float | None, str]:
     return None, None, DEFAULT_TZ
 
 
-async def resolve_city_async(city: str, db=None) -> tuple[float | None, float | None, str]:
-    """(lat, lon, tz) без блокировки event loop, с кешем в БД.
+async def resolve_city_info_async(city: str, db=None) -> dict:
+    """Resolve a city and return auditable coordinates/timezone provenance.
 
-    Порядок: кеш → встроенный словарь → сеть (в отдельном потоке) → Москва.
-    Словарь проверяем до сети: для крупных городов ответ известен заранее, и
-    ходить за ним в интернет — лишняя секунда на онбординге.
+    The public tuple wrapper below remains for legacy callers. Confidence is a
+    bounded product signal, not a claim of scientific geocoder accuracy.
     """
     key = normalize(city)
     if not key:
-        return None, None, DEFAULT_TZ
+        return {"lat": None, "lon": None, "tz": DEFAULT_TZ,
+                "coordinate_source": "unknown", "coordinate_confidence": 0.0,
+                "timezone_source": "default_fallback"}
 
     if db is not None:
-        cached = await _cache_get(db, key)
+        cached = await _cache_get_record(db, key)
         if cached:
-            return cached
+            source = cached.get("source") or "unknown"
+            return {**cached, "coordinate_source": source,
+                    "coordinate_confidence": 0.8 if source == "builtin" else 0.7,
+                    "timezone_source": source}
 
     hit = _lookup_fallback(key)
     if hit:
         if db is not None:
             await _cache_put(db, key, *hit, source="builtin")
-        return hit
+        return {"lat": hit[0], "lon": hit[1], "tz": hit[2],
+                "coordinate_source": "builtin", "coordinate_confidence": 0.8,
+                "timezone_source": "builtin"}
 
     online = await asyncio.to_thread(_geocode_online, city)
     if online:
         if db is not None:
             await _cache_put(db, key, *online, source="nominatim")
-        return online
+        return {"lat": online[0], "lon": online[1], "tz": online[2],
+                "coordinate_source": "geocoder", "coordinate_confidence": 0.7,
+                "timezone_source": "geocoder"}
 
     log.info("город не распознан — считаю карту без координат")
-    return None, None, DEFAULT_TZ
+    return {"lat": None, "lon": None, "tz": DEFAULT_TZ,
+            "coordinate_source": "unknown", "coordinate_confidence": 0.0,
+            "timezone_source": "default_fallback"}
+
+
+async def resolve_city_async(city: str, db=None) -> tuple[float | None, float | None, str]:
+    """Legacy `(lat, lon, tz)` wrapper around :func:`resolve_city_info_async`."""
+    info = await resolve_city_info_async(city, db)
+    return info["lat"], info["lon"], info["tz"]
 
 
 # ────────────────────────────────── кеш ───────────────────────────────────────
 
-async def _cache_get(db, key: str) -> tuple[float, float, str] | None:
+async def _cache_get_record(db, key: str) -> dict | None:
     try:
         cur = await db.execute(
-            "SELECT lat, lon, tz FROM geocache WHERE city_key=?", (key,))
+            "SELECT lat, lon, tz, source FROM geocache WHERE city_key=?", (key,))
         row = await cur.fetchone()
     except Exception as e:  # noqa: BLE001
         log.debug("кеш геокодирования недоступен: %s", e)
         return None
     if not row or row["lat"] is None:
         return None
-    return row["lat"], row["lon"], row["tz"] or DEFAULT_TZ
+    return {"lat": row["lat"], "lon": row["lon"], "tz": row["tz"] or DEFAULT_TZ,
+            "source": row["source"] or "unknown"}
+
+
+async def _cache_get(db, key: str) -> tuple[float, float, str] | None:
+    record = await _cache_get_record(db, key)
+    if not record:
+        return None
+    return record["lat"], record["lon"], record["tz"]
 
 
 async def _cache_put(db, key: str, lat: float, lon: float, tz: str, *,

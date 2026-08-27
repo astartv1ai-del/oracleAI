@@ -29,6 +29,7 @@ VALID_TOPICS = {
     "ring_of_solomon", "ring_of_apollo", "via_lasciva", "mars_lines", "influence_lines",
     "bracelets", "mounts", "fingers", "markings", "palm_region",
 }
+REVIEWER_ROLES = {"annotator", "domain_reviewer", "safety_reviewer"}
 
 
 def _walk_forbidden(value: Any, path: str, errors: list[str]) -> None:
@@ -48,7 +49,14 @@ def _required(obj: dict[str, Any], keys: tuple[str, ...], path: str, errors: lis
             errors.append(f"{path}: missing {key}")
 
 
-def _validate_record(record: Any, index: int, image_root: Path | None, schema_only: bool) -> list[str]:
+def _validate_record(
+    record: Any,
+    index: int,
+    image_root: Path | None,
+    schema_only: bool,
+    reviewer_map: dict[str, dict[str, Any]] | None = None,
+    require_adjudicated: bool = False,
+) -> list[str]:
     errors: list[str] = []
     path = f"record[{index}]"
     if not isinstance(record, dict):
@@ -140,8 +148,37 @@ def _validate_record(record: Any, index: int, image_root: Path | None, schema_on
             errors.append(f"{path}.adjudication.annotators: two independent reviewers required")
         if adjudication.get("domain_reviewer_required") is not True:
             errors.append(f"{path}.adjudication.domain_reviewer_required: must be true")
-        if adjudication.get("status") == "adjudicated" and not adjudication.get("domain_reviewer"):
+        if adjudication.get("status") not in {"pending", "independently_labeled", "adjudicated", "rejected"}:
+            errors.append(f"{path}.adjudication.status: invalid")
+        if require_adjudicated and adjudication.get("status") != "adjudicated":
+            errors.append(f"{path}.adjudication.status: adjudicated record required")
+        domain_reviewer = adjudication.get("domain_reviewer")
+        if adjudication.get("status") == "adjudicated" and not domain_reviewer:
             errors.append(f"{path}.adjudication.domain_reviewer: required for adjudicated record")
+        if reviewer_map is not None:
+            annotator_ids = [str(item) for item in (annotators or [])]
+            if domain_reviewer and str(domain_reviewer) in annotator_ids:
+                errors.append(f"{path}.adjudication: domain reviewer must be independent from annotators")
+            for reviewer_id in annotator_ids + ([str(domain_reviewer)] if domain_reviewer else []):
+                reviewer = reviewer_map.get(reviewer_id)
+                if not reviewer:
+                    errors.append(f"{path}.adjudication: reviewer not found in registry: {reviewer_id}")
+                    continue
+                if reviewer.get("active") is not True or reviewer.get("independence") != "independent":
+                    errors.append(f"{path}.adjudication: reviewer is inactive or ineligible: {reviewer_id}")
+                attestation = reviewer.get("attestation") or {}
+                if attestation.get("signed") is not True or attestation.get("policy_version") != "palm-human-review-v1":
+                    errors.append(f"{path}.adjudication: reviewer attestation invalid: {reviewer_id}")
+                if not reviewer.get("qualification_reference"):
+                    errors.append(f"{path}.adjudication: reviewer qualification reference missing: {reviewer_id}")
+                if reviewer.get("conflict_of_interest") not in {"none", "disclosed"}:
+                    errors.append(f"{path}.adjudication: reviewer conflict declaration invalid: {reviewer_id}")
+                if attestation.get("blinded_review") is not True:
+                    errors.append(f"{path}.adjudication: blinded-review attestation missing: {reviewer_id}")
+                roles = set(reviewer.get("roles") or [])
+                required_role = "domain_reviewer" if domain_reviewer and reviewer_id == str(domain_reviewer) else "annotator"
+                if required_role not in roles or not roles.issubset(REVIEWER_ROLES):
+                    errors.append(f"{path}.adjudication: reviewer role invalid: {reviewer_id}")
     if image_root is not None and not schema_only and relative is not None:
         image_file = image_root / relative
         if not image_file.is_file():
@@ -166,8 +203,28 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--image-root", type=Path, default=None)
     parser.add_argument("--schema-only", action="store_true")
+    parser.add_argument("--reviewers", type=Path, default=None)
+    parser.add_argument("--require-adjudicated", action="store_true")
     args = parser.parse_args()
     errors: list[str] = []
+    reviewer_map: dict[str, dict[str, Any]] | None = None
+    if args.reviewers is not None:
+        if not args.reviewers.is_file():
+            errors.append(f"reviewer registry not found: {args.reviewers}")
+        else:
+            try:
+                registry = json.loads(args.reviewers.read_text(encoding="utf-8"))
+                if registry.get("registry_version") != "palm-reviewers-v1":
+                    errors.append("reviewer registry version is invalid")
+                reviewer_map = {}
+                for reviewer in registry.get("reviewers") or []:
+                    reviewer_id = reviewer.get("reviewer_id")
+                    if not isinstance(reviewer_id, str) or reviewer_id in reviewer_map:
+                        errors.append("reviewer registry contains invalid or duplicate reviewer_id")
+                    else:
+                        reviewer_map[reviewer_id] = reviewer
+            except (OSError, json.JSONDecodeError) as exc:
+                errors.append(f"reviewer registry unreadable: {exc}")
     records = 0
     if not args.manifest.is_file():
         errors.append(f"manifest not found: {args.manifest}")
@@ -181,7 +238,7 @@ def main() -> int:
                 errors.append(f"line {index}: invalid JSON: {exc.msg}")
                 continue
             records += 1
-            errors.extend(_validate_record(record, records, args.image_root, args.schema_only))
+            errors.extend(_validate_record(record, records, args.image_root, args.schema_only, reviewer_map, args.require_adjudicated))
     output = {"manifest": str(args.manifest), "records": records, "errors": errors, "status": "PASS" if not errors else "FAIL"}
     print(json.dumps(output, ensure_ascii=False, indent=2))
     return 0 if not errors else 1

@@ -6,6 +6,7 @@
 <title>Оракул · панель</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="/admin/static/admin.css?v=__ADMIN_ASSET_VERSION__">
+<link rel="stylesheet" href="/admin/static/pixel-reconstruction.css?v=__ADMIN_ASSET_VERSION__">
 </head>
 <body>
 <a class="skip-link" href="#app-main">К основному содержимому</a>
@@ -114,9 +115,12 @@
     <!-- КЛИЕНТКИ -->
     <section class="view" id="view-users">
       <div class="toolbar">
-        <input id="user-q" class="input" placeholder="Имя, @username или id…">
-        <select id="user-segment" class="input slim"></select>
-        <select id="user-order" class="input slim">
+        <label class="sr-only" for="user-q">Поиск клиенток</label>
+        <input id="user-q" class="input" aria-label="Поиск клиенток" placeholder="Имя, @username или id…">
+        <label class="sr-only" for="user-segment">Сегмент клиенток</label>
+        <select id="user-segment" class="input slim" aria-label="Сегмент клиенток"></select>
+        <label class="sr-only" for="user-order">Сортировка клиенток</label>
+        <select id="user-order" class="input slim" aria-label="Сортировка клиенток">
           <option value="created_at">Сначала новые</option>
           <option value="last_seen">По активности</option>
           <option value="ltv">По деньгам</option>
@@ -181,7 +185,7 @@
           <div class="card-head"><h3>Новая партия</h3></div>
           <div class="form">
             <label>Сколько кодов<input id="promo-count" class="input" type="number" value="20" min="1" max="1000"></label>
-            <label>Партия (канал)<input id="promo-batch" class="input" placeholder="etsy-listing-1"></label>
+            <label>Партия (канал)<input id="promo-batch" class="input" aria-label="Партия промокодов" placeholder="etsy-listing-1"></label>
             <label>Что выдаём
               <select id="promo-kind" class="input">
                 <option value="plan_days">Дни подписки</option>
@@ -189,12 +193,12 @@
                 <option value="product">Товар по SKU</option>
               </select>
             </label>
-            <label>Тариф<select id="promo-plan" class="input"></select></label>
+            <label>Тариф<select id="promo-plan" class="input" aria-label="Тариф промокодов"></select></label>
             <label>Дней<input id="promo-days" class="input" type="number" value="30" min="1"></label>
             <label>Кристаллов<input id="promo-crystals" class="input" type="number" value="0" min="0"></label>
-            <label>SKU товара<input id="promo-sku" class="input" placeholder="spread_celtic"></label>
+            <label>SKU товара<input id="promo-sku" class="input" aria-label="SKU товара" placeholder="spread_celtic"></label>
             <label>Активаций на код<input id="promo-uses" class="input" type="number" value="1" min="1"></label>
-            <label>Срок действия, дней<input id="promo-valid" class="input" type="number" placeholder="без ограничения"></label>
+            <label>Срок действия, дней<input id="promo-valid" class="input" aria-label="Срок действия промокодов в днях" type="number" placeholder="без ограничения"></label>
             <button id="promo-create" class="btn gold">Создать партию</button>
           </div>
           <pre id="promo-out" class="codeblock hidden"></pre>
@@ -225,14 +229,14 @@
         <div class="card">
           <div class="card-head"><h3>Новая рассылка</h3></div>
           <div class="form">
-            <label>Название (для себя)<input id="bc-title" class="input" placeholder="Возврат спящих, июль"></label>
-            <label>Сегмент<select id="bc-segment" class="input"></select></label>
+            <label>Название (для себя)<input id="bc-title" class="input" aria-label="Название рассылки" placeholder="Возврат спящих, июль"></label>
+            <label>Сегмент<select id="bc-segment" class="input" aria-label="Сегмент рассылки"></select></label>
             <label>Текст (HTML можно)
-              <textarea id="bc-body" class="input" rows="7"
+              <textarea id="bc-body" class="input" aria-label="Текст рассылки" rows="7"
                 placeholder="🌙 Я снова вижу твою звезду…"></textarea></label>
             <div class="row-2 tight">
-              <label>Кнопка<input id="bc-btn-text" class="input" placeholder="Открыть Оракула"></label>
-              <label>Ссылка<input id="bc-btn-url" class="input" placeholder="https://t.me/…"></label>
+              <label>Кнопка<input id="bc-btn-text" class="input" aria-label="Текст кнопки рассылки" placeholder="Открыть Оракула"></label>
+              <label>Ссылка<input id="bc-btn-url" class="input" aria-label="Ссылка кнопки рассылки" placeholder="https://t.me/…"></label>
             </div>
             <div class="btn-row">
               <button id="bc-preview" class="btn ghost">Кому уйдёт?</button>
@@ -290,7 +294,7 @@
             <div id="admins-list" class="table-wrap"></div>
             <div class="form tight">
               <div class="row-2 tight">
-                <label>Telegram id<input id="admin-id" class="input" type="number"></label>
+                <label>Telegram id<input id="admin-id" class="input" aria-label="Telegram ID администратора" type="number"></label>
                 <label>Роль<select id="admin-role" class="input">
                   <option value="analyst">Аналитик (только чтение)</option>
                   <option value="support">Поддержка</option>
@@ -298,7 +302,7 @@
                   <option value="owner">Владелец</option>
                 </select></label>
               </div>
-              <label>Подпись (необязательно)<input id="admin-title" class="input" maxlength="60"
+              <label>Подпись (необязательно)<input id="admin-title" class="input" aria-label="Подпись администратора" maxlength="60"
                 placeholder="Например: редактор контента"></label>
               <button id="admin-add" class="btn ghost">Добавить</button>
             </div>
@@ -310,7 +314,8 @@
     <!-- ГОРОСКОПЫ -->
     <section class="view" id="view-horoscopes">
       <div class="toolbar">
-        <input id="horo-day" class="input slim" type="date">
+        <label class="sr-only" for="horo-day">Дата гороскопа</label>
+        <input id="horo-day" class="input slim" type="date" aria-label="Дата гороскопа">
         <button id="horo-build" class="btn gold">Собрать на день</button>
         <span id="horo-channels" class="muted"></span>
       </div>

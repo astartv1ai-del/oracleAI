@@ -86,3 +86,37 @@ python scripts/palm_independent_critic.py \
 [3]: ../../scripts/run_palm_human_review.py "Human/domain review runner"
 [4]: ../../data/palm_golden/schema.json "Golden record JSON Schema"
 [5]: ../../data/palm_golden/README.md "Annotation handbook"
+
+## Требования к экспертам
+
+Для каждой записи нужны **два независимых annotators**. Они должны пройти обучение по `palm-human-review-v1`, иметь зафиксированную `qualification_reference`, подтвердить attestation с `signed=true` и `blinded_review=true`, раскрыть конфликт интересов и не смотреть на prediction до своей первичной разметки. Один человек не может выступать обоими независимыми annotators.
+
+Domain reviewer должен иметь документированную квалификацию по предметной области palmistry/evidence review и training по safety/uncertainty policy. Он должен быть независим от двух primary annotators, иметь роль `domain_reviewer`, активный статус, signed attestation и собственную `qualification_reference`. Он рассматривает disagreements и unsafe false positives, но не подменяет независимую первичную разметку.
+
+Для `test` и `challenge` domain reviewer обязателен. `adjudication.status=adjudicated` допустим только при наличии `domain_reviewer`, согласованных disagreement notes и decision note. При сомнении reviewer обязан выбрать более безопасный `unknown`/`not_supported`, а не повышать label до `observed`.
+
+## Автоматическая проверка новых записей в CI
+
+После добавления или изменения `data/palm_golden/manifest.jsonl` CI сравнивает `record_id` и содержимое с base commit. Для каждого added/changed record gate требует валидные consent/provenance, два зарегистрированных annotators, signed/blinded attestation, domain reviewer, корректную region-state consistency и отсутствие raw/provider payload. Удаление записи фиксируется в diff и требует отдельного review владельца корпуса.
+
+Приватный reviewer registry должен быть подготовлен по [`reviewer_registry.schema.json`](../../data/palm_golden/reviewer_registry.schema.json). В репозитории можно хранить только non-identifying reviewer IDs и ссылки на защищённые qualification/training records; персональные документы и raw images в Git не хранятся.
+
+Команды локального CI-equivalent прогона:
+
+```bash
+python scripts/validate_palm_reviewer_registry.py \
+  --registry data/palm_golden/reviewer_registry.json \
+  --require-domain
+
+python scripts/check_palm_corpus_diff.py \
+  --manifest data/palm_golden/manifest.jsonl \
+  --reviewers data/palm_golden/reviewer_registry.json \
+  --base-ref origin/master
+
+python scripts/validate_palm_corpus.py \
+  --manifest data/palm_golden/manifest.jsonl \
+  --reviewers data/palm_golden/reviewer_registry.json \
+  --require-adjudicated
+```
+
+Если manifest ещё не добавлен, CI проверяет только template в `--schema-only` режиме и оставляет semantic sign-off заблокированным. Если manifest появился, отсутствие registry или неadjudicated новая запись делает job красным. Недоступный base ref также делает job красным; gate не принимает его за пустую историю. Удаление записи требует отдельного явного review владельца корпуса.

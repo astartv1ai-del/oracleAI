@@ -56,9 +56,12 @@ WEB_DIR = ROOT / "web"                 # публичный лендинг и SE
 
 def _validate_production_config() -> None:
     """Fail closed before serving an unauthenticated or misdirected app."""
-    if os.getenv("APP_ENV", "").lower() in {"dev", "test"}:
+    app_env = os.getenv("APP_ENV", "").lower()
+    if app_env in {"dev", "test"}:
         return
     missing = []
+    if app_env != "production":
+        missing.append("APP_ENV должен быть production")
     if settings.dev_mode:
         missing.append("DEV_MODE должен быть выключен")
     if not settings.bot_token:
@@ -72,6 +75,19 @@ def _validate_production_config() -> None:
         if (parsed.scheme != "https" or not parsed.netloc or
                 parsed.username or parsed.password):
             missing.append("WEBAPP_URL должен быть HTTPS URL без учётных данных")
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if not database_url:
+        missing.append("DATABASE_URL")
+    elif "postgresql" not in database_url.lower():
+        missing.append("DATABASE_URL должен указывать на PostgreSQL")
+    postgres_password = os.getenv("POSTGRES_PASSWORD", "").strip()
+    if not postgres_password or postgres_password.lower() in {
+            "oracle", "change_me", "password", "postgres"}:
+        missing.append("POSTGRES_PASSWORD должен быть задан и не быть шаблонным")
+    if os.getenv("CELERY_ENABLED", "0") == "1" and not os.getenv("REDIS_URL", "").strip():
+        missing.append("REDIS_URL при CELERY_ENABLED=1")
+    if not settings.release_id or settings.release_id == "local":
+        missing.append("RELEASE_ID")
     if missing:
         raise RuntimeError("production-конфигурация не готова: " + ", ".join(missing))
 

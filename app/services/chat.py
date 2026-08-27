@@ -240,7 +240,7 @@ async def _crisis_answer(db, user, question: str, category: str, agent: str,
     await safety.record(db, user["tg_id"], category, "support", question)
     await analytics.track(db, "safety_crisis", user["tg_id"],
                           props={"category": category}, surface=surface)
-    log.warning("кризисное обращение от %s (%s)", user["tg_id"], category)
+    log.warning("кризисное обращение: %s", category)
     return {
         "answer": answer,
         "agent": spec.code,

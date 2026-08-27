@@ -1,14 +1,14 @@
 /* chat: чат-агент, сессии, лунная неделя, тулбокс, отправка */
 const CHAT_I18N = {
   ru: {
-    back: 'Вернуться к проводникам', toGuides: 'К проводникам', myChats: 'МОИ ЧАТЫ', newChat: 'Новый', startChat: 'Начать новый чат',
-    myChatsAria: 'Открыть мои чаты', conversations: 'Твои разговоры', sessionCopy: 'каждый чат хранит свой контекст', deleteChat: 'Удалить этот чат', deleteChatTitle: 'Удалить чат',
+    back: 'Вернуться к проводникам', toGuides: 'К проводникам', space: 'Пространство', myChats: 'МОИ ЧАТЫ', chats: 'чатов', newChat: 'Новый чат', startChat: 'Начать новый чат',
+    myChatsAria: 'Открыть мои чаты', conversations: 'Твои разговоры', sessionCopy: 'каждый чат хранит свой контекст', deleteChat: 'Удалить этот чат', deleteChatTitle: 'Удалить чат', deleteAllChats: 'Удалить все чаты', deleteAllChatsCopy: 'Память и сохранённые факты останутся', deleteAllChatsConfirm: 'Удалить все чаты? Сообщения будут убраны из списка, но память сохранится.', chatsCleared: 'Все чаты удалены из списка. Память сохранена.',
     firstConversation: 'Первый разговор создастся, когда ты отправишь сообщение.', continueDialog: 'Здесь можно продолжить диалог.', chooseGuide: 'Выбор проводника', presence: 'рядом', addPalm: 'Добавить фото ладони', palmPhoto: 'Фото ладони', tools: 'Инструменты',
     messageFor: 'Сообщение для', stop: 'Остановить запрос', send: 'Отправить сообщение', ideas: 'Идеи для своего вопроса', toolAria: 'Инструменты текущего проводника', toolsEyebrow: 'ИНСТРУМЕНТЫ ДИАЛОГА', toolsTitle: 'С чем поработаем?', toolsIntro: 'Выбери один точный шаг — результат появится прямо в этом разговоре.', closeTools: 'Закрыть инструменты', withGuide: 'С', inDialog: 'в этом диалоге',
   },
   en: {
-    back: 'Back to guides', toGuides: 'Back to guides', myChats: 'MY CHATS', newChat: 'New', startChat: 'Start a new chat',
-    myChatsAria: 'Open my chats', conversations: 'Your conversations', sessionCopy: 'each chat keeps its own context', deleteChat: 'Delete this chat', deleteChatTitle: 'Delete chat',
+    back: 'Back to guides', toGuides: 'Back to guides', space: 'Workspace', myChats: 'MY CHATS', chats: 'chats', newChat: 'New chat', startChat: 'Start a new chat',
+    myChatsAria: 'Open my chats', conversations: 'Your conversations', sessionCopy: 'each chat keeps its own context', deleteChat: 'Delete this chat', deleteChatTitle: 'Delete chat', deleteAllChats: 'Delete all chats', deleteAllChatsCopy: 'Memory and saved facts stay safe', deleteAllChatsConfirm: 'Delete all chats? Messages will leave the list, but your memory will stay.', chatsCleared: 'All chats removed from the list. Memory preserved.',
     firstConversation: 'Your first conversation will appear when you send a message.', continueDialog: 'Continue the conversation here.', chooseGuide: 'Choose a guide', presence: 'here', addPalm: 'Add a palm photo', palmPhoto: 'Palm photo', tools: 'Tools',
     messageFor: 'Message for', stop: 'Stop request', send: 'Send message', ideas: 'Ideas for your question', toolAria: 'Tools for this guide', toolsEyebrow: 'DIALOGUE TOOLS', toolsTitle: 'What would you like to explore?', toolsIntro: 'Choose one focused step — the result will appear in this conversation.', closeTools: 'Close tools', withGuide: 'With', inDialog: 'in this conversation',
   },
@@ -27,6 +27,14 @@ const CHAT_SUGGESTIONS_EN = {
 };
 const chatLang = () => oracleLang() === 'en' ? 'en' : 'ru';
 const chatT = (key, fallback = '') => CHAT_I18N[chatLang()][key] || fallback || key;
+const chatCount = count => {
+  const n = Number(count) || 0;
+  if (chatLang() === 'en') return `${n} ${n === 1 ? 'chat' : 'chats'}`;
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  const noun = mod10 === 1 && mod100 !== 11 ? 'чат' : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20) ? 'чата' : 'чатов';
+  return `${n} ${noun}`;
+};
 const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[agent.code]?.[field] : '') || agent[field] || '';
 
   app.openChat = function(key, after) {
@@ -49,7 +57,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
     this.maybeChatGuide();
   };
 
-  // список чатов-сессий агента (до 5)
+  // список чатов-сессий агента; лимита количества нет
 
   app.refreshSessions = async function() {
     try { this.chat.sessions = await api('/api/chat/' + this.chat.key + '/sessions'); }
@@ -220,10 +228,6 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
 
   app.newSession = async function() {
     haptic('light');
-    if ((this.chat.sessions || []).length >= 5) {
-      this.toast('Максимум 5 чатов — удали один или заверши 🌙');
-      return;
-    }
     const r = await api(`/api/chat/${this.chat.key}/sessions`, { method: 'POST' });
     this.chat.tid = r.thread_id;
     this.chat.messages = [];
@@ -256,10 +260,24 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
     if (id === this.chat.tid) {
       const next = (this.chat.sessions || [])[0];
       if (next) { await this.openSession(next.id); return; }
-      await this.newSession();
-    } else {
-      this.renderChat(document.getElementById('app-main'));
+      this.chat.tid = null;
+      this.chat.messages = this.chat.spec && this.chat.spec.greeting
+        ? [{ role: 'assistant', text: this.chat.spec.greeting }] : [];
     }
+    this.renderChat(document.getElementById('app-main'));
+  };
+
+
+  app.deleteAllSessions = async function() {
+    if (!window.confirm(chatT('deleteAllChatsConfirm'))) return;
+    await api(`/api/chat/${this.chat.key}/sessions`, { method: 'DELETE' });
+    this.chat.tid = null;
+    this.chat.messages = this.chat.spec && this.chat.spec.greeting
+      ? [{ role: 'assistant', text: this.chat.spec.greeting }] : [];
+    this.chat.pending = null;
+    await this.refreshSessions();
+    this.toast(chatT('chatsCleared'));
+    this.renderChat(document.getElementById('app-main'));
   };
 
 
@@ -327,9 +345,9 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
               <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
             </div>
           </div>
-          <button type="button" class="chat-thread-toggle" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="${esc(chatT('myChatsAria'))}">
+          <button type="button" class="chat-thread-toggle chat-space-picker" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="${esc(chatT('myChatsAria'))}">
             <span class="chat-thread-toggle__icon">${sigilIcon('monthly')}</span>
-            <span class="chat-thread-toggle__copy"><small>${esc(chatT('myChats'))}</small><b>${sessionCount || 1} ${chatLang() === 'en' ? 'of' : 'из'} 5</b></span>
+            <span class="chat-thread-toggle__copy"><small>${esc(chatT('space'))}</small><b>${esc(displayName || chatT('myChats'))}</b><em>${esc(chatCount(sessionCount))}</em></span>
             <span class="chat-thread-toggle__chevron" aria-hidden="true">⌄</span>
           </button>
           <button type="button" class="chat-new-session" data-act="new-session" aria-label="${esc(chatT('startChat'))}" title="${esc(chatT('startChat'))}">
@@ -338,7 +356,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
         </div>
         <section class="sess-panel" id="sess-panel" style="display:none" aria-label="${esc(chatT('myChats'))} ${esc(displayName)}">
           <div class="sess-head">
-            <div><span>${esc(chatT('conversations'))}</span><small>${sessionCount || 0} ${chatLang() === 'en' ? 'of' : 'из'} 5 · ${esc(chatT('sessionCopy'))}</small></div>
+            <div><span>${esc(chatT('conversations'))}</span><small>${esc(chatCount(sessionCount))} · ${esc(chatT('sessionCopy'))}</small></div>
             <button type="button" class="sess-create" data-act="new-session">${sigilIcon('spark')}<span>${esc(chatT('newChat'))}</span></button>
           </div>
           <div class="sess-list">
@@ -350,6 +368,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
               </div>            `).join('') : `<div class="sess-empty">${esc(chatT('firstConversation'))}</div>`}
 
           </div>
+          ${sessionCount ? `<button type="button" class="sess-clear" data-act="delete-all-sessions"><span>${esc(chatT('deleteAllChats'))}</span><small>${esc(chatT('deleteAllChatsCopy'))}</small></button>` : ''}
         </section>
         <div class="agent-tabs" role="tablist" aria-label="${esc(chatT('chooseGuide'))}">
           ${agents.slice(0, 4).map(b => `
@@ -357,7 +376,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
               <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(chatAgentField(b, 'name').split(' ')[0])}</span>
             </button>`).join('')}
         </div>
-        <div class="chat-messages" id="chat-messages">
+        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="${esc(chatT('myChats'))}" tabindex="0">
           ${introHtml}
           ${body}
           ${pendHtml}

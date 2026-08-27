@@ -40,7 +40,7 @@ def contract(page: object) -> dict:
           };
           const overflowNodes = [...document.querySelectorAll('*')].filter((el) => {
             const r = el.getBoundingClientRect();
-            return visible(el) && !el.closest('.starfield') && !el.closest('.hero-orb') && (r.left < -1 || r.right > innerWidth + 1);
+            return visible(el) && !el.closest('.starfield') && !el.closest('.hero-orb, .welcome-card') && (r.left < -1 || r.right > innerWidth + 1);
           }).slice(0, 12).map((el) => ({tag: el.tagName, className: String(el.className || '').slice(0, 100)}));
           const decorativeOverflowNodes = [...document.querySelectorAll('.starfield, .starfield *')].filter((el) => {
             const r = el.getBoundingClientRect();
@@ -56,7 +56,7 @@ def contract(page: object) -> dict:
             imagesWithoutAlt: [...document.images].filter((img) => !img.hasAttribute('alt')).length,
             visiblePrimaryActions: [...document.querySelectorAll('.btn-primary, [data-primary]')].filter(visible).length,
             visible: {
-              screen: rect('.screen, .chat-shell'), header: rect('.app-header'), hero: rect('.hero-orb'),
+              screen: rect('.screen, .chat-shell'), header: rect('.app-header'), hero: rect('.hero-orb, .welcome-card'),
               agentCard: rect('.agent-card'), nav: rect('.main-nav'), modal: rect('.modal-overlay, .intro-overlay, .age-overlay')
             },
             bodyFont: getComputedStyle(body).fontFamily,

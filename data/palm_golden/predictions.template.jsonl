@@ -1,1 +1,1 @@
-{"record_id":"synthetic-gold-001","quality_state":"usable","view_type":"open_palm","observations":[{"topic":"heart_line","visibility":"clear","evidence_state":"observed","confidence":0.9}]}
+{"record_id":"replace-with-consented-record","quality_state":"usable","status":"complete","view_type":"open_palm","observations":[{"topic":"palm_region","visibility":"unclear","evidence_state":"unknown","confidence":0.0}],"processing_metrics":{"precheck_ms":0.0,"cv_ms":0.0,"vision_ms":0.0,"total_ms":0.0}}

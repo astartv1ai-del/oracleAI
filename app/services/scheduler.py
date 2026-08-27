@@ -61,14 +61,14 @@ async def _deliver(bot, tg_id: int, text: str, markup=None) -> bool:
         await bot.send_message(tg_id, text, reply_markup=markup)
         return True
     except TelegramRetryAfter as e:
-        log.warning("флуд-контроль на %s: пауза %s с", tg_id, e.retry_after)
+        log.warning("флуд-контроль: пауза %s с", e.retry_after)
         await asyncio.sleep(e.retry_after + 1)
         return False
     except (TelegramForbiddenError, TelegramBadRequest) as e:
-        log.info("рассылка %s пропущена навсегда: %s", tg_id, e)
+        log.info("рассылка пропущена навсегда: %s", type(e).__name__)
         return True
     except Exception as e:  # noqa: BLE001
-        log.warning("рассылка %s не удалась, повторю позже: %s", tg_id, e)
+        log.warning("рассылка не удалась, повторю позже: %s", type(e).__name__)
         return False
 
 
@@ -293,7 +293,7 @@ async def _voice_forecast(bot, db, user, text: str, day: str) -> None:
                 (message.voice.file_id if message.voice else None,
                  user["tg_id"], day, lang))
     except Exception as e:  # noqa: BLE001
-        log.info("озвучка прогноза не отправлена %s: %s", user["tg_id"], e)
+        log.info("озвучка прогноза не отправлена: %s", type(e).__name__)
 
 
 async def _pregen_forecasts(db, now_utc, settings_cache) -> None:
@@ -323,7 +323,7 @@ async def _pregen_forecasts(db, now_utc, settings_cache) -> None:
             try:
                 await agent_core.daily_forecast_cached(db, user)
             except Exception as e:  # noqa: BLE001
-                log.warning("преген прогноза %s: %s", user["tg_id"], e)
+                log.warning("преген прогноза: %s", type(e).__name__)
 
     log.info("преген прогнозов: %s клиенток", len(audience))
     await asyncio.gather(*(one(u) for u in audience))
@@ -559,7 +559,8 @@ async def tick(bot, db) -> None:
         try:
             await _tick_user(bot, db, user, now_utc, settings_cache)
         except Exception as e:  # noqa: BLE001
-            log.warning("планировщик, клиентка %s: %s", user["tg_id"], e)
+            log.warning("ошибка планировщика для пользовательского сценария: %s",
+                        type(e).__name__)
         await asyncio.sleep(BATCH_PAUSE)
 
     # Продления и возвраты не привязаны к часу клиентки — они привязаны к дате
@@ -569,7 +570,7 @@ async def tick(bot, db) -> None:
             await _expiry_warning(bot, db, user, now_utc)
             await _winback(bot, db, user)
         except Exception as e:  # noqa: BLE001
-            log.warning("сценарий продления, клиентка %s: %s", user["tg_id"], e)
+            log.warning("ошибка сценария продления: %s", type(e).__name__)
         await asyncio.sleep(BATCH_PAUSE)
 
     try:
