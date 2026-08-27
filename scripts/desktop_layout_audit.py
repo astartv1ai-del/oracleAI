@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 OUT = Path(__file__).resolve().parents[1] / "artifacts" / "desktop-audit"
-URL = "http://127.0.0.1:8080/?dev_user=10001&qa=desktop"
+URL = os.getenv("ORACLEAI_QA_DESKTOP_URL", "http://127.0.0.1:8080/?dev_user=10001&qa=desktop")
 
 
 def run() -> None:
