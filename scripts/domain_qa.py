@@ -84,6 +84,29 @@ def check_case(case: dict) -> dict:
         case["date"], case["time"], case["city"], case["lat"], case["lon"],
         case["tz"], time_known=case["time_known"])
     expected_mode = case.get("expected_mode", "full")
+    if case.get("comparison") == "fail_closed_ambiguous_local_time":
+        note = str(chart.get("note") or "")
+        passed = (
+            chart.get("mode") == "full"
+            and chart.get("precision") == "date_only"
+            and not chart.get("calculation", {}).get("angular_data_available")
+            and not chart.get("houses")
+            and chart.get("ascendant") is None
+            and chart.get("mc") is None
+        )
+        return {
+            "id": case["id"],
+            "passed": passed,
+            "mode": chart.get("mode"),
+            "precision": chart.get("precision"),
+            "angular_data_available": bool(chart.get("calculation", {}).get("angular_data_available")),
+            "expected_angular_data": False,
+            "planet_count": len(chart.get("planets", [])),
+            "max_planet_delta_deg": None,
+            "planet_deltas_deg": {},
+            "comparison": case.get("comparison"),
+            "note": note,
+        }
     if expected_mode == "lite":
         note = str(chart.get("note") or "")
         passed = chart.get("mode") == "lite" and chart.get("precision") == "sun_only"

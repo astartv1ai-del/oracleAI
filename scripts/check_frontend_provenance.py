@@ -16,6 +16,7 @@ REQUIRED_KEYS = (
     "provenanceVersion",
     "provenanceEphemeris",
     "provenanceLicense",
+    "provenanceLicenseCopy",
     "provenanceUnavailable",
     "provenanceFallback",
 )
@@ -43,6 +44,8 @@ assert_all(
         "esc(item)",
         "profileT('provenanceTitle')",
         "profileT('provenanceFallback')",
+        "profileT('provenanceLicenseCopy')",
+        "value('license_notice') ? profileT('provenanceLicenseCopy') : ''",
     ),
     "chat provenance helper",
 )

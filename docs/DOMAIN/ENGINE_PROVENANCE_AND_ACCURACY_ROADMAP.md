@@ -22,19 +22,17 @@ GET /api/chart
 
 | Surface | Файл/путь | Текущее поведение | Вывод |
 |---|---|---|---|
-| Chat chart | `miniapp/js/10-chart.js:119`, `app.chartHtml` | Читает `sun`, `precision`, `note`, `sections`, planets and aspects; `engine_provenance` не читает | Backend field silently ignored; rendering не ломается, но disclosure пользователю не виден |
-| Full chart modal | `miniapp/js/12-misc.js:582`, `app.openFullChart` | Повторно запрашивает `/api/chart`; отображает precision, planets, nodes, houses и aspects; provenance не отображается | Нужна отдельная compact technical details section |
-| Chart image | `miniapp/js/10-chart.js:100`, `/api/chart/image` | Использует только `precision` для разрешения изображения | Provenance не должен добавляться в image URL или raster payload |
-| Admin | `admin/` | Нет chart provenance consumer | Доработка не нужна, если администратору не требуется отдельный diagnostics view |
-| Hashed production bundle | `scripts/build_frontend.mjs` | Собирает source JS/CSS в `miniapp/dist/app.<hash>.min.*` | После frontend change обязателен frontend build; source остаётся canonical |
+| Chat chart | `miniapp/js/10-chart.js:119`, `app.chartHtml` | Вызывает общий `chartProvenanceHtml(c)` и показывает collapsed technical disclosure | Реализовано; helper читает только allowlist и экранирует значения |
+| Full chart modal | `miniapp/js/12-misc.js:582`, `app.openFullChart` | Вызывает тот же helper и показывает product/backend/version/ephemeris/license details | Реализовано; RU/EN проверено в браузере |
+| Chart image | `miniapp/js/10-chart.js:100`, `/api/chart/image` | Использует только `precision` для разрешения изображения | Provenance корректно не добавляется в image URL или raster payload |
+| Admin | `admin/` | Нет chart provenance consumer | Отдельный diagnostics view остаётся опциональным |
+| Hashed production bundle | `scripts/build_frontend.mjs`, `miniapp/index.html` | Source собирается в hashed bundles; asset query version bumped to `v=104` | Cache-bust и CI contract check добавлены |
 
 ### Нужны ли frontend-доработки
 
-**Да, если требование «показывать backend» относится к пользователю.** Сейчас disclosure доступен через API, но нигде не отображается в Mini App. Это не функциональный backend bug, а прозрачность интерфейса: пользователь получает расчёт, но не видит, каким движком он выполнен.
+**Основная frontend-доработка выполнена.** Пользовательский disclosure теперь доступен в chat chart и full-chart modal через единый закрытый по умолчанию `<details>`. Значения проходят allowlist и `esc()`, неполные ответы используют bounded fallback, а license explanation локализован для RU/EN вместо вывода сырого backend текста.
 
-Рекомендуемый UX — не перегружать основной экран техническими деталями. В `chartHtml` и `openFullChart` следует добавить один общий helper, например `chartProvenanceHtml(c)`, который выводит закрытый по умолчанию `<details>` с подписью «Источник расчёта / Calculation source». Все значения должны проходить через `esc()`, а неизвестные или неполные поля — заменяться на bounded fallback «Источник расчёта не указан», без exception и без доверия к произвольным backend strings.
-
-Показывать следует `OracleAI Engine`, `Kerykeion 5.12.9`, `Swiss Ephemeris` и короткое уведомление о лицензии. Текст не следует дублировать в каждом planetary row. Для RU/EN нужны локализационные ключи, а не inline-only строки. После изменения понадобятся source tests, build manifest check, accessibility check для `<details>` и визуальная проверка узких экранов.
+Добавлены `scripts/check_frontend_provenance.py`, cache-bust `v=104`, keyboard focus state и CI execution. Браузерная проверка на disposable RU/EN users подтвердила загрузку обеих карт, раскрытие блока и localized copy. Chat question path в локальном offline/LLM smoke завершился bounded “answer not arrived” состоянием, поэтому inline chart response требует отдельного live-service test.
 
 ### Fallback и совместимость
 
@@ -66,21 +64,21 @@ Frontend не должен копировать provenance в localStorage, user
 
 ## 3. Recommended implementation sequence
 
-### Phase A — frontend transparency
+### Phase A — frontend transparency — completed
 
-Add `chartProvenanceHtml(c)` in a shared Mini App utility or chart module, use it in both chart surfaces, add RU/EN localization keys, escape all values, and add an accessibility test. The disclosure should be user-visible but collapsed by default. Build the hashed bundle and verify that production HTML references the new manifest entries.
+`chartProvenanceHtml(c)` is used in chat and full-chart surfaces, RU/EN keys are present, values are escaped, fallback behavior is bounded, keyboard focus is visible, the hashed bundle was rebuilt, and CI now runs the provenance contract checker. Browser evidence is recorded in `FRONTEND_PROVENANCE_BROWSER_TEST.md`.
 
-### Phase B — normalization correctness
+### Phase B — normalization correctness — first iteration completed
 
-Replace ad hoc normalization in callers with one `ChartRequest` model. Normalize whitespace and numeric representations, validate IANA timezone before any backend call, define explicit DST gap/fold behavior, and attach coordinate source/confidence. Do not silently convert missing timezone to the server timezone. Keep a compatibility parser for old stored chart metadata, but never redraw or recompute historical artifacts silently.
+The canonical `ChartRequest` now normalizes surrounding whitespace in time, timezone and city, canonicalizes valid finite coordinates, rejects non-string/invalid IANA timezone identifiers before backend calls, and records `location_reason`. It classifies local times as `normal`, `nonexistent`, `ambiguous`, `no_timezone` or `not_applicable`; spring-forward gaps and fall-back folds downgrade to date-only rather than silently selecting an instant. Missing timezone is never replaced by the server timezone. Remaining work is typed coordinate source/confidence and candidate intervals for user-confirmed ambiguous times.
 
-### Phase C — calculation integrity
+### Phase C — calculation integrity — first iteration completed
 
-Add a post-Kerykeion validation layer. It should validate finite numeric outputs, signs and degrees, expected point inventory, house/angle availability, node opposition and aspect policy. Preserve exact values internally and round only at the presentation boundary. Add versioned cache keys and include the full calculation-affecting configuration in provenance.
+The OracleAI Engine now runs a post-Kerykeion validation layer on both fresh and cached results. It validates finite numeric outputs, degree ranges, the ten-planet inventory, house/angle availability, expected precision, public aspect orbs, house-number bounds and true-node opposition; malformed backend output is downgraded to bounded Sun-only fallback. Exact values remain separate from presentation rounding. Remaining work is full configuration fingerprinting and typed product-specific errors.
 
 ### Phase D — accuracy evidence
 
-Expand the existing golden corpus into separate deterministic regression fixtures and external comparison artifacts. Use direct `pyswisseph` only as a same-kernel adapter check; use NASA/JPL Horizons where settings are comparable for planetary positions; leave ASC/MC/Placidus/nodes/Lilith/retrograde fields open when the reference does not expose equivalent semantics. No external comparison should be used to claim scientific or universal predictive accuracy.
+The deterministic corpus now includes normalization metadata and DST boundary tests, while the tracked generator remains the only way to refresh numeric snapshots. Expand it into separate deterministic regression fixtures and external comparison artifacts. Use direct `pyswisseph` only as a same-kernel adapter check; use NASA/JPL Horizons where settings are comparable for planetary positions; leave ASC/MC/Placidus/nodes/Lilith/retrograde fields open when the reference does not expose equivalent semantics. No external comparison should be used to claim scientific or universal predictive accuracy.
 
 ### Phase E — products and release
 
@@ -88,15 +86,15 @@ Apply the same evidence envelope to transits, synastry, composite and solar retu
 
 ## 4. Proposed next implementation ticket
 
-The best next code change is **Frontend Provenance Disclosure + normalization validator P0**:
+The frontend disclosure ticket, first normalization iteration and first output-integrity validator are complete. The next implementation ticket is **uncertainty envelope + configuration fingerprint P0/P1**:
 
-1. Add localized `chartProvenanceHtml(c)` and render it in chat and full-chart modal.
-2. Add frontend tests for complete, missing and malformed provenance objects.
-3. Add `ChartRequest` DST gap/fold test cases and coordinate-source fields without changing current valid exact outputs.
-4. Add post-Kerykeion schema validation in the engine boundary.
-5. Bump adapter version only if the serialized contract changes; otherwise record the additive API field as backward-compatible.
+1. Add typed `coordinate_source`/confidence and user-visible geocoder provenance.
+2. Represent ambiguous local times as bounded candidate instants when the user explicitly requests interval mode; never silently choose a fold.
+3. Include Kerykeion, Swiss Ephemeris, tzdata, zodiac, house, node/Lilith and aspect configuration in the calculation-affecting fingerprint.
+4. Extend node/point cross-field validation and add product-specific validators for transits, synastry, composite and solar returns.
+5. Expand the external differential corpus beyond the representative JPL run and retain all non-comparable fields explicitly.
 
-The current audit finds no frontend crash caused by `engine_provenance`; the gap is that the field is **ignored and therefore not visible**. The algorithmic roadmap should be implemented incrementally behind the existing deterministic contracts, with no claim that Kerykeion or Swiss Ephemeris licensing obligations disappear.
+The current browser audit finds the frontend disclosure visible and localized. The algorithmic roadmap is still not a claim of universal or scientific predictive accuracy: Kerykeion/Swiss Ephemeris remain the disclosed numerical backend, while OracleAI improvements target input truthfulness, reproducibility, integrity validation and product semantics.
 
 ## References
 
@@ -104,7 +102,9 @@ The current audit finds no frontend crash caused by `engine_provenance`; the gap
 
 [2] [OracleAI chart contract](../../app/core/chart_contract.py) — versioned calculation metadata and public contract source.
 
-[3] [OracleAI improved engine](../../app/core/astrology_engine.py) — request normalization, fingerprint and bounded cache.
+[3] [OracleAI improved engine](../../app/core/astrology_engine.py) — request normalization, fingerprint, bounded cache and post-calculation validation hook.
+
+[6] [Frontend provenance browser test notes](FRONTEND_PROVENANCE_BROWSER_TEST.md) — RU/EN interactive smoke evidence and cache-bust finding.
 
 [4] [Kerykeion upstream repository](https://github.com/g-battaglia/kerykeion) — disclosed backend provenance and upstream license source.
 
