@@ -315,7 +315,7 @@
         <div class="agent-tabs" role="tablist" aria-label="Выбор проводника">
           ${agents.slice(0, 4).map(b => `
             <button type="button" class="atab ${b.code === a.code ? 'active' : ''}" style="${this.agentThemeStyle(b, b.code)}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}">
-              <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(b.name.split(' ')[0])}</span>
+              <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(b.name.split(' ')[0])}</span>
             </button>`).join('')}
         </div>
         <div class="chat-messages" id="chat-messages">

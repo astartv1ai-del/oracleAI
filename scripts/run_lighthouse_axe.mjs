@@ -2,16 +2,18 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launch } from '/home/ubuntu/oracleai-qa-tools/node_modules/chrome-launcher/dist/chrome-launcher.js';
-import lighthouse from '/home/ubuntu/oracleai-qa-tools/node_modules/lighthouse/core/index.js';
-import { chromium } from '/home/ubuntu/oracleai-qa-tools/node_modules/playwright-core/index.mjs';
-import axe from '/home/ubuntu/oracleai-qa-tools/node_modules/axe-core/axe.js';
+import { execFileSync } from 'node:child_process';
+import { launch } from 'chrome-launcher';
+import lighthouse from 'lighthouse';
+import { chromium } from 'playwright-core';
+import axe from 'axe-core';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, 'artifacts', process.env.QA_OUT_DIR || 'lighthouse-axe');
 const LH_CATEGORIES = (process.env.LH_CATEGORIES || 'performance,accessibility,best-practices,seo').split(',').filter(Boolean);
 const BASE = 'http://127.0.0.1:8080/';
 const VIEWPORT = { width: 1440, height: 900 };
+const CHROME_PATH = process.env.CHROME_PATH || execFileSync('sh', ['-c', 'command -v chromium || command -v chromium-browser || command -v google-chrome']).toString().trim();
 const STATES = [
   { id: 'home', view: 'home' },
   { id: 'guides', view: 'hub' },
@@ -44,17 +46,18 @@ async function run() {
   await fs.rm(OUT, { recursive: true, force: true });
   await fs.mkdir(OUT, { recursive: true });
   const chrome = await launch({
-    chromePath: '/usr/bin/chromium',
+    chromePath: CHROME_PATH,
     chromeFlags: ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
   });
   const browser = await chromium.launch({
-    executablePath: '/usr/bin/chromium',
+    executablePath: CHROME_PATH,
     headless: true,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
   const axeContext = await browser.newContext({ viewport: VIEWPORT, locale: 'ru-RU', reducedMotion: 'reduce' });
   const page = await axeContext.newPage();
   const summary = { generatedAt: new Date().toISOString(), viewport: VIEWPORT, states: [] };
+  let gateFailed = false;
 
   try {
     for (const state of STATES) {
@@ -87,6 +90,10 @@ async function run() {
       });
       const lhr = lh.lhr;
       await fs.writeFile(path.join(OUT, `${state.id}.lighthouse.json`), JSON.stringify(lhr, null, 2) + '\n');
+      if (axeResults.violations.length > 0 ||
+          (LH_CATEGORIES.includes('accessibility') && categoryScore(lhr.categories, 'accessibility') !== 100)) {
+        gateFailed = true;
+      }
       summary.states.push({
         ...state,
         url,
@@ -114,6 +121,10 @@ async function run() {
   }
   await fs.writeFile(path.join(OUT, 'summary.json'), JSON.stringify(summary, null, 2) + '\n');
   console.log(JSON.stringify(summary, null, 2));
+  if (gateFailed) {
+    console.error('Frontend accessibility gate failed: inspect the per-state axe/Lighthouse reports.');
+    process.exitCode = 1;
+  }
 }
 
 run().catch((error) => {

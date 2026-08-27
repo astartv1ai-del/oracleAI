@@ -21,5 +21,7 @@ __pycache__/
 .omc/
 .claude/
 tests/
+# High-resolution design masters are kept for provenance, not runtime serving.
+design/sources/
 README.md
 requirements-dev.txt

@@ -31,4 +31,7 @@ __pycache__/
 
 # Локальные журналы и временные проверки
 *.log
-.qa_*.py
+*.qa_*.py
+node_modules/
+miniapp/dist/
+artifacts/

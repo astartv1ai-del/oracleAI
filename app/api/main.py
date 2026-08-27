@@ -8,8 +8,10 @@
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -155,9 +157,8 @@ for router in ROUTERS:
     app.include_router(router)
 
 
-#: Ассеты, которые можно коротко кешировать. Имена не содержат хеша контента
-#: (app.js, а не app.abc123.js), поэтому TTL скромный: устаревшая копия живёт
-#: не дольше задеплоенного часа. HTML и API — всегда no-cache.
+#: Source assets keep a short TTL because their names are not content-hashed;
+#: production bundles use the immutable branch below. HTML and API are no-cache.
 _ASSET_EXTS = {"js", "css", "png", "jpg", "jpeg", "webp", "gif", "svg",
                "woff", "woff2", "ico", "txt"}
 
@@ -167,6 +168,8 @@ def _cache_control(path: str, response) -> None:
         # Authenticated raster charts may be reused by the same private webview,
         # but must never become a shared/proxy cache object.
         response.headers.setdefault("Cache-Control", "private, max-age=3600, must-revalidate")
+    elif path.startswith("/static/dist/") and re.search(r"\.[0-9a-f]{12}\.min\.(?:js|css)$", path):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     elif path.startswith("/static/") or path.startswith("/admin/static/"):
         response.headers["Cache-Control"] = "public, max-age=3600"
     elif path.count("/") <= 1 and path.rsplit(".", 1)[-1].lower() in _ASSET_EXTS:
@@ -184,9 +187,33 @@ def _file(directory: Path, name: str) -> FileResponse:
     return FileResponse(path)
 
 
+def _miniapp_index_body() -> str:
+    body = (MINIAPP_DIR / "index.html").read_text(encoding="utf-8")
+    # Development keeps source modules visible by default. CI/browser QA may opt
+    # into the production bundle with BUNDLE_ASSETS=1 without weakening auth.
+    if settings.dev_mode and os.getenv("BUNDLE_ASSETS") != "1":
+        return body
+    manifest_path = MINIAPP_DIR / "dist" / "manifest.json"
+    if not manifest_path.is_file():
+        return body
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        css = manifest["css"]
+        js = manifest["js"]
+    except (OSError, KeyError, TypeError, json.JSONDecodeError):
+        log.exception("invalid Mini App asset manifest")
+        return body
+    body = re.sub(r'/static/styles\.css\?v=\d+', f'/static/dist/{css}', body)
+    body = re.sub(r'\n<script src="/static/js/[^"?]+\?v=\d+"></script>', '', body)
+    return body.replace('</body>', f'<script src="/static/dist/{js}"></script>\n</body>')
+
+
 @app.get("/", include_in_schema=False)
 async def index():
-    return _file(MINIAPP_DIR, "index.html")
+    path = MINIAPP_DIR / "index.html"
+    if not path.is_file():
+        return JSONResponse({"detail": "не найдено"}, status_code=404)
+    return HTMLResponse(_miniapp_index_body())
 
 
 @app.get("/admin", include_in_schema=False)

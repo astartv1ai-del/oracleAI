@@ -2,11 +2,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from '/home/ubuntu/oracleai-qa-tools/node_modules/playwright-core/index.mjs';
-import axe from '/home/ubuntu/oracleai-qa-tools/node_modules/axe-core/axe.js';
+import { execFileSync } from 'node:child_process';
+import { chromium } from 'playwright-core';
+import axe from 'axe-core';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const OUT = path.join(ROOT, 'artifacts', 'lighthouse-axe-final');
+const OUT = path.join(ROOT, 'artifacts', process.env.QA_OUT_DIR || 'lighthouse-axe-final');
+const CHROME_PATH = process.env.CHROME_PATH || execFileSync('sh', ['-c', 'command -v chromium || command -v chromium-browser || command -v google-chrome']).toString().trim();
 const STATES = [
   ['home', 'home'], ['guides', 'hub'],
   ['chat-oracle', 'chat', 'oracle'], ['chat-astro', 'chat', 'astro'],
@@ -23,7 +25,7 @@ function makeUrl(view, agent = '', tab = '') {
   return u.toString();
 }
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+const browser = await chromium.launch({ executablePath: CHROME_PATH, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ru-RU', reducedMotion: 'reduce' });
 const page = await context.newPage();
 const results = [];
@@ -40,3 +42,7 @@ try {
   }
 } finally { await context.close(); await browser.close(); }
 await fs.writeFile(path.join(OUT, 'summary.json'), JSON.stringify({ generatedAt: new Date().toISOString(), viewport: { width: 1440, height: 900 }, states: results }, null, 2) + '\n');
+if (results.some((item) => item.violations > 0)) {
+  console.error('Axe accessibility gate failed: inspect the per-state JSON reports.');
+  process.exitCode = 1;
+}

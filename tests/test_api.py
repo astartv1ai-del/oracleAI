@@ -766,6 +766,38 @@ async def test_no_cache_on_html_and_api(client):
         assert res.headers.get("cache-control") == "no-cache", path
 
 
+async def test_miniapp_index_uses_source_assets_in_dev(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "dev_mode", True)
+    monkeypatch.delenv("BUNDLE_ASSETS", raising=False)
+    html = (await client.get("/")).text
+    assert '/static/styles.css?v=102' in html
+    assert '/static/js/00-runtime.js?v=102' in html
+    assert '/static/dist/' not in html
+
+
+async def test_miniapp_index_uses_hashed_bundles_in_production(client, monkeypatch):
+    from pathlib import Path
+
+    from app.config import settings
+
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / "miniapp" / "dist" / "manifest.json").read_text(encoding="utf-8")
+    )
+    monkeypatch.setattr(settings, "dev_mode", False)
+    response = await client.get("/")
+    assert response.status_code == 200
+    html = response.text
+    assert f'/static/dist/{manifest["css"]}' in html
+    assert f'/static/dist/{manifest["js"]}' in html
+    assert '/static/js/00-runtime.js?v=102' not in html
+    assert '/static/styles.css?v=102' not in html
+    bundle = await client.get(f'/static/dist/{manifest["js"]}')
+    assert bundle.status_code == 200
+    assert bundle.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+
 async def test_admin_promo_batch(client, db):
     await users.ensure(db, 1, "Владелец")
     res = await client.post("/api/admin/promo", params={"dev_user": 1},
