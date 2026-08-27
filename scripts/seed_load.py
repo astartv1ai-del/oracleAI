@@ -6,7 +6,7 @@
 геокодинг не вызывается.
 
     python -m scripts.seed_load --count 10000 --db /tmp/load.db
-    python -m scripts.seed_load --count 5000 --db /tmp/http-load.db --all-active
+    python -m scripts.seed_load --count 5000 --db /tmp/http-load.db --all-active --age-confirmed --active-subscription
     python -m scripts.seed_load --count 1000  --db /tmp/load.db --force  # переткнуть
 
 По умолчанию цель — data/load_seed.db. Боевую data/oracle.db перepисать можно
@@ -65,7 +65,8 @@ def _birth(rnd: random.Random) -> tuple[str, str, int]:
     return birth_date, birth_time, int(known)
 
 
-def _rows(count: int, *, all_active: bool = False) -> list[tuple]:
+def _rows(count: int, *, all_active: bool = False, age_confirmed: bool = False,
+          active_subscription: bool = False, force_onboarded: bool = False) -> list[tuple]:
     rnd = random.Random(42)
     now = datetime.now(timezone.utc)
     rows = []
@@ -73,20 +74,21 @@ def _rows(count: int, *, all_active: bool = False) -> list[tuple]:
         tg_id = 100_000_000 + i
         city, tz, lat, lon = CITIES[i % len(CITIES)]
         name = rnd.choice(NAMES)
-        sub_level = _weighted(SUB_WEIGHTS, rnd)
+        sub_level = "vip" if active_subscription else _weighted(SUB_WEIGHTS, rnd)
         if sub_level == "free":
             sub_until = (now - timedelta(days=rnd.randint(1, 60))).isoformat()
         else:
             span = rnd.randint(5, 90)
             sub_until = (now + timedelta(days=span)).isoformat()
         birth_date, birth_time, time_known = _birth(rnd)
-        onboarded = int(rnd.random() < 0.65)
+        onboarded = int(force_onboarded or rnd.random() < 0.65)
         morning_push = int(rnd.random() >= 0.12)
         created_days_ago = rnd.randint(1, 180)
         rows.append((
             tg_id, name, f"user_{tg_id}", "ru", tz, birth_date, birth_time,
             time_known, city, lat, lon, sub_level, sub_until,
-            5, onboarded, morning_push, rnd.choice(GOALS), rnd.choice(SOURCES),
+            5, onboarded, morning_push, 0, int(age_confirmed),
+            rnd.choice(GOALS), rnd.choice(SOURCES),
             (now - timedelta(days=rnd.randint(0, 30))).isoformat() if onboarded else None,
             "active" if all_active or rnd.random() > 0.02 else "blocked",
             (now - timedelta(days=created_days_ago)).isoformat(),
@@ -94,18 +96,22 @@ def _rows(count: int, *, all_active: bool = False) -> list[tuple]:
     return rows
 
 
-async def _seed(db, count: int, *, all_active: bool = False) -> None:
+async def _seed(db, count: int, *, all_active: bool = False,
+               age_confirmed: bool = False, active_subscription: bool = False,
+               force_onboarded: bool = False) -> None:
     await db.executemany(
         "INSERT OR REPLACE INTO users(tg_id, name, username, lang, tz, birth_date, "
         "birth_time, birth_time_known, birth_city, birth_lat, birth_lon, sub_level, "
-        "sub_until, crystals, onboarded, morning_push, goal, source, last_seen, "
-        "status, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        _rows(count, all_active=all_active))
+        "sub_until, crystals, onboarded, morning_push, memory_enabled, age_confirmed, "
+        "goal, source, last_seen, status, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        _rows(count, all_active=all_active, age_confirmed=age_confirmed,
+              active_subscription=active_subscription, force_onboarded=force_onboarded))
     await db.commit()
 
 
-async def main(count: int, db_path: str, force: bool, all_active: bool) -> None:
+async def main(count: int, db_path: str, force: bool, all_active: bool,
+               age_confirmed: bool, active_subscription: bool, force_onboarded: bool) -> None:
     from app.config import settings
     path = Path(db_path)
     if not force and path.resolve() == Path(settings.db_path).resolve():
@@ -115,7 +121,8 @@ async def main(count: int, db_path: str, force: bool, all_active: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     db = await connect(path)
     try:
-        await _seed(db, count, all_active=all_active)
+        await _seed(db, count, all_active=all_active, age_confirmed=age_confirmed,
+                    active_subscription=active_subscription, force_onboarded=force_onboarded)
     finally:
         await db.close()
     print(f"засеяно {count} юзеров в {db_path}")
@@ -128,6 +135,13 @@ if __name__ == "__main__":
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--all-active", action="store_true",
                     help="не добавлять заблокированные профили (для HTTP-потока)")
+    ap.add_argument("--age-confirmed", action="store_true",
+                    help="подтвердить возраст synthetic users для protected API probes")
+    ap.add_argument("--active-subscription", action="store_true",
+                    help="дать synthetic users future VIP entitlement для paid API probes")
+    ap.add_argument("--onboarded", action="store_true",
+                    help="пометить synthetic users как прошедших onboarding")
     args = ap.parse_args()
     import asyncio
-    asyncio.run(main(args.count, args.db, args.force, args.all_active))
+    asyncio.run(main(args.count, args.db, args.force, args.all_active,
+                      args.age_confirmed, args.active_subscription, args.onboarded))

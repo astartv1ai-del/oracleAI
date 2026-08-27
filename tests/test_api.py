@@ -81,6 +81,15 @@ async def test_health_is_open(client):
     assert res.json()["ok"] is True
 
 
+async def test_root_health_is_open_and_includes_database_state(client):
+    res = await client.get("/health")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["ok"] is True
+    assert body["database"]["ok"] is True
+    assert "text" not in str(body).lower()
+
+
 async def test_me_requires_identity(client):
     res = await client.get("/api/me")
     assert res.status_code == 401
