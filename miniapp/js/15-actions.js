@@ -98,6 +98,8 @@
     ask: (el, data) => call('askAgent', data.chat, data.q),
     'all-readings': () => call('openAllReadings'),
     bell: () => call('openBell'),
+    'notifications-toggle': () => call('toggleMorningNotifications'),
+    'notifications-read-all': () => call('markNotificationsRead'),
     gender: () => call('openGender'),
     'set-gender': (el, data) => call('setGender', data.gender),
     language: () => call('openLanguage'),

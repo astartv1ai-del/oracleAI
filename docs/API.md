@@ -65,8 +65,14 @@ HTTP API обслуживает Telegram Mini App, административн�
 | `POST` | `/api/account/delete` | Анонимизировать текущий аккаунт; повторный вызов идемпотентен. | `confirm: true` |
 | `GET` | `/api/faq` | Контент FAQ. | — |
 | `GET` | `/api/history` | Единый owner-scoped архив отчётов, раскладов, чтений ладони и чатов. | `limit` (1–100) |
+| `GET` | `/api/notifications` | Owner-scoped inbox server-owned summaries с unread count. | `limit` (1–100); private chat/provider payloads excluded |
+| `POST` | `/api/notifications/read-all` | Идемпотентно отметить уведомления текущего пользователя прочитанными. | — |
+| `GET` | `/api/notifications/preferences` | Получить поддерживаемые пользовательские delivery preferences. | — |
+| `PATCH` | `/api/notifications/preferences` | Включить/выключить утренний прогноз в Telegram. | `morning_forecast: boolean` |
 
 `POST /api/profile` принимает только RU и EN для `lang`. При отключённой памяти `GET /api/memories` возвращает пустой список, а создание факта возвращает `409`; это часть серверного privacy-контракта, не только UX.[2] `POST /api/account/delete` требует JSON `{ "confirm": true }`, стирает пользовательскую историю и PII, отключает memory/push/age flags, оставляет только settlement-safe user row и возвращает `already_deleted: true` при повторе.
+
+`GET /api/notifications` материализует только уже сохранённый дневной forecast в deduplicated inbox item; endpoint не запускает LLM и не принимает user-supplied notification body. `POST /api/notifications/read-all` ограничен текущим owner scope и безопасен при повторе. Provider notification settings и secondary channels остаются admin-only.
 
 `GET /api/history` возвращает только метаданные и безопасные action/deep-link поля: тела сообщений, ответы раскладов, тексты отчётов, изображения и embedding-векторы выдаются только отдельными owner-scoped маршрутами. Удаление или архивирование определяется полем `deletion`; общий архив не создаёт новый источник записи и не дублирует domain tables.
 
