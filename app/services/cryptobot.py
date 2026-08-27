@@ -108,3 +108,10 @@ async def get_invoice(invoice_id: int) -> dict | None:
         "invoice_ids": str(invoice_id), "status": "all"})
     items = result.get("items") or []
     return items[0] if items else None
+
+
+async def get_balance() -> list[dict]:
+    """Read-only баланс приложения для операционного health check."""
+    result = await _call("getBalance", {})
+    items = result.get("items") if isinstance(result, dict) else result
+    return items if isinstance(items, list) else []

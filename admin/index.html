@@ -49,14 +49,25 @@
           <option value="30" selected>30 дней</option>
           <option value="90">90 дней</option>
         </select>
+        <button id="demo-toggle" class="btn demo-toggle hidden" type="button">ДЕМО: выкл.</button>
         <button id="refresh" class="btn ghost">↻ Обновить</button>
       </div>
     </header>
 
     <!-- ДАШБОРД -->
     <section class="view active" id="view-dashboard">
+      <div id="demo-banner" class="demo-banner hidden" role="status">
+        <strong>ДЕМО-РЕЖИМ · тестовые данные</strong>
+        <span>451 уникальный пользователь · 130 повторных · $328 покупок · 17 дней работы.</span>
+        <span>Это не реальные пользователи, заказы, платежи или баланс. Операционный мониторинг ниже остаётся реальным.</span>
+      </div>
       <div id="kpi" class="kpi-grid"></div>
       <div id="kpi-monetization" class="kpi-grid"></div>
+
+      <div class="card payment-health-card">
+        <div class="card-head"><h3>Платёжный контур</h3><span id="payment-health-updated" class="muted small"></span></div>
+        <div id="payment-health" class="payment-health"></div>
+      </div>
 
       <div class="row-2">
         <div class="card">

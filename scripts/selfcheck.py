@@ -285,7 +285,7 @@ async def limits_smoke():
         try:
             await users.ensure(db, 999000333, "Спрашивающая")
             await users.update(db, 999000333, onboarded=1, birth_date="1990-06-21",
-                               sub_level="vip")
+                               sub_level="vip", age_confirmed=1)
             user = await users.get(db, 999000333)
 
             allowance = await limits.allowance(db, user)

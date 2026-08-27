@@ -169,6 +169,7 @@ async def prune_analytics(db, days: int = 120, *, batch_size: int = 5_000) -> in
         "product_cost_events": max(1, days),
         "safety_events": min(max(1, days), 90),
         "webhook_events": max(max(1, days), 180),
+        "payment_webhook_failures": max(max(1, days), 180),
         "admin_audit": max(max(1, days), 365),
     }
     primary_keys = {
@@ -177,6 +178,7 @@ async def prune_analytics(db, days: int = 120, *, batch_size: int = 5_000) -> in
         "product_cost_events": "id",
         "safety_events": "id",
         "webhook_events": "event_id",
+        "payment_webhook_failures": "id",
         "admin_audit": "id",
     }
     total = 0

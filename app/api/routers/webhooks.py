@@ -38,11 +38,17 @@ log = logging.getLogger("oracle.api.webhooks")
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 
-def _failure(message: str, *, status_code: int | None = None) -> None:
-    log_event(
-        log, logging.WARNING, "webhook_failure", message,
-        operation="paddle", status_code=status_code,
-    )
+async def _failure(db, provider: str, code: str, *,
+                   status_code: int | None = None) -> None:
+    """Record only bounded provider/code metadata; never store payload or PII."""
+    log_event(log, logging.WARNING, "webhook_failure", code,
+              operation=provider, status_code=status_code)
+    try:
+        await db.execute(
+            "INSERT INTO payment_webhook_failures(provider, code, status_code, created_at) "
+            "VALUES(?,?,?,?)", (provider[:32], code[:96], status_code, utcnow()))
+    except Exception as exc:  # noqa: BLE001
+        log.error("journal ошибок webhook недоступен: %s", type(exc).__name__)
 
 #: Насколько старую подпись принимаем. Защита от переигрывания перехваченного
 #: запроса: подпись сама по себе бессрочна.
@@ -100,7 +106,7 @@ async def _already_seen(db, event_id: str, provider: str, kind: str,
                 (event_id, provider, kind, payload[:8000], utcnow()))
         return not cur.rowcount
     except Exception as e:  # noqa: BLE001
-        _failure("webhook idempotency journal unavailable", status_code=503)
+        await _failure(db, provider, "idempotency_journal_unavailable", status_code=503)
         log.error("журнал вебхуков недоступен: %s", e)
         return False          # лучше обработать дважды, чем потерять оплату
 
@@ -125,22 +131,22 @@ async def paddle(request: Request, db=Depends(get_db),
     if len(raw) > 512 * 1024:
         raise HTTPException(413, "тело вебхука слишком большое")
     if not settings.paddle_webhook_secret:
-        _failure("webhook secret is not configured", status_code=503)
+        await _failure(db, "paddle", "secret_not_configured", status_code=503)
         raise HTTPException(503, "web-оплата не настроена")
     if not verify_paddle(raw, paddle_signature or "", settings.paddle_webhook_secret):
-        _failure("webhook signature rejected", status_code=401)
+        await _failure(db, "paddle", "signature_rejected", status_code=401)
         raise HTTPException(401, "подпись не подтверждена")
 
     try:
         body = json.loads(raw.decode("utf-8"))
     except ValueError as e:
-        _failure("webhook body is not JSON", status_code=400)
+        await _failure(db, "paddle", "body_not_json", status_code=400)
         raise HTTPException(400, "тело не JSON") from e
 
     event_id = str(body.get("event_id") or body.get("notification_id") or "")
     kind = str(body.get("event_type") or "")
     if not event_id:
-        _failure("webhook event id is missing", status_code=400)
+        await _failure(db, "paddle", "event_id_missing", status_code=400)
         raise HTTPException(400, "нет event_id")
     # Do not claim the event before the entitlement transaction. If billing
     # fails, Paddle must be able to retry rather than seeing a false duplicate.
@@ -160,13 +166,13 @@ async def paddle(request: Request, db=Depends(get_db),
     custom = _custom_data(body)
     payload = str(custom.get("order_payload") or "")
     if not payload or len(payload) > 120:
-        _failure("webhook order payload is invalid")
+        await _failure(db, "paddle", "order_payload_invalid")
         return {"ok": True, "unmatched": True}
     order = await billing_repo.order_by_payload(db, payload)
     if not order or order["status"] != "pending":
         duplicate = await _already_seen(
             db, event_id, "paddle", kind, raw.decode("utf-8", "ignore"))
-        _failure("webhook pending order binding failed")
+        await _failure(db, "paddle", "pending_order_binding_failed")
         return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "unmatched": True}
     if order["surface"] != "web" or order["kind"] != "plan":
         log.error("вебхук %s с недопустимым типом заказа", event_id)
@@ -215,16 +221,16 @@ async def cryptobot_webhook(request: Request, db=Depends(get_db)):
     if len(raw) > 512 * 1024:
         raise HTTPException(413, "тело вебхука слишком большое")
     if not settings.cryptobot_api_token:
-        _failure("cryptobot token is not configured", status_code=503)
+        await _failure(db, "cryptobot", "secret_not_configured", status_code=503)
         raise HTTPException(503, "крипто-оплата не настроена")
     if not cryptobot.verify_webhook(raw, request.headers.get("crypto-pay-api-signature")):
-        _failure("cryptobot webhook signature rejected", status_code=401)
+        await _failure(db, "cryptobot", "signature_rejected", status_code=401)
         raise HTTPException(401, "подпись не подтверждена")
 
     try:
         body = json.loads(raw.decode("utf-8"))
     except ValueError as e:
-        _failure("cryptobot webhook body is not JSON", status_code=400)
+        await _failure(db, "cryptobot", "body_not_json", status_code=400)
         raise HTTPException(400, "тело не JSON") from e
 
     payload_data = body.get("payload") or {}
@@ -243,7 +249,7 @@ async def cryptobot_webhook(request: Request, db=Depends(get_db)):
 
     order_payload = str(invoice.get("payload") or "")
     if not order_payload or len(order_payload) > 120:
-        _failure("cryptobot webhook order payload is invalid")
+        await _failure(db, "cryptobot", "order_payload_invalid")
         return {"ok": True, "unmatched": True}
     order = await billing_repo.order_by_payload(db, order_payload)
     if not order or order["status"] != "pending":

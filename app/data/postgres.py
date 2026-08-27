@@ -14,7 +14,7 @@ _ID_TABLES = {
     "admin_audit", "broadcasts", "crystal_ledger", "diary", "entitlements",
     "events", "llm_usage", "memories", "messages", "orders", "payments",
     "palm_readings", "practices", "promo_codes", "reports", "tarot_readings",
-    "threads", "user_notes", "webhook_events",
+    "threads", "user_notes", "webhook_events", "payment_webhook_failures",
 }
 _INSERT_TABLE_RE = re.compile(r"^\s*INSERT(?:\s+OR\s+IGNORE)?\s+INTO\s+([\w]+)", re.I)
 
