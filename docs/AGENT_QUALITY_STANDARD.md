@@ -40,7 +40,7 @@ ruff check app tests scripts
 find miniapp/js admin -name '*.js' -print0 | xargs -0 -n1 node --check
 ```
 
-The deterministic gate currently checks **32 registered tools, 139 file-backed skills and 54 evaluation cases**, verifies all four profile-to-legacy mappings, resolves skill dependencies, exercises the original 20-case Urania/Lilith routing set, the 10-case Vedic/adversarial set and the 20-case Mira/Lenormand routing set, validates tool schemas and checks that user-visible proof surfaces are wired into the Mini App.
+The deterministic gate currently checks **33 registered tools, 139 file-backed skills and 54 evaluation cases**, verifies all four profile-to-legacy mappings, resolves skill dependencies, exercises the original 20-case Urania/Lilith routing set, the 10-case Vedic/adversarial set and the 20-case Mira/Lenormand routing set, validates tool schemas and checks that user-visible proof surfaces are wired into the Mini App.
 
 ## Safety boundary
 

@@ -102,13 +102,21 @@ def test_palm_normalizer_sanitizes_forbidden_claims_and_keeps_confidence():
     assert result["observations"][0]["confidence"] == 1.0
     assert "диагноз" not in result["observations"][0]["summary"]
     assert "model_claim_sanitized" in result["safety_flags"]
+    assert set(result["lines"]) >= {"life", "head", "heart", "fate", "sun", "mercury",
+                                      "girdle_of_venus", "ring_of_solomon", "ring_of_apollo",
+                                      "via_lasciva", "mars_lines", "influence_lines", "bracelets",
+                                      "relationship", "children", "travel"}
+    assert result["lines"]["fate"]["visibility"] == "not_visible"
+    assert set(result["mounts"]) == {"venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars"}
+    assert set(result["fingers"]) == {"thumb", "index", "middle", "ring", "little"}
+    assert result["markings"] == []
 
 
 def test_chiromant_is_registered_with_palm_tools():
     assert "chiromant" in codes()
     agent = get("chiromant")
     assert agent is not None
-    assert set(agent.skills) == {"activate_palm_skill", "palm_scanner", "palm_photo_guide", "palm_history"}
+    assert set(agent.skills) == {"activate_skill", "palm_scanner", "palm_photo_guide", "palm_history"}
     assert not ({"draw_tarot", "get_chart", "get_matrix", "get_transits"} & set(agent.skills))
     assert {"get_placement", "get_all_placements", "get_life_path", "get_chinese_zodiac"}.issubset(SKILLS)
 
@@ -145,9 +153,13 @@ def test_palm_response_format_is_strict_and_closed():
         assert set(nested["required"]) == set(nested["properties"])
     lines = root["properties"]["lines"]
     assert lines["additionalProperties"] is False
-    assert {"life", "head", "heart", "fate", "sun"}.issubset(lines["required"])
-    for extra in ("children", "travel"):
+    assert {"life", "head", "heart", "fate", "sun", "mercury", "girdle_of_venus",
+            "ring_of_solomon", "ring_of_apollo", "via_lasciva", "mars_lines",
+            "influence_lines", "bracelets", "relationship", "children", "travel"}.issubset(lines["required"])
+    for extra in ("children", "travel", "mercury", "girdle_of_venus", "ring_of_solomon",
+                  "ring_of_apollo", "via_lasciva", "mars_lines", "influence_lines", "bracelets"):
         assert extra in lines["properties"]
+    assert "markings" in root["required"]
     assert "photo_assessment" in root["required"]
     assert root["properties"]["photo_assessment"]["properties"]["view_type"]["enum"] == [
         "open_palm", "folded_edge", "unclear"]

@@ -150,7 +150,12 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                                               recent_limit=history_limit)
 
             async def executor(name: str, args: dict) -> str:
-                result = await skills.execute(db, user, name, args)
+                tool_args = dict(args or {})
+                if name == "activate_skill":
+                    # The model can choose only a skill name; the active agent
+                    # domain is injected server-side and never accepted from user input.
+                    tool_args["_agent_code"] = spec.code
+                result = await skills.execute(db, user, name, tool_args)
                 if trace is not None and name not in trace:
                     trace.append(name)
                 return result
