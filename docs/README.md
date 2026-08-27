@@ -50,6 +50,8 @@
 | P0 execution | [`RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md`](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) | Owner-led procedures for the four public-launch blockers. |
 | Changelog | [`RELEASE/CHANGELOG.md`](RELEASE/CHANGELOG.md) | User- and engineering-visible release history. |
 | Documentation final review | [`RELEASE/DOCUMENTATION_FINAL_REVIEW.md`](RELEASE/DOCUMENTATION_FINAL_REVIEW.md) | Audit result, before/after shape, validation and remaining concerns. |
+| Final QA matrix | [`RELEASE/FINAL_QA_MATRIX.md`](RELEASE/FINAL_QA_MATRIX.md) | Functional, browser and red-team checks with reproducible evidence. |
+| Final release certification | [`RELEASE/FINAL_RELEASE_CERTIFICATION.md`](RELEASE/FINAL_RELEASE_CERTIFICATION.md) | Final build, QA, security scorecard, blockers and verdict. |
 | Dated evidence | [`EVIDENCE/`](EVIDENCE/) | Historical audits, QA baselines, traceability and benchmark records. Evidence is not current truth unless explicitly revalidated. |
 | Archive | [`ARCHIVE/`](ARCHIVE/) | Superseded plans and design proposals retained for context, each labeled historical. |
 
