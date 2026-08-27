@@ -9,6 +9,22 @@ fi
 encrypted="$1"
 key_file="${BACKUP_ENCRYPTION_KEY_FILE:-/etc/oracle/backup.key}"
 compose_file="${COMPOSE_FILE:-infra/docker-compose.yml}"
+target_db="${RESTORE_TARGET_DB:-}"
+
+if [[ -z "$target_db" ]]; then
+  echo "RESTORE_TARGET_DB is required; restore into a fresh isolated database" >&2
+  exit 1
+fi
+if [[ ! "$target_db" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "RESTORE_TARGET_DB must be a simple PostgreSQL database identifier" >&2
+  exit 1
+fi
+if [[ "$target_db" == "${POSTGRES_DB:-oracle}" ]]; then
+  [[ "${RESTORE_IN_PLACE:-0}" == "1" && "${RESTORE_CONFIRM:-}" == "I_UNDERSTAND_IN_PLACE_RESTORE" ]] || {
+    echo "in-place restore requires RESTORE_IN_PLACE=1 and explicit confirmation" >&2
+    exit 1
+  }
+fi
 
 [[ -r "$encrypted" ]] || { echo "backup is not readable: $encrypted" >&2; exit 1; }
 [[ -r "$encrypted.sha256" ]] || { echo "checksum is missing: $encrypted.sha256" >&2; exit 1; }
@@ -22,11 +38,16 @@ trap cleanup EXIT
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
   -pass "file:${key_file}" -in "$encrypted" -out "$tmp"
 
-# Stop writers before restoring. The operator must intentionally restart the
-# application after reviewing pg_restore output.
-docker compose -f "$compose_file" stop api bot worker beat
+# An isolated target database is the default. Writers are stopped only for
+# an explicitly confirmed in-place restore into the live database.
+if [[ "$target_db" == "${POSTGRES_DB:-oracle}" ]]; then
+  docker compose -f "$compose_file" stop api bot worker beat
+else
+  docker compose -f "$compose_file" exec -T postgres \
+    createdb --if-not-exists --username="${POSTGRES_USER:-oracle}" -- "$target_db"
+fi
 cat "$tmp" | docker compose -f "$compose_file" exec -T postgres \
   pg_restore --clean --if-exists --no-owner --no-privileges \
-  --dbname="${POSTGRES_DB:-oracle}"
+  --dbname="$target_db"
 
-echo "PostgreSQL restore completed. Review the output, run 'make migrate', then start the stack."
+echo "PostgreSQL restore completed into isolated database '$target_db'. Review output and run integrity/owner-isolation checks before application use."

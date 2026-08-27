@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -64,6 +65,58 @@ def test_cache_busting_policy_and_public_legal_pages():
     assert check_cache_busting.main() == 0
     for name in ("privacy.html", "terms.html", "privacy-en.html", "terms-en.html"):
         assert (ROOT / "web" / name).is_file()
+
+
+def test_ops_alerts_recognize_postgres_backup_and_offsite_failure(tmp_path, monkeypatch, capsys):
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    db_path = tmp_path / "ops.db"
+    import sqlite3
+
+    db = sqlite3.connect(db_path)
+    db.executescript(
+        """
+        CREATE TABLE llm_usage (created_at TEXT, ok INTEGER);
+        CREATE TABLE scheduler_leases (
+            name TEXT PRIMARY KEY,
+            last_status TEXT,
+            last_finished_at TEXT,
+            failure_count INTEGER,
+            last_error TEXT
+        );
+        """
+    )
+    db.execute(
+        "INSERT INTO scheduler_leases VALUES ('main', 'ok', ?, 0, NULL)",
+        (datetime.now(timezone.utc).isoformat(),),
+    )
+    db.commit()
+    db.close()
+    (backup_dir / "oracle-20260827-150000.dump.enc").write_bytes(b"encrypted")
+    (backup_dir / "backup-status.json").write_text(
+        json.dumps({
+            "last_attempt_utc": datetime.now(timezone.utc).isoformat(),
+            "local_backup_ok": True,
+            "offsite_required": True,
+            "offsite_ok": False,
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "ops_alerts", "--backup-dir", str(backup_dir), "--db-path", str(db_path)
+    ])
+
+    assert ops_alerts.main() == 1
+    result = json.loads(capsys.readouterr().out)
+    assert "backup_stale_or_missing" not in result["alerts"]
+    assert "backup_offsite_unavailable" in result["alerts"]
+
+    status = json.loads((backup_dir / "backup-status.json").read_text(encoding="utf-8"))
+    status["offsite_ok"] = True
+    (backup_dir / "backup-status.json").write_text(json.dumps(status), encoding="utf-8")
+    assert ops_alerts.main() == 0
+    healthy = json.loads(capsys.readouterr().out)
+    assert healthy["ok"] is True
 
 
 def test_ops_alert_db_counts_include_scheduler_status(tmp_path):

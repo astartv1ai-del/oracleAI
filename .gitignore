@@ -35,3 +35,6 @@ __pycache__/
 node_modules/
 miniapp/dist/
 artifacts/
+
+# Host-mounted encrypted PostgreSQL backup artifacts
+/backups/

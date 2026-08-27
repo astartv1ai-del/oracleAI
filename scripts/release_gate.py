@@ -46,6 +46,12 @@ def check_static_contract() -> list[str]:
             errors.append("Palm root required/properties mismatch")
     except Exception as exc:  # noqa: BLE001
         errors.append(f"Palm schema import/check failed: {type(exc).__name__}: {exc}")
+    try:
+        from scripts.check_p004_infrastructure import check
+
+        errors.extend(f"P0-004: {item}" for item in check())
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"P0-004 infrastructure check failed: {type(exc).__name__}: {exc}")
     return errors
 
 

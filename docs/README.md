@@ -43,6 +43,7 @@
 | [API_RESILIENCE_MATRIX.md](API_RESILIENCE_MATRIX.md) | Backend, frontend, QA | Negative-path, rate-limit, backend-error and owner-scope checks. |
 | [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md) | Performance, operations, QA | Local p50/p95 directional measurements and live LLM latency blocker. |
 | [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) | Operations, database, security | Disposable integrity, restore, snapshot and isolation drill. |
+| [P004_INFRASTRUCTURE_AUDIT.md](P004_INFRASTRUCTURE_AUDIT.md) | SRE, operations, security, release | P0-004 infrastructure readiness, implemented safeguards, local evidence and external staging gates. |
 | [`models/THIRD_PARTY_NOTICES.md`](../models/THIRD_PARTY_NOTICES.md) | Legal, release, ML | Provenance, MIT notice, checksums and limitations for the vendored palm-line models. |
 | [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |

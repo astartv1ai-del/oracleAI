@@ -48,7 +48,7 @@ chmod 600 .env
 | LLM | `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `CUSTOM_*` | Достаточно ключа выбранного провайдера; offline fallback остаётся аварийным режимом. |
 | Платежи | `PADDLE_API_KEY`, `PADDLE_API_URL`, `PADDLE_CHECKOUT_URL`, `PADDLE_PRICE_IDS`, `PADDLE_WEBHOOK_SECRET` | Нужны вместе при включении web checkout; `PADDLE_PRICE_IDS` связывает внутренние планы с `pri_...` на сервере. |
 | Наблюдаемость | `SENTRY_DSN`, `LOG_LEVEL`, `RELEASE_ID`, `LOG_FILE` | JSONL logs идут в stdout; `LOG_FILE` опционален и должен быть writable. Sentry — опционально, но рекомендован для production. |
-| Резервное копирование | `BACKUP_ENCRYPTION_KEY_HOST_PATH`, `BACKUP_REQUIRE_ENCRYPTION`, `BACKUP_KEEP` | Профиль `backup` требует отдельный host key, encrypted PostgreSQL dump, checksum, off-site copy и restore drill. |
+| Резервное копирование | `BACKUP_ENCRYPTION_KEY_HOST_PATH`, `BACKUP_STORAGE_PATH`, `BACKUP_REQUIRE_ENCRYPTION`, `BACKUP_REQUIRE_OFFSITE`, `BACKUP_KEEP`, `BACKUP_S3_*` | Профиль `backup` требует отдельный host key, host-mounted storage, encrypted PostgreSQL dump, checksum, off-site copy и restore drill. При `BACKUP_REQUIRE_OFFSITE=1` S3-compatible credentials и bucket обязательны. |
 
 Конфигурация читается dataclass-настройками в `app/config.py`; неизвестные или небезопасные значения не следует «исправлять» прямо в контейнере.[2]
 
@@ -107,13 +107,15 @@ SQLite/WAL остаётся поддерживаемым fallback для руч�
 
 ## Резервное копирование и восстановление
 
-Профиль `backup` создаёт проверяемый custom-format `pg_dump`, шифрует его AES-256-CBC через host key, сохраняет SHA-256 checksum и применяет retention. Включите его только после создания `/etc/oracle/backup.key`; результат следует дополнительно копировать во внешнее зашифрованное хранилище.
+Профиль `backup` создаёт проверяемый custom-format `pg_dump`, шифрует его AES-256-CBC через host key, сохраняет SHA-256 checksum и применяет retention. При `BACKUP_REQUIRE_OFFSITE=1` он также обязан загрузить dump и checksum в S3-compatible storage; при отсутствии off-site подтверждения job не считает backup успешным.
 
 ```bash
-install -d -m 700 /etc/oracle
+install -d -m 700 /etc/oracle /srv/oracle/backups
 openssl rand -base64 48 > /etc/oracle/backup.key
 chmod 600 /etc/oracle/backup.key
-docker compose --profile backup -f infra/docker-compose.yml up -d backup
+# Заполни BACKUP_S3_URL/ACCESS_KEY/SECRET_KEY/BUCKET в .env;
+# production template требует BACKUP_REQUIRE_OFFSITE=1.
+docker compose --profile backup -f infra/docker-compose.yml up -d --build backup
 ```
 
 | Контроль | Минимум |
@@ -124,17 +126,19 @@ docker compose --profile backup -f infra/docker-compose.yml up -d backup
 | Проверка | Периодически восстановить в изолированном контуре и выполнить `selfcheck`. |
 | RPO/RTO | Зафиксировать владельцем продукта до публичного запуска. |
 
-Процедура восстановления PostgreSQL: остановите writer-сервисы, сохраните текущий кластер как forensic-копию, проверьте checksum, расшифруйте dump во временный файл и восстановите его через helper. После проверки запустите миграцию и только затем поднимайте приложение.
+Процедура восстановления PostgreSQL по умолчанию выполняется в свежую изолированную базу. Сначала сохраните текущий кластер как forensic-копию, проверьте checksum, расшифруйте dump во временный файл и восстановите его через helper. Writer-сервисы останавливаются только для явно подтверждённого in-place restore. После восстановления выполните schema/integrity/owner-isolation checks, затем миграцию и только после этого подключайте приложение.
 
 ```bash
-BACKUP_ENCRYPTION_KEY_FILE=/etc/oracle/backup.key \
+# Изолированный restore; source database не останавливается.
+RESTORE_TARGET_DB=oracle_restore \
+  BACKUP_ENCRYPTION_KEY_FILE=/etc/oracle/backup.key \
   ./infra/restore-postgres.sh /srv/oracle/backups/oracle-<дата>.dump.enc
+
 make migrate
-make up
 make selfcheck
 ```
 
-`restore-postgres.sh` проверяет checksum, расшифровывает dump во временный файл, останавливает writer-сервисы и передаёт custom-format dump в `pg_restore --clean --if-exists`. Для legacy/fallback SQLite остаётся отдельный `scripts/restore_db.sh`; он не предназначен для PostgreSQL-тома.
+Для аварийного in-place restore требуются оба явных флага: `RESTORE_IN_PLACE=1` и `RESTORE_CONFIRM=I_UNDERSTAND_IN_PLACE_RESTORE`; без них helper завершится с отказом. `restore-postgres.sh` проверяет checksum, расшифровывает dump во временный файл, создаёт isolated target DB и передаёт custom-format dump в `pg_restore --clean --if-exists`. Для legacy/fallback SQLite остаётся отдельный `scripts/restore_db.sh`; он не предназначен для PostgreSQL-тома.
 
 ## Наблюдаемость и инциденты
 
