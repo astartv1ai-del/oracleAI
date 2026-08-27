@@ -10,16 +10,19 @@ import argparse
 import io
 import json
 import statistics
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageDraw
 
-from app.core import palm, palm_vision
-
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.core import palm, palm_vision  # noqa: E402
 FIXTURE = ROOT / "tests" / "fixtures" / "palm" / "palm_hand.jpg"
 
 
