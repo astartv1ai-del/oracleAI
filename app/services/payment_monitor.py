@@ -101,13 +101,21 @@ async def notification_preferences(db) -> dict:
         for key in result:
             if key in value:
                 result[key] = value[key]
-    result["degraded_cooldown_hours"] = max(1, min(168, int(result["degraded_cooldown_hours"])))
-    result["critical_cooldown_hours"] = max(1, min(168, int(result["critical_cooldown_hours"])))
+    for key in ("degraded_cooldown_hours", "critical_cooldown_hours"):
+        try:
+            result[key] = max(1, min(168, int(result[key])))
+        except (TypeError, ValueError):
+            result[key] = DEFAULT_NOTIFICATION_PREFS[key]
     for key in ("quiet_hours_start", "quiet_hours_end"):
         raw = str(result[key])
-        if len(raw) != 5 or raw[2] != ":" or not raw.replace(":", "").isdigit():
+        try:
+            hour, minute = (int(part) for part in raw.split(":"))
+            valid_clock = len(raw) == 5 and raw[2] == ":" and 0 <= hour <= 23 and 0 <= minute <= 59
+        except (TypeError, ValueError):
+            valid_clock = False
+        if not valid_clock:
             result[key] = DEFAULT_NOTIFICATION_PREFS[key]
-    result["secondary_enabled"] = bool(result["secondary_enabled"])
+    result["secondary_enabled"] = result["secondary_enabled"] is True
     result["secondary_configured"] = bool(settings.payment_alert_secondary_url)
     return result
 
@@ -379,7 +387,8 @@ async def recheck_order(db, order_id: int) -> dict:
     meta = {}
     try:
         import json
-        meta = json.loads(order["meta_json"] or "{}")
+        decoded_meta = json.loads(order["meta_json"] or "{}")
+        meta = decoded_meta if isinstance(decoded_meta, dict) else {}
     except (TypeError, ValueError):
         pass
     return {"order_id": order_id, "found": True, "status": order["status"],

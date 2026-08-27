@@ -100,3 +100,33 @@ async def test_demo_payload_has_requested_figures_and_is_in_memory():
     assert data["monetization"]["repeat_payers"] == 130
     assert data["overview"]["stars_total"] == 17056
     assert len(data["timeseries"]) == 30
+
+
+@pytest.mark.asyncio
+async def test_monitor_normalizes_corrupt_preferences_and_order_meta(db):
+    from app.repo import billing, content
+
+    await content.set_setting(db, "system.payment_notifications", {
+        "degraded_cooldown_hours": "not-a-number",
+        "critical_cooldown_hours": 9999,
+        "quiet_hours_start": "99:99",
+        "quiet_hours_end": "nope",
+        "secondary_enabled": "false",
+    })
+    prefs = await payment_monitor.notification_preferences(db)
+    assert prefs["degraded_cooldown_hours"] == 6
+    assert prefs["critical_cooldown_hours"] == 168
+    assert prefs["quiet_hours_start"] == "23:00"
+    assert prefs["quiet_hours_end"] == "07:00"
+    assert prefs["secondary_enabled"] is False
+
+    order = await billing.create_order(db, 1001, "product", sku="malformed", title="Malformed")
+    await db.execute("UPDATE orders SET meta_json=? WHERE id=?", ("[]", order["id"]))
+    await db.commit()
+    result = await payment_monitor.recheck_order(db, order["id"])
+    assert result["found"] is True
+    assert result["asset"] == ""
+    assert result["review_status"] == ""
+    marked = await payment_monitor.mark_for_review(db, order["id"], 1)
+    assert marked["marked_for_review"] is True
+    assert marked["review_status"] == "manual_review"

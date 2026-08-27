@@ -172,7 +172,7 @@ def _cache_control(path: str, response) -> None:
     elif path.count("/") <= 1 and path.rsplit(".", 1)[-1].lower() in _ASSET_EXTS:
         response.headers["Cache-Control"] = "public, max-age=3600"
     else:
-        response.headers["Cache-Control"] = "no-cache"
+        response.headers.setdefault("Cache-Control", "no-cache")
 
 
 # ──────────────────────────── статика Mini App ────────────────────────────────

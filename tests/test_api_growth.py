@@ -274,6 +274,10 @@ async def test_paddle_webhook_grants_only_bound_pending_order(client, db, user, 
     first = await client.post("/api/webhooks/paddle", content=body, headers=headers)
     assert first.status_code == 200
     assert first.json()["granted"] is True
+    webhook_row = await (await db.execute(
+        "SELECT payload FROM webhook_events WHERE event_id=?", ("evt_bound_1",)
+    )).fetchone()
+    assert webhook_row["payload"] is None
     paid = await billing_repo.order_by_payload(db, order["payload"])
     assert paid["status"] == "paid"
 
@@ -333,7 +337,7 @@ async def test_crypto_webhook_rejects_asset_mismatch(client, db, user, monkeypat
     body = json.dumps({"payload": {"update_type": "invoice_paid", "payload": {
         "invoice_id": 991, "payload": order["payload"], "status": "paid", "asset": "USDT",
     }}}, separators=(",", ":")).encode()
-    signature = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    signature = hmac.new(hashlib.sha256(secret.encode()).digest(), body, hashlib.sha256).hexdigest()
     response = await client.post(
         "/api/webhooks/cryptobot", content=body,
         headers={"crypto-pay-api-signature": signature},

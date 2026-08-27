@@ -354,6 +354,11 @@ async def _m_reports_append_only(db) -> None:
     await db.commit()
 
 
+async def _m_webhook_payload_redaction(db) -> None:
+    """Remove legacy raw provider bodies; event IDs remain for idempotency."""
+    await db.execute("UPDATE webhook_events SET payload=NULL WHERE payload IS NOT NULL")
+
+
 async def _m_memory_explicit_opt_in(db) -> None:
     """Reset legacy implicit memory state until users explicitly opt in again.
 
@@ -377,6 +382,7 @@ DATA_MIGRATIONS: list[tuple[str, object]] = [
     ("2026_08_legacy_messages_to_default_threads", _m_legacy_messages_to_default_threads),
     ("2026_08_reports_append_only", _m_reports_append_only),
     ("2026_08_memory_explicit_opt_in", _m_memory_explicit_opt_in),
+    ("2026_08_webhook_payload_redaction", _m_webhook_payload_redaction),
 ]
 
 TRACKER = """

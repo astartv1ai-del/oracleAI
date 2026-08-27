@@ -27,11 +27,14 @@ class CryptoPayError(RuntimeError):
 
 
 def verify_webhook(raw: bytes, header: str | None) -> bool:
-    """Подпись Crypto Pay: HMAC-SHA256 тела ключом API-токена приложения."""
-    secret = settings.cryptobot_api_token
-    if not secret or not header:
+    """Verify HMAC-SHA256(raw_body) with SHA256(app_token) as the key."""
+    token = settings.cryptobot_api_token
+    if not token or not header:
         return False
-    calc = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+    # Crypto Pay derives the HMAC key as SHA256(app_token), then signs the
+    # unparsed request body. Using the raw token silently rejects real webhooks.
+    secret = hashlib.sha256(token.encode()).digest()
+    calc = hmac.new(secret, raw, hashlib.sha256).hexdigest()
     return hmac.compare_digest(calc, header.strip())
 
 
@@ -39,7 +42,7 @@ async def _call(method: str, payload: dict) -> dict:
     if not settings.cryptobot_api_token:
         raise CryptoPayError("CRYPTOBOT_API_TOKEN не задан")
     headers = {
-        "Authorization": f"Bearer {settings.cryptobot_api_token}",
+        "Crypto-Pay-API-Token": settings.cryptobot_api_token,
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
