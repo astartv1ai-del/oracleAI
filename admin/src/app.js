@@ -7,6 +7,7 @@ import { EngagementFeature } from './features/engagement.js';
 import { ContentFeature } from './features/content.js';
 import { SettingsFeature } from './features/settings.js';
 import { ObservabilityFeature } from './features/observability.js';
+import { LogsFeature } from './features/logs.js';
 
 export class AdminApplication {
   constructor() {
@@ -24,7 +25,9 @@ export class AdminApplication {
       content: new ContentFeature(),
       settings: new SettingsFeature(),
       observability: new ObservabilityFeature(),
+      logs: new LogsFeature(),
     };
+    this.features.logs.init();
     this.loaders = {
       dashboard: () => this.features.dashboard.load(),
       users: () => this.features.users.load(),
@@ -39,6 +42,7 @@ export class AdminApplication {
       settings: () => this.features.settings.load(),
       audit: () => this.features.observability.loadAudit(),
       reconciliation: () => this.features.commerce.loadReconciliation(),
+      logs: () => this.features.logs.refresh(),
     };
     this.bindShellEvents();
     return this.bootstrap();
@@ -87,7 +91,7 @@ export class AdminApplication {
   }
 
   applyNavigationPermissions() {
-    const requirements = { users: 'users:read', orders: 'dashboard', catalog: 'catalog', promo: 'promo', broadcasts: 'broadcast', content: 'content:read', settings: 'settings:read', audit: 'dashboard', reconciliation: 'dashboard', horoscopes: 'content:read', costs: 'dashboard', safety: 'users:read' };
+    const requirements = { users: 'users:read', orders: 'dashboard', catalog: 'catalog', promo: 'promo', broadcasts: 'broadcast', content: 'content:read', settings: 'settings:read', audit: 'dashboard', reconciliation: 'dashboard', logs: 'dashboard', horoscopes: 'content:read', costs: 'dashboard', safety: 'users:read' };
     document.querySelectorAll('.nav-item').forEach((button) => {
       const permission = requirements[button.dataset.view];
       if (permission && !state.can(permission)) button.classList.add('hidden');

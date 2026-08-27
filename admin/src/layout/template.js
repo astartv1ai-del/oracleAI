@@ -27,6 +27,7 @@ export const adminShellTemplate = String.raw`
       <button class="nav-item" data-view="safety"><i>🛟</i>Безопасность</button>
       <button class="nav-item" data-view="settings"><i>⚙️</i>Настройки</button>
       <button class="nav-item" data-view="audit"><i>🗂</i>Аудит</button>
+      <button class="nav-item" data-view="logs"><i>📡</i>Системные логи</button>
     </nav>
     <div class="sidebar-foot">
       <div id="who" class="who"></div>
@@ -352,6 +353,18 @@ export const adminShellTemplate = String.raw`
     <!-- АУДИТ -->
     <section class="view" id="view-audit">
       <div class="card"><div id="audit-table" class="table-wrap"></div></div>
+    </section>
+
+    <!-- СИСТЕМНЫЕ ЛОГИ -->
+    <section class="view" id="view-logs">
+      <div class="card logs-card">
+        <div class="card-head logs-head">
+          <div><h3>Системные логи</h3><p class="muted small">Живой operational stream процесса. Секреты, initData, email и Telegram ID редактируются formatter-ом.</p></div>
+          <div class="logs-actions"><span id="logs-status" class="badge off">Отключено</span><span id="logs-buffer" class="muted small"></span><button id="logs-pause" class="btn ghost" type="button" aria-pressed="false">Ⅱ Пауза</button><button id="logs-refresh" class="btn ghost" type="button">↻ Обновить</button><button id="logs-clear" class="btn ghost" type="button">Очистить экран</button></div>
+        </div>
+        <div class="toolbar logs-toolbar"><label class="sr-only" for="logs-level">Уровень лога</label><select id="logs-level" class="input slim" aria-label="Уровень лога"></select><label class="sr-only" for="logs-logger">Логгер</label><input id="logs-logger" class="input" aria-label="Фильтр логгера" placeholder="oracle.api…"><label class="sr-only" for="logs-query">Поиск по логам</label><input id="logs-query" class="input" aria-label="Поиск в логах" placeholder="Поиск в сообщении или полях…"></div>
+        <div id="logs-list" class="logs-list" role="log" aria-live="polite" aria-label="Поток системных логов"><div class="empty">Логи загружаются…</div></div>
+      </div>
     </section>
   </main>
 </div>

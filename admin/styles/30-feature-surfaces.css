@@ -89,3 +89,29 @@
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.bad { border-color: rgba(232, 143, 143, .5); }
+
+/* ── realtime system logs ── */
+.logs-card { min-width: 0; }
+.logs-head { align-items: flex-start; }
+.logs-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.logs-toolbar { margin-top: 4px; }
+.logs-toolbar .input:not(.slim) { flex: 1 1 190px; max-width: none; }
+.logs-list { min-height: 320px; max-height: min(680px, 65vh); overflow: auto; background: #090713; border: 1px solid var(--line-strong); border-radius: 9px; padding: 5px; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.log-row { display: grid; grid-template-columns: 76px 72px minmax(110px, .42fr) minmax(180px, 1fr); gap: 9px; align-items: baseline; padding: 7px 9px; border-bottom: 1px solid rgba(255,255,255,.05); }
+.log-row:last-child { border-bottom: none; }
+.log-row:hover { background: rgba(255,255,255,.04); }
+.log-row time, .log-fields { color: var(--muted); }
+.log-level { font-weight: 700; letter-spacing: .3px; }
+.log-info .log-level { color: var(--blue); }
+.log-warning .log-level { color: var(--gold); }
+.log-error .log-level, .log-critical .log-level { color: var(--red); }
+.log-debug .log-level { color: var(--muted); }
+.log-message { color: var(--ink); overflow-wrap: anywhere; }
+.log-fields { grid-column: 4; font-size: 11px; overflow-wrap: anywhere; }
+@media (max-width: 800px) {
+  .logs-head { display: block; }
+  .logs-actions { justify-content: flex-start; margin-top: 10px; }
+  .log-row { grid-template-columns: 70px 66px minmax(120px, 1fr); gap: 6px; }
+  .log-message { grid-column: 3; }
+  .log-fields { grid-column: 1 / -1; }
+}

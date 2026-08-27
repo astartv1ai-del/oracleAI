@@ -23,7 +23,8 @@ admin/
 │       ├── engagement.js               # promo codes and broadcasts
 │       ├── content.js                 # content CRUD editor
 │       ├── settings.js                # settings, flags and administrator roles
-│       └── observability.js            # horoscopes, costs, safety and audit
+│       ├── observability.js          # horoscopes, costs, safety and audit
+│       └── logs.js                    # filtered realtime system-log stream
 └── styles/
     ├── 00-foundations.css
     ├── 10-shell.css
@@ -37,7 +38,10 @@ admin/
 
 ## Extension workflow
 
-A new screen should add one class under `admin/src/features/`, register one loader in `AdminApplication`, and keep DOM construction scoped to that feature's view. Shared formatting, tables, escaping and API behavior belong in `core/runtime.js`; reusable visualization belongs in `components/`. A feature must not reach into another feature's private methods. If cross-feature navigation is needed, use `actions.navigate`, and if a user detail must open, use `actions.openUser`.
+A new screen should add one class under `admin/src/features/`, register one loader in `AdminApplication`, and keep DOM construction scoped to that feature's view. Shared formatting, tables, escaping and API behavior belong in `core/runtime.js`; reusable visualization belongs in `components/`. A feature must not reach into another feature's private methods. The logs screen additionally owns its stream AbortController and reconnect policy, so leaving the screen or applying a filter cannot leak a long-lived reader.
+ If cross-feature navigation is needed, use `actions.navigate`, and if a user detail must open, use `actions.openUser`.
+
+The backend logs transport lives in `app/core/log_stream.py` and `app/api/routers/logs.py`. `LogStream` is a bounded process-local ring buffer fed by the existing redacting logging formatter. The API exposes a filtered history endpoint and an authenticated SSE endpoint; the browser uses `fetch` streaming rather than native `EventSource` so Telegram init data can remain in the request header. This is an operational tail window, not a replacement for stdout/file log retention, and it never stores raw log messages before redaction.
 
 CSS is organized by responsibility rather than screen order. The two root stylesheets are intentionally stable compatibility entrypoints because FastAPI and the Telegram WebApp already expose those URLs. New rules should be added to the appropriate file under `admin/styles/`, not to the entrypoint. The server computes the admin asset version recursively across all `.js`, `.css` and `.html` files, so changes in nested modules invalidate the HTML asset query string.
 

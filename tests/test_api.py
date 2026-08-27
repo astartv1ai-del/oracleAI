@@ -1114,3 +1114,35 @@ async def test_chat_sessions_are_unlimited_and_bulk_delete_preserves_memory(clie
     assert remaining.json() == []
     memories_after = await dialog.memories_full(db, user["tg_id"])
     assert memories_after == memories_before
+
+
+async def test_admin_logs_endpoint_is_permissioned_and_redacted(client, db, user):
+    from app.core.log_stream import log_stream
+
+    await users.ensure(db, 1, "Владелец")
+    log_stream.publish({
+        "level": "INFO",
+        "logger": "oracle.test",
+        "message": "safe operational event",
+        "event": "test_log",
+    })
+    visible = await client.get("/api/admin/logs", params={"dev_user": 1, "logger": "oracle.test"})
+    assert visible.status_code == 200
+    body = visible.json()
+    assert body["stream"] == "sse"
+    assert any(item["message"] == "safe operational event" for item in body["entries"])
+    assert "initData" not in str(body)
+
+    from starlette.requests import Request
+    from app.api.routers.logs import stream_logs
+
+    request = Request({"type": "http", "method": "GET", "path": "/api/admin/logs/stream", "headers": [], "query_string": b""})
+    stream_response = await stream_logs(request)
+    assert stream_response.status_code == 200
+    assert stream_response.media_type == "text/event-stream"
+    first_frame = await stream_response.body_iterator.__anext__()
+    assert "event: ready" in first_frame
+    await stream_response.body_iterator.aclose()
+
+    forbidden = await client.get("/api/admin/logs", params={"dev_user": user["tg_id"]})
+    assert forbidden.status_code == 403

@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .log_stream import LogStreamHandler, log_stream
+
 _REQUEST_ID: ContextVar[str] = ContextVar("oracle_request_id", default="-")
 _CONFIGURED = False
 
@@ -108,6 +110,9 @@ def configure_logging(*, level: str | None = None, log_file: str | None = None) 
         file_handler = logging.FileHandler(path, encoding="utf-8")
         file_handler.setFormatter(formatter)
         root.addHandler(file_handler)
+    if not any(isinstance(handler, LogStreamHandler) for handler in root.handlers):
+        stream_handler = LogStreamHandler(formatter, log_stream)
+        root.addHandler(stream_handler)
     _CONFIGURED = True
 
 

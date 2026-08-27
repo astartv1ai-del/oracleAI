@@ -39,6 +39,15 @@ export class AdminApiClient {
   patch(path, body) { return this.request(path, { method: 'PATCH', body: JSON.stringify(body ?? {}) }); }
   delete(path) { return this.request(path, { method: 'DELETE' }); }
 
+  stream(path, signal) {
+    const url = new URL(path, this.location.origin);
+    if (this.devUser) url.searchParams.set('dev_user', this.devUser);
+    return fetch(url, {
+      signal,
+      headers: { 'X-Init-Data': this.telegram?.initData || '' },
+    });
+  }
+
   async download(path, filename) {
     const url = new URL(path, this.location.origin);
     if (this.devUser) url.searchParams.set('dev_user', this.devUser);

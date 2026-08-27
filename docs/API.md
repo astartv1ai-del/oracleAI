@@ -205,7 +205,7 @@ python -m scripts.gen_pdf --name Anna --date 21.06.1990 --time 14:30 \\
 
 `POST /api/webhooks/paddle` принимается только от доверенного платёжного провайдера и требует проверяемую подпись. Он не предназначен для Mini App и не должен вызываться браузером.[4]
 
-Административный API имеет prefix `/api/admin` и отдельную авторизацию. Он содержит группы `/me`, `/health`, `/dashboard`, `/events`, `/costs`, `/safety`, `/horoscopes`, `/users`, `/content`, `/settings`, `/flags`, `/plans`, `/products`, `/orders`, `/promo`, `/broadcasts`, `/admins` и `/audit`. Полные request/response модели проверяются по OpenAPI в development и исходнику [`admin.py`](../app/api/routers/admin.py); добавление админского endpoint без audit trail недопустимо.
+Административный API имеет prefix `/api/admin` и отдельную авторизацию. Он содержит группы `/me`, `/health`, `/dashboard`, `/events`, `/costs`, `/safety`, `/horoscopes`, `/users`, `/content`, `/settings`, `/flags`, `/plans`, `/products`, `/orders`, `/promo`, `/broadcasts`, `/admins`, `/audit` и `/logs`. `GET /api/admin/logs` возвращает последние redacted operational entries из ограниченного process-local ring buffer; `GET /api/admin/logs/stream` отдаёт тот же поток через authenticated SSE и поддерживает фильтры `level`, `logger` и `query`. Поток не заменяет stdout/file retention и не должен использоваться для пользовательских сообщений или PII. Полные request/response модели проверяются по OpenAPI в development и исходнику [`admin.py`](../app/api/routers/admin.py); добавление админского endpoint без audit trail недопустимо.
 
 ### История и регенерация отчётов
 
