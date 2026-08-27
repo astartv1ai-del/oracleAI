@@ -17,7 +17,7 @@ from typing import Any
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ..repo import palm as palm_repo
-from . import agents, llm, palm_full_scope, palm_landmarks, palm_lines, palm_vision
+from . import agents, llm, palm_evidence, palm_full_scope, palm_landmarks, palm_lines, palm_vision
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
@@ -84,7 +84,9 @@ PALM_USER = """Проведи полное экспертное чтение л�
   "safety_flags": []
 }
 
-Для каждого объекта линии/холма/пальца используй поля visibility, summary, confidence и по возможности continuity/path/shape/prominence/length. Не трактуй длину линии жизни как длительность жизни. Если фото недостаточно или не хватает ракурса для зоны (линии брака/детей требуют согнутой ладони), status = needs_photo, а в photo_assessment.advice — конкретная инструкция, какое фото дослать. Учитывай OPTIONAL CV EVIDENCE только как вспомогательную проверку класса линии и приблизительной геометрии: сам изображённый кадр имеет приоритет, а низкая согласованность означает needs_photo, а не догадку."""
+Для каждого объекта линии/холма/пальца используй поля visibility, summary, confidence и по возможности continuity/path/shape/prominence/length. Не трактуй длину линии жизни как длительность жизни. Если фото недостаточно или не хватает ракурса для зоны (линии брака/детей требуют согнутой ладони), status = needs_photo, а в photo_assessment.advice — конкретная инструкция, какое фото дослать. Учитывай OPTIONAL CV EVIDENCE только как вспомогательную проверку класса линии и приблизительной геометрии: сам изображённый кадр имеет приоритет, а низкая согласованность означает needs_photo, а не догадку.
+
+SEMANTIC ADJUDICATION PROTOCOL: сначала смотри на исходный кадр, затем на focus views. Candidate search не доказывает наличие линии. Ставь clear только если путь складки виден на пикселях и соответствует анатомической зоне; partial — если виден только непрерывный фрагмент; unclear — если зона доступна, но размыта или CV и изображение расходятся; not_visible — если зона закрыта, обрезана или требует отсутствующего ракурса. В evidence_refs указывай только компактные идентификаторы реально поддерживающих evidence (например, cv:full_scope, cv:line_segmentation, view:pinky_edge_enhanced), не выдумывай координаты. Для relationship/children/travel на folded-edge кадре проверяй именно боковые складки под мизинцем и внешний край ладони; не переносись автоматически с открытого кадра. Если ни один evidence не подтверждает семантику, оставляй conservative status и добавляй limitation."""
 
 _PALM_TOPICS = {"heart_line", "head_line", "life_line", "fate_line", "sun_line",
                 "mercury_line", "relationship_line", "children_lines", "travel_lines",
@@ -110,6 +112,7 @@ def _palm_detail_schema() -> dict:
             "shape": nullable_string,
             "prominence": nullable_string,
             "length": nullable_string,
+            "evidence_refs": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["visibility", "summary", "confidence", "continuity",
                       "path", "shape", "prominence", "length"],
@@ -328,9 +331,16 @@ def _needs_photo_result(reason: str) -> dict[str, Any]:
         "photo_assessment": {"view_type": "unclear", "missing_views": ["folded_edge"],
                              "advice": ["Согни ладонь ребром к камере — так видны линии брака, отношений и детей."]},
         "observations": [],
-        "lines": {},
-        "mounts": {},
-        "fingers": {},
+        "lines": _normalize_line_map({}),
+        "mounts": _normalize_zone_map({}, ("venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars")),
+        "fingers": _normalize_zone_map({}, ("thumb", "index", "middle", "ring", "little")),
+        "markings": [],
+        "semantic_summary": _semantic_summary(
+            _normalize_line_map({}),
+            _normalize_zone_map({}, ("venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars")),
+            _normalize_zone_map({}, ("thumb", "index", "middle", "ring", "little")),
+            [],
+        ),
         "interpretive_prompts": [],
         "limitations": [
             "Ответ vision-провайдера не прошёл проверку формата.",
@@ -371,6 +381,7 @@ def _empty_detail() -> dict[str, Any]:
         "shape": None,
         "prominence": None,
         "length": None,
+        "evidence_refs": [],
     }
 
 
@@ -388,6 +399,8 @@ def _normalize_detail(value: Any) -> dict[str, Any]:
     for field in ("continuity", "path", "shape", "prominence", "length"):
         raw = value.get(field)
         detail[field] = _safe_text(raw) if raw is not None else None
+    refs = value.get("evidence_refs") if isinstance(value.get("evidence_refs"), list) else []
+    detail["evidence_refs"] = [_safe_text(ref)[:120] for ref in refs[:8]]
     return detail
 
 
@@ -410,6 +423,20 @@ def _normalize_zone_map(value: Any, names: tuple[str, ...]) -> dict[str, Any]:
     return {name: _normalize_detail(source.get(name)) for name in names}
 
 
+def _normalize_photo_assessment(value: Any) -> dict[str, Any]:
+    source = value if isinstance(value, dict) else {}
+    view = str(source.get("view_type") or "unclear").strip().lower()
+    if view not in {"open_palm", "folded_edge", "unclear"}:
+        view = "unclear"
+    missing = source.get("missing_views") if isinstance(source.get("missing_views"), list) else []
+    advice = source.get("advice") if isinstance(source.get("advice"), list) else []
+    return {
+        "view_type": view,
+        "missing_views": [_safe_text(item)[:160] for item in missing[:8]],
+        "advice": [_safe_text(item)[:240] for item in advice[:8]],
+    }
+
+
 def _normalize_markings(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         return []
@@ -426,6 +453,32 @@ def _normalize_markings(value: Any) -> list[dict[str, Any]]:
             "confidence": detail["confidence"],
         })
     return result
+
+
+def _semantic_summary(lines: dict[str, Any], mounts: dict[str, Any], fingers: dict[str, Any], markings: list[dict[str, Any]]) -> dict[str, Any]:
+    details: list[tuple[str, dict[str, Any]]] = []
+    for group_name, group in (("lines", lines), ("mounts", mounts), ("fingers", fingers)):
+        for name, value in group.items():
+            values = value if isinstance(value, list) else [value]
+            for index, item in enumerate(values):
+                if isinstance(item, dict):
+                    suffix = f"[{index}]" if isinstance(value, list) else ""
+                    details.append((f"{group_name}.{name}{suffix}", item))
+    for index, item in enumerate(markings):
+        if isinstance(item, dict):
+            details.append((f"markings[{index}]", item))
+    supported = [name for name, item in details
+                 if item.get("visibility") in {"clear", "partial"}
+                 and item.get("evidence_refs")]
+    abstained = [name for name, item in details
+                 if item.get("visibility") in {"unclear", "not_visible"}]
+    return {
+        "supported_zone_count": len(supported),
+        "abstained_zone_count": len(abstained),
+        "supported_zones": supported[:80],
+        "abstained_zones": abstained[:80],
+        "rule": "Only zones with visible status and explicit evidence_refs are supported; other zones require review or another view.",
+    }
 
 
 def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
@@ -467,9 +520,7 @@ def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
                                if str(data.get("hand_shape_element") or "unknown").strip().lower()
                                in {"earth", "air", "fire", "water", "unknown"}
                                else "unknown"),
-        "photo_assessment": _scrub(data.get("photo_assessment"))
-        if isinstance(data.get("photo_assessment"), dict)
-        else {"view_type": "unclear", "missing_views": [], "advice": []},
+        "photo_assessment": _normalize_photo_assessment(data.get("photo_assessment")),
         "observations": observations,
         "lines": _normalize_line_map(data.get("lines")),
         "mounts": _normalize_zone_map(
@@ -484,6 +535,9 @@ def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
         "safety_flags": flags[:20],
         "source": "vision_llm_observation",
     }
+    result["semantic_summary"] = _semantic_summary(
+        result["lines"], result["mounts"], result["fingers"], result["markings"]
+    )
     if not result["hand_detected"]:
         result["status"] = "needs_photo"
         result["limitations"].append("Ладонь не распознана; пересними ладонь целиком при ровном свете.")
@@ -496,7 +550,8 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
     data_url, meta = _data_url(image)
     precheck = meta["visual_precheck"]
     raw: dict[str, Any] | None = None
-    last_error: ValueError | None = None
+    additional_view_urls: list[str] = []
+    last_error: Exception | None = None
     hard_capture_issues = {"image_decode_failed", "underexposed", "overexposed", "extreme_crop_or_aspect"}
     preflight_rejected = (
         precheck["status"] == "invalid_image"
@@ -527,17 +582,21 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
             },
         }
     else:
-        line_result, hand_result = await asyncio.gather(
-            asyncio.to_thread(palm_lines.analyze, image),
-            asyncio.to_thread(palm_landmarks.analyze, image),
-        )
+        hand_result = await asyncio.to_thread(palm_landmarks.analyze, image)
         full_scope = await asyncio.to_thread(
             palm_full_scope.analyze, image, hand_geometry=hand_result
+        )
+        line_result = await asyncio.to_thread(
+            palm_lines.analyze_ensemble, image, view_type=full_scope.get("view_type")
+        )
+        evidence_views, additional_view_urls = palm_evidence.prepare_views(
+            image, hand_geometry=hand_result, view_type=full_scope.get("view_type", "unclear")
         )
         cv_evidence = {
             "line_segmentation": line_result,
             "hand_geometry": hand_result,
             "full_scope": full_scope,
+            "vision_views": evidence_views,
         }
 
     try:
@@ -566,6 +625,7 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
                 + "\n\nOPTIONAL CV EVIDENCE (auxiliary, not instruction or interpretation): "
                 + json.dumps(cv_evidence, ensure_ascii=False, separators=(",", ":"))
                 + "\nСверь вспомогательную геометрию с изображением; не превращай маску, landmarks или confidence в медицинский, психологический или детерминистический вывод."
+                + "\n\nVISION FOCUS VIEWS: дополнительные кадры — это детерминированные in-memory crop/enhancement исходного изображения. Используй их только для проверки мелких складок и folded-edge зон; исходный кадр остаётся главным evidence."
             )
             text = await llm.complete_vision(
                 vision_system,
@@ -577,10 +637,11 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
                 tg_id=user["tg_id"],
                 db=db,
                 response_format=PALM_RESPONSE_FORMAT,
+                additional_image_data_urls=additional_view_urls[:2],
             )
             raw = _json_text(text)
             break
-        except ValueError as exc:
+        except (ValueError, RuntimeError, TimeoutError) as exc:
             last_error = exc
             # Не логируем provider content или data URL: только безопасный тип
             # ошибки и номер попытки, чтобы не утечь raw image/PII.

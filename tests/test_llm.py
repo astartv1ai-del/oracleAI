@@ -171,6 +171,32 @@ async def test_complete_uses_workflow_deadline(monkeypatch):
         await llm.complete("s", "u")
 
 
+async def test_complete_vision_passes_primary_and_bounded_focus_images(monkeypatch):
+    await _two_provider_chain(monkeypatch)
+    monkeypatch.setattr(llm, "_RATE", llm._RateLimit(10_000))
+    seen = []
+
+    async def capture(_provider, _system, _user_text, image_urls, *_args, **_kwargs):
+        seen.append(image_urls)
+        return "{}"
+
+    monkeypatch.setattr(llm, "_vision_with", capture)
+    result = await llm.complete_vision(
+        "s", "u", "data:image/jpeg;base64,one",
+        additional_image_data_urls=[
+            "data:image/jpeg;base64,two",
+            "data:image/jpeg;base64,three",
+            "data:image/jpeg;base64,four",
+        ],
+    )
+    assert result == "{}"
+    assert seen == [[
+        "data:image/jpeg;base64,one",
+        "data:image/jpeg;base64,two",
+        "data:image/jpeg;base64,three",
+    ]]
+
+
 async def test_complete_vision_uses_workflow_deadline(monkeypatch):
     await _two_provider_chain(monkeypatch)
     monkeypatch.setattr(settings, "llm_workflow_timeout", 1.0)

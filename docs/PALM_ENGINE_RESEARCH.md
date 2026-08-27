@@ -1,6 +1,6 @@
 # Palm-analysis engine research
 
-**Дата исследования:** 27 августа 2026
+**Дата исследования:** 27 августа 2026; semantic hardening update: 27 августа 2026
 
 ## Вывод
 
@@ -40,7 +40,7 @@ The inspected `palm-line-reader` fp16 model is SHA-256 `e2c9f826676b3aaf0a715f30
 
 ## Final integration boundary
 
-The production path is a hybrid: `palm_vision` checks decoding, exposure, contrast, blur, crop and aspect; MediaPipe supplies hand geometry and handedness; ONNX supplies bounded summaries (`coverage`, `bbox`, `confidence`) for heart/head/life; `palm_full_scope` performs bounded candidate-crease search across all 16 named line zones plus mounts, fingers and markings; the vision LLM sees the normalized image and receives all CV results as untrusted evidence. The vision model is the final visual adjudicator and the LLM explains only confirmed observations. A disagreement or weak capture becomes `needs_photo`. Relationship, children and travel lines are flagged as folded-edge dependent when the capture is an open palm.
+The production path is a hybrid: `palm_vision` checks decoding, exposure, contrast, blur, crop and aspect; MediaPipe supplies hand geometry and handedness; the fp16/int8 ONNX ensemble supplies conservative summaries (`coverage`, `bbox`, `confidence`, margin, component ratio and model agreement) for heart/head/life; `palm_full_scope` combines CLAHE/Canny with blackhat-ridge candidate search, emits at most 32 stable-ID segments across all 16 named line zones plus mounts, fingers and markings; `palm_evidence` creates bounded in-memory hand ROI and folded-edge focus views; the vision LLM sees the normalized primary image plus up to two focus views and receives all CV results as untrusted evidence. The vision model is the final visual adjudicator and the LLM explains only confirmed observations. Details may include `evidence_refs`; normalized output exposes a semantic support/abstention summary so unsupported zones remain explicit. A disagreement or weak capture becomes `needs_photo`. Relationship, children and travel lines are flagged as folded-edge dependent when the capture is an open palm.
 
 The LLM may interpret only visible, supported evidence. It must not infer health, age, pregnancy, death, income, profession, exact timing, guaranteed relationships or deterministic fate. Any malformed or unsafe model JSON is repaired/normalized or converted to a safe `needs_photo` result. Raw image bytes and raw segmentation masks are not stored.
 

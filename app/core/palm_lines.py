@@ -80,6 +80,7 @@ def _session(path: str):
 
 
 def _line_summary(mask, probabilities, class_index: int) -> dict[str, Any]:
+    import cv2
     import numpy as np
 
     selected = mask == class_index
@@ -92,18 +93,109 @@ def _line_summary(mask, probabilities, class_index: int) -> dict[str, Any]:
             "bbox": None,
         }
     ys, xs = np.where(selected)
+    selected_u8 = selected.astype(np.uint8)
+    component_count, _labels, stats, _centroids = cv2.connectedComponentsWithStats(selected_u8, 8)
+    component_areas = stats[1:, cv2.CC_STAT_AREA] if component_count > 1 else np.asarray([], dtype=np.int32)
+    largest_component_ratio = (float(component_areas.max()) / float(count)
+                               if component_areas.size else 0.0)
+    top_two = np.partition(probabilities[:, selected], -2, axis=0)[-2:]
     confidence = float(probabilities[class_index][selected].mean())
+    margin = float((top_two[-1] - top_two[-2]).mean()) if top_two.size else 0.0
     return {
         "detected": count >= MIN_LINE_PIXELS,
         "pixel_count": count,
         "coverage": round(count / float(mask.size), 6),
         "confidence": round(max(0.0, min(1.0, confidence)), 4),
+        "confidence_margin": round(max(0.0, min(1.0, margin)), 4),
+        "component_count": max(0, int(component_count - 1)),
+        "largest_component_ratio": round(max(0.0, min(1.0, largest_component_ratio)), 4),
         "bbox": {
             "x_min": int(xs.min()),
             "y_min": int(ys.min()),
             "x_max": int(xs.max()),
             "y_max": int(ys.max()),
         },
+    }
+
+
+def _bbox_iou(first: dict[str, Any] | None, second: dict[str, Any] | None) -> float:
+    if not first or not second:
+        return 0.0
+    left = max(first.get("x_min", 0), second.get("x_min", 0))
+    top = max(first.get("y_min", 0), second.get("y_min", 0))
+    right = min(first.get("x_max", 0), second.get("x_max", 0))
+    bottom = min(first.get("y_max", 0), second.get("y_max", 0))
+    intersection = max(0, right - left + 1) * max(0, bottom - top + 1)
+    area_first = max(0, first.get("x_max", 0) - first.get("x_min", 0) + 1) * max(0, first.get("y_max", 0) - first.get("y_min", 0) + 1)
+    area_second = max(0, second.get("x_max", 0) - second.get("x_min", 0) + 1) * max(0, second.get("y_max", 0) - second.get("y_min", 0) + 1)
+    union = area_first + area_second - intersection
+    return intersection / union if union else 0.0
+
+
+def analyze_ensemble(image_bytes: bytes, *, view_type: str | None = None) -> dict[str, Any]:
+    """Fuse both ONNX variants conservatively; skip open-line model off-domain views."""
+    if view_type == "folded_edge":
+        return {
+            "version": ADAPTER_VERSION,
+            "status": "not_applicable",
+            "model": "fp16_int8_ensemble",
+            "models": [MODEL_FILENAME, "palm_line_student_int8.onnx"],
+            "lines": {},
+            "ensemble": {
+                "status": "out_of_domain",
+                "disagreements": [],
+                "raw_masks_stored": False,
+            },
+            "limitations": [
+                "Principal-line ONNX model is not applied to folded-edge geometry.",
+                "Use full-scope candidate evidence and folded-edge vision views for this capture.",
+            ],
+            "raw_mask_stored": False,
+        }
+    fp16 = analyze(image_bytes)
+    int8 = analyze(image_bytes, model_path=str(Path(__file__).resolve().parents[2] / "models" / "palm_line_student_int8.onnx"))
+    if fp16.get("status") in {"invalid_image", "model_missing", "model_integrity_error", "unavailable", "runtime_error"}:
+        return {**fp16, "ensemble": {"status": "fallback_single_model", "models": [fp16.get("model")]}}
+    if int8.get("status") in {"invalid_image", "model_missing", "model_integrity_error", "unavailable", "runtime_error"}:
+        return {**fp16, "ensemble": {"status": "fallback_single_model", "models": [fp16.get("model"), int8.get("model")]}}
+    lines: dict[str, Any] = {}
+    disagreements = []
+    for name in CLASS_NAMES.values():
+        first = (fp16.get("lines") or {}).get(name) or {}
+        second = (int8.get("lines") or {}).get(name) or {}
+        same_detected = bool(first.get("detected")) == bool(second.get("detected"))
+        iou = _bbox_iou(first.get("bbox"), second.get("bbox")) if first.get("bbox") and second.get("bbox") else 0.0
+        stable = bool(first.get("detected")) and bool(second.get("detected")) and iou >= 0.35
+        if not same_detected or (first.get("detected") and second.get("detected") and iou < 0.35):
+            disagreements.append(name)
+        combined = dict(first)
+        combined["detected"] = stable
+        combined["ensemble_agreement"] = not (name in disagreements)
+        combined["bbox_iou_fp16_int8"] = round(iou, 4)
+        combined["confidence"] = round(min(float(first.get("confidence", 0)), float(second.get("confidence", 0))), 4)
+        lines[name] = combined
+    status = "needs_vision_review" if disagreements else ("detected" if any(item["detected"] for item in lines.values()) else "no_lines")
+    return {
+        "version": ADAPTER_VERSION,
+        "status": status,
+        "model": "fp16_int8_ensemble",
+        "models": [fp16.get("model"), int8.get("model")],
+        "model_sha256": fp16.get("model_sha256"),
+        "input_size": fp16.get("input_size"),
+        "image_size": fp16.get("image_size"),
+        "precheck": fp16.get("precheck") or {},
+        "lines": lines,
+        "ensemble": {
+            "status": "agreement" if not disagreements else "disagreement",
+            "disagreements": disagreements,
+            "raw_masks_stored": False,
+        },
+        "limitations": [
+            "Auxiliary ensemble evidence only; not a palmistry interpretation.",
+            "A model disagreement lowers trust and requires image-level vision adjudication.",
+            "Model covers heart/head/life lines only; other zones require full-scope evidence and vision review.",
+        ],
+        "raw_mask_stored": False,
     }
 
 

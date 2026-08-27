@@ -534,7 +534,12 @@ async def _run_palm_scanner(db, user, args) -> str:
         score = float(quality.get("score") or 0)
     except (TypeError, ValueError):
         pass
-    usable = reading.get("status") == "complete" and score >= 0.6
+    precheck_score = quality.get("precheck_score", score)
+    try:
+        precheck_score = float(precheck_score or 0)
+    except (TypeError, ValueError):
+        precheck_score = 0.0
+    usable = reading.get("status") == "complete" and max(score, precheck_score) >= 0.45
     if not usable:
         return ("кадр недостаточно качественный для разбора — предложи переснять ладонь целиком "
                 "при ровном свете, без бликов и фильтров")
@@ -553,18 +558,22 @@ async def _run_palm_scanner(db, user, args) -> str:
         "hand_side": reading.get("hand_side", "unknown"),
         "hand_shape_element": reading.get("hand_shape_element", "unknown"),
         "image_quality": {"score": round(score, 2), "issues": quality.get("issues") or [],
-                           "precheck_score": quality.get("precheck_score", score),
-                           "precheck_issues": quality.get("precheck_issues") or []},
+                           "precheck_score": round(precheck_score, 2),
+                           "precheck_issues": quality.get("precheck_issues") or [],
+                           "quality_gate": "degraded" if max(score, precheck_score) < 0.6 else "usable"},
         "visual_precheck": reading.get("visual_precheck") or {},
         "computer_vision": reading.get("computer_vision") or {},
         "zones": zones,
         "lines": reading.get("lines") or {},
         "mounts": reading.get("mounts") or {},
         "fingers": reading.get("fingers") or {},
+        "markings": reading.get("markings") or [],
+        "semantic_summary": reading.get("semantic_summary") or {},
         "interpretive_prompts": reading.get("interpretive_prompts") or [],
         "limitations": reading.get("limitations") or [],
         "rule": ("Традиционная хиромантия по видимому: не добавляй невидимые признаки, "
-                 "без медицинских выводов, предсказаний и сроков."),
+                 "без медицинских выводов, предсказаний и сроков. Учитывай semantic_summary и evidence_refs; "
+                 "degraded quality означает осторожную интерпретацию, а не право додумывать."),
     }
     return "[Полное сканирование ладони — evidence vision-наблюдений]\n" + json.dumps(
         payload, ensure_ascii=False, separators=(",", ":"))

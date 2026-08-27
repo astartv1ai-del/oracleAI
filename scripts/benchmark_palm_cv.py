@@ -50,6 +50,7 @@ def main() -> None:
         item["line_segmentation_int8"] = palm_lines.analyze(
             image, model_path=str(ROOT / "models" / "palm_line_student_int8.onnx")
         )
+        item["line_segmentation_ensemble"] = palm_lines.analyze_ensemble(image)
         # Backward-compatible alias used by earlier benchmark reports.
         item["line_segmentation"] = item["line_segmentation_fp16"]
         item["hand_geometry"] = palm_landmarks.analyze(image)

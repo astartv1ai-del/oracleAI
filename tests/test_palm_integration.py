@@ -106,7 +106,10 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
     response_format = seen["kwargs"]["response_format"]
     assert response_format["type"] == "json_schema"
     assert response_format["json_schema"]["strict"] is True
-    assert response_format["json_schema"]["schema"]["additionalProperties"] is False
+    assert seen["kwargs"]["response_format"]["json_schema"]["schema"]["additionalProperties"] is False
+    assert isinstance(seen["kwargs"]["additional_image_data_urls"], list)
+    assert seen["kwargs"]["additional_image_data_urls"]
+    assert all(url.startswith("data:image/jpeg;base64,") for url in seen["kwargs"]["additional_image_data_urls"])
 
     cursor = await db.execute(
         "SELECT id, tg_id, image_sha256, image_size, analysis_json FROM palm_readings WHERE id=?",
@@ -301,6 +304,31 @@ async def test_palm_vision_repairs_wrapped_json_after_retry(client, user, monkey
     assert len(calls) == 2
     assert "ПОВТОРНАЯ ПОПЫТКА" in calls[1]
     assert result["status"] == "complete"
+    assert result["image_meta"]["raw_stored"] is False
+
+
+@pytest.mark.asyncio
+async def test_palm_vision_provider_runtime_error_returns_safe_needs_photo(
+    client, db, user, monkeypatch,
+):
+    image = FIXTURE.read_bytes()
+    calls = 0
+
+    async def unavailable_provider(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("upstream 403 provider body must not escape")
+
+    monkeypatch.setattr(palm_core.llm, "complete_vision", unavailable_provider)
+    response = await client.post(
+        "/api/palm", params={"dev_user": user["tg_id"]},
+        headers={"content-type": "image/jpeg"}, content=image,
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert calls == palm_core.PALM_JSON_ATTEMPTS
+    assert result["status"] == "needs_photo"
+    assert "upstream 403" not in response.text
     assert result["image_meta"]["raw_stored"] is False
 
 

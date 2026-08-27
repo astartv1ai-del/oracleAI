@@ -15,7 +15,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 ADAPTER_VERSION = "palm-full-scope-cv-v1"
 MAX_SIDE = 1280
-MAX_CANDIDATES = 64
+MAX_CANDIDATES = 32
 
 LINE_CATALOG = (
     "life_line", "head_line", "heart_line", "fate_line", "sun_line",
@@ -88,6 +88,18 @@ def _hand_mask(cv2, np, width: int, height: int, hand_geometry: dict[str, Any] |
     return cv2.dilate(mask, kernel, iterations=2)
 
 
+def _candidate_region(x: float, y: float) -> str:
+    if y < 0.28:
+        return "upper_palm_or_finger_base"
+    if y > 0.78:
+        return "lower_palm_or_wrist"
+    if x < 0.22:
+        return "left_palm_edge"
+    if x > 0.78:
+        return "right_palm_edge"
+    return "central_palm"
+
+
 def _candidate_segments(cv2, np, gray, edges, hand_mask) -> list[dict[str, Any]]:
     if hand_mask is not None:
         scoped = cv2.bitwise_and(edges, edges, mask=hand_mask)
@@ -115,9 +127,13 @@ def _candidate_segments(cv2, np, gray, edges, hand_mask) -> list[dict[str, Any]]
         region = gray[max(0, min(y1, y2)): min(height, max(y1, y2) + 1),
                       max(0, min(x1, x2)): min(width, max(x1, x2) + 1)]
         contrast = float(np.std(region)) if region.size else 0.0
+        x1_norm, y1_norm = x1 / width, y1 / height
+        x2_norm, y2_norm = x2 / width, y2 / height
         candidates.append({
-            "x1": round(x1 / width, 4), "y1": round(y1 / height, 4),
-            "x2": round(x2 / width, 4), "y2": round(y2 / height, 4),
+            "segment_id": f"seg_{len(candidates):03d}",
+            "region": _candidate_region((x1_norm + x2_norm) / 2.0, (y1_norm + y2_norm) / 2.0),
+            "x1": round(x1_norm, 4), "y1": round(y1_norm, 4),
+            "x2": round(x2_norm, 4), "y2": round(y2_norm, 4),
             "length_px": round(length, 1),
             "angle_degrees": round(angle, 1),
             "local_contrast": round(min(1.0, contrast / 64.0), 3),
@@ -190,10 +206,23 @@ def analyze(image_bytes: bytes, *, hand_geometry: dict[str, Any] | None = None) 
         lower = int(max(0, 0.66 * median))
         upper = int(min(255, max(lower + 20, 1.33 * median)))
         edges = cv2.Canny(enhanced, lower, upper, apertureSize=3)
+        # A blackhat/ridge pass recovers dark, low-contrast creases that a
+        # single Canny threshold misses. It is deliberately fused only as
+        # candidate evidence; it cannot assign a palmistry semantic label.
+        ridge = np.zeros_like(enhanced)
+        for kernel in (
+            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
+            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 3)),
+            cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 11)),
+        ):
+            ridge = cv2.max(ridge, cv2.morphologyEx(enhanced, cv2.MORPH_BLACKHAT, kernel))
+        ridge_edges = cv2.Canny(ridge, 18, 55, apertureSize=3)
+        fused_edges = cv2.bitwise_or(edges, ridge_edges)
         resized_geometry = hand_geometry
         mask = _hand_mask(cv2, np, gray.shape[1], gray.shape[0], resized_geometry)
-        candidates = _candidate_segments(cv2, np, gray, edges, mask)
-        edge_density = float(np.count_nonzero(edges)) / float(edges.size or 1)
+        candidates = _candidate_segments(cv2, np, gray, fused_edges, mask)
+        edge_density = float(np.count_nonzero(fused_edges)) / float(fused_edges.size or 1)
+        ridge_energy = float(np.mean(ridge)) / 255.0
         view_type = _view_type(hand_geometry)
         return {
             "version": ADAPTER_VERSION,
@@ -203,6 +232,8 @@ def analyze(image_bytes: bytes, *, hand_geometry: dict[str, Any] | None = None) 
             "image_size": {"width": original_width, "height": original_height},
             "working_size": {"width": int(gray.shape[1]), "height": int(gray.shape[0])},
             "edge_density": round(min(1.0, edge_density), 5),
+            "ridge_energy": round(min(1.0, ridge_energy), 5),
+            "edge_passes": ["clahe_canny", "blackhat_ridge_canny"],
             "candidate_count": len(candidates),
             "candidate_segments": candidates,
             "zone_evidence": _zone_evidence(view_type, len(candidates), hand_geometry),
