@@ -111,7 +111,8 @@ async def record_product_cost_event(
     output_tokens: int = 0, retry_count: int = 0, latency_ms: int = 0,
     duration_ms: int = 0, artifact_bytes: int = 0,
     cost_usd: float | None = None, reference_id: str | None = None,
-    order_id: int | None = None, reason: str | None = None) -> None:
+    order_id: int | None = None, reason: str | None = None,
+    price_variant: str | None = None) -> None:
     """Persist server-owned cost evidence without free-form user content."""
     if event_kind not in _COST_EVENT_KINDS:
         raise ValueError("unknown product cost event kind")
@@ -127,6 +128,7 @@ async def record_product_cost_event(
     safe_result = _safe_cost_token(result_category, limit=48)
     safe_reference = _safe_cost_token(reference_id, limit=96)
     safe_reason = _safe_cost_token(reason, limit=48)
+    safe_price_variant = _safe_cost_token(price_variant, limit=48)
     def numeric(value) -> int:
         return max(0, int(value or 0))
 
@@ -138,12 +140,12 @@ async def record_product_cost_event(
             "tg_id,event_kind,sku,catalog_version,channel,purpose,provider,model,"
             "result_category,status,units,input_tokens,output_tokens,retry_count,"
             "latency_ms,duration_ms,artifact_bytes,cost_usd,reference_id,order_id,"
-            "reason,day,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "reason,price_variant,day,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (tg_id, event_kind, safe_sku, safe_catalog, channel, safe_purpose,
              safe_provider, safe_model, safe_result, status, numeric(units),
              numeric(input_tokens), numeric(output_tokens), numeric(retry_count),
              numeric(latency_ms), numeric(duration_ms), numeric(artifact_bytes),
-             safe_cost, safe_reference, order_id, safe_reason,
+             safe_cost, safe_reference, order_id, safe_reason, safe_price_variant,
              now.strftime("%Y-%m-%d"), now.isoformat()),
         )
 

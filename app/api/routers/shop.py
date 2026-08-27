@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 from ...services.billing import CRYPTO_ASSETS
 
 from ...repo import billing as billing_repo
+from ...repo import monetization as monetization_repo
 from ...services import analytics
 from ...services import billing as billing_svc
 from ...services import invoices
@@ -34,6 +36,7 @@ async def storefront(user=Depends(confirmed_age_user), db=Depends(get_db)):
 class InvoiceIn(BaseModel):
     sku: str | None = None
     plan: str | None = None
+    billing_period: Literal["monthly", "annual"] = "monthly"
 
 
 @router.post("/invoice", dependencies=[Depends(rate_limit("write"))])
@@ -44,7 +47,7 @@ async def create_invoice(item: InvoiceIn, user=Depends(confirmed_age_user),
         raise HTTPException(400, "нужен sku товара или код тарифа")
     try:
         order = (await billing_svc.checkout_plan(db, user["tg_id"], item.plan,
-                                                 surface="miniapp")
+                                                 surface="miniapp", billing_period=item.billing_period)
                  if item.plan else
                  await billing_svc.checkout_product(db, user["tg_id"], item.sku,
                                                     surface="miniapp"))
@@ -82,12 +85,30 @@ async def web_checkout(item: InvoiceIn, user=Depends(confirmed_age_user),
     plan_code = (item.plan or "vip").strip()
     try:
         order = await billing_svc.checkout_web_plan(
-            db, user["tg_id"], plan_code, surface="web")
+            db, user["tg_id"], plan_code, surface="web",
+            billing_period=item.billing_period)
     except billing_svc.PurchaseError as exc:
         raise HTTPException(exc.status_code, str(exc)) from exc
 
     return {"link": order["link"], "plan": order["sku"],
+            "billing_period": item.billing_period,
             "price_usd": order["plan"]["price_usd"]}
+
+
+class SubscriptionCancelIn(BaseModel):
+    cancel_at_period_end: bool = True
+
+
+@router.post("/subscription/cancel", dependencies=[Depends(rate_limit("write"))])
+async def cancel_subscription(item: SubscriptionCancelIn, user=Depends(confirmed_age_user), db=Depends(get_db)):
+    state = await monetization_repo.set_cancel_at_period_end(
+        db, user["tg_id"], item.cancel_at_period_end)
+    if not state:
+        raise HTTPException(404, "активная v2-подписка не найдена")
+    await analytics.track(db, "subscription_lifecycle", user["tg_id"],
+                          props={"action": "cancel_at_period_end" if item.cancel_at_period_end else "resume"},
+                          surface="miniapp")
+    return {"ok": True, "subscription": state}
 
 
 class CryptoIn(BaseModel):

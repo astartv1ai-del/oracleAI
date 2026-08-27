@@ -22,6 +22,8 @@ os.environ["EMBED_MODEL"] = ""
 os.environ.setdefault("BOT_TOKEN", "test:token")
 os.environ.setdefault("ADMIN_ID", "1")
 os.environ.setdefault("DEV_MODE", "1")
+# Legacy fixtures intentionally opt into the historical trial; production defaults off.
+os.environ.setdefault("AUTO_TRIAL", "1")
 
 
 @pytest.fixture

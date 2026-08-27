@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from ..repo import billing, content, dialog, users
+from ..repo import monetization as monetization_repo
+from .entitlements import entitlements
 
 # Сколько уточнений подряд считаются частью того же вопроса.
 FOLLOWUP_MAX = 2
@@ -87,6 +89,26 @@ async def active_plan(db, user) -> dict:
     Истёкшая подписка не удаляет `sub_level` из профиля (он нужен, чтобы понимать,
     что продлевать), поэтому уровень пересчитывается по сроку, а не по колонке.
     """
+    current = await entitlements.state(db, user)
+    # Historical plans keep their original allowance semantics. Only subscriptions
+    # granted from the versioned price book use the monthly AI counter.
+    if current.get("catalog_version") == "legacy":
+        if not users.sub_active(user):
+            return await billing.get_plan(db, "free")
+        return await billing.get_plan(db, user["sub_level"] or "free")
+    tier = current.get("tier_code") or "free"
+    if tier in {"vip_core", "vip_plus", "pro", "concierge_v2"}:
+        from ..data.monetization_catalog import PLAN_DEFINITIONS
+        definition = next((dict(item) for item in PLAN_DEFINITIONS if item["code"] == tier), None)
+        if definition:
+            return {
+                "code": tier, "title": definition["title"], "tagline": definition["tagline"],
+                "price_stars": definition["monthly_stars"], "price_usd": definition["monthly_usd"],
+                "period_days": definition["period_days"], "daily_questions": 0,
+                "weekly_questions": 0, "monthly_questions": definition["ai_messages"],
+                "memory_depth": definition["memory_depth"], "crystals_grant": definition["crystals_grant"],
+                "features": definition["features"], "catalog_version": current.get("catalog_version", "legacy"),
+            }
     if not users.sub_active(user):
         return await billing.get_plan(db, "free")
     return await billing.get_plan(db, user["sub_level"] or "free")
@@ -123,8 +145,13 @@ async def allowance(db, user, *, check_followup: bool = True) -> Allowance:
     plan = await active_plan(db, user)
     daily = plan.get("daily_questions") or 0
     weekly = plan.get("weekly_questions") or 0
+    monthly = plan.get("monthly_questions") or 0
 
-    if daily > 0:
+    if monthly > 0:
+        period, limit = "month", monthly
+        state = await monetization_repo.get_subscription_state(db, user["tg_id"])
+        used = int((state or {}).get("ai_messages_used") or 0)
+    elif daily > 0:
         period, limit = "day", daily
         used = await dialog.questions_used_today(db, user)
     elif weekly > 0:
@@ -198,8 +225,13 @@ async def consume(db, user, verdict: Verdict) -> bool:
     Ответ выдаётся ТОЛЬКО после успешного списания: иначе при гонке двух
     устройств клиентка получала два ответа, заплатив за один.
     """
-    if verdict.charge in (FOLLOWUP, PLAN):
-        return True            # лимит тарифа считается по сообщениям, не счётчиком
+    if verdict.charge == FOLLOWUP:
+        return True
+    if verdict.charge == PLAN:
+        if verdict.allowance and verdict.allowance.period == "month":
+            return await monetization_repo.increment_ai_usage(
+                db, user["tg_id"], verdict.allowance.limit)
+        return True            # legacy daily/weekly limits derive from message rows
     if verdict.charge == ENT_QUESTION:
         return await billing.consume_entitlement(db, user["tg_id"], "question")
     if verdict.charge == ENT_SPREAD:

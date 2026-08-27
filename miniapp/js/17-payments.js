@@ -111,7 +111,7 @@
 
   const stars = value => `✦ ${Number(value || 0).toLocaleString(payLang() === 'en' ? 'en-US' : 'ru-RU')}`;
   const paymentState = () => app.payment || (app.payment = {
-    data: null, loading: false, error: '', method: 'stars', asset: 'TON', busy: '', orders: [],
+    data: null, loading: false, error: '', method: 'stars', asset: 'TON', billingPeriod: 'monthly', busy: '', orders: [],
   });
 
   function activeAsset() {
@@ -126,13 +126,14 @@
   }
 
   function planCard(plan, featured) {
-    const price = Number(plan.price_stars || 0);
+    const annual = paymentState().billingPeriod === 'annual';
+    const price = Number((annual ? plan.annual_price_stars : plan.price_stars) || 0);
     const code = plan.code || plan.sku || 'ACCESS';
     return `<article class="pay-plan${featured ? ' pay-plan--featured' : ''}">
       ${featured ? `<span class="pay-plan__badge">${esc(payT('popular'))}</span>` : ''}
       <div class="pay-plan__top"><div><span class="pay-kicker">${esc(code)}</span><h3>${esc(catalogText(plan, 'title', payT('defaultPlan')))}</h3></div><span class="pay-plan__sigil">✦</span></div>
       <p>${esc(catalogText(plan, 'tagline', payT('defaultPlanCopy')))}</p>
-      <div class="pay-price"><strong>${price ? stars(price) : (payLang() === 'en' ? 'By request' : 'По запросу')}</strong><small>${esc(payT('perPeriod'))}</small></div>
+      <div class="pay-price"><strong>${price ? stars(price) : (payLang() === 'en' ? 'By request' : 'По запросу')}</strong><small>${annual ? (payLang() === 'en' ? 'per year' : 'за год') : esc(payT('perPeriod'))}</small></div>
       <button class="btn btn-primary pay-cta" data-act="pay-stars" data-plan="${esc(code)}" ${price ? '' : 'disabled'}>${esc(payT('openStars'))}</button>
     </article>`;
   }
@@ -156,9 +157,13 @@
     const data = state.data || {};
     const method = state.method || 'stars';
     const asset = activeAsset();
-    const plans = (data.plans || []).filter(plan => plan.is_active !== 0 && plan.is_public !== 0);
-    const productGroups = data.products && typeof data.products === 'object' ? data.products : data;
-    const allProducts = Object.values(productGroups).filter(Array.isArray).flat();
+    const canonical = data.catalog || {};
+    const plans = (canonical.plans && canonical.plans.length ? canonical.plans : (data.plans || []))
+      .filter(plan => plan.is_active !== 0 && plan.is_public !== 0);
+    const legacyGroups = data.products && typeof data.products === 'object' ? data.products : data;
+    const legacyProducts = Object.values(legacyGroups).filter(Array.isArray).flat();
+    const canonicalProducts = [ ...(canonical.crystal_packs || []), ...(canonical.products || []) ];
+    const allProducts = canonicalProducts.length ? canonicalProducts : legacyProducts;
     const crystalProducts = allProducts.filter(product => product.kind === 'crystals');
     const otherProducts = allProducts.filter(product => product.kind !== 'crystals');
     const busy = state.busy ? `<div class="pay-busy" role="status"><span class="loader-ring"></span><span>${esc(payT('busy'))}</span></div>` : '';
@@ -173,7 +178,7 @@
       </div>
       ${method === 'crypto' ? `<section class="pay-asset-picker"><div class="pay-section-head"><div><span class="pay-kicker">${esc(payT('wallet'))}</span><h2>${esc(payT('payWith'))}</h2></div><span class="pay-safe">${esc(payT('protectedInvoice'))}</span></div><div class="pay-assets">${ASSETS.map(item => `<button class="pay-asset${item.code === asset.code ? ' is-active' : ''}" data-act="payment-asset" data-asset="${item.code}" aria-pressed="${item.code === asset.code ? 'true' : 'false'}"><b>${item.icon}</b><span>${item.label}</span></button>`).join('')}</div><p class="pay-note">${esc(asset.copy[payLang()])}<br>${esc(payT('cryptoNote'))}</p></section>` : `<section class="pay-trust"><span>✓</span><p><b>${esc(payT('starsTrustTitle'))}</b><br>${esc(payT('starsTrustCopy'))}</p></section>`}
       ${busy}${error}
-      <section class="pay-section"><div class="pay-section-head"><div><span class="pay-kicker">${esc(payT('subscription'))}</span><h2>${esc(payT('depth'))}</h2></div><span class="pay-section-count">${esc(planCount(plans.length))}</span></div><div class="pay-plans">${plans.length ? plans.map((plan, index) => planCard(plan, index === 1 || (plans.length === 1))).join('') : `<div class="pay-empty">${esc(payT('emptyPlans'))}</div>`}</div></section>
+      <section class="pay-section"><div class="pay-section-head"><div><span class="pay-kicker">${esc(payT('subscription'))}</span><h2>${esc(payT('depth'))}</h2></div><span class="pay-section-count">${esc(planCount(plans.length))}</span></div><div class="pay-period-toggle" role="tablist" aria-label="${payLang() === 'en' ? 'Billing period' : 'Период оплаты'}"><button class="btn btn-ghost ${state.billingPeriod === 'monthly' ? 'is-active' : ''}" data-act="payment-period" data-period="monthly">${payLang() === 'en' ? 'Monthly' : 'Месяц'}</button><button class="btn btn-ghost ${state.billingPeriod === 'annual' ? 'is-active' : ''}" data-act="payment-period" data-period="annual">${payLang() === 'en' ? 'Annual · save 2 months' : 'Год · экономия 2 месяцев'}</button></div><div class="pay-plans">${plans.length ? plans.map((plan, index) => planCard(plan, index === 1 || (plans.length === 1))).join('') : `<div class="pay-empty">${esc(payT('emptyPlans'))}</div>`}</div></section>
       <section class="pay-section"><div class="pay-section-head"><div><span class="pay-kicker">${esc(payT('oneOff'))}</span><h2>${esc(payT('reserve'))}</h2></div></div><div class="pay-products">${(method === 'crypto' ? crystalProducts : [...crystalProducts, ...otherProducts]).slice(0, 5).map(product => productCard(product, method, asset)).join('') || `<div class="pay-empty">${esc(payT('emptyProducts'))}</div>`}</div></section>
       <section class="pay-footer-note"><span>◌</span><p>${esc(payT('footer'))}</p><button class="btn btn-ghost" data-act="payment-orders">${esc(payT('orders'))}</button></section>
     </div>`;
@@ -215,6 +220,13 @@
     this.renderPayment(document.getElementById('app-main'));
   };
 
+  app.selectPaymentPeriod = function (period) {
+    const state = paymentState();
+    state.billingPeriod = period === 'annual' ? 'annual' : 'monthly';
+    state.error = '';
+    this.renderPayment(document.getElementById('app-main'));
+  };
+
   async function openProviderLink(link) {
     if (!link) throw new Error('Ссылка на оплату не создана');
     const telegram = tg && tg();
@@ -228,7 +240,7 @@
     state.busy = 'stars'; state.error = '';
     this.renderPayment(document.getElementById('app-main'));
     try {
-      const body = data.plan ? { plan: data.plan } : { sku: data.sku };
+      const body = data.plan ? { plan: data.plan, billing_period: (paymentState().billingPeriod || 'monthly') } : { sku: data.sku };
       const invoice = await api('/api/shop/invoice', { method: 'POST', body: JSON.stringify(body) });
       const telegram = tg && tg();
       if (telegram && typeof telegram.openInvoice === 'function') {

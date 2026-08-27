@@ -18,6 +18,8 @@ from ..repo import billing as billing_repo
 from ..repo import users
 from ..services import analytics
 from ..services import billing as billing_svc
+from ..repo import monetization as monetization_repo
+from ..services.entitlements import entitlements
 from .chat import _send_long
 from .keyboards import (back_menu, main_menu, plans_kb, products_kb, shop_kb)
 
@@ -59,8 +61,13 @@ async def shop(cb: CallbackQuery, db):
 @router.callback_query(F.data == "plans")
 async def plans(cb: CallbackQuery, db):
     user = await users.get(db, cb.from_user.id)
-    available = await billing_repo.list_plans(db)
-    current = user["sub_level"] if users.sub_active(user) else "free"
+    canonical = await monetization_repo.catalog_payload(db, current_state=await entitlements.snapshot(db, user))
+    available = [
+        {**plan, "tagline": plan.get("tagline") or plan.get("description"),
+         "features": plan.get("features") or []}
+        for plan in canonical["plans"]
+    ]
+    current = (await entitlements.snapshot(db, user))["tier"]
 
     lines = ["👑 <b>Уровни доступа</b>", ""]
     for plan in available:
@@ -81,7 +88,14 @@ async def plans(cb: CallbackQuery, db):
 
 
 async def _show_products(cb: CallbackQuery, db, kind: str) -> None:
-    products = await billing_repo.list_products(db, kind)
+    if kind == "crystals":
+        canonical = await monetization_repo.catalog_payload(db)
+        products = [{**item, "price_crystals": 0, "grant_kind": "crystals",
+                     "grant_code": item["sku"], "grant_qty": item["crystals"] + item.get("bonus", 0),
+                     "valid_days": None, "price_stars": item["price_stars"]}
+                    for item in canonical["crystal_packs"]]
+    else:
+        products = await billing_repo.list_products(db, kind)
     if not products:
         await cb.answer("Здесь пока пусто")
         return

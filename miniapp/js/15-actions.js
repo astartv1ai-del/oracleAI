@@ -18,6 +18,7 @@
   const actionHandlers = {
     go: (el, data) => call('go', data.goto),
     'payment-method': (el, data) => call('selectPaymentMethod', data.method),
+    'payment-period': (el, data) => call('selectPaymentPeriod', data.period),
     'payment-asset': (el, data) => call('selectPaymentAsset', data.asset),
     'pay-stars': (el, data) => call('payStars', el, data),
     'pay-crypto': (el, data) => call('payCrypto', el, data),

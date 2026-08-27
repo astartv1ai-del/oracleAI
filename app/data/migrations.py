@@ -94,6 +94,17 @@ COLUMNS: dict[str, dict[str, str]] = {
         "memory_depth": "INTEGER DEFAULT 20",
         "badge": "TEXT",
     },
+    "llm_usage": {
+        "sku": "TEXT",
+        "catalog_version": "TEXT DEFAULT 'legacy'",
+        "subscription_code": "TEXT",
+        "included_usage": "INTEGER DEFAULT 0",
+        "crystal_spend": "INTEGER DEFAULT 0",
+        "overage": "INTEGER DEFAULT 0",
+    },
+    "product_cost_events": {
+        "price_variant": "TEXT",
+    },
     "broadcast_targets": {
         "claimed_at": "TEXT",
     },

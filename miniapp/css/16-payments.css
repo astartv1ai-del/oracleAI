@@ -27,6 +27,9 @@
 .pay-section-head { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin: 0 1px 9px; }
 .pay-section-head h2 { margin: 3px 0 0; color: var(--text-main); font: 700 19px/1.1 var(--font-display); }
 .pay-section-count, .pay-safe { color: var(--text-muted); font-size: 9px; font-weight: 700; white-space: nowrap; }
+.pay-period-toggle { display: flex; gap: 6px; margin: 0 1px 10px; padding: 3px; border: 1px solid rgba(225,214,255,.11); border-radius: 13px; background: rgba(255,255,255,.025); }
+.pay-period-toggle .btn { flex: 1; min-height: 31px; padding: 6px 8px; font-size: 10px; }
+.pay-period-toggle .btn.is-active { color: var(--text-main); border-color: rgba(245,212,139,.5); background: rgba(245,212,139,.12); }
 .pay-safe { color: #9aefd2; }
 .pay-plans { display: grid; gap: 10px; }
 .pay-plan { position: relative; overflow: hidden; padding: 15px; border: 1px solid rgba(225,214,255,.13); border-radius: 21px; background: linear-gradient(145deg, rgba(255,255,255,.07), rgba(185,166,255,.05)); box-shadow: var(--shadow-ritual); }

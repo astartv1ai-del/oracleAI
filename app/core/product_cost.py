@@ -21,6 +21,9 @@ class CostContext:
     result_category: str | None = None
     reference_id: str | None = None
     order_id: int | None = None
+    tier_code: str | None = None
+    charged_source: str | None = None
+    price_variant: str | None = None
 
 
 _CURRENT: ContextVar[CostContext] = ContextVar(
@@ -35,7 +38,8 @@ def current() -> CostContext:
 def context(*, sku: str | None = None, catalog_version: str = "legacy",
             channel: str = "system", result_category: str | None = None,
             reference_id: str | None = None,
-            order_id: int | None = None) -> Iterator[CostContext]:
+            order_id: int | None = None, tier_code: str | None = None,
+            charged_source: str | None = None, price_variant: str | None = None) -> Iterator[CostContext]:
     """Set safe product attribution for all nested LLM calls."""
     value = CostContext(
         sku=sku,
@@ -44,6 +48,9 @@ def context(*, sku: str | None = None, catalog_version: str = "legacy",
         result_category=result_category,
         reference_id=reference_id,
         order_id=order_id,
+        tier_code=tier_code,
+        charged_source=charged_source,
+        price_variant=price_variant,
     )
     token = _CURRENT.set(value)
     try:
@@ -95,7 +102,7 @@ async def record_llm(db, *, provider: str, model: str, purpose: str,
             model=model,
             result_category=ctx.result_category,
             status="succeeded" if ok else "failed",
-            cost_usd=cost_usd,
+            cost_usd=cost_usd, price_variant=ctx.price_variant,
             units=1,
             input_tokens=prompt_tokens,
             output_tokens=completion_tokens,
@@ -121,7 +128,8 @@ async def record_event(db, *, event_kind: str, tg_id: int | None = None,
                        cost_usd: float | None = None,
                        reference_id: str | None = None,
                        order_id: int | None = None,
-                       reason: str | None = None) -> None:
+                       reason: str | None = None,
+                       price_variant: str | None = None) -> None:
     """Persist a server-owned non-content cost/delivery event."""
     if db is None:
         return
@@ -136,7 +144,7 @@ async def record_event(db, *, event_kind: str, tg_id: int | None = None,
             retry_count=retry_count, latency_ms=latency_ms,
             duration_ms=duration_ms, artifact_bytes=artifact_bytes,
             cost_usd=cost_usd, reference_id=reference_id, order_id=order_id,
-            reason=reason,
+            reason=reason, price_variant=price_variant,
         )
     except Exception:
         return

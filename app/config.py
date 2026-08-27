@@ -118,6 +118,7 @@ class Settings:
     # Рабочие значения берутся из таблицы `settings`; эти нужны, пока БД пуста
     # (первый старт, тесты, офлайн-скрипты).
     daily_questions: int = 3
+    auto_trial: bool = os.getenv("AUTO_TRIAL", "0") == "1"
     trial_days: int = _int("TRIAL_DAYS", 30)
     crystals_start: int = _int("TRIAL_CRYSTALS", 30)
     crystals_emergency_cost: int = 20

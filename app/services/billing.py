@@ -18,7 +18,9 @@ import logging
 from ..config import settings
 from ..data.session import transaction
 from ..repo import analytics, billing as repo, content, growth, users
+from ..repo import monetization as monetization_repo
 from . import analytics as analytics_service
+from .entitlements import entitlements
 
 log = logging.getLogger("oracle.billing")
 
@@ -53,13 +55,15 @@ class PurchaseError(Exception):
 # ─────────────────────────────── витрина ──────────────────────────────────────
 
 async def storefront(db, user) -> dict:
-    """Данные для магазина: тарифы, товары по группам, текущее состояние."""
+    """Данные для магазина: legacy-compatible view plus one canonical v2 catalog."""
     plans = await repo.list_plans(db)
     products = await repo.list_products(db)
     current = user["sub_level"] if users.sub_active(user) else "free"
     groups: dict[str, list] = {}
     for p in products:
         groups.setdefault(p["kind"], []).append(p)
+    canonical_state = await entitlements.snapshot(db, user)
+    canonical = await monetization_repo.catalog_payload(db, current_state=canonical_state)
     return {
         "current_plan": current,
         "sub_active": users.sub_active(user),
@@ -68,14 +72,54 @@ async def storefront(db, user) -> dict:
         "plans": plans,
         "products": groups,
         "entitlements": await repo.list_entitlements(db, user["tg_id"]),
+        "catalog": canonical,
+        "current_entitlements": canonical_state,
     }
+
+
+async def _v2_item(db, code: str, *, item_type: str, channel: str):
+    if not code:
+        return None
+    return await monetization_repo.price_item(db, code, item_type=item_type, channel=channel)
+
+
+async def _v2_plan_definition(code: str) -> dict | None:
+    from ..data.monetization_catalog import PLAN_DEFINITIONS
+    return next((dict(item) for item in PLAN_DEFINITIONS if item["code"] == code), None)
+
+
+async def _v2_crystal_item(db, sku: str, channel: str):
+    return await _v2_item(db, sku, item_type="crystal_pack", channel=channel)
+
+
+async def _v2_deep_item(db, sku: str):
+    return await _v2_item(db, sku, item_type="deep_operation", channel="internal")
 
 
 # ──────────────────────────── оформление заказа ───────────────────────────────
 
 async def checkout_product(db, tg_id: int, sku: str, *,
                            surface: str = "bot") -> dict:
-    """Создаёт заказ на товар и возвращает данные для инвойса Stars."""
+    """Создаёт order from the canonical v2 price book or the legacy catalog."""
+    v2 = await _v2_crystal_item(db, sku, "stars")
+    if v2:
+        meta = {
+            "grant_kind": "crystals", "grant_code": sku,
+            "grant_qty": int(v2["crystal_qty"] or 0) + int(v2["bonus_qty"] or 0),
+            "valid_days": None, "catalog_version": v2["catalog_version"],
+            "price_book_version": v2["price_book_version"], "price_variant": "v2",
+            "expected_cost_usd": v2["expected_cost_usd"],
+        }
+        order = await repo.create_order(
+            db, tg_id, "crystals", sku=sku, title=v2["title"],
+            amount_stars=int(v2["amount_stars"] or 0), surface=surface, meta=meta)
+        await analytics_service.track_monetization(
+            db, analytics_service.E_CREDIT_PACK_CHECKOUT_STARTED, tg_id,
+            surface=surface if surface in {"bot", "miniapp"} else "system",
+            sku=sku, channel=surface, credit_band_name=analytics_service.credit_band(meta["grant_qty"]),
+            price_variant="v2")
+        return {**order, "description": v2["description"] or v2["title"], "product": v2}
+
     product = await repo.get_product(db, sku)
     if not product:
         raise PurchaseError("Такого товара уже нет в лавке 🌙")
@@ -101,8 +145,27 @@ async def checkout_product(db, tg_id: int, sku: str, *,
 
 
 async def checkout_plan(db, tg_id: int, plan_code: str, *,
-                        surface: str = "bot") -> dict:
-    """Создаёт заказ на подписку."""
+                        surface: str = "bot", billing_period: str = "monthly") -> dict:
+    """Создаёт order из v2 price book или legacy plans."""
+    item_type = "annual_plan" if billing_period == "annual" else "plan"
+    v2 = await _v2_item(db, plan_code, item_type=item_type, channel="stars")
+    if v2 and int(v2["amount_stars"] or 0) > 0:
+        definition = await _v2_plan_definition(plan_code) or {}
+        order = await repo.create_order(
+            db, tg_id, "plan", sku=plan_code, title=v2["title"],
+            amount_stars=int(v2["amount_stars"]), surface=surface,
+            meta={"grant_kind": "plan", "grant_code": plan_code, "grant_qty": 1,
+                  "valid_days": v2["period_days"], "billing_period": billing_period,
+                  "catalog_version": v2["catalog_version"],
+                  "price_book_version": v2["price_book_version"], "price_variant": "v2",
+                  "ai_message_limit": definition.get("ai_messages", 0),
+                  "compute_budget_usd": definition.get("compute_budget_usd", 0),
+                  "monthly_crystals_granted": definition.get("crystals_grant", 0)})
+        await analytics.track(db, analytics.E_INVOICE, tg_id,
+                              props={"plan": plan_code, "stars": v2["amount_stars"], "price_variant": "v2", "billing_period": billing_period},
+                              surface=surface)
+        return {**order, "description": v2["description"] or v2["title"], "plan": {**definition, **v2}}
+
     plan = await repo.get_plan(db, plan_code)
     if not plan or not plan.get("price_stars"):
         raise PurchaseError("Этот тариф нельзя оплатить здесь 🌙")
@@ -118,23 +181,33 @@ async def checkout_plan(db, tg_id: int, plan_code: str, *,
 
 
 async def checkout_web_plan(db, tg_id: int, plan_code: str, *,
-                            surface: str = "web") -> dict:
+                            surface: str = "web", billing_period: str = "monthly") -> dict:
     """Создаёт pending-заказ, связанный с Paddle checkout.
 
     Browser-controlled parameters are never used as the source of a grant. The
     signed webhook resolves this payload back to the immutable server order.
     """
-    plan = await repo.get_plan(db, plan_code)
-    if not plan or not plan.get("is_active") or not plan.get("is_public"):
+    item_type = "annual_plan" if billing_period == "annual" else "plan"
+    v2 = await _v2_item(db, plan_code, item_type=item_type, channel="web")
+    definition = await _v2_plan_definition(plan_code) or {}
+    plan = v2 or await repo.get_plan(db, plan_code)
+    if not plan or not plan.get("is_active", 1) or not plan.get("is_public", 1):
         raise PurchaseError("Этот тариф сейчас недоступен 🌙")
-    if not plan.get("price_usd") or float(plan["price_usd"]) <= 0:
+    price_usd = (float(plan.get("amount_minor") or 0) / 100) if v2 else float(plan.get("price_usd") or 0)
+    if price_usd <= 0:
         raise PurchaseError("у этого тарифа нет web-цены")
     order = await repo.create_order(
         db, tg_id, "plan", sku=plan_code, title=plan["title"],
         amount_stars=0, surface=surface,
         meta={"grant_kind": "plan", "grant_code": plan_code,
               "grant_qty": 1, "valid_days": plan["period_days"],
-              "provider": "paddle", "price_usd": float(plan["price_usd"])})
+              "billing_period": billing_period, "provider": "paddle", "price_usd": price_usd,
+              "catalog_version": plan.get("catalog_version", "legacy"),
+              "price_book_version": plan.get("price_book_version", "legacy"),
+              "price_variant": "v2" if v2 else "legacy",
+              "ai_message_limit": definition.get("ai_messages", plan.get("daily_questions", 0)),
+              "compute_budget_usd": definition.get("compute_budget_usd", 0),
+              "monthly_crystals_granted": definition.get("crystals_grant", plan.get("crystals_grant", 0))})
     from . import paddle
     try:
         created = await paddle.create_transaction(
@@ -152,8 +225,8 @@ async def checkout_web_plan(db, tg_id: int, plan_code: str, *,
     await analytics.track(db, "web_checkout", tg_id,
                           props={"plan": plan_code}, surface=surface)
     return {**order, "link": created["link"],
-            "description": plan.get("tagline") or plan["title"],
-            "plan": plan}
+            "description": plan.get("description") or plan.get("tagline") or plan["title"],
+            "plan": {**plan, "price_usd": price_usd, "billing_period": billing_period}}
 
 
 #: USD-цены пакетов Кристаллов для Crypto Pay. Источник цены — только
@@ -170,27 +243,32 @@ async def checkout_crypto_crystals(db, tg_id: int, sku: str,
 
     Выдача произойдёт только после подписанного вебхука — как у Stars/Paddle.
     """
+    v2 = await _v2_crystal_item(db, sku, "crypto")
     product = await repo.get_product(db, sku)
-    if not product or product["kind"] != "crystals":
+    if not v2 and (not product or product["kind"] != "crystals"):
         raise PurchaseError("Криптой можно пополнить только пакеты Кристаллов 💎")
     asset = (asset or "USDT").strip().upper()
     if asset not in CRYPTO_ASSETS:
         raise PurchaseError("Этот криптоактив пока недоступен")
-    amount_usd = CRYSTAL_PACKS_USD.get(sku)
+    amount_usd = ((v2["amount_minor"] or 0) / 100 if v2 else CRYSTAL_PACKS_USD.get(sku))
     if not amount_usd:
         raise PurchaseError("Для этого пакета не задана крипто-цена 🌙")
+    title = (v2 or product)["title"]
+    grant_qty = int((v2 or product).get("crystal_qty", 0) or 0) + int((v2 or product).get("bonus_qty", 0) or 0) if v2 else product["grant_qty"]
     order = await repo.create_order(
-        db, tg_id, "crystals", sku=sku, title=product["title"],
+        db, tg_id, "crystals", sku=sku, title=title,
         amount_stars=0, surface=surface,
         meta={"grant_kind": "crystals", "grant_code": sku,
-              "grant_qty": product["grant_qty"], "valid_days": None,
+              "grant_qty": grant_qty, "valid_days": None,
               "provider": "cryptobot", "amount_usd": amount_usd,
-              "asset": asset})
+              "asset": asset, "catalog_version": (v2 or {}).get("catalog_version", "legacy"),
+              "price_book_version": (v2 or {}).get("price_book_version", "legacy"),
+              "price_variant": "v2" if v2 else "legacy"})
     from . import cryptobot
     try:
         created = await cryptobot.create_invoice(
             amount_usd=amount_usd, payload=order["payload"],
-            description=f"Oracle: {product['title']}", asset=asset)
+            description=f"Oracle: {(v2 or product)['title']}", asset=asset)
     except cryptobot.CryptoPayError as exc:
         await repo.mark_order_failed(db, order["payload"])
         raise PurchaseError(
@@ -203,47 +281,61 @@ async def checkout_crypto_crystals(db, tg_id: int, sku: str,
     return {**order, "link": created["link"],
             "amount_usd": amount_usd,
             "asset": asset,
-            "description": product["description"] or product["title"]}
+            "description": (v2 or product)["description"] or (v2 or product)["title"]}
 
 
 async def pay_with_crystals(db, tg_id: int, sku: str, *,
                             surface: str = "bot") -> dict:
     """Покупка товара за Кристаллы — без Telegram-инвойса, сразу."""
+    v2 = await _v2_deep_item(db, sku)
     product = await repo.get_product(db, sku)
-    if not product:
+    if not v2 and not product:
         raise PurchaseError("Такого товара уже нет в лавке 🌙")
-    price = product["price_crystals"] or 0
+    price = int(v2["crystal_qty"] or 0) if v2 else (product["price_crystals"] or 0)
     if price <= 0:
         raise PurchaseError("Этот товар продаётся только за ⭐ Stars")
 
     # Списание ✦, выдача и пометка заказа оплаченным — одной транзакцией:
     # сбой между шагами не оставляет списанный баланс без товара.
     async with transaction(db):
+        sale = dict(v2) if v2 else {key: product[key] for key in product.keys()}
         order = await repo.create_order(
-            db, tg_id, product["kind"], sku=sku, title=product["title"],
+            db, tg_id, "deep_operation" if v2 else product["kind"], sku=sku, title=sale["title"],
             amount_crystals=price, surface=surface,
-            meta={"grant_kind": product["grant_kind"],
-                  "grant_code": product["grant_code"],
-                  "grant_qty": product["grant_qty"],
-                  "valid_days": product["valid_days"]})
+            meta={"grant_kind": sale["grant_kind"],
+                  "grant_code": sale["grant_code"],
+                  "grant_qty": sale["grant_qty"],
+                  "valid_days": sale["valid_days"],
+                  "catalog_version": sale.get("catalog_version", "legacy"),
+                  "price_book_version": sale.get("price_book_version", "legacy"),
+                  "price_variant": "v2" if v2 else "legacy",
+                  "expected_cost_usd": sale.get("expected_cost_usd")})
+        if v2:
+            await monetization_repo.reserve_usage(
+                db, tg_id, order["payload"], capability="deep_operation", sku=sku,
+                catalog_version=sale.get("catalog_version", "legacy"), tier_code="free",
+                period_start=None, compute_cost_usd=float(sale.get("expected_cost_usd") or 0),
+                crystal_cost=price, charged_source="crystals")
 
         if not await repo.spend_crystals(db, tg_id, price, f"buy:{sku}",
                                          ref=order["payload"]):
             raise PurchaseError(f"Нужно ✦{price}, а у тебя меньше. Пополни запас 💎")
 
         granted = await _apply_grant(
-            db, tg_id, product["grant_kind"], product["grant_code"],
-            qty=product["grant_qty"] or 1, valid_days=product["valid_days"],
+            db, tg_id, sale["grant_kind"], sale["grant_code"],
+            qty=sale["grant_qty"] or 1, valid_days=sale["valid_days"],
             source="purchase", order_id=order["id"])
         await repo.mark_order_paid(db, order["payload"], provider="crystals",
                                    amount_stars=0)
         await analytics.track(db, analytics.E_PAID, tg_id,
                               props={"sku": sku, "crystals": price}, surface=surface)
+        if v2:
+            await monetization_repo.finish_usage(db, tg_id, order["payload"], status="succeeded")
     await analytics_service.track_monetization(
         db, analytics_service.E_CREDIT_SPENT, tg_id,
         surface=surface if surface in {"bot", "miniapp"} else "system",
         sku=sku, channel=surface, credit_band_name=analytics_service.credit_band(price),
-        result_category=product["grant_kind"],
+        result_category=sale["grant_kind"],
     )
     fresh_user = await users.get(db, tg_id)
     if fresh_user and int(fresh_user["crystals"] or 0) <= 20:
@@ -252,7 +344,8 @@ async def pay_with_crystals(db, tg_id: int, sku: str, *,
             surface=surface if surface in {"bot", "miniapp"} else "system",
             channel=surface, reason="threshold_20",
         )
-    return {"order": order, "granted": granted, "product": dict(product)}
+    product_payload = {**sale, "sku": sale.get("sku") or sale.get("code")}
+    return {"order": order, "granted": granted, "product": product_payload}
 
 
 # ──────────────────────────── приём оплаты ────────────────────────────────────
@@ -315,19 +408,37 @@ async def _apply_grant(db, tg_id: int, kind: str | None, code: str | None, *,
                        order_id: int | None = None) -> dict:
     """Начисляет купленное. Возвращает описание для сообщения клиентке."""
     if kind == "plan":
-        plan = await repo.get_plan(db, code or "vip")
+        v2_definition = await _v2_plan_definition(code or "")
+        plan = await repo.get_plan(db, code or "vip") if not v2_definition else v2_definition
         days = valid_days or plan.get("period_days") or 30
         until = await users.extend_subscription(db, tg_id, code or "vip", days)
         bonus = plan.get("crystals_grant") or 0
         if bonus:
             await repo.add_crystals(db, tg_id, bonus, f"plan_bonus:{code}")
+            await monetization_repo.crystal_lot(
+                db, tg_id, source="subscription_bonus", qty=int(bonus),
+                order_id=order_id, valid_days=90)
+        if v2_definition:
+            catalog = await monetization_repo.active_catalog_version(db)
+            await monetization_repo.upsert_subscription_state(
+                db, tg_id, tier_code=code or "free", catalog_version=catalog["version"],
+                price_book_version=catalog["price_book_version"], status="active",
+                period_start=None, period_end=until,
+                ai_message_limit=int(v2_definition.get("ai_messages") or 0),
+                compute_budget_usd=float(v2_definition.get("compute_budget_usd") or 0),
+                monthly_crystals_granted=int(bonus or 0))
         return {"kind": "plan", "plan": plan, "days": days, "until": until,
-                "crystals": bonus,
+                "crystals": bonus, "catalog_version": (await monetization_repo.active_catalog_version(db))["version"] if v2_definition else "legacy",
                 "title": plan.get("title", "Подписка")}
 
     if kind == "crystals":
         amount = qty or 0
         balance = await repo.add_crystals(db, tg_id, amount, f"purchase:{code or 'pack'}")
+        if amount and code:
+            v2_pack = await _v2_crystal_item(db, code, "stars") or await _v2_crystal_item(db, code, "crypto")
+            if v2_pack:
+                await monetization_repo.crystal_lot(
+                    db, tg_id, source="purchased", qty=int(amount), order_id=order_id)
         return {"kind": "crystals", "amount": amount, "balance": balance,
                 "title": f"✦ {amount} Кристаллов"}
 

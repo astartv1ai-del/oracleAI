@@ -15,6 +15,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
+from ..config import settings
 from ..core import agent as agent_core
 from ..core import product_cost
 from ..core import agents, safety, shared_context, tarot
@@ -23,6 +24,7 @@ from ..repo import analytics as analytics_repo
 from ..repo import billing as billing_repo
 from ..repo import dialog, readings, users
 from . import analytics, catalog, eligibility, limits
+from .entitlements import entitlements
 
 log = logging.getLogger("oracle.chat")
 
@@ -145,6 +147,14 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     # «право есть» одновременно — раньше, чем запись вопроса зафиксирует расход
     async with limits.user_lock(user["tg_id"]):
         verdict = await limits.check(db, user)
+        ai_access = await entitlements.can_use(db, user, "ai.chat")
+        if (not ai_access.allowed and ai_access.reason == "subscription_required"
+                and not settings.auto_trial):
+            await analytics.track(db, analytics.E_LIMIT_HIT, user["tg_id"],
+                                  props={"reason": "subscription_required", "capability": "ai.chat", "tier": ai_access.tier_code},
+                                  surface=surface)
+            await finish_request(failed=True)
+            raise ChatDenied(limits.Verdict(False, limits.DENIED, "subscription_required", verdict.allowance))
         if not verdict.allowed or (not allow_paid and verdict.charge in (
                 limits.CRYSTALS, limits.ENT_QUESTION)):
             await analytics.track(db, analytics.E_LIMIT_HIT, user["tg_id"],
@@ -163,9 +173,15 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
 
     allowance_line = _allowance_line(verdict)
     tool_trace: list[str] = []
+    state = await entitlements.state(db, user)
+    charge_source = {limits.PLAN: "included", limits.FOLLOWUP: "included",
+                     limits.ENT_QUESTION: "entitlement", limits.CRYSTALS: "crystals"}.get(verdict.charge, "none")
     try:
         with product_cost.context(
-                sku=f"chat:{spec.code}", channel=surface if surface in {"bot", "miniapp"} else "system",
+                sku=f"chat:{spec.code}", catalog_version=state.get("catalog_version", "legacy"),
+                tier_code=state.get("tier_code"), charged_source=charge_source,
+                price_variant="v2" if state.get("catalog_version") != "legacy" else "legacy",
+                channel=surface if surface in {"bot", "miniapp"} else "system",
                 result_category="question", reference_id=f"thread:{thread['id']}"):
             answer = await agent_core.ask_oracle(
                 db, user, question, agent=spec.code, thread_id=thread["id"],

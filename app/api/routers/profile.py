@@ -13,7 +13,9 @@ from ...core import agents
 from ...core.personas import persona_list
 from ...data.session import healthcheck
 from ...repo import billing, content, dialog, readings, users
+from ...repo import monetization as monetization_repo
 from ...services import analytics, chat, limits, referrals
+from ...services.entitlements import entitlements
 from ..deps import confirmed_age_user, current_user, get_db, rate_limit, touched_user
 
 router = APIRouter(prefix="/api", tags=["profile"])
@@ -85,6 +87,7 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
 
     chart = users.chart_of(user)
     allowance = await limits.allowance(db, user, check_followup=False)
+    canonical_entitlements = await entitlements.snapshot(db, user)
     await chat.track_open(db, user)
     flags = {f["code"]: bool(f["is_on"]) for f in await content.list_flags(db)}
     return {
@@ -123,6 +126,13 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
         "gender": user["gender"],
         "entitlements": await billing.list_entitlements(db, user["tg_id"]),
         "reports": await readings.list_reports(db, user["tg_id"]),
+        "canonical_entitlements": canonical_entitlements,
+        "subscription_lifecycle": {
+            "status": canonical_entitlements["status"],
+            "period_end": canonical_entitlements["period_end"],
+            "cancel_at_period_end": canonical_entitlements["cancel_at_period_end"],
+            "grace_until": canonical_entitlements["grace_until"],
+        },
         "agents": await agents.agent_list(db, user),
         "flags": flags,
         "webapp_url": settings.webapp_url,
@@ -133,6 +143,15 @@ class ExperimentExposureIn(BaseModel):
     """Только техническая метка варианта: без текста вопроса и личных данных."""
     experiment: str = Field(min_length=3, max_length=48, pattern=r"^[a-z0-9_:-]+$")
     variant: str = Field(min_length=1, max_length=24, pattern=r"^[a-z0-9_-]+$")
+
+
+@router.get("/experiment-assignment", dependencies=[Depends(rate_limit("read"))])
+async def experiment_assignment(experiment: str = Query(min_length=3, max_length=48),
+                                user=Depends(current_user), db=Depends(get_db)):
+    variant = await monetization_repo.assign_variant(db, user["tg_id"], experiment)
+    await analytics.track(db, "experiment_exposure", user["tg_id"],
+                          props={"experiment": experiment, "variant": variant}, surface="miniapp")
+    return {"experiment": experiment, "variant": variant, "source": "server"}
 
 
 @router.post("/experiment-exposure", dependencies=[Depends(rate_limit("write"))])

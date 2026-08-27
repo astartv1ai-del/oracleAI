@@ -12,6 +12,14 @@ from __future__ import annotations
 
 import json
 import logging
+
+from .monetization_catalog import (
+    CATALOG_VERSION,
+    CRYSTAL_PACKS,
+    DEEP_PRODUCTS,
+    PLAN_DEFINITIONS,
+    PRICE_BOOK_VERSION,
+)
 from datetime import datetime, timezone
 
 log = logging.getLogger("oracle.seed")
@@ -320,6 +328,78 @@ async def _seed_admin(db) -> int:
     return cur.rowcount or 0
 
 
+async def _seed_monetization_v2(db) -> int:
+    """Insert the active v2 price book without touching legacy catalog rows."""
+    now = _now()
+    cur = await db.execute(
+        "INSERT OR IGNORE INTO catalog_versions(version, price_book_version, status, effective_from, created_at) "
+        "VALUES(?,?, 'active', ?, ?)", (CATALOG_VERSION, PRICE_BOOK_VERSION, now, now))
+    added = cur.rowcount or 0
+    for plan in PLAN_DEFINITIONS:
+        features = json.dumps(plan["features"], ensure_ascii=False)
+        for channel, currency, amount_stars, amount_minor, item_type, period_days in (
+            ("stars", "XTR", plan["monthly_stars"], 0, "plan", plan["period_days"]),
+            ("web", "USD", 0, round(plan["monthly_usd"] * 100), "plan", plan["period_days"]),
+        ):
+            cur = await db.execute(
+                "INSERT OR IGNORE INTO price_book_items("
+                "catalog_version, price_book_version, item_type, code, title, description, "
+                "tier_code, channel, currency, amount_minor, amount_stars, period_days, "
+                "expected_cost_usd, target_margin, features_json, is_active, is_public, sort, "
+                "effective_from, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (CATALOG_VERSION, PRICE_BOOK_VERSION, item_type, plan["code"], plan["title"],
+                 plan["tagline"], plan["code"], channel, currency, amount_minor, amount_stars,
+                 period_days, plan["compute_budget_usd"], 0.70, features, 1, 1,
+                 plan["sort"], now, now))
+            added += cur.rowcount or 0
+        if plan["annual_usd"]:
+            for channel, currency, amount_stars, amount_minor in (
+                ("stars", "XTR", plan["annual_stars"], 0),
+                ("web", "USD", 0, round(plan["annual_usd"] * 100)),
+            ):
+                cur = await db.execute(
+                    "INSERT OR IGNORE INTO price_book_items("
+                    "catalog_version, price_book_version, item_type, code, title, description, "
+                    "tier_code, channel, currency, amount_minor, amount_stars, period_days, "
+                    "expected_cost_usd, target_margin, features_json, is_active, is_public, sort, "
+                    "effective_from, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (CATALOG_VERSION, PRICE_BOOK_VERSION, "annual_plan", plan["code"],
+                     plan["title"] + " · год", plan["tagline"], plan["code"], channel, currency,
+                     amount_minor, amount_stars, 365, plan["compute_budget_usd"] * 10,
+                     0.70, features, 1, 1, plan["sort"], now, now))
+                added += cur.rowcount or 0
+    for pack in CRYSTAL_PACKS:
+        for channel, currency, amount_stars, amount_minor in (
+            ("stars", "XTR", pack["stars"], 0),
+            ("crypto", "USD", 0, round(pack["usd"] * 100)),
+        ):
+            cur = await db.execute(
+                "INSERT OR IGNORE INTO price_book_items("
+                "catalog_version, price_book_version, item_type, code, title, description, "
+                "channel, currency, amount_minor, amount_stars, crystal_qty, bonus_qty, "
+                "expected_cost_usd, target_margin, is_active, is_public, sort, effective_from, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (CATALOG_VERSION, PRICE_BOOK_VERSION, "crystal_pack", pack["sku"],
+                 pack["title"], pack["description"], channel, currency, amount_minor,
+                 amount_stars, pack["crystals"], pack["bonus"], 0.01, 0.70, 1, 1,
+                 100 + pack["sort"], now, now))
+            added += cur.rowcount or 0
+    for product in DEEP_PRODUCTS:
+        cur = await db.execute(
+            "INSERT OR IGNORE INTO price_book_items("
+            "catalog_version, price_book_version, item_type, code, title, description, "
+            "channel, currency, crystal_qty, grant_kind, grant_code, grant_qty, valid_days, "
+            "expected_cost_usd, target_margin, is_active, is_public, sort, effective_from, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (CATALOG_VERSION, PRICE_BOOK_VERSION, "deep_operation", product["sku"],
+             product["title"], product["description"], "internal", "CRYSTAL",
+             product["crystals"], product["grant_kind"], product["grant_code"],
+             product["grant_qty"], product["valid_days"], product["cost_budget_usd"],
+             0.70, 1, 1, 200 + product["sort"], now, now))
+        added += cur.rowcount or 0
+    return added
+
+
 async def seed_defaults(db) -> dict:
     """Наполняет каталог значениями по умолчанию. Идемпотентно."""
     added = {
@@ -329,6 +409,7 @@ async def seed_defaults(db) -> dict:
         "settings": await _seed_settings(db),
         "content": await _seed_content(db),
         "admins": await _seed_admin(db),
+        "monetization_v2": await _seed_monetization_v2(db),
     }
     await db.commit()
     if any(added.values()):

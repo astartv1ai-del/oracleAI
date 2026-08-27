@@ -322,14 +322,49 @@ async def add_crystals(db, tg_id: int, delta: int, reason: str,
 
 async def spend_crystals(db, tg_id: int, amount: int, reason: str,
                          ref: str | None = None) -> bool:
-    """Списывает ✦, если хватает. Проверка и списание — одним UPDATE.
+    """Atomically spend the total balance and allocate expiring lots first.
 
-    Условие `crystals >= ?` внутри UPDATE делает операцию атомарной: два
-    параллельных списания не могут оба увидеть достаточный баланс.
+    The legacy ``users.crystals`` counter remains the fast aggregate. New v2
+    grants additionally create lots, while an existing unallocated balance is
+    represented as a non-expiring ``legacy`` lot on first spend. This preserves
+    old balances and gives v2 bonus crystals deterministic expiry semantics.
     """
     if amount <= 0:
         return True
     async with transaction(db):
+        cur = await db.execute("SELECT crystals FROM users WHERE tg_id=?", (tg_id,))
+        user_row = await cur.fetchone()
+        if not user_row or int(user_row["crystals"] or 0) < amount:
+            return False
+        now = utcnow()
+        await db.execute(
+            "UPDATE crystal_lots SET remaining_qty=0 WHERE tg_id=? AND remaining_qty>0 "
+            "AND expires_at IS NOT NULL AND expires_at<=?", (tg_id, now))
+        cur = await db.execute(
+            "SELECT COALESCE(SUM(remaining_qty),0) n FROM crystal_lots WHERE tg_id=? AND remaining_qty>0",
+            (tg_id,))
+        allocated = int((await cur.fetchone())["n"] or 0)
+        balance_before = int(user_row["crystals"] or 0)
+        if allocated < balance_before:
+            missing = balance_before - allocated
+            await db.execute(
+                "INSERT INTO crystal_lots(tg_id,source,original_qty,remaining_qty,created_at) "
+                "VALUES(?, 'legacy', ?, ?, ?)", (tg_id, missing, missing, now))
+        remaining = amount
+        cur = await db.execute(
+            "SELECT id, remaining_qty FROM crystal_lots WHERE tg_id=? AND remaining_qty>0 "
+            "ORDER BY (expires_at IS NULL), expires_at, id", (tg_id,))
+        for lot in await cur.fetchall():
+            if remaining <= 0:
+                break
+            take = min(remaining, int(lot["remaining_qty"]))
+            updated = await db.execute(
+                "UPDATE crystal_lots SET remaining_qty=remaining_qty-? "
+                "WHERE id=? AND remaining_qty>=?", (take, lot["id"], take))
+            if updated.rowcount:
+                remaining -= take
+        if remaining:
+            return False
         cur = await db.execute(
             "UPDATE users SET crystals=crystals-? WHERE tg_id=? AND crystals>=?",
             (amount, tg_id, amount))

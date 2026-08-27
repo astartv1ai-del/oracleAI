@@ -39,7 +39,7 @@ async def by_username(db, username: str):
 async def ensure(db, tg_id: int, name: str | None = None,
                  username: str | None = None, source: str | None = None,
                  lang: str | None = None):
-    """Создаёт пользователя с триалом и стартовыми Кристаллами (однократно)."""
+    """Create a persistent Free user; automatic trial is opt-in via AUTO_TRIAL."""
     user = await get(db, tg_id)
     if user:
         if username and user["username"] != username:
@@ -48,17 +48,20 @@ async def ensure(db, tg_id: int, name: str | None = None,
         return user
 
     trial_days = settings.trial_days
-    crystals = settings.crystals_start
+    auto_trial = bool(settings.auto_trial)
+    crystals = settings.crystals_start if auto_trial else 0
     profile_lang = "en" if (lang or "").lower().startswith("en") else "ru"
-    sub_until = (datetime.now(timezone.utc) + timedelta(days=trial_days)).isoformat()
+    sub_level = "trial" if auto_trial else "free"
+    sub_until = ((datetime.now(timezone.utc) + timedelta(days=trial_days)).isoformat()
+                 if auto_trial else None)
     # Двойной /start в один момент: оба прошли SELECT выше и оба идут в INSERT.
     # INSERT OR IGNORE + rowcount снимает гонку — второй INSERT не валит UNIQUE
     # по tg_id и не пишет второй раз welcome в журнал.
     async with transaction(db):
         cur = await db.execute(
             "INSERT OR IGNORE INTO users(tg_id, name, username, lang, sub_level, sub_until, "
-            "crystals, source, created_at) VALUES(?,?,?,?,'trial',?,?,?,?)",
-            (tg_id, name, username, profile_lang, sub_until, crystals, source, utcnow()))
+            "crystals, source, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+            (tg_id, name, username, profile_lang, sub_level, sub_until, crystals, source, utcnow()))
         if cur.rowcount:
             await db.execute(
                 "INSERT INTO crystal_ledger(tg_id, delta, reason, balance, created_at) "

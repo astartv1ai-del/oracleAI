@@ -160,6 +160,11 @@ async def prune(db, days: int = 120) -> int:
     return await repo.prune_analytics(db, days)
 
 
+async def _monetization_v2_dashboard(db, *, days: int = 30) -> dict:
+    from ..repo import monetization
+    return await monetization.dashboard(db, days=days)
+
+
 async def dashboard(db, *, days: int = 30) -> dict:
     """Единый ответ для главного экрана админки."""
     from ..repo import billing, growth
@@ -179,6 +184,7 @@ async def dashboard(db, *, days: int = 30) -> dict:
         # себестоимость рядом с выручкой: маржа должна быть видна одним взглядом
         "llm_costs": await repo.llm_costs(db, days=days),
         "monetization": await repo.monetization_kpis(db, days=days),
+        "monetization_v2": await _monetization_v2_dashboard(db, days=days),
     }
 
 

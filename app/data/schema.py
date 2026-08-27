@@ -392,7 +392,13 @@ CREATE TABLE IF NOT EXISTS llm_usage (
     latency_ms        INTEGER DEFAULT 0,
     ok                INTEGER DEFAULT 1,
     day               TEXT,
-    created_at        TEXT
+    created_at        TEXT,
+    sku               TEXT,
+    catalog_version   TEXT DEFAULT 'legacy',
+    subscription_code TEXT,
+    included_usage    INTEGER DEFAULT 0,
+    crystal_spend     INTEGER DEFAULT 0,
+    overage           INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS safety_events (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -430,6 +436,99 @@ CREATE TABLE IF NOT EXISTS payment_webhook_failures (
 );
 """
 
+MONETIZATION_V2 = """
+CREATE TABLE IF NOT EXISTS catalog_versions (
+    version           TEXT PRIMARY KEY,
+    price_book_version TEXT NOT NULL,
+    status            TEXT NOT NULL DEFAULT 'active', -- draft|active|retired
+    effective_from    TEXT NOT NULL,
+    created_at        TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS price_book_items (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    catalog_version   TEXT NOT NULL,
+    price_book_version TEXT NOT NULL,
+    item_type         TEXT NOT NULL,           -- plan|annual_plan|crystal_pack|deep_operation
+    code              TEXT NOT NULL,
+    title             TEXT NOT NULL,
+    description       TEXT,
+    tier_code         TEXT,
+    channel           TEXT NOT NULL,           -- stars|web|crypto|internal
+    currency          TEXT NOT NULL,           -- XTR|USD|CRYSTAL
+    amount_minor      INTEGER DEFAULT 0,
+    amount_stars      INTEGER DEFAULT 0,
+    period_days      INTEGER,
+    crystal_qty      INTEGER DEFAULT 0,
+    bonus_qty        INTEGER DEFAULT 0,
+    grant_kind       TEXT,
+    grant_code       TEXT,
+    grant_qty        INTEGER DEFAULT 0,
+    valid_days       INTEGER,
+    expected_cost_usd REAL,
+    target_margin    REAL,
+    features_json    TEXT,
+    metadata_json    TEXT,
+    is_active        INTEGER DEFAULT 1,
+    is_public        INTEGER DEFAULT 1,
+    sort             INTEGER DEFAULT 100,
+    effective_from   TEXT NOT NULL,
+    created_at       TEXT NOT NULL,
+    UNIQUE (price_book_version, item_type, code, channel)
+);
+CREATE TABLE IF NOT EXISTS subscription_state (
+    tg_id                  INTEGER PRIMARY KEY,
+    tier_code              TEXT NOT NULL DEFAULT 'free',
+    catalog_version        TEXT NOT NULL DEFAULT 'legacy',
+    price_book_version     TEXT NOT NULL DEFAULT 'legacy',
+    status                 TEXT NOT NULL DEFAULT 'free', -- free|active|cancelled|grace|expired|refunded
+    period_start           TEXT,
+    period_end             TEXT,
+    cancel_at_period_end   INTEGER DEFAULT 0,
+    grace_until            TEXT,
+    ai_message_limit       INTEGER DEFAULT 0,
+    ai_messages_used       INTEGER DEFAULT 0,
+    compute_budget_usd     REAL DEFAULT 0,
+    compute_used_usd       REAL DEFAULT 0,
+    monthly_crystals_granted INTEGER DEFAULT 0,
+    updated_at             TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS monetization_usage (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id             INTEGER NOT NULL,
+    operation_key     TEXT NOT NULL,
+    capability        TEXT NOT NULL,
+    sku               TEXT,
+    catalog_version   TEXT DEFAULT 'legacy',
+    tier_code         TEXT DEFAULT 'free',
+    period_start      TEXT,
+    units             INTEGER DEFAULT 1,
+    compute_cost_usd  REAL DEFAULT 0,
+    crystal_cost      INTEGER DEFAULT 0,
+    charged_source    TEXT NOT NULL,           -- included|crystals|entitlement|free|none
+    status            TEXT NOT NULL DEFAULT 'reserved', -- reserved|succeeded|failed|restored
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL,
+    UNIQUE (tg_id, operation_key)
+);
+CREATE TABLE IF NOT EXISTS crystal_lots (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id             INTEGER NOT NULL,
+    source            TEXT NOT NULL,           -- purchased|subscription_bonus|legacy|promo|refund
+    order_id          INTEGER,
+    original_qty      INTEGER NOT NULL,
+    remaining_qty     INTEGER NOT NULL,
+    expires_at        TEXT,
+    created_at        TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS monetization_assignments (
+    tg_id             INTEGER NOT NULL,
+    experiment        TEXT NOT NULL,
+    variant           TEXT NOT NULL,
+    assigned_at       TEXT NOT NULL,
+    PRIMARY KEY (tg_id, experiment)
+);
+"""
+
 ANALYTICS = """
 CREATE TABLE IF NOT EXISTS events (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -463,6 +562,7 @@ CREATE TABLE IF NOT EXISTS product_cost_events (
     reference_id     TEXT,
     order_id         INTEGER,
     reason           TEXT,
+    price_variant    TEXT,
     day              TEXT,
     created_at       TEXT NOT NULL
 );
@@ -633,6 +733,12 @@ CREATE INDEX IF NOT EXISTS idx_bt_status     ON broadcast_targets(broadcast_id, 
 CREATE INDEX IF NOT EXISTS idx_usage_day     ON llm_usage(day, purpose);
 CREATE INDEX IF NOT EXISTS idx_usage_user    ON llm_usage(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_usage_created ON llm_usage(created_at);
+CREATE INDEX IF NOT EXISTS idx_subscription_state_status ON subscription_state(status, period_end);
+CREATE INDEX IF NOT EXISTS idx_monetization_usage_user_period ON monetization_usage(tg_id, period_start, status);
+CREATE INDEX IF NOT EXISTS idx_monetization_usage_sku ON monetization_usage(sku, created_at);
+CREATE INDEX IF NOT EXISTS idx_crystal_lots_user_expiry ON crystal_lots(tg_id, expires_at, id);
+CREATE INDEX IF NOT EXISTS idx_price_book_public ON price_book_items(price_book_version, is_active, is_public, sort);
+CREATE INDEX IF NOT EXISTS idx_assignments_experiment ON monetization_assignments(experiment, variant);
 CREATE INDEX IF NOT EXISTS idx_product_cost_day_sku ON product_cost_events(day, sku, event_kind);
 CREATE INDEX IF NOT EXISTS idx_product_cost_created ON product_cost_events(created_at);
 CREATE INDEX IF NOT EXISTS idx_product_cost_order ON product_cost_events(order_id);
@@ -648,6 +754,6 @@ CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
 #: строить его до `migrations.reconcile_columns`. Порядок: таблицы → колонки →
 #: индексы (см. `session.connect`).
 TABLES = "\n".join([USERS, DIALOG, USER_NOTIFICATIONS, READINGS, BILLING, GROWTH, INFRA,
-                    ANALYTICS, ADMIN])
+                    MONETIZATION_V2, ANALYTICS, ADMIN])
 
 SCHEMA = "\n".join([TABLES, INDEXES])
