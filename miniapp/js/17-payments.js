@@ -23,12 +23,12 @@
       subscription: 'ПОДПИСКА', depth: 'Больше глубины каждый день', planCountOne: 'тариф', planCountFew: 'тарифа', planCountMany: 'тарифов',
       oneOff: 'РАЗОВЫЕ ПАКЕТЫ', reserve: 'Запас для важных вопросов', defaultPlan: 'Подписка', defaultPlanCopy: 'Больше глубины, памяти и личного ритма.', perPeriod: 'за период',
       popular: 'Самый популярный', openStars: 'Открыть оплату Stars', busy: 'Создаю защищённый заказ…',
-      emptyPlans: 'Тарифы временно недоступны.', emptyProducts: 'Пакеты скоро появятся.', pay: 'Оплатить',
+      emptyPlans: 'Тарифы временно недоступны.', emptyProducts: 'Пакеты скоро появятся.', pay: 'Оплатить', payProduct: 'Оплатить {title}',
       footer: 'OracleAI не хранит данные карты или ключи кошелька. По вопросам оплаты можно открыть историю заказов и обратиться в поддержку.',
       orders: 'История заказов', noOrders: 'Заказов пока нет.', retry: 'Повторить',
       loadFailed: 'Не удалось открыть оплату. Попробуй ещё раз.', starsUnavailable: 'Stars сейчас недоступны. Попробуй чуть позже.',
       cryptoUnavailable: 'Крипто-оплата сейчас недоступна. Попробуй чуть позже.', invoiceOpened: 'Счёт открыт в Telegram',
-      paid: 'Оплата прошла — доступ уже открывается ✦', paymentFailed: 'Telegram не подтвердил оплату. Попробуй ещё раз.',
+      paid: 'Оплата прошла — доступ уже открывается ✦', paymentPassed: 'Оплата прошла — доступ уже открывается ✦', paymentFailed: 'Telegram не подтвердил оплату. Попробуй ещё раз.',
       cryptoOpened: asset => `Счёт ${asset} открыт. После оплаты заказ появится в истории.`,
       statuses: { pending: 'ожидает оплаты', paid: 'оплачен', failed: 'ошибка', refunded: 'возвращён' },
     },
@@ -42,12 +42,12 @@
       subscription: 'SUBSCRIPTION', depth: 'More depth every day', planCountOne: 'plan', planCountFew: 'plans', planCountMany: 'plans',
       oneOff: 'ONE-OFF PACKS', reserve: 'A reserve for important questions', defaultPlan: 'Subscription', defaultPlanCopy: 'More depth, memory and a personal rhythm.', perPeriod: 'per period',
       popular: 'MOST POPULAR', openStars: 'Open Stars checkout', busy: 'Creating a protected order…',
-      emptyPlans: 'Plans are temporarily unavailable.', emptyProducts: 'Packs are coming soon.', pay: 'Pay',
+      emptyPlans: 'Plans are temporarily unavailable.', emptyProducts: 'Packs are coming soon.', pay: 'Pay', payProduct: 'Pay for {title}',
       footer: 'OracleAI does not store card data or wallet keys. Open your order history or contact support with payment questions.',
       orders: 'Order history', noOrders: 'No orders yet.', retry: 'Retry',
       loadFailed: 'Payment could not be opened. Please try again.', starsUnavailable: 'Stars are temporarily unavailable. Please try again later.',
       cryptoUnavailable: 'Crypto payments are temporarily unavailable. Please try again later.', invoiceOpened: 'Invoice opened in Telegram',
-      paid: 'Payment received — access is opening ✦', paymentFailed: 'Telegram did not confirm the payment. Please try again.',
+      paid: 'Payment received — access is opening ✦', paymentPassed: 'Payment confirmed — access is opening ✦', paymentFailed: 'Telegram did not confirm the payment. Please try again.',
       cryptoOpened: asset => `Invoice for ${asset} opened. Your order will appear in history after payment.`,
       statuses: { pending: 'pending', paid: 'paid', failed: 'failed', refunded: 'refunded' },
     },
@@ -147,7 +147,7 @@
     return `<article class="pay-product">
       <div class="pay-product__icon">${crypto ? asset.icon : '✦'}</div>
       <div class="pay-product__body"><h3>${esc(title)}</h3><p>${esc(description)}</p><span class="pay-product__meta">${crypto ? `${price} · ${asset.label}` : price}</span></div>
-      <button class="pay-product__button" data-act="${crypto ? 'pay-crypto' : 'pay-stars'}" data-sku="${sku}" data-asset="${asset.code}" ${disabled ? 'disabled' : ''} aria-label="${esc(payT('pay'))} ${esc(title)}">›</button>
+      <button class="pay-product__button" data-act="${crypto ? 'pay-crypto' : 'pay-stars'}" data-sku="${sku}" data-asset="${asset.code}" ${disabled ? 'disabled' : ''} aria-label="${esc(pf('payProduct', { title }))}">›</button>
     </article>`;
   }
 
