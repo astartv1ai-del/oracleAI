@@ -641,11 +641,19 @@ async def _run_palm_history(db, user, args) -> str:
 # ---------------------------------------------------------------- skills
 
 async def _run_draw_tarot(db, user, args) -> str:
-    try:
-        requested = int(args.get("n", 3) or 3)
-    except (TypeError, ValueError):
+    args = args or {}
+    raw_requested = args.get("n", 3)
+    if isinstance(raw_requested, bool):
         return "число карт должно быть целым от 1 до 12"
-    n = max(1, min(requested, 12))
+    if isinstance(raw_requested, int):
+        requested = raw_requested
+    elif isinstance(raw_requested, str) and raw_requested.strip().isdigit():
+        requested = int(raw_requested.strip())
+    else:
+        return "число карт должно быть целым от 1 до 12"
+    if not 1 <= requested <= 12:
+        return "число карт должно быть целым от 1 до 12"
+    n = requested
     spread_code = str(args.get("spread", "") or "").strip()
     if spread_code and spread_code not in tarot.SPREADS:
         return "неизвестная схема расклада — выбери доступную схему из каталога"
@@ -668,11 +676,20 @@ async def _run_get_chart(db, user, args) -> str:
         chart = {}
     if not chart:
         return "карта ещё не построена — попроси клиентку пройти /start"
-    known = "точное" if user["birth_time_known"] else "НЕТОЧНОЕ (дома не использовать)"
-    lines = [await guide(db, "natal"), "", f"Время рождения: {known}",
-             astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))]
+    precision = str(chart.get("precision") or "")
+    angular = bool((chart.get("calculation") or {}).get("angular_data_available"))
+    if precision == "exact" and angular:
+        known = "точное; рассчитаны углы и дома"
+    elif precision == "time_without_location":
+        known = "время известно, но координаты не подтверждены (дома не использовать)"
+    elif precision == "date_only":
+        known = "дата без подтверждённого времени/полного часового контекста (дома не использовать)"
+    else:
+        known = "упрощённое/неполное (дома не использовать)"
+    lines = [await guide(db, "natal"), "", f"Точность рождения: {known}",
+             astro.chart_brief(chart, time_known=(precision == "exact" and angular))]
     houses = chart.get("houses") or []
-    if houses and user["birth_time_known"]:
+    if houses and angular and precision == "exact":
         lines.append("Куспиды домов: " + "; ".join(
             f"{h['n']}-й в {h['sign']}" for h in houses))
     return "\n".join(lines)
@@ -993,8 +1010,10 @@ async def _run_get_nakshatra(db, user, args) -> str:
 
 
 async def _run_get_vimshottari_dasha(db, user, args) -> str:
-    if not _user_field(user, "birth_date") or not _user_field(user, "birth_time"):
-        return "для точной Vimshottari Dasha нужны дата и подтверждённое время рождения"
+    if (not _user_field(user, "birth_date") or not _user_field(user, "birth_time")
+            or not bool(_user_field(user, "birth_time_known"))
+            or not _user_field(user, "tz")):
+        return "для точной Vimshottari Dasha нужны дата, подтверждённое время и часовой пояс рождения"
     try:
         result = vedic.get_vimshottari_dasha(
             user["birth_date"], user["birth_time"], _user_field(user, "tz"),

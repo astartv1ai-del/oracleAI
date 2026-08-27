@@ -216,8 +216,65 @@ def full_deck() -> list[dict]:
 
 
 DECK = full_deck()
+_DECK_BY_ID = {str(card["img"]): card for card in DECK}
+_DECK_BY_NAME = {str(card["name"]): card for card in DECK}
 
-# Расклады. `tier`: included — входит в тариф (тратит вопрос дня);
+# Legacy rows from earlier builds could persist English RWS names without `img`.
+# Resolve only this explicit, complete alias set; never redraw or fuzzy-match data.
+_EN_MAJOR_NAMES = [
+    "The Fool", "The Magician", "The High Priestess", "The Empress", "The Emperor",
+    "The Hierophant", "The Lovers", "The Chariot", "Strength", "The Hermit",
+    "Wheel of Fortune", "Justice", "The Hanged Man", "Death", "Temperance",
+    "The Devil", "The Tower", "The Star", "The Moon", "The Sun", "Judgement", "The World",
+]
+_EN_RANKS = ["Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Page", "Knight", "Queen", "King"]
+_EN_SUITS = {"Cups": "Кубков", "Pentacles": "Пентаклей", "Swords": "Мечей", "Wands": "Жезлов"}
+_LEGACY_NAME_ALIASES = {
+    english: card["name"] for english, card in zip(_EN_MAJOR_NAMES, DECK[:22])
+}
+_LEGACY_NAME_ALIASES.update(
+    {
+        f"{rank} of {suit}": f"{RANKS[ri][0]} {ru_suit}"
+        for suit, ru_suit in _EN_SUITS.items()
+        for ri, rank in enumerate(_EN_RANKS)
+    }
+)
+
+
+def _canonical_cards(cards: list[dict]) -> list[dict]:
+    """Validate persisted draw evidence and strip mutable card presentation fields."""
+    if not isinstance(cards, list) or not cards:
+        raise ValueError("tarot draw must contain at least one card")
+    result: list[dict] = []
+    seen: set[str] = set()
+    for raw in cards:
+        if not isinstance(raw, dict):
+            raise ValueError("tarot card evidence must be an object")
+        card_id = str(raw.get("img") or "")
+        name = str(raw.get("name") or "")
+        canonical = _DECK_BY_ID.get(card_id) if card_id else (
+            _DECK_BY_NAME.get(name) or _DECK_BY_NAME.get(_LEGACY_NAME_ALIASES.get(name, ""))
+        )
+        if canonical is None:
+            raise ValueError("unknown tarot card evidence")
+        if card_id and str(canonical["img"]) != card_id:
+            raise ValueError("tarot card id mismatch")
+        if (name and str(canonical["name"]) != name
+                and _LEGACY_NAME_ALIASES.get(name) != str(canonical["name"])):
+            raise ValueError("tarot card name mismatch")
+        canonical_id = str(canonical["img"])
+        if canonical_id in seen:
+            raise ValueError("duplicate tarot card evidence")
+        orientation = raw.get("reversed", False)
+        if not isinstance(orientation, (bool, int)):
+            raise ValueError("tarot card orientation must be boolean")
+        seen.add(canonical_id)
+        result.append({**canonical, "reversed": bool(orientation)})
+    return result
+
+
+# Расклады.
+# `tier`: included — входит в тариф (тратит вопрос дня);
 # premium — открывается разовой покупкой или Кристаллами (см. seed.PRODUCTS).
 # `guide` — короткое описание, зачем расклад, что он показывает клиентке.
 SPREADS: dict[str, dict] = {
@@ -356,9 +413,11 @@ def draw(n: int = 3, *, seed: str | None = None) -> list[dict]:
     поэтому берём sample, а не set — у множества порядок обхода определяется
     слотом хеша, и первая карта оказывалась привязана к её месту в колоде.
     """
+    if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= len(DECK):
+        raise ValueError(f"tarot draw size must be between 1 and {len(DECK)}")
     cards = []
     rng = random.Random(seed) if seed is not None else _RNG
-    for card in rng.sample(DECK, min(n, len(DECK))):
+    for card in rng.sample(DECK, n):
         card = dict(card)
         # честная тасовка: каждая карта ложится прямо или перевёрнуто ~50/50
         card["reversed"] = bool(rng.getrandbits(1))
@@ -386,11 +445,13 @@ def _combination_rule(left: dict, right: dict) -> str:
 
 def reading_ledger(cards: list[dict], spread_code: str = "three",
                    positions: list[str] | None = None) -> dict:
-    """Create user-safe deterministic evidence for a draw and its interpretation."""
+    """Create user-safe deterministic evidence for a validated draw."""
+    canonical_cards = _canonical_cards(cards)
     item = spread(spread_code)
-    positions = (positions or item["positions"])[:len(cards)]
+    canonical_spread = item["code"]
+    positions = (positions or item["positions"])[:len(canonical_cards)]
     entries = []
-    for index, card in enumerate(cards):
+    for index, card in enumerate(canonical_cards):
         entries.append({
             "index": index,
             "position": positions[index] if index < len(positions) else f"Карта {index + 1}",
@@ -402,20 +463,20 @@ def reading_ledger(cards: list[dict], spread_code: str = "three",
             "orientation": "reversed" if card.get("reversed") else "upright",
         })
     combinations = []
-    for left, right in zip(cards, cards[1:]):
+    for left, right in zip(canonical_cards, canonical_cards[1:]):
         combinations.append({
             "left": left.get("name"), "right": right.get("name"),
             "rule": _combination_rule(left, right),
             "type": "adjacent_pair",
         })
-    canonical = json.dumps({"deck_id": "rws-78-v1", "spread": spread_code,
+    canonical = json.dumps({"deck_id": "rws-78-v1", "spread": canonical_spread,
                             "entries": entries}, ensure_ascii=False,
                            sort_keys=True, separators=(",", ":"))
     return {
         "version": "tarot-ledger-v1",
         "deck_id": "rws-78-v1",
         "tradition": "Rider-Waite-Smith",
-        "spread": spread_code if spread_code in SPREADS else DEFAULT_SPREAD,
+        "spread": canonical_spread,
         "entries": entries,
         "adjacent_combinations": combinations,
         "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16],

@@ -909,8 +909,22 @@ async def monthly_report(db, user) -> str:
                 f"✦ Я запомнила о тебе {len(memories)} важных вещей.\n\n"
                 f"Новый месяц — новое небо. Загляни утром за прогнозом ✨")
 
-    await readings_repo.save_report(db, user["tg_id"], "monthly",
-                                    "Итог месяца", body, period=period)
+    await readings_repo.save_report(
+        db, user["tg_id"], "monthly", "Итог месяца", body, period=period,
+        meta={
+            "evidence_schema_version": "monthly-evidence-v1",
+            "evidence_kind": monthly_evidence.kind,
+            "window_days": 30,
+            "readings_count": readings_n,
+            "diary_count": diary_n,
+            "streak_days": streak,
+            "memory_enabled": memory_enabled,
+            "recent_question_count": len(recent),
+            "repeated_question_count": len(repeats),
+            "privacy_note": "raw diary, memory and question text are not copied into report metadata",
+            "evidence_limits": list(monthly_evidence.limits),
+        },
+    )
     return body
 
 

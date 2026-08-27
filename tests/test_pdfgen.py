@@ -163,3 +163,34 @@ async def test_english_date_only_report_uses_sign_based_copy(monkeypatch):
     assert "Planets by house:" not in html
     assert "Resource areas:" not in html
     assert "The wheel image is not generated" in html
+
+
+@pytest.mark.asyncio
+async def test_report_without_city_does_not_infer_moscow_timezone(monkeypatch):
+    from app.pdfgen import builder
+
+    monkeypatch.setattr(builder.llm, "enabled", lambda: False)
+    order = builder.Order(
+        name="Анна", birth_date="1990-06-21", birth_time="14:30", birth_city=None
+    )
+
+    data = await builder.build_report_data(order)
+
+    assert data["tz"] is None
+    assert data["chart"]["precision"] in {"date_only", "sun_only"}
+    assert data["chart"].get("ascendant") is None
+    assert data["chart"].get("houses") == []
+    assert data["chart"]["calculation"]["input"]["precision_reason"] == "date_only_missing_timezone"
+
+
+@pytest.mark.asyncio
+async def test_legacy_tarot_name_only_cards_remain_replayable():
+    from app.core import tarot
+
+    card = tarot.DECK[0]
+    legacy = [{"name": card["name"], "reversed": True}]
+    ledger = tarot.reading_ledger(legacy, "one")
+
+    assert ledger["entries"][0]["card_id"] == card["img"]
+    assert ledger["entries"][0]["orientation"] == "reversed"
+    assert ledger["spread"] == "one"

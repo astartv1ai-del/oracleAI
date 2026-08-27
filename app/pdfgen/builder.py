@@ -212,7 +212,7 @@ class Order:
 async def build_report_data(order: Order) -> dict:
     """Считает всё, что нужно разбору: карту, арканы, небо. Без модели."""
     lat = lon = None
-    tz = "Europe/Moscow"
+    tz = None
     if order.birth_city:
         lat, lon, tz = await geo.resolve_city_async(order.birth_city)
     chart = await astro.compute_chart_async(

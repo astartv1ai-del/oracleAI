@@ -1,35 +1,29 @@
-# OracleAI — Tarot and card reflection
+# Tarot domain contract
 
-## Document orientation
+## Canonical deck
 
-| Field | Definition |
-|---|---|
-| **Purpose** | Define the enabled Tarot reading contract and the boundary between a persisted draw and interpretation. |
-| **Source of truth** | `app/core/tarot.py`, `app/api/routers/tarot.py`, the reading repositories and `tests/test_tarot_contract.py`. |
-| **Scope** | Card draw, positions, orientation, replay, history and safe interpretation. |
-| **Do not change** | Do not invent cards, positions, orientation, timing or certainty; do not imply that an upstream Lenormand capability is an enabled product. |
-| **Key files** | `app/core/tarot.py`, `app/repo/readings.py`, `app/api/routers/tarot.py`, `tests/test_tarot_contract.py`, `tests/test_report_history.py`. |
-| **Validation** | `pytest -q tests/test_tarot_contract.py tests/test_core.py tests/test_report_history.py`. |
+OracleAI uses a self-hosted Rider–Waite–Smith-inspired 78-card corpus in `app/core/tarot.py`. The deck contains 22 Major Arcana and 56 Minor Arcana. The Minor Arcana has four suits—Cups, Pentacles, Swords and Wands—with 14 ranks per suit. Every card has a stable image/card ID, name, arcana class and suit metadata; Major cards additionally carry short meaning/advice fields and Minor cards use the bounded `RWS_MINOR` meanings where defined.
 
-## Enabled Tarot contract
+The hard invariants are tested: total count 78, unique IDs, 22/56 split, four suits and 14 cards per suit. Unknown cards, duplicate cards, ID/name mismatch and invalid orientation are rejected when building a reading ledger. This validation protects historical replay from silently accepting corrupted evidence.
 
-A Tarot request first produces and persists a bounded draw ledger. The ledger contains the selected cards, spread positions and orientation/reversal state before an interpretation is generated. History and replay read the stored ledger rather than drawing again, so a user can reopen the same reading without changing its evidence.
+## Draw contract
 
-The implementation preserves the 78-card invariants and owner scope. Reversed cards are a property of the persisted draw and must not be introduced or removed by the model. Regeneration of an explanation does not silently replace the original draw; immutable report/history semantics are documented in [`../FEATURES/HISTORY.md`](../FEATURES/HISTORY.md).
+`tarot.draw(n)` uses `secrets.SystemRandom` by default and returns a sample without replacement. `n` must be an integer from 1 to 78; impossible sizes are rejected rather than silently clamped. Orientation is generated independently as a boolean and stored with each card. A string seed is supported only for deterministic tests and golden fixtures; product draws do not claim cryptographic guarantees beyond the default system RNG and do not expose the seed.
 
-## Safety boundary
+Spread definitions are explicit. Each spread has a stable code, title, ordered positions, access tier and guide. The number of cards is derived from the selected spread positions. The canonical spread code is used in the ledger checksum, so an unknown spread cannot create an ambiguous historical contract.
 
-Tarot is a reflection product. The response may offer a bounded interpretation and a manageable next step, but it must not claim deterministic future events, read a third party’s private mind, give medical/legal/financial diagnosis, or present symbolic cards as proof.
+## Persistence and replay
 
-Unsupported card systems must be explicit. The current canonical boundary treats Lenormand as disabled unless a separately versioned contract, enabled route, evidence policy, UI, persistence and tests are added. A fallback must not be described as a Lenormand reading.
+The shared Tarot service draws and persists the cards before requesting interpretation. The database stores the question, spread, cards, surface and payment/access metadata. Interpretation is a separate owner-scoped operation; finalization is append-only and cannot overwrite an existing answer. History reconstructs the ledger from persisted cards and never calls the random generator again.
 
-## Product and API links
+`tarot-ledger-v1` contains ordered entries with card ID, card name, position, arcana, suit, boolean reversal and normalized orientation. It also contains adjacent-combination cues and a truncated SHA-256 checksum over the canonical deck/spread/entries payload. Replay recomputes this ledger and rejects a checksum mismatch. The ledger is evidence, not the interpretation itself.
 
-The Tarot route and client behavior are described in [`../API.md`](../API.md), while agent tool permissions and output guardrails are canonical in [`../AI_SYSTEM.md`](../AI_SYSTEM.md). Domain-wide evidence policy is in [`CONTRACTS.md`](CONTRACTS.md).
+## Interpretation boundary
 
-## References
+The model receives the exact question, exact ordered cards, exact positions and exact orientations. It must not add or reverse cards, infer an unrecorded spread, claim third-party intent as fact, or promise timing/future certainty. User question, partner name, diary and memory text are untrusted data and cannot override system or evidence instructions.
 
-[1]: [app/core/tarot.py](../../app/core/tarot.py) — draw and interpretation primitives.
-[2]: [app/api/routers/tarot.py](../../app/api/routers/tarot.py) — Tarot HTTP routes.
-[3]: [tests/test_tarot_contract.py](../../tests/test_tarot_contract.py) — Tarot regression contract.
-[4]: [FEATURES/HISTORY.md](../FEATURES/HISTORY.md) — immutable history boundary.
+A Tarot reading is a reflective symbolic exercise. The product must not convert it into medical diagnosis, guaranteed financial outcome, guaranteed relationship outcome, mortality prediction, legal decision or deterministic future claim. Fear-based pressure and generic certainty are quality failures, even if the prose is stylistically impressive.
+
+## Versioning and known limits
+
+The current deck ID is `rws-78-v1`; the replay contract is `tarot-replay-v1`. Changing card IDs, meanings, spread positions, orientation semantics or checksum fields requires a migration/compatibility decision and a new golden corpus. The current tests cover deck invariants, seeded replay, orientation, duplicate rejection, unknown-card rejection and persistence ownership. A fresh live-model critic and manual review of all RWS symbolism remain external quality gates.
