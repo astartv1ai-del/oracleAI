@@ -558,6 +558,37 @@ async def test_admin_health_reports_telegram_webapp_readiness(client, db, monkey
     assert ready.json()["telegram_webapp_ready"] is True
 
 
+async def test_admin_demo_is_owner_only_and_does_not_mutate_data(client, db, user):
+    await users.ensure(db, 1, "Владелец")
+    before_users = (await (await db.execute("SELECT COUNT(*) FROM users")).fetchone())[0]
+    before_orders = (await (await db.execute("SELECT COUNT(*) FROM orders")).fetchone())[0]
+    demo = await client.get("/api/admin/dashboard/demo", params={"dev_user": 1})
+    assert demo.status_code == 200
+    data = demo.json()
+    assert data["demo"]["active"] is True
+    assert data["overview"]["users_total"] == 451
+    assert data["monetization"]["repeat_payers"] == 130
+    assert data["overview"]["stars_total"] == 17056  # ≈ $328 at the UI reference rate
+    assert "17 дней" not in str(data)  # operating-days label is UI-only, not an order field
+    after_users = (await (await db.execute("SELECT COUNT(*) FROM users")).fetchone())[0]
+    after_orders = (await (await db.execute("SELECT COUNT(*) FROM orders")).fetchone())[0]
+    assert (before_users, before_orders) == (after_users, after_orders)
+
+    await users.ensure(db, 2, "Не админ")
+    forbidden = await client.get("/api/admin/dashboard/demo", params={"dev_user": 2})
+    assert forbidden.status_code == 403
+
+
+async def test_admin_payment_health_is_aggregated_and_read_only(client, db):
+    await users.ensure(db, 1, "Владелец")
+    result = await client.get("/api/admin/payment-health", params={"dev_user": 1})
+    assert result.status_code == 200
+    body = result.json()
+    assert "checks" in body and "providers" in body
+    assert "payload" not in str(body).lower()
+    assert "tg_id" not in str(body).lower()
+
+
 async def test_admin_dashboard_and_users(client, db, user):
     await users.ensure(db, 1, "Владелец")
     dash = await client.get("/api/admin/dashboard", params={"dev_user": 1})
@@ -645,6 +676,20 @@ async def test_csp_header_in_production(client, monkeypatch):
 async def test_csp_absent_in_dev(client):
     res = await client.get("/api/health")
     assert "content-security-policy" not in res.headers
+
+
+def test_admin_demo_and_payment_health_ui_contract():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    html = (root / "admin" / "index.html").read_text(encoding="utf-8")
+    js = (root / "admin" / "admin.js").read_text(encoding="utf-8")
+    assert 'id="demo-toggle"' in html
+    assert 'ДЕМО-РЕЖИМ · тестовые данные' in html
+    assert 'id="payment-health"' in html
+    assert "/api/admin/dashboard/demo" in js
+    assert "/api/admin/payment-health" in js
+    assert "state.role !== 'owner'" in js
 
 
 async def test_cache_control_on_assets(client):

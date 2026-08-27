@@ -1,6 +1,11 @@
 """Smoke-check file-backed agents without calling external LLM providers."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from app.core.agents.file_loader import (
     load_profiles,
     profile_for_legacy,

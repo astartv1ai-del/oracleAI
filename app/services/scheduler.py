@@ -29,7 +29,7 @@ from ..data.session import transaction
 from ..core import agent as agent_core
 from ..core import astro
 from ..repo import comms, content, users
-from . import analytics, broadcast, horoscopes, practices as practices_svc
+from . import analytics, broadcast, horoscopes, payment_monitor, practices as practices_svc
 
 log = logging.getLogger("oracle.scheduler")
 
@@ -586,6 +586,13 @@ async def tick(bot, db) -> None:
         await broadcast.tick(bot, db)
     except Exception as e:  # noqa: BLE001
         log.error("рассылки: %s", e)
+
+    try:
+        await payment_monitor.run(bot, db, now=now_utc)
+    except Exception as e:  # noqa: BLE001
+        # Health monitoring must never stop user scenarios or hide the scheduler
+        # heartbeat; the next lease-protected tick will retry it.
+        log.warning("мониторинг платежей: %s", type(e).__name__)
 
     try:
         await analytics.rollup(db)

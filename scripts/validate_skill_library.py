@@ -1,7 +1,10 @@
 """Quality gate for the composable, file-backed agent skill library."""
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.agents.file_loader import load_profiles, resolve_skill_dependencies
 

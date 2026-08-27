@@ -113,6 +113,13 @@
           </button>
           <div class="spacer"></div>
           <div id="profile-referral"></div>
+          <div class="spacer"></div>
+          <section class="glass account-danger" aria-labelledby="account-danger-title">
+            <div class="section-kicker">${profileT('account')}</div>
+            <div class="account-danger__title" id="account-danger-title">${profileT('deleteAccount')}</div>
+            <p class="account-danger__copy">${profileT('deleteAccountCopy')}</p>
+            <button class="btn btn-ghost account-danger__button" type="button" data-act="account-delete">${profileT('deleteAccount')}</button>
+          </section>
         </div>
 
         <div class="ptab-pane" id="ptab-chart">
@@ -449,6 +456,39 @@
     if (empty) empty.hidden = visible !== 0;
   };
 
+
+  app.deleteAccount = async function() {
+    if (!window.confirm(profileT('deleteAccountConfirm'))) return;
+    const button = document.querySelector('[data-act="account-delete"]');
+    if (button) button.disabled = true;
+    try {
+      await api('/api/account/delete', {
+        method: 'POST',
+        body: JSON.stringify({ confirm: true })
+      });
+      this.me = null;
+      this.chat = this.chat || {};
+      this.chat.key = null;
+      this.chat.tid = null;
+      this.chat.messages = [];
+      this.chat.pending = null;
+      this.chat.busy = false;
+      const nav = document.querySelector('.app-nav');
+      if (nav) nav.hidden = true;
+      const main = document.getElementById('app-main');
+      if (main) main.innerHTML = `<div class="screen" data-account-deleted>
+        <div class="soft-empty soft-empty--quiet" data-state="success">
+          <div class="soft-empty__orb" aria-hidden="true">✦</div>
+          <div class="soft-empty__title">${esc(profileT('deleteAccountDone'))}</div>
+          <div class="soft-empty__copy">${esc(profileT('deleteAccountDoneCopy'))}</div>
+        </div>
+      </div>`;
+      haptic('success');
+    } catch (e) {
+      if (button) button.disabled = false;
+      alert(friendlyError(e, profileT('deleteAccountFailed')));
+    }
+  };
 
   app.toggleMemory = async function() {
     const current = !(this.me && this.me.memory_enabled === false);

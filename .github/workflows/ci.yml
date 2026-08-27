@@ -43,6 +43,13 @@ jobs:
       - name: Repository hygiene
         run: python scripts/check_repository_hygiene.py
 
+      - name: Standalone quality script smoke
+        run: |
+          python scripts/validate_skill_library.py
+          python scripts/check_agent_stability.py
+          python scripts/benchmark_vedic_routing.py >/tmp/vedic-routing.json
+          python scripts/benchmark_mira_lenormand.py >/tmp/mira-lenormand.json
+
       - name: Cache-busting policy
         run: python scripts/check_cache_busting.py
 

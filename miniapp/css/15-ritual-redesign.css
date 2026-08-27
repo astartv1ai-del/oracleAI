@@ -2361,3 +2361,22 @@ html { scroll-behavior: smooth; }
 .history-item__body small{overflow:hidden;color:var(--text-muted);font-size:10px;text-overflow:ellipsis;white-space:nowrap}
 .history-item__chev{color:var(--champagne-300,#e8c56b);font-size:20px;line-height:1}
 @media (max-width:380px){.history-item{gap:8px;padding:9px}.history-item__icon{flex-basis:31px;width:31px;height:31px}.history-item__body strong{font-size:11px}}
+
+/* Account deletion remains visible, explicit and visually distinct from routine settings. */
+.account-danger {
+  padding: 15px 16px;
+  border-color: rgba(245, 169, 199, .28);
+  background: linear-gradient(145deg, rgba(95, 38, 66, .22), rgba(255, 255, 255, .035));
+}
+.account-danger .section-kicker { color: var(--color-error); }
+.account-danger__title { margin-top: 6px; color: var(--text-main); font: 700 17px/1.2 var(--font-display); }
+.account-danger__copy { margin: 7px 0 12px; color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.account-danger__button {
+  width: 100%;
+  min-height: 44px;
+  border-color: rgba(245, 169, 199, .45);
+  color: var(--color-error);
+}
+.account-danger__button:hover,
+.account-danger__button:focus-visible { border-color: var(--color-error); color: var(--text-main); }
+.account-danger__button:disabled { opacity: .58; cursor: wait; }

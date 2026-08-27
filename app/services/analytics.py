@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import date, timedelta
 import logging
 
 from ..repo import analytics as repo
@@ -178,6 +179,71 @@ async def dashboard(db, *, days: int = 30) -> dict:
         # себестоимость рядом с выручкой: маржа должна быть видна одним взглядом
         "llm_costs": await repo.llm_costs(db, days=days),
         "monetization": await repo.monetization_kpis(db, days=days),
+    }
+
+
+async def demo_dashboard(*, days: int = 30) -> dict:
+    """Return clearly labelled synthetic KPIs without touching the database."""
+    days = max(1, min(int(days), 365))
+    today = date.today()
+    chart_days = [(today - timedelta(days=days - 1 - i)).isoformat()
+                   for i in range(days)]
+    active = [0] * days
+    questions = [0] * days
+    registrations = [0] * days
+    stars = [0] * days
+    sample_users = [12, 18, 21, 24, 27, 30, 35, 29, 33, 38, 42, 31, 36, 40, 25, 24, 22]
+    sample_questions = [18, 26, 33, 41, 45, 49, 55, 52, 58, 61, 66, 60, 64, 70, 73, 78, 82]
+    sample_active = [31, 44, 52, 60, 66, 72, 79, 83, 88, 91, 96, 101, 108, 112, 118, 124, 130]
+    sample_stars = [300, 500, 700, 800, 900, 650, 750, 850, 1000, 900, 1100,
+                    1200, 950, 1250, 1350, 1400, 1456]
+    offset = max(0, days - 17)
+    for idx, values in enumerate((sample_active, sample_questions,
+                                  sample_users, sample_stars)):
+        target = (active, questions, registrations, stars)[idx]
+        target[offset:] = values[-min(17, days):]
+
+    overview = {
+        "users_total": 451, "users_today": 22, "users_7d": 247,
+        "users_30d": 451, "onboarded": 389, "subs_active": 164,
+        "dau": 130, "wau": 318, "mau": 451, "questions_today": 82,
+        "questions_7d": sum(sample_questions[-7:]), "readings_total": 736,
+        "readings_7d": 126, "diary_7d": 74, "stars_total": 17056,
+        "stars_30d": 17056, "payers": 182, "crystals_outstanding": 8420,
+    }
+    total = overview["users_total"]
+    funnel_values = [("Пришли", 451), ("Прошли знакомство", 389),
+                     ("Задали вопрос", 273), ("Вернулись на 2-й день", 196),
+                     ("Заплатили", 182)]
+    funnel = [{"step": label, "value": value,
+               "of_total": round(value * 100 / total, 1)}
+              for label, value in funnel_values]
+    retention = [{"cohort": chart_days[max(0, days - 17)], "size": 451,
+                  "d1": 64.0, "d3": 48.0, "d7": 31.0, "d14": 21.0,
+                  "d30": 0.0}]
+    return {
+        "demo": {"active": True, "label": "ДЕМО · тестовые данные",
+                  "note": "Не реальные пользователи, заказы или баланс",
+                  "operating_days": 17},
+        "overview": overview, "funnel": funnel,
+        "activation": {"days": days, "cohort": 451, "steps": []},
+        "timeseries": [{"day": day, "active": active[i],
+                        "questions": questions[i], "users": registrations[i],
+                        "readings": 0, "stars": stars[i]}
+                       for i, day in enumerate(chart_days)],
+        "retention": retention, "top_events": [], "surfaces": [],
+        "sources": [{"source": "Telegram", "users": 451, "payers": 182,
+                     "stars": 17056}],
+        "revenue": {"stars_total": 17056, "stars_period": 17056,
+                    "orders_paid": 182, "orders_period": 182,
+                    "payers": 182, "refunds": 0},
+        "top_products": [{"sku": "demo_subscription", "title": "Демо-подписка",
+                          "sales": 182, "stars": 17056}],
+        "top_referrers": [], "promo_batches": [], "llm_costs": {},
+        "monetization": {"days": days, "paid_arppu_stars": 94,
+                          "paid_payers": 182, "repeat_payers": 130,
+                          "repeat_payer_rate": 71.4, "refund_rate": 0.0,
+                          "refund_orders": 0},
     }
 
 

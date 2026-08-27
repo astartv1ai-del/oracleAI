@@ -18,6 +18,7 @@ const state = {
   tgId: null,
   permissions: [],
   period: 30,
+  demo: false,
   view: 'dashboard',
   users: { q: '', segment: 'all', order: 'created_at', offset: 0, limit: 50, total: 0 },
   segments: [],
@@ -194,6 +195,13 @@ $('period').addEventListener('change', (e) => {
   state.period = +e.target.value;
   if (state.view === 'dashboard') loadDashboard();
 });
+$('demo-toggle').addEventListener('click', () => {
+  if (state.role !== 'owner') return;
+  state.demo = !state.demo;
+  $('demo-toggle').textContent = state.demo ? 'ДЕМО: вкл.' : 'ДЕМО: выкл.';
+  $('demo-toggle').classList.toggle('active', state.demo);
+  loadDashboard().catch(fail);
+});
 
 const LOADERS = {
   dashboard: loadDashboard,
@@ -216,8 +224,15 @@ function loadView(name) {
 
 /* ══════ дашборд ══════ */
 async function loadDashboard() {
-  const d = await get(`/api/admin/dashboard?days=${state.period}`);
+  const dashboardPath = state.demo
+    ? `/api/admin/dashboard/demo?days=${state.period}`
+    : `/api/admin/dashboard?days=${state.period}`;
+  const [d, health] = await Promise.all([
+    get(dashboardPath), get('/api/admin/payment-health'),
+  ]);
   const o = d.overview;
+  $('demo-banner').classList.toggle('hidden', !state.demo);
+  renderPaymentHealth(health);
 
   const kpis = [
     { label: 'Клиентки', value: num(o.users_total), sub: `+${num(o.users_today)} за сутки`, cls: '' },
@@ -229,6 +244,9 @@ async function loadDashboard() {
     { label: 'Раскладов', value: num(o.readings_total), sub: `${num(o.readings_7d)} за неделю`, cls: '' },
     { label: 'Кристаллы в обороте', value: num(o.crystals_outstanding), sub: 'не потрачено клиентками', cls: '' },
   ];
+  if (state.demo) {
+    kpis.unshift({ label: 'Проект работает', value: '17 дней', sub: 'демо-срез · не production', cls: 'accent' });
+  }
   $('kpi').innerHTML = kpis.map((k) => `
     <div class="kpi ${k.cls}">
       <div class="kpi-label">${esc(k.label)}</div>
@@ -310,6 +328,31 @@ async function loadDashboard() {
     { title: 'Привела', num: true, render: (r) => num(r.invited) },
     { title: '✦', num: true, render: (r) => num(r.bonus) },
   ], d.top_referrers, { empty: 'Приглашений пока нет' });
+}
+
+function renderPaymentHealth(h) {
+  const checks = h?.checks || {};
+  const recon = checks.reconciliation || {};
+  const failures = Object.values(checks.webhook_failures_24h || {}).reduce((s, n) => s + (n || 0), 0);
+  const anomalies = Object.values(recon).reduce((s, n) => s + (n || 0), 0);
+  const status = h?.status || 'unknown';
+  const statusLabel = { ok: 'OK', degraded: 'DEGRADED', critical: 'CRITICAL', unknown: 'нет snapshot' }[status] || status;
+  const statusClass = status === 'ok' ? 'on' : status === 'critical' ? 'bad' : 'warn';
+  const providers = Object.entries(h?.providers || {}).map(([name, p]) => {
+    const cls = p.status === 'ok' ? 'on' : p.status === 'degraded' ? 'warn' : 'off';
+    const balance = (p.balances || []).map((b) => `${esc(b.asset)}: ${esc(b.available)}`).join(', ');
+    return `<span class="health-provider"><b>${esc(name)}</b><span class="badge ${cls}">${esc(p.status || 'unknown')}</span>${balance ? `<span>${balance}</span>` : ''}</span>`;
+  }).join('');
+  $('payment-health-updated').textContent = h?.checked_at ? `проверено ${date(h.checked_at, true)}` : 'проверка ещё не запускалась';
+  $('payment-health').innerHTML = `
+    <div class="payment-health-summary"><span class="badge ${statusClass}">${esc(statusLabel)}</span><span class="muted small">Проверки выполняются автоматически каждые 10 минут в активном bot process.</span></div>
+    <div class="payment-health-grid">
+      <div class="health-stat"><span>Зависшие pending &gt; ${num(h?.stale_pending_threshold_hours || 2)} ч</span><b>${num(checks.pending_orders_stale)}</b></div>
+      <div class="health-stat"><span>Ошибки webhook за 24 ч</span><b>${num(failures)}</b></div>
+      <div class="health-stat"><span>Ошибки заказов за 24 ч</span><b>${num(checks.failed_orders_24h)}</b></div>
+      <div class="health-stat"><span>Аномалии сверки</span><b>${num(anomalies)}</b></div>
+    </div>
+    <div class="health-provider">Поставщики: ${providers || '<span>не настроены</span>'}</div>`;
 }
 
 /* ══════ клиентки ══════ */
@@ -1208,6 +1251,9 @@ async function boot() {
     state.tgId = me.tg_id;
     state.permissions = me.permissions;
     $('who').innerHTML = `<b>${esc(me.name)}</b><br>роль: ${esc(me.role)}`;
+    if (state.role === 'owner') {
+      $('demo-toggle').classList.remove('hidden');
+    }
     $('gate').classList.add('hidden');
     $('shell').classList.remove('hidden');
 

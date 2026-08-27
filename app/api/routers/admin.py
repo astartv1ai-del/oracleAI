@@ -21,6 +21,7 @@ from ...repo import (analytics as analytics_repo, billing, comms, content, crm,
 from ...services import analytics as analytics_svc
 from ...services import billing as billing_svc
 from ...services import broadcast as broadcast_svc
+from ...services import payment_monitor
 from ...services import telegram
 from ..deps import current_admin, get_db, rate_limit, require
 
@@ -82,6 +83,21 @@ async def health(ctx=Depends(require("dashboard")), db=Depends(get_db)):
 async def dashboard(days: int = Query(default=30, ge=1, le=365),
                     ctx=Depends(require("dashboard")), db=Depends(get_db)):
     return await analytics_svc.dashboard(db, days=days)
+
+
+@router.get("/dashboard/demo")
+async def demo_dashboard(days: int = Query(default=30, ge=1, le=365),
+                         ctx=Depends(current_admin)):
+    """Owner-only synthetic preview; it never reads or writes operational data."""
+    if ctx.role != "owner":
+        raise HTTPException(403, "демо-режим доступен только владельцу")
+    return await analytics_svc.demo_dashboard(days=days)
+
+
+@router.get("/payment-health")
+async def payment_health(ctx=Depends(require("dashboard")), db=Depends(get_db)):
+    """Aggregated payment/webhook health; no IDs, payloads or user PII."""
+    return await payment_monitor.admin_snapshot(db)
 
 
 @router.get("/events")

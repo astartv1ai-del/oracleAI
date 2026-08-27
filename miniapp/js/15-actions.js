@@ -101,7 +101,8 @@
     'ask-chart': () => call('askChart'),
     'share-chart': () => call('shareChart'),
     'share-compat': (el, data) => call('shareCompat', data.pdate, data.pname, data.rel),
-    'modal-close': () => call('closeModal')
+    'modal-close': () => call('closeModal'),
+    'account-delete': () => call('deleteAccount')
   };
 
   app.actionHandlers = actionHandlers;

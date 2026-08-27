@@ -30,7 +30,7 @@ def main() -> int:
     visual_qa = VISUAL_QA.read_text(encoding="utf-8")
     missing = sorted(token for token in REQUIRED_TOKENS
                      if not re.search(rf"{re.escape(token)}\s*:", tokens))
-    imports = re.findall(r"@import\s+url\('css/([^']+)'", styles)
+    imports = [item.split("?", 1)[0] for item in re.findall(r"@import\s+url\('css/([^']+)'", styles)]
     # Order is validated by prefix sequence; two features may share a numeric
     # prefix (16-visual-qa + 16-payments); total count must match files on disk.
     expected_prefixes = ["00-", "01-", "02-", "03-", "04-", "05-", "06-", "07-",
@@ -41,6 +41,9 @@ def main() -> int:
         and len(imports) == len(list((ROOT / "miniapp" / "css").glob("*.css")))
         and all(imports[idx].startswith(expected_prefixes[idx])
                 for idx in range(len(expected_prefixes)))
+        and imports[16] == "16-visual-qa.css"
+        and imports[17] == "16-payments.css"
+        and imports[18] == "17-premium-shell.css"
     )
     reduced_motion = "prefers-reduced-motion: reduce" in styles or any(
         "prefers-reduced-motion: reduce" in path.read_text(encoding="utf-8")

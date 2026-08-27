@@ -399,6 +399,13 @@ CREATE TABLE IF NOT EXISTS webhook_events (
     payload    TEXT,
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS payment_webhook_failures (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider    TEXT NOT NULL,
+    code        TEXT NOT NULL,
+    status_code INTEGER,
+    created_at  TEXT NOT NULL
+);
 """
 
 ANALYTICS = """
@@ -596,6 +603,8 @@ CREATE INDEX IF NOT EXISTS idx_promo_batch   ON promo_codes(batch);
 CREATE INDEX IF NOT EXISTS idx_promo_red     ON promo_redemptions(code, tg_id);
 CREATE INDEX IF NOT EXISTS idx_promo_created  ON promo_redemptions(created_at);
 CREATE INDEX IF NOT EXISTS idx_pay_order     ON payments(order_id);
+CREATE INDEX IF NOT EXISTS idx_payment_webhook_failures_created
+    ON payment_webhook_failures(created_at, provider);
 CREATE INDEX IF NOT EXISTS idx_bt_status     ON broadcast_targets(broadcast_id, status);
 CREATE INDEX IF NOT EXISTS idx_usage_day     ON llm_usage(day, purpose);
 CREATE INDEX IF NOT EXISTS idx_usage_user    ON llm_usage(tg_id, created_at);
