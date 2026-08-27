@@ -25,6 +25,7 @@ OracleAI Engine имеет production-oriented локальную реализа
 | Product validators | Natal, synastry, transit, composite, solar return | Проверяются precision compatibility, roles, exact longitudes, shortest midpoint, timestamps и return ordering. |
 | Specialized placements | Moon, Venus, Rising, Nodes, Asteroids и другие Western placements | Используют canonical `astro.compute_chart`; legacy response shape сохранён, provenance propagated. |
 | Provenance disclosure | API, chat, full chart, PDF | `OracleAI Engine`, adapter, Kerykeion, Swiss Ephemeris и licensing notice раскрыты явно. |
+| Chart image integration | Validated snapshot → render-only adapter | Snapshot input/configuration is authoritative; stale configuration is rejected; render cache includes request/config/runtime fingerprints; raw SVG remains transient. |
 
 ## 3. Platform и product components
 
@@ -49,7 +50,7 @@ OracleAI Engine имеет production-oriented локальную реализа
 | Placement/product/API focused suites | **PASS**; notification inbox tests включают owner isolation, dedupe, privacy redaction и idempotent read-all. |
 | Python lint/compile | **PASS**: Ruff и `compileall`. |
 | Frontend | **PASS**: provenance contract, JS syntax, hashed build, static asset, design, contrast и cache-busting checks. |
-| Browser smoke | **PASS**: RU/EN full-chart provenance, details toggle, localized license copy, v105 cache-bust и placeholder regression fix. |
+| Browser smoke | **PASS**: RU/EN full-chart provenance, details toggle, localized license copy, v107 notification inbox, unread/read action and morning forecast toggle. |
 | Release gate | **PASS** для локального non-Palm product scope. |
 | Selfcheck | **PASS**; ожидаемые skips: live LLM/provider credentials и production configuration values. |
 | Overall public production readiness | **BLOCKED by external gates**, а не локальным Engine failure. |
@@ -90,3 +91,4 @@ OracleAI Engine улучшает **семантику входов, воспро
 [7]: [NOTIFICATION_INBOX_BROWSER_TEST.md](DOMAIN/NOTIFICATION_INBOX_BROWSER_TEST.md) — interactive RU notification inbox evidence.
 [8]: [https://github.com/g-battaglia/kerykeion](https://github.com/g-battaglia/kerykeion) — disclosed backend source.
 [9]: [https://www.astro.com/swisseph/swephinfo_e.htm](https://www.astro.com/swisseph/swephinfo_e.htm) — Swiss Ephemeris distribution/licensing reference.
+[10]: [DOMAIN/ENGINE_INTEGRATION_AUDIT_2026-08-27.md](DOMAIN/ENGINE_INTEGRATION_AUDIT_2026-08-27.md) — caller, timing, render boundary and cache integration audit.
