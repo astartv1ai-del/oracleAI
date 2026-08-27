@@ -14,6 +14,11 @@ REQUIRED_TOKENS = {
     "--text", "--text-dim", "--text-faint", "--border", "--border-strong",
     "--font-body", "--r-s", "--r-m", "--r-l", "--motion-quick",
     "--motion-base", "--motion-slow", "--sh-card", "--sh-gold",
+    "--color-bg-primary", "--color-bg-secondary", "--color-bg-elevated",
+    "--color-accent", "--color-text-primary", "--color-text-secondary",
+    "--color-border", "--color-success", "--color-error", "--color-warning",
+    "--font-size-h1", "--font-size-body", "--font-size-caption", "--space-4",
+    "--radius-control", "--touch-target", "--motion-enter", "--focus-ring",
 }
 
 
@@ -24,9 +29,9 @@ def main() -> int:
     missing = sorted(token for token in REQUIRED_TOKENS
                      if not re.search(rf"{re.escape(token)}\s*:", tokens))
     imports = re.findall(r"@import\s+url\('css/([^']+)'", styles)
-    expected = [f"{idx:02d}-" for idx in range(16)]
-    import_order_ok = len(imports) == 16 and all(
-        imports[idx].startswith(expected[idx]) for idx in range(16)
+    expected = [f"{idx:02d}-" for idx in range(17)]
+    import_order_ok = len(imports) == 17 and all(
+        imports[idx].startswith(expected[idx]) for idx in range(17)
     )
     reduced_motion = "prefers-reduced-motion: reduce" in styles or any(
         "prefers-reduced-motion: reduce" in path.read_text(encoding="utf-8")
