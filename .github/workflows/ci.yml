@@ -64,6 +64,8 @@ jobs:
           python scripts/check_agent_stability.py
           python scripts/benchmark_vedic_routing.py >/tmp/vedic-routing.json
           python scripts/benchmark_mira_lenormand.py >/tmp/mira-lenormand.json
+          python scripts/palm_accuracy_gauntlet.py >/tmp/palm-accuracy.json
+          python scripts/palm_independent_critic.py >/tmp/palm-critic.json
 
       - name: Cache-busting policy
         run: python scripts/check_cache_busting.py
