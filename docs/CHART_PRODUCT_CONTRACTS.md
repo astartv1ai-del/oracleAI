@@ -1,5 +1,17 @@
 # Контракты продуктовых путей: natal, synastry, transit, composite и returns
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | Versioned chart-product request/response contracts. |
+| **Source of truth** | `app/core/chart_products.py`, `app/api/contracts/chart_products.py`. |
+| **Scope** | Natal-adjacent product shapes: synastry, transit, composite and returns. |
+| **Do not change** | Do not imply visual/PDF support or unsupported precision from a JSON-first contract. |
+| **Key files** | `app/core/chart_products.py`, `app/api/routers/chart_products.py`, `tests/test_chart_products.py`. |
+| **Validation** | `pytest -q tests/test_chart_products.py`. |
+
+
 **Дата обновления:** 2026-08-26
 **Статус:** natal, synastry, transit, composite и solar returns реализованы как JSON-first product paths; изображения, PDF и share-визуалы для новых типов не включены.
 

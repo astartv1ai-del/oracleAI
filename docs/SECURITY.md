@@ -1,5 +1,17 @@
 # Безопасность и приватность OracleAI
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | Trust boundaries and privacy controls. |
+| **Source of truth** | `app/api/security.py`, `app/api/deps.py`, `app/core/safety.py`. |
+| **Scope** | Telegram identity, owner scope, consent, uploads, memory, payments and safety. |
+| **Do not change** | Do not expose secrets or PII, weaken production fail-closed checks, or treat 16+ self-confirmation as identity verification. |
+| **Key files** | `app/api/deps.py`, `app/api/security.py`, `app/core/safety.py`, `tests/test_security_regressions.py`. |
+| **Validation** | `pytest -q tests/test_security_regressions.py tests/test_safety.py`. |
+
+
 ## Принципы
 
 OracleAI обрабатывает личный контекст, поэтому безопасность является частью продукта, а не только инфраструктурной задачей. Цель — собирать минимум данных для заявленного сценария, объяснять контроль пользовательнице, применять его серверно и иметь проверяемую процедуру реакции на инцидент.

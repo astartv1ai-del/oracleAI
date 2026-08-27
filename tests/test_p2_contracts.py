@@ -35,7 +35,7 @@ def test_payment_locale_dictionaries_have_matching_keys() -> None:
 
 
 def test_p2_register_keeps_unperformed_external_gates_explicit() -> None:
-    register = (ROOT / "docs/P2_RELEASE_CHECKLIST.md").read_text(encoding="utf-8")
+    register = (ROOT / "docs/EVIDENCE/P2_RELEASE_CHECKLIST_2026-08-27.md").read_text(encoding="utf-8")
     assert all(f"P2-00{i}" in register for i in range(1, 9))
     assert "OPEN — manual" in register
     assert "OPEN — external" in register

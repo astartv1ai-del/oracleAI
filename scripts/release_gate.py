@@ -14,8 +14,8 @@ REQUIRED_DOCS = (
     ROOT / "docs" / "SECURITY.md",
     ROOT / "docs" / "DEPLOYMENT.md",
     ROOT / "docs" / "LLM_EVALUATION.md",
-    ROOT / "docs" / "LAUNCH_GOVERNANCE.md",
-    ROOT / "docs" / "PRODUCTION_READINESS_AND_LAUNCH_PLAN.md",
+    ROOT / "docs" / "RELEASE/LAUNCH_GOVERNANCE.md",
+    ROOT / "docs" / "RELEASE/PRODUCTION_READINESS.md",
 )
 
 

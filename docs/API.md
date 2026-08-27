@@ -1,5 +1,17 @@
 # API OracleAI
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | HTTP API and error contract. |
+| **Source of truth** | `app/api/`, `app/services/` and `tests/`. |
+| **Scope** | Routes, identity, validation, rate limits, response shapes and failure behavior. |
+| **Do not change** | Do not add a route without owner scope, validation, tests and documentation. |
+| **Key files** | `app/api/main.py`, `app/api/routers/`, `app/api/contracts/`. |
+| **Validation** | `pytest -q tests/test_api.py tests/test_api_resilience.py`. |
+
+
 ## Назначение и base URL
 
 HTTP API обслуживает Telegram Mini App, административную панель и платёжные интеграции. Пользовательские роуты находятся под `/api`; публичные лендинги и статические файлы не являются частью JSON API. В development-режиме OpenAPI доступен по `/api/openapi.json`, а Swagger UI — по `/api/docs`; в production эти страницы намеренно скрыты.[1]
