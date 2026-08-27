@@ -7,7 +7,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN_PATHS = (
     ".10x",
-    "docs/audit",
     "docs/research",
     "ORACLEAI_AUDIT_AND_ROADMAP.md",
     "astrology_library_research.md",
@@ -24,6 +23,10 @@ FORBIDDEN_PATHS = (
     "docs/FILE_AUDIT.csv",
     "docs/PROJECT_MAP.md",
 )
+CURATED_AUDIT_FILES = {
+    "docs/audit/sqlite_scaling_10x_2026-08-26.md",
+    "docs/audit/staging_chat_indexes_2026-08-26.md",
+}
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)#]+)(?:#[^)]*)?\)")
 
 
@@ -36,6 +39,13 @@ def main() -> int:
     for relative in FORBIDDEN_PATHS:
         if (ROOT / relative).exists():
             failures.append(f"forbidden path exists: {relative}")
+
+    audit_dir = ROOT / "docs/audit"
+    if audit_dir.exists():
+        for path in audit_dir.rglob("*"):
+            relative = path.relative_to(ROOT).as_posix()
+            if not path.is_file() or relative not in CURATED_AUDIT_FILES:
+                failures.append(f"unexpected audit artifact: {relative}")
 
     for path in markdown_files():
         text = path.read_text(encoding="utf-8")
