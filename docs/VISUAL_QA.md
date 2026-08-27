@@ -3,7 +3,7 @@
 **Дата:** 27 августа 2026 года  
 **Область проверки:** Mini App, RU/EN, shell, home/ritual, guide hub, chat, profile, profile tabs, Tarot entry state, modal/sheet, loading/empty/recovery patterns.  
 **Контрольные ширины:** 375px, 768px, 1440px и 1920px.  
-**Evidence:** [`LOCAL_BROWSER_BASELINE.md`](LOCAL_BROWSER_BASELINE.md), [`VISUAL_QA_A11Y_REPORT.md`](VISUAL_QA_A11Y_REPORT.md) и воспроизводимый capture script [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py). Generated JSON/PNG outputs остаются за пределами release tree и должны прикладываться к конкретному CI/run artifact.
+**Evidence:** [`EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md`](EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md), [`EVIDENCE/VISUAL_QA_A11Y_REPORT_2026-08-27.md`](EVIDENCE/VISUAL_QA_A11Y_REPORT_2026-08-27.md) и воспроизводимый capture script [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py). Generated JSON/PNG outputs остаются за пределами release tree и должны прикладываться к конкретному CI/run artifact.
 
 ## Методика
 

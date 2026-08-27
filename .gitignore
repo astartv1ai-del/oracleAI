@@ -32,6 +32,26 @@ __pycache__/
 # Локальные журналы и временные проверки
 *.log
 *.qa_*.py
+
+# Frontend dependency/build outputs
 node_modules/
 miniapp/dist/
+
+# Generated QA, browser, coverage and local runtime outputs
 artifacts/
+coverage/
+htmlcov/
+playwright-report/
+test-results/
+screenshots/
+*.trace.zip
+*.har
+*.coverage
+*.tmp
+*.bak
+*.old
+*.orig
+*.patch
+*.dump
+*.out
+*.pdf

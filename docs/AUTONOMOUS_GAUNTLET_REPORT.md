@@ -65,7 +65,7 @@ The product’s visual system is coherent in the bounded mobile frame: the prima
 
 The repository-level checks can be reproduced with `python3 -m pytest -q`, `ruff check app tests scripts`, `python3 -m compileall -q app tests scripts`, and `node --check` over every `miniapp/js/*.js`. Deterministic release checks are listed in `docs/README.md` and include the repository hygiene, cache, design, contrast, domain, PDF, backup, selfcheck and release gate scripts. The disposable visual harness is `python3 scripts/capture_visual_baseline.py`; its generated screenshots and `report.json` must remain outside Git history.
 
-The current browser baseline and evidence boundaries are documented in [`docs/LOCAL_BROWSER_BASELINE.md`](LOCAL_BROWSER_BASELINE.md). The external gate execution procedure remains in [`docs/P0_PRODUCTION_EXECUTION_PLAN.md`](P0_PRODUCTION_EXECUTION_PLAN.md), and the launch decision contract remains in [`docs/LAUNCH_GOVERNANCE.md`](LAUNCH_GOVERNANCE.md).
+The current browser baseline and evidence boundaries are documented in [`docs/EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md`](EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md). The external gate execution procedure remains in [`docs/RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md`](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md), and the launch decision contract remains in [`docs/RELEASE/LAUNCH_GOVERNANCE.md`](RELEASE/LAUNCH_GOVERNANCE.md).
 
 ## References
 

@@ -1,5 +1,17 @@
 # Участие в разработке OracleAI
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | Contributor workflow and definition of done. |
+| **Source of truth** | Git, `app/`, `miniapp/`, `tests/` and `docs/`. |
+| **Scope** | Branching, code changes, tests, docs, review and safe release changes. |
+| **Do not change** | Do not merge a contract change without tests, documentation and an evidence/rollback note. |
+| **Key files** | `docs/README.md`, `Makefile`, `.github/workflows/ci.yml`. |
+| **Validation** | `pytest -q && python3 -m scripts.release_gate`. |
+
+
 ## Цель
 
 Этот документ задаёт минимальный инженерный стандарт для каждого изменения OracleAI. Приоритеты: **безопасность пользовательницы, совместимость Telegram Mini App, целостность данных и проверяемость релиза**. Небольшое изменение интерфейса может затрагивать кэш, локализацию, safe area, privacy или backend-контракт — поэтому «работает у меня» недостаточно.
