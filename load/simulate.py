@@ -1,4 +1,4 @@
-"""Нагрузочные сценарии приложения под SLO из docs/PRODUCTION_READINESS.md §2 (G29).
+"""Нагрузочные сценарии приложения под SLO из docs/RELEASE/PRODUCTION_READINESS.md §2 (G29).
 
 HTTP-слой Mini App гоняется Locust'ом — `load/locustfile.py`. Этот скрипт
 нагружает бот-потоки, которые Locust'ом не достать: /start, утренний пик

@@ -38,7 +38,7 @@
 | [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
 | [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
-| [LLM_AGENT_TECHNICAL_AUDIT.md](LLM_AGENT_TECHNICAL_AUDIT.md) | AI, backend, QA, privacy | Полная карта agent prompts, memory/context integrity, tools/skills, conflict handling и palm vision pipeline. |
+| [LLM_AGENT_TECHNICAL_AUDIT.md](EVIDENCE/LLM_AGENT_TECHNICAL_AUDIT_2026-08-27.md) | AI, backend, QA, privacy | Полная карта agent prompts, memory/context integrity, tools/skills, conflict handling и palm vision pipeline. |
 | [PALM_ENGINE_RESEARCH.md](PALM_ENGINE_RESEARCH.md) | AI, CV, legal, product | Исследование palm-line engines, лицензий, model contracts и безопасного integration boundary. |
 | [LAUNCH_GOVERNANCE.md](RELEASE/LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
 | [PRODUCTION_READINESS.md](RELEASE/PRODUCTION_READINESS.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |
@@ -52,7 +52,7 @@
 | [MONETIZATION_UNIT_ECONOMICS.md](MONETIZATION_UNIT_ECONOMICS.md) | Product, finance, operations | Чтобы считать net revenue, variable COGS, contribution, ARPPU, CAC и break-even по сценариям. |
 | [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
 | [MONETIZATION_EXTERNAL_SOURCES.md](MONETIZATION_EXTERNAL_SOURCES.md) | Finance, legal, billing | Чтобы проверять официальные platform/payment sources и не подменять settlement data сниппетами. |
-| [ASTRONOMY_REFERENCE_QA.md](ASTRONOMY_REFERENCE_QA.md) | Domain, astrology, QA | Чтобы воспроизвести cross-implementation проверки критических timezone, precision и boundary cases. |
+| [ASTRONOMY_REFERENCE_QA.md](EVIDENCE/ASTRONOMY_REFERENCE_QA_2026-08-27.md) | Domain, astrology, QA | Чтобы воспроизвести cross-implementation проверки критических timezone, precision и boundary cases. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
 | [CONTRACTS.md](DOMAIN/CONTRACTS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](FEATURES/MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
 | [PDF_SYSTEM.md](PDF_SYSTEM.md), [PDF_TEMPLATE_CATALOG.md](PDF_TEMPLATE_CATALOG.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, product-specific template gates, visual regression и проверочные слои. |
@@ -87,8 +87,9 @@
 | Production readiness | [`RELEASE/PRODUCTION_READINESS.md`](RELEASE/PRODUCTION_READINESS.md) | Release process and readiness gates. |
 | Launch governance | [`RELEASE/LAUNCH_GOVERNANCE.md`](RELEASE/LAUNCH_GOVERNANCE.md) | Owners, gates, SLO placeholders and go/no-go rules. |
 | P0 execution | [`RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md`](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) | Owner-led procedures for the four public-launch blockers. |
+| P0-004 infrastructure evidence | [`EVIDENCE/P004_INFRASTRUCTURE_AUDIT_2026-08-27.md`](EVIDENCE/P004_INFRASTRUCTURE_AUDIT_2026-08-27.md) | Dated implementation evidence; current operating procedure remains in P0 execution and operations docs. |
 | Changelog | [`RELEASE/CHANGELOG.md`](RELEASE/CHANGELOG.md) | User- and engineering-visible release history. |
-| Documentation final review | [`RELEASE/DOCUMENTATION_FINAL_REVIEW.md`](RELEASE/DOCUMENTATION_FINAL_REVIEW.md) | Audit result, before/after shape, validation and remaining concerns. |
+| Documentation final review | [`EVIDENCE/DOCUMENTATION_FINAL_REVIEW_2026-08-27.md`](EVIDENCE/DOCUMENTATION_FINAL_REVIEW_2026-08-27.md) | Audit result, before/after shape, validation and remaining concerns. |
 | Final QA matrix | [`RELEASE/FINAL_QA_MATRIX.md`](RELEASE/FINAL_QA_MATRIX.md) | Functional, browser and red-team checks with reproducible evidence. |
 | Final release certification | [`RELEASE/FINAL_RELEASE_CERTIFICATION.md`](RELEASE/FINAL_RELEASE_CERTIFICATION.md) | Final build, QA, security scorecard, blockers and verdict. |
 | Dated evidence | [`EVIDENCE/`](EVIDENCE/) | Historical audits, QA baselines, traceability and benchmark records. Evidence is not current truth unless explicitly revalidated. |
@@ -101,10 +102,10 @@ These documents provide focused implementation, research or operational context 
 | Area | Reference |
 |---|---|
 | Observability | [`OBSERVABILITY.md`](OBSERVABILITY.md) |
-| AI evaluation and agent audit | [`LLM_EVALUATION.md`](LLM_EVALUATION.md), [`LLM_AGENT_TECHNICAL_AUDIT.md`](LLM_AGENT_TECHNICAL_AUDIT.md), [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md), [`AGENT_QUALITY_STANDARD.md`](AGENT_QUALITY_STANDARD.md) |
+| AI evaluation and agent quality | [`LLM_EVALUATION.md`](LLM_EVALUATION.md), [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md), [`AGENT_QUALITY_STANDARD.md`](AGENT_QUALITY_STANDARD.md), [`INTERPRETATION_QUALITY_STANDARD.md`](INTERPRETATION_QUALITY_STANDARD.md) |
 | AI onboarding and skills | [`AI_ONBOARDING_GAUNTLET.md`](AI_ONBOARDING_GAUNTLET.md), [`AGENTS.md`](AGENTS.md), [`AGENT_SKILL_LIBRARY.md`](AGENT_SKILL_LIBRARY.md) |
 | Chart and product boundaries | [`CHART_ENGINE_DECISION.md`](CHART_ENGINE_DECISION.md), [`CHART_ENGINE_LICENSING.md`](CHART_ENGINE_LICENSING.md), [`CHART_TYPE_CAPABILITIES.md`](CHART_TYPE_CAPABILITIES.md), [`COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md`](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) |
-| Astronomy and visual domain research | [`ASTRONOMY_REFERENCE_QA.md`](ASTRONOMY_REFERENCE_QA.md), [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md), [`CHIROMANT_AVATAR_BRIEF.md`](CHIROMANT_AVATAR_BRIEF.md) |
+| Astronomy and visual domain research | [`DOMAIN/ACCURACY_MATRIX.md`](DOMAIN/ACCURACY_MATRIX.md), [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md), [`CHIROMANT_AVATAR_BRIEF.md`](CHIROMANT_AVATAR_BRIEF.md) |
 | API, memory and localization | [`API_RESILIENCE_MATRIX.md`](API_RESILIENCE_MATRIX.md), [`MEMORY_EVALUATION.md`](MEMORY_EVALUATION.md), [`LOCALIZATION_GLOSSARY.md`](LOCALIZATION_GLOSSARY.md) |
 | Analytics and payments | [`ANALYTICS_EVENT_DICTIONARY.md`](ANALYTICS_EVENT_DICTIONARY.md), [`PAYMENTS_UX_AND_INTEGRATION.md`](PAYMENTS_UX_AND_INTEGRATION.md), [`PAYMENT_MONITORING.md`](PAYMENT_MONITORING.md) |
 | PDF, backup and visual QA | [`PDF_SYSTEM.md`](PDF_SYSTEM.md), [`PDF_TEMPLATE_CATALOG.md`](PDF_TEMPLATE_CATALOG.md), [`BACKUP_RESTORE_DRILL.md`](BACKUP_RESTORE_DRILL.md), [`VISUAL_QA.md`](VISUAL_QA.md) |
@@ -169,5 +170,4 @@ Before opening a pull request, validate relative links, stale path references, d
 [1]: [Repository README](../README.md) — repository-level quick start and boundary.
 [2]: [Current status](RELEASE/CURRENT_STATUS.md) — current release verdict.
 [3]: [Current tasks](RELEASE/TASKS.md) — current backlog.
-[4]: [Repository inventory](REPOSITORY_INVENTORY.md) — file-by-file inventory.
-[5]: [Documentation link checker](../scripts/check_documentation_links.py) — repository-relative Markdown checker.
+[4]: [Documentation link checker](../scripts/check_documentation_links.py) — repository-relative Markdown checker.

@@ -13,3 +13,9 @@ The final 375px captures show the welcome CTA with readable light text, no lunar
 ## Second start-page pass
 
 The revised composition was checked at 375px and 1440px. It now reads as one primary welcome narrative followed directly by the daily rhythm card; the former separate seasonal card no longer competes with the main CTA. The desktop frame preserves the same hierarchy and gives the welcome card enough width for a two-line display title without stretching the product chrome. The first fold exposes the CTA, seasonal signal, progress state, and both daily anchors while avoiding horizontal overflow.
+
+## Release verification
+
+The first CI run for the pushed intermediate commit exposed an existing chat accessibility gap after the current remote baseline was evaluated: the scrollable `.chat-messages` region lacked keyboard focusability. The chat history now has `tabindex="0"`, `role="log"`, and a localized accessible label. The local axe matrix then passed all home, guide, chat, and profile states with zero violations.
+
+The final visual QA run at 9 viewport sizes and RU/EN reports `horizontalOverflow=0`, `unnamedFocusable=0`, and records the new welcome card bounds instead of a null hero. The full local regression suite passed after the final cache version was raised to v107.

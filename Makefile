@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup config
+.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore backup-drill p004-audit config
 
 init:
 	@test -f .env || cp .env.example .env
@@ -50,7 +50,19 @@ worker-scale:
 	$(COMPOSE) up -d --scale worker=$(N)
 
 backup:
-	$(COMPOSE) --profile backup up -d backup
+	$(COMPOSE) --profile backup up -d --build backup
+
+restore:
+	@test -n "$(BACKUP)" || (echo "usage: make restore BACKUP=/path/to/oracle-<timestamp>.dump.enc RESTORE_TARGET_DB=oracle_restore" && exit 2)
+	@test -n "$(RESTORE_TARGET_DB)" || (echo "RESTORE_TARGET_DB must name an isolated database" && exit 2)
+	RESTORE_TARGET_DB="$(RESTORE_TARGET_DB)" ./infra/restore-postgres.sh "$(BACKUP)"
+
+backup-drill:
+	python3 scripts/check_backup_restore_drill.py
+
+p004-audit:
+	python3 scripts/check_p004_infrastructure.py
+	bash -n infra/backup-postgres.sh infra/restore-postgres.sh
 
 config:
 	$(COMPOSE) config

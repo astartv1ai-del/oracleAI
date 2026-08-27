@@ -14,7 +14,7 @@ OracleAI использует **Mode P**: серверный `Kerykeion 5.12.9 C
 
 При переходе на Mode P была выбрана конфигурация `Classic dark · clean` как наиболее читаемая и наименее перегруженная. Решение закреплено в production-коде и проверяется детерминированными тестами на raster signature, размеры, приватность и отсутствие raw SVG.
 
-Выбор зрелого engine отменяет прежнее решение поддерживать собственный natal-wheel renderer. В коде удалены `miniapp/js/04-nativity.js`, `nativitySvg()` и `app/pdfgen/layout.py::wheel_svg()`. `matrix_svg()` и отдельная compatibility visual остаются самостоятельными продуктами и не используются для natal chart geometry.
+Выбор зрелого engine отменяет прежнее решение поддерживать собственный natal-wheel renderer. Старый custom natal-wheel renderer и legacy SVG path удалены из текущего кода. `matrix_svg()` и отдельная compatibility visual остаются самостоятельными продуктами и не используются для natal chart geometry.
 
 ## Границы точности
 

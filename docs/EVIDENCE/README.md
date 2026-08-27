@@ -8,7 +8,7 @@
 | **Source of truth** | The dated artifact itself plus the current code and [`../RELEASE/CURRENT_STATUS.md`](../RELEASE/CURRENT_STATUS.md). |
 | **Scope** | Historical audits, local baselines, traceability, visual/benchmark records and curated audit notes. |
 | **Do not change** | Do not use an old commit snapshot as current behavior without revalidation. Do not include secrets, PII or raw generated dumps. |
-| **Key files** | [`../REPOSITORY_INVENTORY.md`](../REPOSITORY_INVENTORY.md), [`TRACEABILITY_MATRIX_2026-08-26.md`](TRACEABILITY_MATRIX_2026-08-26.md), dated audit files. |
+| **Key files** | [`TRACEABILITY_MATRIX_2026-08-26.md`](TRACEABILITY_MATRIX_2026-08-26.md), dated audit files and the canonical current status. |
 | **Validation** | Re-run the relevant command and update `RELEASE/CURRENT_STATUS.md` before closing a gate. |
 
 ## Evidence policy

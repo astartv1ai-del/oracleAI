@@ -7,15 +7,14 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime
-from functools import lru_cache
-
+from . import astro
+from .chart_contract import public_calculation_contract
 from .astro import (
     EPHEMERIS_ENGINE,
     HOUSE_SYSTEM_IDENTIFIER,
     HOUSE_SYSTEM_NAME,
     NODE_MODE,
     PERSPECTIVE_TYPE,
-    SIGN_EN2RU,
     SIGNS,
     ZODIAC_TYPE,
 )
@@ -50,20 +49,6 @@ PLACEMENT_META = {
 WESTERN_PLACEMENTS = tuple(PLACEMENT_META)
 ALL_CALCULATORS = WESTERN_PLACEMENTS + ("life_path", "chinese_zodiac", "natal_chart")
 
-_ACTIVE_POINTS = [
-    "Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus",
-    "Neptune", "Pluto", "True_North_Lunar_Node", "True_South_Lunar_Node", "True_Lilith",
-    "Chiron", "Ceres", "Pallas", "Juno", "Vesta",
-    "Ascendant", "Medium_Coeli", "Descendant", "Imum_Coeli",
-]
-
-_POINT_ALIASES = {
-    "True_North_Lunar_Node": "true_north_lunar_node",
-    "True_South_Lunar_Node": "true_south_lunar_node",
-    "True_Lilith": "true_lilith",
-    "Ascendant": "ascendant",
-}
-
 _CHINESE_ANIMALS = ("Крыса", "Бык", "Тигр", "Кролик", "Дракон", "Змея",
                     "Лошадь", "Коза", "Обезьяна", "Петух", "Собака", "Свинья")
 _CHINESE_ELEMENTS = ("Дерево", "Огонь", "Земля", "Металл", "Вода")
@@ -86,37 +71,63 @@ def _parse_time(value: str | None) -> tuple[int, int] | None:
     return parsed.hour, parsed.minute
 
 
-def _point_name(value: str) -> str:
-    return _POINT_ALIASES.get(value, value.lower())
+
+_PLANET_RU = {
+    "Sun": "Солнце", "Moon": "Луна", "Mercury": "Меркурий", "Venus": "Венера",
+    "Mars": "Марс", "Jupiter": "Юпитер", "Saturn": "Сатурн", "Uranus": "Уран",
+    "Neptune": "Нептун", "Pluto": "Плутон",
+}
 
 
-def _point_payload(point_name: str, model, *, exact: bool) -> dict:
-    point = getattr(model, _point_name(point_name), None)
+def _canonical_point(point_name: str, chart: dict) -> dict | None:
+    if point_name in _PLANET_RU:
+        label = _PLANET_RU[point_name]
+        return next((item for item in chart.get("planets") or [] if item.get("name") == label), None)
+    if point_name in {"True_North_Lunar_Node", "True_South_Lunar_Node", "True_Lilith"}:
+        prefixes = {
+            "True_North_Lunar_Node": "Раху",
+            "True_South_Lunar_Node": "Кету",
+            "True_Lilith": "Лилит",
+        }
+        return next((item for item in chart.get("nodes") or []
+                     if str(item.get("name", "")).startswith(prefixes[point_name])), None)
+    if point_name == "Ascendant":
+        return chart.get("ascendant")
+    if point_name == "Medium_Coeli":
+        return chart.get("mc")
+    return next((item for item in chart.get("additional_points") or []
+                 if item.get("point") == point_name), None)
+
+
+def _point_payload(point_name: str, chart: dict, *, exact: bool) -> dict:
+    point = _canonical_point(point_name, chart)
     if point is None:
         raise ValueError(f"точка {point_name} недоступна в эфемеридах")
-    sign = SIGN_EN2RU.get(getattr(point, "sign", ""), getattr(point, "sign", ""))
+    sign = point.get("sign")
     if not sign:
         raise ValueError(f"знак для точки {point_name} не рассчитан")
-    house = getattr(point, "house", None)
-    house_text = str(house) if exact and house else None
+    house = point.get("house")
     return {
         "point": point_name,
         "label": point_name.replace("_", " "),
         "sign": sign,
         "symbol": SIGN_SYMBOL.get(sign, ""),
         "element": SIGN_ELEMENT.get(sign, ""),
-        "degree": round(float(getattr(point, "position", 0.0)), 1),
-        "degree_exact": float(getattr(point, "position", 0.0)),
-        "abs_degree": round(float(getattr(point, "abs_pos", 0.0)), 1),
-        "abs_degree_exact": float(getattr(point, "abs_pos", 0.0)),
-        "house": house_text,
-        "retrograde": bool(getattr(point, "retrograde", False)),
+        "degree": round(float(point.get("deg_exact", 0.0)), 1),
+        "degree_exact": float(point.get("deg_exact", 0.0)),
+        "abs_degree": round(float(point.get("abs_deg_exact", 0.0)), 1),
+        "abs_degree_exact": float(point.get("abs_deg_exact", 0.0)),
+        "house": str(house) if exact and house else None,
+        "retrograde": bool(point.get("retro", False)),
     }
 
 
-def _western_meta(precision: str, note: str = "") -> dict:
+def _western_meta(precision: str, note: str = "", chart: dict | None = None) -> dict:
+    calculation = (chart or {}).get("calculation") or {}
+    public_contract = public_calculation_contract(chart or {}) if chart else {}
     return {
         "precision": precision,
+        "engine_provenance": public_contract.get("engine_provenance") or {},
         "source": "swiss_ephemeris",
         "engine": EPHEMERIS_ENGINE,
         "zodiac_type": ZODIAC_TYPE,
@@ -125,34 +136,22 @@ def _western_meta(precision: str, note: str = "") -> dict:
         "perspective_type": PERSPECTIVE_TYPE,
         "node_mode": NODE_MODE,
         "note": note,
+        "calculation": {
+            "contract_version": calculation.get("contract_version"),
+            "configuration_fingerprint": calculation.get("configuration_fingerprint"),
+            "request_fingerprint": (calculation.get("input") or {}).get("request_fingerprint"),
+        },
     }
-
-
-@lru_cache(maxsize=512)
-def _model(birth_date: str, birth_time: str, city: str, lat: float, lon: float, tz: str):
-    from kerykeion import AstrologicalSubjectFactory
-
-    d = _parse_date(birth_date)
-    hour, minute = _parse_time(birth_time) or (12, 0)
-    return AstrologicalSubjectFactory.from_birth_data(
-        name="oracle-placement", year=d.year, month=d.month, day=d.day,
-        hour=hour, minute=minute, city=city or "Moscow", lat=float(lat), lng=float(lon),
-        tz_str=tz or "Europe/Moscow", online=False, active_points=_ACTIVE_POINTS,
-        zodiac_type=ZODIAC_TYPE, houses_system_identifier=HOUSE_SYSTEM_IDENTIFIER,
-        perspective_type=PERSPECTIVE_TYPE,
-    )
 
 
 def _western_points(birth_date: str, birth_time: str | None, city: str | None,
                     lat: float | None, lon: float | None, tz: str | None,
-                    time_known: bool | None = None) -> tuple[object, bool]:
-    parsed = _parse_time(birth_time)
-    exact = bool(parsed and time_known is not False and lat is not None and lon is not None and tz)
-    model = _model(birth_date, birth_time or "12:00", city or "Moscow",
-                   float(lat if lat is not None else 55.75),
-                   float(lon if lon is not None else 37.62),
-                   tz or "Europe/Moscow")
-    return model, exact
+                    time_known: bool | None = None) -> tuple[dict, bool]:
+    chart = astro.compute_chart(
+        birth_date, birth_time, city, lat, lon, tz, time_known=time_known,
+        coordinate_source="unknown", timezone_source="provided" if tz else "missing",
+    )
+    return chart, chart.get("precision") == "exact"
 
 
 def life_path(birth_date: str) -> dict:
@@ -209,26 +208,26 @@ def calculate_placement(code: str, birth_date: str, birth_time: str | None = Non
     if code == "natal_chart":
         model, exact = _western_points(birth_date, birth_time, city, lat, lon, tz, time_known)
         return {"code": code, "label": "Натальная карта",
-                **_western_meta("exact" if exact else "date_only"),
+                **_western_meta(model.get("precision", "date_only"), chart=model),
                 "points": all_western(model, exact=exact)}
     if code not in PLACEMENT_META:
         raise ValueError("неизвестный placement-калькулятор")
     meta = PLACEMENT_META[code]
     model, exact = _western_points(birth_date, birth_time, city, lat, lon, tz, time_known)
-    precision = "exact" if exact else "date_only"
+    precision = model.get("precision", "exact" if exact else "date_only")
     note = "" if exact else "Время/координаты не подтверждены; дома и углы скрыты."
     if code == "rising_sign" and not exact:
         return {"code": code, "label": meta["label"],
-                **_western_meta("insufficient"),
+                **_western_meta("insufficient", chart=model),
                 "error": "Для Асцендента нужны точные дата, время, город и таймзона."}
     if "points" in meta:
         points = [_point_payload(point, model, exact=exact) for point in meta["points"]]
         return {"code": code, "label": meta["label"], "points": points,
-                **_western_meta(precision, note),
+                **_western_meta(precision, note, chart=model),
                 "interpretation_scope": meta["scope"]}
     point = _point_payload(meta["point"], model, exact=exact)
     return {"code": code, "label": meta["label"], **point,
-            **_western_meta(precision, note),
+            **_western_meta(precision, note, chart=model),
             "interpretation_scope": meta["scope"]}
 
 

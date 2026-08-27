@@ -106,13 +106,33 @@ def main() -> int:
     failed_llm = int(db_counts["llm_failed"])
     fallback_rate = log_counts["llm_fallback"] / completed_llm if completed_llm else 0.0
 
+    backup_dir = Path(args.backup_dir)
     backups = sorted(
-        [*Path(args.backup_dir).glob("oracle-*.db"), *Path(args.backup_dir).glob("oracle-*.db.enc")],
+        [
+            *backup_dir.glob("oracle-*.db"),
+            *backup_dir.glob("oracle-*.db.enc"),
+            *backup_dir.glob("oracle-*.dump.enc"),
+        ],
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
     backup_age_h = ((_now().timestamp() - backups[0].stat().st_mtime) / 3600) if backups else float("inf")
     alerts: list[str] = []
+    backup_status: dict[str, object] = {}
+    status_path = backup_dir / "backup-status.json"
+    if status_path.is_file():
+        try:
+            loaded_status = json.loads(status_path.read_text(encoding="utf-8"))
+            if not isinstance(loaded_status, dict):
+                raise ValueError("backup status must be an object")
+            backup_status = loaded_status
+        except (OSError, ValueError, json.JSONDecodeError):
+            backup_status = {}
+            alerts.append("backup_status_invalid")
+        if backup_status.get("local_backup_ok") is False:
+            alerts.append("backup_job_failed")
+        if backup_status.get("offsite_required") and backup_status.get("offsite_ok") is not True:
+            alerts.append("backup_offsite_unavailable")
     if log_counts["http_5xx"] > args.max_5xx:
         alerts.append("http_5xx_threshold")
     if log_counts["webhook_failure"] > args.max_webhook_failures:
@@ -140,6 +160,9 @@ def main() -> int:
         "llm_fallbacks": log_counts["llm_fallback"],
         "llm_fallback_rate": round(fallback_rate, 4),
         "backup_age_hours": round(backup_age_h, 2) if backup_age_h != float("inf") else None,
+        "backup_local_ok": backup_status.get("local_backup_ok"),
+        "backup_offsite_required": backup_status.get("offsite_required"),
+        "backup_offsite_ok": backup_status.get("offsite_ok"),
         "scheduler_status": scheduler_status,
         "scheduler_age_minutes": round(scheduler_age_s / 60, 2) if scheduler_age_s >= 0 else None,
         "scheduler_failures": int(db_counts.get("scheduler_failures", 0)),

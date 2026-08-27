@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL
+> SUPERSEDED BY: `../AI_SYSTEM.md and ../RELEASE/CURRENT_STATUS.md`
+> This dated evidence is retained for audit context; it is not a current source of truth.
+
 # OracleAI — AI System Final Review
 
 **Дата:** 2026-08-27
@@ -14,7 +18,7 @@
 
 ### Agents
 
-Проверены четыре enabled agents: Lilith/Oracle (`oracle`), Urania/Astrology (`astro`), Madame Lenormand/Tarot (`tarot`) и Mira/Palm (`chiromant`). Их identity, domain, skills, greetings, suggestions, language rules and risk contracts остаются отдельными; specialist agents не превращены в один general chatbot. Source of truth: [`app/core/agents/specs.py`](../app/core/agents/specs.py) и [`app/core/agents/file_loader.py`](../app/core/agents/file_loader.py).
+Проверены четыре enabled agents: Lilith/Oracle (`oracle`), Urania/Astrology (`astro`), Madame Lenormand/Tarot (`tarot`) и Mira/Palm (`chiromant`). Их identity, domain, skills, greetings, suggestions, language rules and risk contracts остаются отдельными; specialist agents не превращены в один general chatbot. Source of truth: [`app/core/agents/specs.py`](../../app/core/agents/specs.py) и [`app/core/agents/file_loader.py`](../../app/core/agents/file_loader.py).
 
 ### Skills and tools
 
@@ -22,11 +26,11 @@ Skill selection uses a compact index and progressive activation. Advertised tool
 
 ### Routing
 
-Routing remains deterministic and explainable. Explicit agent selection wins; default Oracle auto-routes only for a sufficiently strong signal; mixed hard domains stay on the default agent and request clarification. Matrix coverage is in [`tests/test_agent_routing.py`](../tests/test_agent_routing.py).
+Routing remains deterministic and explainable. Explicit agent selection wins; default Oracle auto-routes only for a sufficiently strong signal; mixed hard domains stay on the default agent and request clarification. Matrix coverage is in [`tests/test_agent_routing.py`](../../tests/test_agent_routing.py).
 
 ### Prompt integrity and grounding
 
-Prompt assembly separates global dialogue rules, agent identity, deterministic chart/matrix evidence, language, bounded profile summary, consent-aware memory, shared context, tool protocol, skills and safety. Memory, diary, history, tool output and user/model text are labelled as untrusted data. Date-only charts do not receive invented houses, ASC or MC. Relevant contracts are [`app/core/agents/base.py`](../app/core/agents/base.py), [`app/core/agents/runtime.py`](../app/core/agents/runtime.py) and [`app/core/interpretation.py`](../app/core/interpretation.py).
+Prompt assembly separates global dialogue rules, agent identity, deterministic chart/matrix evidence, language, bounded profile summary, consent-aware memory, shared context, tool protocol, skills and safety. Memory, diary, history, tool output and user/model text are labelled as untrusted data. Date-only charts do not receive invented houses, ASC or MC. Relevant contracts are [`app/core/agents/base.py`](../../app/core/agents/base.py), [`app/core/agents/runtime.py`](../../app/core/agents/runtime.py) and [`app/core/interpretation.py`](../../app/core/interpretation.py).
 
 ### Memory and shared context
 
@@ -40,7 +44,7 @@ Memory is opt-in, owner-scoped, deletion-aware and cache-invalidating. Disabled 
 
 The Telegram onboarding path is age-gated, collects name/gender/date/time/city, explains why birth time and city are requested, generates the chart before persona selection and returns a first-value reveal from stored chart facts. The first-value copy no longer relies on generic “three things about you” claims: it shows Sun, Moon where available and an explicit precision limitation when birth time is not confirmed.
 
-The review found two concrete recovery gaps. Invalid time input was silently treated as unknown time; it now remains on the time step with a format hint. Geocoding and chart calculation failures could leave the user without an actionable response; they now preserve `Onb.city` and show a localized retry/fallback-city message. Regression coverage is in [`tests/test_bot_fsm.py`](../tests/test_bot_fsm.py).
+The review found two concrete recovery gaps. Invalid time input was silently treated as unknown time; it now remains on the time step with a format hint. Geocoding and chart calculation failures could leave the user without an actionable response; they now preserve `Onb.city` and show a localized retry/fallback-city message. Regression coverage is in [`tests/test_bot_fsm.py`](../../tests/test_bot_fsm.py).
 
 The Mini App already includes a three-screen intro, authenticated boot recovery, chat preparation/loading/error states, contextual actions and reduced-motion-aware visual layers. The remaining screenshot/device matrix is not reproducible in this sandbox.
 
@@ -54,7 +58,7 @@ Real Telegram client behavior remains unverified for Android, iOS, Desktop, WebV
 
 Admin access is checked server-side at every API route through `current_admin` and permission dependencies. The role is resolved from Telegram identity or development-only local override; client-controlled role fields are not trusted. Dashboard, payment, safety, grants and role-management paths have permission boundaries and audit writes for meaningful mutations. Direct API requests from normal users are covered by tests; stale frontend state and real WebView revocation behavior require staging.
 
-The Dashboard button is generated only when `_is_admin()` resolves an authorized role. Normal users do not receive the button in the Telegram menu. Static `/admin` shell delivery remains intentionally separate from data authorization: the admin page cannot load operational data without a valid authorized session. A local browser smoke of direct `/admin` without `initData` rendered only the auth gate and no dashboard data; details are recorded in [`docs/local_admin_smoke.md`](local_admin_smoke.md).
+The Dashboard button is generated only when `_is_admin()` resolves an authorized role. Normal users do not receive the button in the Telegram menu. Static `/admin` shell delivery remains intentionally separate from data authorization: the admin page cannot load operational data without a valid authorized session. A local browser smoke of direct `/admin` without `initData` rendered only the auth gate and no dashboard data; details are recorded in [`docs/local_admin_smoke.md`](LOCAL_ADMIN_SMOKE_2026-08-27.md).
 
 ## Evidence
 
@@ -68,7 +72,7 @@ The Dashboard button is generated only when `_is_admin()` resolves an authorized
 | `python3 -m scripts.selfcheck` | PASS; expected live/provider credential skips only |
 | `python3 -m scripts.release_gate` | PASS |
 | `git diff --check` | PASS |
-| Living evidence ledger | [`docs/AI_ONBOARDING_GAUNTLET.md`](AI_ONBOARDING_GAUNTLET.md) |
+| Living evidence ledger | [`docs/AI_ONBOARDING_GAUNTLET.md`](../AI_ONBOARDING_GAUNTLET.md) |
 
 ## Concrete external blockers
 

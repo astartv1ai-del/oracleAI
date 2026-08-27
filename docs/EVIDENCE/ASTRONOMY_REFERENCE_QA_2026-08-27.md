@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL
+> SUPERSEDED BY: `../DOMAIN/ACCURACY_MATRIX.md and ../DOMAIN/CONTRACTS.md`
+> This dated evidence is retained for audit context; it is not a current source of truth.
+
 # P1-004: Astronomy Reference QA
 
 **Дата прогона:** 2026-08-27  
@@ -11,7 +15,7 @@
 
 ## Методика и настройки
 
-Harness находится в [`scripts/domain_qa.py`](../scripts/domain_qa.py). Для каждого кейса он подаёт одинаковые дату, локальное время, timezone, широту и долготу в canonical `app.core.astro.compute_chart`, затем конвертирует локальное время в UTC через `zoneinfo` и вычисляет положения планет direct `swisseph.calc_ut` с `FLG_SWIEPH`. Сравниваются Солнце, Луна, Меркурий, Венера, Марс, Юпитер, Сатурн, Уран, Нептун и Плутон. Разность нормализуется по кругу 360°.
+Harness находится в [`scripts/domain_qa.py`](../../scripts/domain_qa.py). Для каждого кейса он подаёт одинаковые дату, локальное время, timezone, широту и долготу в canonical `app.core.astro.compute_chart`, затем конвертирует локальное время в UTC через `zoneinfo` и вычисляет положения планет direct `swisseph.calc_ut` с `FLG_SWIEPH`. Сравниваются Солнце, Луна, Меркурий, Венера, Марс, Юпитер, Сатурн, Уран, Нептун и Плутон. Разность нормализуется по кругу 360°.
 
 Для exact-time кейсов проверяются `mode=full`, `precision=exact`, наличие angular data и десять планет. Для date-only проверяется `precision=date_only`, наличие эфемеридных планет и отсутствие angular data. Для ambiguous DST local time проверяется безопасный переход в `mode=lite`/`precision=sun_only`, без попытки выдать неподтверждённые дома, ASC и MC.
 

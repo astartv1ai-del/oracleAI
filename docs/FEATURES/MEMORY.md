@@ -40,11 +40,10 @@ The minimum evaluation set should contain: relevant and irrelevant memories for 
 
 ## Current implementation and gaps
 
-`app/repo/memory.py`, `app/core/memory/`, profile endpoints and the Mini App memory surface implement consented storage, listing, deletion and bounded retrieval. Existing tests cover core privacy boundaries. The remaining quality gate is a dedicated relevance/contradiction/staleness evaluation dataset and a complete self-service account-deletion E2E flow.
+`app/core/memory.py`, profile endpoints and the Mini App memory surface implement consented storage, listing, deletion and bounded retrieval. Existing tests cover core privacy boundaries. The remaining quality gate is a dedicated relevance/contradiction/staleness evaluation dataset and a complete self-service account-deletion E2E flow.
 
 ## References
 
-[1]: ../app/repo/memory.py "Memory persistence"  
-[2]: ../app/core/memory/ "Memory retrieval and context assembly"  
-[3]: ../app/api/routers/profile.py "Memory API and server-side consent enforcement"  
-[4]: ../tests/test_agent_context.py "Memory/context regression tests"
+[1]: ../app/core/memory.py "Memory policy and retrieval"
+[2]: ../app/api/routers/profile.py "Memory API and server-side consent enforcement"
+[3]: ../tests/test_agent_context.py "Memory/context regression tests"

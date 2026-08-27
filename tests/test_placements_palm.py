@@ -42,6 +42,15 @@ def test_all_requested_placements_are_deterministic():
             assert result["abs_degree_exact"] is not None
 
 
+def test_placements_preserve_canonical_engine_evidence():
+    result = placements.calculate_placement("moon_sign", **BIRTH)
+    assert result["calculation"]["contract_version"] == 2
+    assert result["calculation"]["configuration_fingerprint"]
+    assert result["calculation"]["request_fingerprint"]
+    assert result["engine_provenance"]["product_engine"] == "OracleAI Engine"
+    assert result["engine_provenance"]["backend"] == "Kerykeion"
+
+
 def test_explicit_node_aliases_are_same_true_node_facts():
     rahu = placements.calculate_placement("rahu_sign", **BIRTH)
     north = placements.calculate_placement("north_node_sign", **BIRTH)

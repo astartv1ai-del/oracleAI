@@ -72,5 +72,5 @@ No production claim is made for the following items because they require access 
 [4]: [LLM_EVALUATION.md](../LLM_EVALUATION.md) — LLM quality contract and live-run policy.
 [5]: [EVIDENCE/LOCAL_BROWSER_BASELINE_2026-08-27.md](LOCAL_BROWSER_BASELINE_2026-08-27.md) — browser, PDF and deterministic visual findings.
 [6]: [FEATURES/HISTORY.md](../FEATURES/HISTORY.md) — cross-tool archive contract and privacy boundary.
-[7]: [LLM_AGENT_TECHNICAL_AUDIT.md](../LLM_AGENT_TECHNICAL_AUDIT.md) — agent context, prompt integrity, tool scope and palm vision audit.
+[7]: [LLM_AGENT_TECHNICAL_AUDIT.md](../AI_SYSTEM.md) — agent context, prompt integrity, tool scope and palm vision audit.
 [8]: [PALM_ENGINE_RESEARCH.md](../PALM_ENGINE_RESEARCH.md) — palm engine research and integration rationale.
