@@ -2,10 +2,10 @@
 
 **Дата аудита:** 27 августа 2026 года, GMT+3
 **Репозиторий:** [`astartv1ai-del/oracleAI`](https://github.com/astartv1ai-del/oracleAI)
-**Проверенный commit:** `dc5e9d79ec0aee23c8626952ad82472a231b2813` (`fix: attribute product booking by channel`)
+**Проверенный commit:** `4b0f8e2` (`fix: unify eligibility guard for queued chat`)
 **Ветка:** `master`
 **Автор:** Manus AI
-**Статус документа:** фактический аудит текущего commit; изменения продуктового кода в рамках этого задания не выполнялись.
+**Статус документа:** audit snapshot for `4b0f8e2`; subsequent local UX/tooling fixes are recorded in the current working tree and revalidated before release.
 
 > **Итоговый вердикт:** OracleAI уже является содержательным, тестируемым продуктовым ядром с реальными backend-операциями, четырьмя AI-проводниками, детерминированными расчётами, owner-scoped данными, платежной архитектурой и качественным локальным CI-baseline. Однако текущий commit не следует объявлять готовым к безусловному публичному запуску. Реальный Telegram `initData` и device QA, production deployment/rollback, live-провайдеры, payment settlement/refund, юридические placeholders, production backup/restore и несколько инженерных blockers остаются непроверенными или незакрытыми.
 
@@ -20,8 +20,8 @@ OracleAI — это Telegram Bot + Mini App для ежедневного рит
 | Приоритет | Критичная проблема | Почему это блокирует публичный запуск | Доказательство |
 |---|---|---|---|
 | 🔴 P0 | Не подтверждены реальный Telegram signed `initData`, `/start`, возрастной gate и device/WebView journey. | Без этого не доказаны identity, onboarding, 16+ boundary, клавиатура, safe area и реальные переходы. | `app/api/deps.py`, `app/api/routers/profile.py`, `docs/LEGAL_REVIEW.md`; local seeded browser — только synthetic evidence. |
-| 🔴 P0 | Фоновый queued-chat route использует `current_user`, а worker передаёт пользователя прямо в `chat_service.ask` без отдельной проверки `age_confirmed`. | Асинхронный путь может не иметь того же server-side age gate, что основной chat API; это потенциальный обход обязательного согласия. | `app/api/routers/jobs.py:23-35`, `app/tasks/tasks.py:61-76`, контраст с `app/api/routers/chat.py`. |
-| 🔴 P0 | Live LLM p95 выше целевого порога: последний документированный synthetic run — 23.899 секунды против цели ≤15 секунд. | Длинный ответ ухудшает first-value experience, удержание и стоимость retries; это явно обозначенный staging blocker. | `docs/LLM_AGENT_TECHNICAL_AUDIT.md`, `docs/ORACLEAI_CONTINUATION_REPORT.md`. |
+| ✅ Closed | Queued-chat eligibility guard is unified across enqueue and worker execution. | The previously identified age-confirmation bypass is covered by queue regression tests; retain this contract in future changes. | `app/services/eligibility.py`, `app/api/routers/jobs.py`, `app/tasks/tasks.py`, `tests/test_jobs.py`. |
+| 🔴 P0 | Live LLM p95 выше целевого порога: последний bounded report — `25.088 s` против цели ≤15 секунд. | Длинный ответ ухудшает first-value experience, удержание и стоимость retries; это явно обозначенный staging blocker. | `/tmp/oracleai-llm-live-report-all.json`, `docs/LLM_EVALUATION.md`, `docs/LLM_AGENT_TECHNICAL_AUDIT.md`. |
 | 🔴 P0 | Не проведены payment sandbox, settlement/reconciliation/refund и entitlement E2E с provider credentials. | Наличие order/webhook-кода ещё не доказывает, что деньги, возвраты и доступ корректно проходят в реальном PSP. | `app/services/billing.py`, `app/api/routers/webhooks.py`, `docs/MONETIZATION_STRATEGY.md`. |
 | 🔴 P0 | Публичные Privacy/Terms содержат незаполненные operator, contact и jurisdiction placeholders; legal/privacy review не выполнен. | Сервис собирает birth data, diary, chat context и может принимать платежи; коммерческий запуск без проверенных условий неприемлем. | `docs/LEGAL_REVIEW.md`, routes `/privacy`, `/terms`, `/privacy/en`, `/terms/en`. |
 | 🔴 P0 | Production encrypted backup/restore, storage permissions и rollback rehearsal не подтверждены. | Локальный disposable drill не заменяет восстановление production snapshot с реальным key custody и операционной процедурой. | `scripts/check_backup_restore_drill.py`, `docs/BACKUP_RESTORE_DRILL.md`, `docs/ORACLEAI_CONTINUATION_REPORT.md`. |
@@ -95,8 +95,8 @@ OracleAI — это Telegram Bot + Mini App для ежедневного рит
 |---|---|---|---|---|---|
 | Детерминированные chart, Tarot и memory операции быстрые на synthetic workload. | `scripts/benchmark_product_performance.py`; chart p50 3.47 ms, Tarot p50 0.06 ms, memory p50 0 ms. | Directional local PASS. | Не учитывает contention и production data volume. | 🟢 Желательно | Medium |
 | PDF HTML generation занимает около 1.4 s p50 и до 2.8 s max на двух runs. | Current benchmark. | Приемлемо для background/report flow. | Percentile на n=2 статистически слаб; PDF delivery path не полностью measured. | 🟡 Важно | Small |
-| Palm-line fp16 segmentation заняла около 15.5 s p50/p95 на текущем sandbox CPU. | Current `benchmark_product_performance.py`; model `palm_line_student_fp16.onnx`. | Local pass по функциональности, но не по mobile SLO. | Слабое устройство может зависать или выглядеть сломанным; нужен int8/skip/queue strategy. | 🟡 Важно | Medium |
-| Provider-side live LLM p95 документирован как 23.899 s против цели ≤15 s. | `docs/LLM_AGENT_TECHNICAL_AUDIT.md:1009-1011`, `docs/ORACLEAI_CONTINUATION_REPORT.md:53`. | Explicit staging blocker. | Потеря first-value, retries и рост стоимости. | 🔴 Блокер до public | Large |
+| Palm-line fp16 segmentation заняла около 8.35 s p50/p95 на текущем sandbox CPU. | Current `benchmark_product_performance.py`; model `palm_line_student_fp16.onnx`. | Local pass по функциональности, но не по mobile SLO. | Слабое устройство может зависать или выглядеть сломанным; нужен int8/skip/queue strategy. | 🟡 Важно | Medium |
+| Provider-side live LLM p95 документирован как 25.088 s против цели ≤15 s. | `/tmp/oracleai-llm-live-report-all.json`, `docs/LLM_EVALUATION.md`, `docs/LLM_AGENT_TECHNICAL_AUDIT.md`. | Explicit staging blocker. | Потеря first-value, retries и рост стоимости. | 🔴 Блокер до public | Large |
 | Mini App chat endpoint возвращает complete answer; provider умеет собирать stream, но incremental stream до клиента не доказан. | `app/core/llm.py`, `app/services/chat.py`, `app/api/routers/chat.py`. | UX имеет loading/error controls, но streaming/cancellation не подтверждены. | При длинном ответе пользователь видит ожидание без частичной ценности. | 🟡 Важно | Medium |
 | Rate limit и DB connection state in-process. | `app/api/deps.py`, `app/data/session.py`. | Один process/VPS acceptable для beta. | Multi-worker horizontal scale потребует shared limiter, pool и capacity test. | 🟡 Важно | Large |
 
@@ -125,7 +125,7 @@ OracleAI — это Telegram Bot + Mini App для ежедневного рит
 | Aggregate agent quality/domain evaluation проходит: 54 cases; routing accuracy 1.0; Vedic top-1 1.0. | `scripts/check_agent_quality.py`, `scripts/check_domain_evals.py`. | Strong local baseline. | Metric is synthetic/offline. | 🟡 Важно | Medium |
 | Mira/Lenormand specialized benchmark проходит top-3 20/20, но top-1 только 14/20 = 70%. | `scripts/benchmark_mira_lenormand.py` executed as module. | Acceptable recall, weak precision. | Wrong first skill can shape prompt and output, especially in palm/Tarot boundary cases. | 🟡 Важно | Medium |
 | Palm CV returns bounded summaries and never raw mask; model integrity hash is checked. | `app/core/palm_lines.py`, `app/core/palm.py`, `models/THIRD_PARTY_NOTICES.md`. | Good defense-in-depth. | Model generalization, device inference and real capture benchmark open. | 🟡 Важно | Large |
-| Direct script invocation is inconsistent. | `python scripts/validate_skill_library.py` and `python scripts/benchmark_mira_lenormand.py` both failed with `ModuleNotFoundError: No module named 'app'`; module invocation passed. | Concrete reproducibility defect. | CI/operators may run documented-looking direct commands and receive false failure. | 🟡 Важно | Small |
+| Direct script invocation previously depended on caller-provided `PYTHONPATH`. | Root bootstrap was added to the four affected scripts and direct invocations pass in the current working tree. | Reproducibility gap is closed locally; retain direct invocation checks in CI. | Operators no longer receive a false import failure from documented-looking commands. | ✅ Closed | Small |
 
 AI layer is one of the strongest parts of the repository, but the project must not convert offline evaluator green into a production safety claim. A minimum staging matrix should include language switching, empty/partial chart, unknown birth time, conflicting memory, prompt injection, crisis/soft-risk, Tarot ledger mismatch, palm poor capture, provider timeout, duplicate retry and cancellation.
 
@@ -149,13 +149,17 @@ AI layer is one of the strongest parts of the repository, but the project must n
 | CI workflow включает dependencies, Ruff, compileall, JS syntax, hygiene, cache busting, design contract, LLM evaluator, migrations, full tests, pip-audit, selfcheck и release gate. | `.github/workflows/ci.yml`. | Хорошая automated quality base. | CI не заменяет external Telegram/payment/deploy gates. | 🟢 Желательно | — |
 | Full pytest, Ruff, Node checks, selfcheck, release gate, pip-audit и hygiene прошли в текущем sandbox. | Local run evidence, commands in section 5. | Local PASS. | One skip and expected credential/live skips must remain visible. | 🟡 Важно | — |
 | Test suite is broad: security, API resilience, migrations, billing, jobs, agent context, Tarot, PDF, palm, history and Mini App actions. | `tests/` inventory, `docs/TESTING.md`. | Good coverage of code contracts. | True Telegram device, payment settlement, production DB and provider behavior open. | 🟡 Важно | Medium |
-| Some scripts only work as `python -m scripts.name`, although operators naturally use direct file invocation. | `scripts/validate_skill_library.py`, `scripts/benchmark_mira_lenormand.py`. | Needs path bootstrap or CI command standardization. | Operational friction and misleading documentation. | 🟡 Важно | Small |
+| Standalone quality scripts previously worked reliably only as `python -m scripts.name`. | `scripts/validate_skill_library.py`, `scripts/check_agent_stability.py`, `scripts/benchmark_vedic_routing.py` and `scripts/benchmark_mira_lenormand.py` now bootstrap repository root; direct commands pass. | Keep this as a CI regression contract. | ✅ Closed | Small |
 | Benchmark methodology is partly weak for small samples. | PDF benchmark n=2 produced p50 1409.51 ms and p95 10.3 ms; p95 cannot be treated as a stable SLO. | Evidence should be relabeled directional. | False performance confidence. | 🟡 Важно | Small |
-| Untracked `audit_baseline.txt` was created by the audit environment, not by product code. | `git status --short` during audit. | Must be removed before handoff. | Accidental repository noise. | 🟢 Желательно | Small |
+| Generated visual captures under `artifacts/visual-baseline/` are untracked audit outputs, not product source. | `git status --short` after visual baseline run. | Keep outside release commits or remove before handoff; do not silently ship large generated artifacts. | 🟢 Желательно | Small |
 
-Documentation quality is unusually high and honest about limitations. The largest documentation debt is synchronization: old baseline dates/commits, current commit drift, and scripts whose direct invocation differs from the documented habit. The final audit document intentionally records these differences rather than overwriting historical reports.
+Documentation quality is unusually high and honest about limitations. The remaining documentation debt is synchronization: historical reports and benchmark snapshots must continue to be refreshed after each release. The direct-invocation script defect identified during the audit is closed locally and is now a CI regression contract. The audit document intentionally retains historical evidence labels instead of rewriting previous reports.
 
-## 5. Critical path walkthrough
+## 5. Post-audit local fixes
+
+The following findings were fixed after the initial audit and are covered by the current working tree QA: the Mini App now renders an explicit authenticated recovery state instead of silently continuing to the home shell after `/api/me` failure; account deletion is discoverable from Profile Summary, confirm-gated, calls the existing idempotent endpoint and renders a terminal success state; six operator-facing scripts bootstrap the repository root for direct invocation; CI runs the quality-script subset as a regression check; and the Mini App asset version was raised from 95 to 96 so the fixes are not hidden by stale client caches. These changes do not close the external Telegram, payment, legal, live-provider, monitoring or production restore gates.
+
+## 6. Critical path walkthrough
 
 | Шаг | Ожидаемый пользовательский путь | Что реально подтверждено | Вывод |
 |---|---|---|---|
@@ -170,7 +174,7 @@ Documentation quality is unusually high and honest about limitations. The larges
 | 9 | Return later, see history/memory, change settings. | Browser Profile and Memory enabled state rendered; API history owner scope returned Tarot/diary records; language/gender controls visible. | Local seeded path works; memory-off and deletion visual states need dedicated QA. |
 | 10 | Delete account, restore service after incident. | Confirm-gated deletion/anonymization and disposable backup/restore drill passed. | Production legal retention, encrypted backup, restore and rollback open. |
 
-## 6. Проверки и их результаты
+## 7. Проверки и их результаты
 
 | Проверка | Команда/метод | Результат | Ограничение |
 |---|---|---|---|
@@ -184,17 +188,17 @@ Documentation quality is unusually high and honest about limitations. The larges
 | Chart/PDF/backup | expanded chart, PDF golden cases, disposable backup/restore | **PASS** | Independent calculator, production restore and full visual review open. |
 | Local API smoke | Public/legal/SEO routes, seeded authenticated routes, invalid language, empty chat | **PASS** for expected statuses | Dev mode + synthetic user, not signed Telegram. |
 | Browser smoke | Seeded Today → Dialogues → composer → Profile → Memory | **PASS** for observed local states | Narrow sandbox viewport; no Telegram device or assistive-tech claim. |
-| Direct script reproducibility | `python scripts/validate_skill_library.py`, `python scripts/benchmark_mira_lenormand.py` | **FAIL** with `ModuleNotFoundError`; module form passes | Concrete path-bootstrap defect. |
+| Direct script reproducibility | `python scripts/validate_skill_library.py`, `python scripts/check_agent_stability.py`, `python scripts/benchmark_vedic_routing.py`, `python scripts/benchmark_mira_lenormand.py` | **PASS** after repository-root bootstrap; direct invocations are now run in CI | Keep as a regression contract. |
 
-## 7. Roadmap
+## 8. Roadmap
 
 ### Phase A — Must Fix Before Launch
 
 | ID | Работа | Причина | Acceptance criteria | Зависимости | Оценка |
 |---|---|---|---|---|---|
-| A-01 | Унифицировать eligibility/age guard для synchronous chat, queued enqueue и worker execution. | Закрыть потенциальный обход 16+ и расхождение execution paths. | Неподтверждённый age получает 403 на `/api/chat`, `/api/jobs/chat`, worker повторно отбрасывает job; tests покрывают enqueue, retry и direct worker. | None. | Small–Medium |
+| A-01 | ✅ Закрыто в `4b0f8e2`: унифицирован eligibility/age guard для synchronous chat, queued enqueue и worker execution. | Сохранить защиту от обхода 16+ при дальнейших изменениях transports. | Неподтверждённый age получает 403, worker повторно отбрасывает job; enqueue/worker regression tests проходят. | None. | Closed |
 | A-02 | Провести controlled staging с реальным Telegram bot/Mini App. | Доказать signed `initData`, `/start`, age gate, onboarding, profile, keyboard, safe area и logout/reopen. | Сохранены synthetic-safe screenshots/logs, invalid/expired/tampered signature checks, 360–430 px RU/EN device matrix, no PII in artifacts. | Owner Telegram credentials and staging domain. | Large |
-| A-03 | Снизить live LLM p95 до ≤15 s или formally revise SLO before beta. | Current documented 23.899 s blocks first-value quality. | Repeatable 30–50 case staging run, p50/p95/p99, timeout/retry/cost attribution, error/fallback rate and approved SLO. | A-02, provider/model access. | Large |
+| A-03 | Снизить live LLM p95 до ≤15 s или formally revise SLO before beta. | Latest bounded report is 25.088 s and blocks first-value quality. | Repeatable 30–50 case staging run, p50/p95/p99, timeout/retry/cost attribution, error/fallback rate and approved SLO. | A-02, provider/model access. | Large |
 | A-04 | Выполнить payment sandbox E2E: order, successful payment, duplicate webhook, wrong price/order binding, refund, cancellation and entitlement expiry. | Кодовая idempotency не заменяет provider settlement evidence. | Provider-signed fixtures and sandbox receipts; no duplicate grant; refund/reconciliation report; support path and terms linked. | PSP/Paddle/Telegram sandbox credentials. | Large |
 | A-05 | Заполнить legal placeholders and approve Privacy/Terms/16+/refund/support/subprocessor wording. | Current pages are not launch-ready legal documents. | Named operator/contact/jurisdiction, retention/deletion/export, LLM subprocessors, payment/refund/tax wording, local emergency resources, legal sign-off. | Product owner + qualified counsel. | Medium–Large |
 | A-06 | Execute encrypted production-like backup/restore and rollback rehearsal. | Disposable local drill is insufficient. | Fail-closed key handling, encrypted off-site snapshot, checksum, restore into isolated target, owner isolation check, RTO/RPO record, rollback runbook and alert. | Production-like storage/host key. | Large |
@@ -207,9 +211,9 @@ Documentation quality is unusually high and honest about limitations. The larges
 | B-01 | Add a shared distributed limiter and production DB/connection strategy. | In-memory limiter/connection state is single-process. | Redis-backed identity/bucket limits, DB pool/capacity test, 5xx/error budget under representative load. | Medium–Large |
 | B-02 | Decide whether to expose incremental AI streaming and cancellation. | Current path likely waits for complete answer despite provider-side stream collection. | UX evidence for sending/loading/cancel/error/cancel; measurable time-to-first-token and safe refund semantics. | Medium |
 | B-03 | Improve Mira/Lenormand top-1 routing from 70% while retaining top-3 recall. | Wrong first skill can bias the prompt. | Specialized benchmark target agreed, ideally ≥90% top-1 on expanded cases; regressions added to CI. | Medium |
-| B-04 | Bootstrap repository root in all directly executable scripts or standardize commands in docs/CI. | Two direct commands fail although module commands pass. | `python scripts/name.py` and `python -m scripts.name` both pass for all operator-facing scripts. | Small |
-| B-05 | Correct benchmark methodology for small samples and separate CV engines by device budget. | Current PDF p95 with n=2 is misleading; fp16 palm CV ~15.5 s locally. | Minimum sample size, documented percentile method, int8/fp16/skip decision from real capture benchmark, user-visible progress/timeout. | Small–Medium |
-| B-06 | Finish manual accessibility/responsive matrix and add missing visible account lifecycle states. | Automated DOM checks do not prove screen reader, contrast, keyboard, deletion, memory-off and error UX. | Manual keyboard/screen-reader/contrast review; 360/390/430 px RU/EN; loading/error/empty/slow/offline; deletion and memory-off screenshots. | Medium |
+| B-04 | ✅ Закрыто локально: bootstrap repository root в directly executable scripts и CI smoke. | Устранён misleading import failure при operator invocation. | `python scripts/name.py` и `python -m scripts.name` проходят для quality scripts; direct commands закреплены в CI. | Closed |
+| B-05 | Correct benchmark methodology for small samples and separate CV engines by device budget. | Current PDF p95 with n=2 is directional; latest palm fp16 sample is ~8.35 s on sandbox CPU and still lacks real-device evidence. | Minimum sample size, documented percentile method, int8/fp16/skip decision from real capture benchmark, user-visible progress/timeout. | Small–Medium |
+| B-06 | Finish manual accessibility/responsive matrix and visual lifecycle review. | Automated DOM checks do not prove screen reader, contrast, keyboard, memory-off, deletion confirmation or error UX in real Telegram WebView. | Manual keyboard/screen-reader/contrast review; 360/390/430 px RU/EN; loading/error/empty/slow/offline; deletion confirmation/success and memory-off screenshots. Account deletion UI is now implemented locally. | Medium |
 | B-07 | Verify production analytics sink, alerts and cost ledger by product/channel. | Events exist but operational dashboards and full variable-cost view are not proven. | Dashboard for activation, first value, LLM p95/fallback, paywall, purchase, refund, retention and channel cost; no raw personal text. | Medium |
 | B-08 | Review web SEO metadata on production domain. | Local canonical and sitemap use local host in smoke environment. | Production canonical/OG/robots/sitemap, structured data, legal links and crawl check. | Small–Medium |
 
@@ -223,7 +227,7 @@ Documentation quality is unusually high and honest about limitations. The larges
 | C-04 | Experimentation and public SEO/content growth layer. | Acquisition and retention learning after trustworthy launch. | Medium |
 | C-05 | Additional model/device optimization and broader independent domain evaluation. | Lower cost and increase confidence after staging data. | Medium–Large |
 
-## 8. Открытые вопросы владельца проекта
+## 9. Открытые вопросы владельца проекта
 
 | Вопрос | Какое решение меняет |
 |---|---|
@@ -237,17 +241,17 @@ Documentation quality is unusually high and honest about limitations. The larges
 | Нужен ли self-service data export наряду с deletion? | API scope, legal copy, support process и privacy implementation. |
 | Какой минимальный evidence threshold требуется для live AI safety approval? | Golden cases, human adjudication, provider/model lock и incident response. |
 
-## 9. Рекомендация: с чего начинать после утверждения
+## 10. Рекомендация: с чего начинать после утверждения
 
 Начинать следует не с новых функций и не с маркетингового трафика, а с **P0 Staging Closure Pack** из трёх связанных потоков.
 
-Сначала нужно закрыть A-01 — общий eligibility/age guard для queued jobs и worker. Это маленький по объёму, но высокий по последствиям исправляемый дефект: пока разные transports имеют разные правила доступа, любые внешние E2E будут проверять неодинаковый продукт.
+Первый поток — создать изолированный staging и выполнить реальный signed Telegram flow на iOS, Android и Desktop. Предыдущий queued-chat eligibility mismatch уже закрыт в `4b0f8e2` и покрыт worker/enqueue regression tests; теперь его нужно только сохранить при внешнем E2E.
 
-Затем следует провести A-02 и A-03 на одном controlled staging environment: реальный signed Telegram flow плюс repeatable live LLM latency/safety run. Эти проверки дадут владельцу реальную информацию о том, проходит ли пользователь first-value path и возможно ли удержать целевой response budget. Только после этого имеет смысл принимать окончательное решение о SQLite/VPS против PostgreSQL/Redis/Celery scale.
+Затем следует провести live LLM latency/safety run на том же controlled staging environment и закрыть payment/legal/backup/monitoring evidence. Эти проверки дадут владельцу реальную информацию о first-value path и response budget. Только после этого имеет смысл принимать окончательное решение о SQLite/VPS против PostgreSQL/Redis/Celery scale.
 
 Параллельно владелец должен назначить ответственных за A-04, A-05 и A-06. Без payment/legal/backup owners техническая готовность repository не превращается в право принимать реальные деньги и персональные данные. До появления этих evidence artifacts рекомендованный режим — staging или ограниченная beta с явным risk acceptance, а не публичный launch.
 
-## 10. References
+## 11. References
 
 [1]: [README.md](../README.md) — продукт, запуск и общая архитектура OracleAI.
 [2]: [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md) — surface inventory и предыдущий baseline; использовать с учётом commit drift.

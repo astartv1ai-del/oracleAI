@@ -14,8 +14,11 @@ import argparse
 import asyncio
 import json
 import re
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.pdfgen import builder, render
 

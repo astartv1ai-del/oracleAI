@@ -30,10 +30,12 @@ def main() -> int:
     visual_qa = VISUAL_QA.read_text(encoding="utf-8")
     missing = sorted(token for token in REQUIRED_TOKENS
                      if not re.search(rf"{re.escape(token)}\s*:", tokens))
-    imports = re.findall(r"@import\s+url\('css/([^']+)'", styles)
-    expected = [f"{idx:02d}-" for idx in range(17)]
-    import_order_ok = len(imports) == 17 and all(
-        imports[idx].startswith(expected[idx]) for idx in range(17)
+    imports = [item.split("?", 1)[0] for item in re.findall(r"@import\s+url\('css/([^']+)'", styles)]
+    expected_prefixes = [f"{idx:02d}-" for idx in range(16)]
+    import_order_ok = (
+        len(imports) == 18
+        and all(imports[idx].startswith(expected_prefixes[idx]) for idx in range(16))
+        and imports[16:] == ["16-visual-qa.css", "16-payments.css"]
     )
     reduced_motion = "prefers-reduced-motion: reduce" in styles or any(
         "prefers-reduced-motion: reduce" in path.read_text(encoding="utf-8")

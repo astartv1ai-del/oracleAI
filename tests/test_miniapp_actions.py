@@ -162,3 +162,26 @@ def test_new_explorers_are_loaded_and_expose_accessible_states() -> None:
     assert all(name not in palm for name in ('featurePalmMap', 'featurePalmQuality', 'featurePalmCompare', 'palm-workflow'))
     assert 'featurePalmMap' not in data and 'featurePalmCompare' not in data
     assert '.placement-explorer' in css and '.palm-progress' in css
+
+
+def test_auth_boot_has_explicit_recovery_state() -> None:
+    app = (JS_DIR / "05-app.js").read_text(encoding="utf-8")
+    utils = (JS_DIR / "01-utils.js").read_text(encoding="utf-8")
+    assert "renderAuthRequired" in app
+    assert "data-auth-required" in app
+    assert "data-auth-retry" in app
+    assert "authRequiredTitle" in utils and "authRequiredCopy" in utils
+
+
+def test_account_deletion_is_discoverable_and_confirm_gated() -> None:
+    misc = (JS_DIR / "12-misc.js").read_text(encoding="utf-8")
+    actions = ACTIONS.read_text(encoding="utf-8")
+    utils = (JS_DIR / "01-utils.js").read_text(encoding="utf-8")
+    assert 'data-act="account-delete"' in misc
+    assert "app.deleteAccount" in misc
+    assert "window.confirm(profileT('deleteAccountConfirm'))" in misc
+    assert "'/api/account/delete'" in misc
+    assert "JSON.stringify({ confirm: true })" in misc
+    assert "'account-delete'" in actions
+    assert "deleteAccountDone" in utils
+    assert "data-account-deleted" in misc
