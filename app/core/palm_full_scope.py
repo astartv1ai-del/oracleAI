@@ -37,7 +37,7 @@ def _empty(status: str, issues: list[str]) -> dict[str, Any]:
         "candidate_segments": [],
         "line_catalog": list(LINE_CATALOG),
         "zone_catalog": list(ZONE_CATALOG),
-        "zone_evidence": _zone_evidence("unclear", 0, None),
+        "zone_evidence": _zone_evidence("unclear", [], None),
         "issues": issues[:8],
         "raw_edge_map_stored": False,
         "raw_mask_stored": False,

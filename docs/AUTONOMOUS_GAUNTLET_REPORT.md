@@ -27,6 +27,7 @@ OracleAI прошёл локальный autonomous gauntlet по коду, disp
 | Payment browser evidence did not prove one-off products were rendered | Payment DOM state after shape mismatch | Capture harness now records `paymentPlanCount` and `paymentProductCount` and requires both to be non-zero |
 | Visual capture used fragile nav indexes and did not prove server-side locale separation | Capture harness and seed inspection | Navigation now uses `data-goto`; RU/EN identities are separate (`10001`/`10002`), and report checks expected locale markers with the opposite marker absent |
 | Production config accepted `DEV_MODE=1` when `_validate_production_config()` was called in a non-dev environment | Disposable fail-closed probe reproduced the bypass | Production validation now rejects `DEV_MODE=1` outside `APP_ENV=dev/test`; regression added in `tests/test_security_regressions.py` |
+| Clean CI runner skipped declared runtime requirements, so palm ONNX/OpenCV tests failed before product code was exercised | GitHub run `33086018760` failed in Full tests while `requirements-dev.txt` omitted `requirements.txt` | CI now installs `requirements.txt -r requirements-dev.txt`; local full suite passes after matching dependency installation |
 
 ## Verification matrix
 
