@@ -344,8 +344,13 @@ services:
   # application without first creating a host secret. Enable with:
   #   docker compose --profile backup -f infra/docker-compose.yml up -d backup
   backup:
-    image: postgres:16-bookworm
+    build:
+      context: ..
+      dockerfile: infra/backup.Dockerfile
+    image: oracleai-backup:local
     profiles: ["backup"]
+    env_file:
+      - ../.env
     environment:
       PGHOST: postgres
       PGPORT: 5432
@@ -354,9 +359,11 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:-oracle}
       BACKUP_ENCRYPTION_KEY_FILE: /run/secrets/oracle-backup-key
       BACKUP_REQUIRE_ENCRYPTION: ${BACKUP_REQUIRE_ENCRYPTION:-1}
+      BACKUP_REQUIRE_OFFSITE: ${BACKUP_REQUIRE_OFFSITE:-0}
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      BACKUP_STATUS_FILE: /backups/backup-status.json
     volumes:
-      - oracle_backups:/backups
+      - ${BACKUP_STORAGE_PATH:-./backups}:/backups
       - ${BACKUP_ENCRYPTION_KEY_HOST_PATH:-/etc/oracle/backup.key}:/run/secrets/oracle-backup-key:ro
       - ./backup-postgres.sh:/usr/local/bin/backup-postgres.sh:ro
     networks:

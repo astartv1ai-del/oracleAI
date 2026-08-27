@@ -142,4 +142,4 @@ A technical GO requires every blocker row to be `PASS`, all failed/retried cases
 [6]: [app/services/billing.py](https://github.com/astartv1ai-del/oracleAI/blob/master/app/services/billing.py) and [app/api/routers/webhooks.py](https://github.com/astartv1ai-del/oracleAI/blob/master/app/api/routers/webhooks.py) — payment integrity paths.
 [7]: [scripts/check_backup_restore_drill.py](https://github.com/astartv1ai-del/oracleAI/blob/master/scripts/check_backup_restore_drill.py) — local disposable restore drill.
 [8]: [scripts/check_pdf_golden_cases.py](https://github.com/astartv1ai-del/oracleAI/blob/master/scripts/check_pdf_golden_cases.py) — synthetic PDF truth-state checks.
-[9]: [docs/LLM_AGENT_TECHNICAL_AUDIT.md](https://github.com/astartv1ai-del/oracleAI/blob/master/docs/LLM_AGENT_TECHNICAL_AUDIT.md) — agent quality, safety and latency baseline.
+[9]: [docs/AI_SYSTEM.md](https://github.com/astartv1ai-del/oracleAI/blob/master/docs/AI_SYSTEM.md) — agent quality, safety and latency baseline.

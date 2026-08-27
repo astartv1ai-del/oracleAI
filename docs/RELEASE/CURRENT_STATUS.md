@@ -6,7 +6,7 @@
 |---|---|
 | **Purpose** | State what is implemented, what was checked and what still blocks release. |
 | **Source of truth** | Current `master` code, tests, CI configuration and [`RELEASE/TASKS.md`](TASKS.md). |
-| **Scope** | Repository state observed on 2026-08-27 at commit `2f59801` (GitHub CI run [`33093428849`](https://github.com/astartv1ai-del/oracleAI/actions/runs/33093428849)). |
+| **Scope** | Repository state observed on 2026-08-27; this document is updated as the merged master candidate changes. |
 | **Do not change** | Do not convert local, synthetic or historical evidence into staging or production claims. |
 | **Key files** | `app/`, `miniapp/`, `tests/`, `scripts/`, `infra/`, [`RELEASE/TASKS.md`](TASKS.md), [`EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md`](../EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md). |
 | **Validation** | Use the commands in [`TESTING.md`](../TESTING.md) and the evidence record for each gate. |

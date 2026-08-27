@@ -19,7 +19,7 @@ OracleAI не должен обещать, что текущая или люба
 
 ## Practical same-image benchmark
 
-`scripts/benchmark_palm_cv.py` runs the same 15 real repository/public fixture images through `palm_vision`, MediaPipe, the vendored ONNX fp16/int8 models and `palm_full_scope` OpenCV candidate search. The full JSON artifact is `docs/palm_cv_benchmark.json`. It contains no user-uploaded images and is not a labelled accuracy set.
+`scripts/benchmark_palm_cv.py` runs the same 15 real repository/public fixture images through `palm_vision`, MediaPipe, the vendored ONNX fp16/int8 models and `palm_full_scope` OpenCV candidate search. The full JSON report is emitted to stdout; generated output belongs in ignored `artifacts/` or external evidence storage. It contains no user-uploaded images and is not a labelled accuracy set.
 
 | Component | Result on 15 images |
 |---|---:|

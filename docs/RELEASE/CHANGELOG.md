@@ -25,8 +25,10 @@
 - Добавлен `scripts.pdf_matrix` для локального PDF preflight: 6 детерминированных RU/EN exact/date-only, long-field и edge-latitude кейсов с внешними HTML/PDF артефактами и `summary.json`.
 - Добавлен privacy-safe `product_cost_events` ledger: server-owned SKU/catalog/channel/purpose dimensions, LLM retry/latency/token cost, delivery/refund/support categories, retention и product KPI aggregation; gross Stars не объявляются net revenue или contribution.
 - Product-cost gross booking теперь присоединяется по `sku + order.surface/channel`, поэтому одинаковый SKU не дублируется между bot и Mini App rows; добавлен regression test.
-- Добавлен воспроизводимый `scripts/domain_qa.py` и `ASTRONOMY_REFERENCE_QA.md`: 8/8 критических cross-implementation кейсов проходят, включая date-only и fail-closed ambiguous DST; external ephemeris authority comparison остаётся открытым.
+- Добавлен воспроизводимый `scripts/domain_qa.py` и `DOMAIN/ACCURACY_MATRIX.md`: 8/8 критических cross-implementation кейсов проходят, включая date-only и fail-closed ambiguous DST; external ephemeris authority comparison остаётся открытым.
 - Добавлен `RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md` с owner-led процедурами, acceptance evidence, go/no-go gate, redaction policy и rollback для Telegram auth, payments, live LLM и backup/restore.
+- P0-004 получил отдельный backup image, S3-compatible off-site uploader для encrypted dump и checksum, backup status marker, explicit host storage path, isolated restore target guard, ops freshness alerts, Makefile targets и CI static/drill gate.
+- Lighthouse обновлён до `13.4.1`, Node CI/frontend-builder — до `22.19.0`; `npm audit` теперь проходит без advisory, а оба frontend CI job выполняют audit gate.
 
 
 ### Changed

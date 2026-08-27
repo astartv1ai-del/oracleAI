@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL
+> SUPERSEDED BY: `../EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md`
+> This dated evidence is retained for audit context; it is not a current source of truth.
+
 # Local admin smoke evidence
 
 **Date:** 2026-08-27

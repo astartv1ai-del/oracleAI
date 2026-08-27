@@ -62,3 +62,6 @@ screenshots/
 *.dump
 *.out
 *.pdf
+
+# Host-mounted encrypted PostgreSQL backup artifacts
+/backups/

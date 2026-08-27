@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL
+> SUPERSEDED BY: `../AI_SYSTEM.md and ../AGENT_QUALITY_STANDARD.md`
+> This dated evidence is retained for audit context; it is not a current source of truth.
+
 # OracleAI LLM Agent Technical Audit
 
 **Дата:** 26 августа 2026
@@ -57,7 +61,7 @@ The adapter covers only `heart_line`, `head_line` and `life_line`. Relationship,
 
 Mira’s `palm_photo_guide` is now topic-aware. For relationship/children/travel questions it asks for a folded edge-on frame, then a closer detail without digital zoom. For general lines it asks for a full open-palm shot with wrist and fingertips visible, parallel camera, focus on the crease, no collage, no cropped zone and no glare. `palm_scanner` also honours a supplied `reading_id` instead of silently reading only the latest result.
 
-The candidate engine research and licenses are recorded in [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md) and [`models/THIRD_PARTY_NOTICES.md`](../models/THIRD_PARTY_NOTICES.md). The selected model’s upstream README reports foreground validation Dice `0.8098` on its own holdout; this is not a claim of OracleAI production accuracy.
+The candidate engine research and licenses are recorded in [`PALM_ENGINE_RESEARCH.md`](../PALM_ENGINE_RESEARCH.md) and [`models/THIRD_PARTY_NOTICES.md`](../../models/THIRD_PARTY_NOTICES.md). The selected model’s upstream README reports foreground validation Dice `0.8098` on its own holdout; this is not a claim of OracleAI production accuracy.
 
 ## Findings fixed in this pass
 

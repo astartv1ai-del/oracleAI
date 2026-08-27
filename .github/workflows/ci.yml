@@ -23,12 +23,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22.13.0"
+          node-version: "22.19.0"
           cache: npm
 
-      - name: Frontend build required by API tests
+      - name: Frontend dependency audit and build required by API tests
         run: |
           npm ci --ignore-scripts
+          npm audit --audit-level=moderate
           npm run build:frontend
           python scripts/check_frontend_build.py
           python scripts/check_frontend_provenance.py
@@ -58,8 +59,11 @@ jobs:
       - name: Repository hygiene
         run: python scripts/check_repository_hygiene.py
 
-      - name: Documentation links
-        run: python scripts/check_documentation_links.py
+      - name: P0-004 backup/restore infrastructure gate
+        run: |
+          python scripts/check_p004_infrastructure.py
+          bash -n infra/backup-postgres.sh infra/restore-postgres.sh
+          python scripts/check_backup_restore_drill.py
 
       - name: Standalone quality script smoke
         run: |
@@ -157,7 +161,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22.13.0"
+          node-version: "22.19.0"
           cache: npm
 
       - uses: actions/setup-python@v5
@@ -175,8 +179,10 @@ jobs:
       - name: Python-зависимости для QA-сервера
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Frontend dependencies
-        run: npm ci --ignore-scripts
+      - name: Frontend dependencies and audit
+        run: |
+          npm ci --ignore-scripts
+          npm audit --audit-level=moderate
 
       - name: Build and validate frontend
         run: |

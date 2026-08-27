@@ -1,6 +1,6 @@
 # Нагрузочные тесты (G29)
 
-Цифры сценариев — из оценки нагрузки в `docs/PRODUCTION_READINESS.md` §2.
+Цифры сценариев — из оценки нагрузки в `docs/RELEASE/PRODUCTION_READINESS.md` §2.
 
 ## Состав
 
@@ -21,7 +21,7 @@ python load/simulate.py --db /tmp/load.db          # быстрая провер
 python load/simulate.py --db /tmp/load.db --full   # целевые цифры G29
 
 # 3) API Mini App — Locust, сервер в DEV_MODE (без подписи Telegram)
-DEV_MODE=1 .venv/bin/python -m uvicorn app.main:app --port 8000
+DEV_MODE=1 .venv/bin/python -m uvicorn app.api.main:app --port 8000
 pip install locust
 locust -f load/locustfile.py --host http://127.0.0.1:8000 -u 500 -r 5 --run-time 2m
 ```

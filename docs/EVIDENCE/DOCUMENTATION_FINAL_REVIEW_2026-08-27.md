@@ -1,3 +1,7 @@
+> STATUS: HISTORICAL
+> SUPERSEDED BY: `../README.md and ../RELEASE/CURRENT_STATUS.md`
+> This dated evidence is retained for audit context; it is not a current source of truth.
+
 # OracleAI — documentation final review
 
 **Review date:** 2026-08-27
@@ -8,7 +12,7 @@
 
 ## Documentation
 
-The repository now has one map in [`../README.md`](../README.md), one current release status in [`CURRENT_STATUS.md`](CURRENT_STATUS.md), and one unresolved backlog in [`TASKS.md`](TASKS.md). The root README is a short quick-start and boundary document; long explanations remain under `docs/`.
+The repository now has one map in [`../README.md`](../README.md), one current release status in [`CURRENT_STATUS.md`](../RELEASE/CURRENT_STATUS.md), and one unresolved backlog in [`TASKS.md`](../RELEASE/TASKS.md). The root README is a short quick-start and boundary document; long explanations remain under `docs/`.
 
 | Measure | Before | After | Notes |
 |---|---:|---:|---|
@@ -28,13 +32,13 @@ The repository now has one map in [`../README.md`](../README.md), one current re
 | Features | Added `docs/FEATURES/README.md`; moved memory, history and billing contracts into that category. |
 | Release | Added `docs/RELEASE/CURRENT_STATUS.md`; moved the current backlog, readiness plan, launch governance, P0 plans and changelog into `RELEASE/`. |
 | Orientation | Added a predictable Purpose/Source of truth/Scope/Do not change/Key files/Validation block to canonical documents. |
-| Inventory | Added `docs/REPOSITORY_INVENTORY.md` covering the complete current tree with type, purpose, references, executable/generated/stale/canonical signals and a non-destructive decision. |
+| Map | The active documentation map is maintained in `docs/README.md`; generated file-by-file inventories are not tracked. |
 
 ### Deleted and archived
 
 | Action | Files | Reason |
 |---|---|---|
-| Deleted | `docs/palm_cv_benchmark.json` | Generated benchmark output with absolute sandbox paths, no repository references and no role as a reproducible fixture. The benchmark script and palm test fixture remain. |
+| Deleted | the generated palm benchmark JSON output | Generated benchmark output with absolute sandbox paths, no repository references and no role as a reproducible fixture. The benchmark script and palm test fixture remain. |
 | Archived | `docs/ARCHIVE/NEXT_STEPS_2026-08-26.md`, `docs/ARCHIVE/UI_PREMIUM_PLAN_RU_2026-08-09.md` | Superseded planning/design material retained for context and explicitly labeled historical. |
 | Reclassified as evidence | Root audit/review files, baseline/QA/visual/performance/traceability/P2 reports and dated audit notes | Valuable historical verification was preserved under `docs/EVIDENCE/` with dates and historical labels. |
 | Moved into domain/features | `DOMAIN_METHODS.md`, `MEMORY.md`, `UNIFIED_HISTORY.md`, `MONETIZATION_BASELINE.md` | Each now has one clear category home and is linked from the documentation map. |
@@ -76,22 +80,22 @@ The temporary audit dumps created during inspection were removed before final re
 | Deployment | [`../DEPLOYMENT.md`](../DEPLOYMENT.md) | `infra/`, `Makefile`, `.env*.example` |
 | Operations | [`../OPERATIONS.md`](../OPERATIONS.md) | `infra/`, `scripts/`, `app/tasks/` |
 | Testing | [`../TESTING.md`](../TESTING.md) | `tests/`, `scripts/`, CI |
-| Release status | [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | Current code, tests, CI and dated evidence |
-| Current tasks | [`TASKS.md`](TASKS.md) | Release gates, acceptance criteria and blockers |
+| Release status | [`CURRENT_STATUS.md`](../RELEASE/CURRENT_STATUS.md) | Current code, tests, CI and dated evidence |
+| Current tasks | [`TASKS.md`](../RELEASE/TASKS.md) | Release gates, acceptance criteria and blockers |
 | Domain | [`../DOMAIN/README.md`](../DOMAIN/README.md) | `app/core/astro.py`, `tarot.py`, `palm.py`, `vedic.py` |
 | Features | [`../FEATURES/README.md`](../FEATURES/README.md) | `app/core/`, `app/services/`, `app/repo/`, feature routers |
 | Evidence | [`../EVIDENCE/README.md`](../EVIDENCE/README.md) | Dated reports only; not current truth |
 
 ## Remaining concerns
 
-The documentation work does not close the product’s external launch gates. Public launch remains blocked by real Telegram signed-`initData` and device/WebView verification, payment sandbox/settlement/refund/reconciliation, live-provider quality and latency, production backup/restore and rollback, legal/privacy approval, licensing confirmation, independent astronomy comparison, and manual device/accessibility review. These are recorded in [`TASKS.md`](TASKS.md) and separated by environment in [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+The documentation work does not close the product’s external launch gates. Public launch remains blocked by real Telegram signed-`initData` and device/WebView verification, payment sandbox/settlement/refund/reconciliation, live-provider quality and latency, production backup/restore and rollback, legal/privacy approval, licensing confirmation, independent astronomy comparison, and manual device/accessibility review. These are recorded in [`TASKS.md`](../RELEASE/TASKS.md) and separated by environment in [`CURRENT_STATUS.md`](../RELEASE/CURRENT_STATUS.md).
 
 The final verdict for this audit is **BLOCKED**, not because the repository lacks a usable implementation, but because the remaining concerns require external evidence that cannot be honestly manufactured by documentation changes.
 
 ## References
 
 [1]: [Documentation map](../README.md) — canonical navigation and source-of-truth mapping.
-[2]: [Current status](CURRENT_STATUS.md) — environment-separated release verdict.
-[3]: [Current tasks](TASKS.md) — acceptance criteria, evidence and blockers.
-[4]: [Repository inventory](../REPOSITORY_INVENTORY.md) — file-by-file audit inventory.
+[2]: [Current status](../RELEASE/CURRENT_STATUS.md) — environment-separated release verdict.
+[3]: [Current tasks](../RELEASE/TASKS.md) — acceptance criteria, evidence and blockers.
+[4]: [Repository inventory](../README.md) — file-by-file audit inventory.
 [5]: [Repository hygiene gate](../../scripts/check_repository_hygiene.py) — recursive local documentation and artifact checks.
