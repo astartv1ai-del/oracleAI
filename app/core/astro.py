@@ -235,17 +235,23 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
     """
     d = datetime.strptime(birth_date, "%Y-%m-%d").date()
     parsed_time = _parse_birth_time(birth_time)
-    # Старые вызовы без флага сохраняют прежнее поведение: валидное время считается
-    # подтверждённым. Новые product flows обязаны передавать `time_known=False`,
-    # когда «12:00» — лишь техническая опора для эфемерид.
-    time_confirmed = bool(parsed_time) if time_known is None else bool(parsed_time and time_known)
+    # Локальные часы можно переводить в UTC только при подтверждённой IANA
+    # timezone. Без неё точное время намеренно деградирует до date-only snapshot.
     if tz and not _has_valid_timezone(tz):
         raise ValueError("Часовой пояс указывается как корректный IANA identifier")
     coordinates_known = _has_valid_coordinates(lat, lon)
+    time_confirmed = bool(parsed_time and (time_known is not False) and tz)
+    effective_time = parsed_time if time_confirmed else None
+    precision_reason = (
+        "exact" if time_confirmed and coordinates_known else
+        "time_without_location" if time_confirmed else
+        "date_only_missing_timezone" if parsed_time and not tz else
+        "date_only_unconfirmed" if parsed_time else "date_only")
     try:
-        return _full_chart(d, parsed_time, city, lat, lon, tz,
+        return _full_chart(d, effective_time, city, lat, lon, tz,
                            coordinates_known=coordinates_known,
-                           time_confirmed=time_confirmed)
+                           time_confirmed=time_confirmed,
+                           precision_reason=precision_reason)
     except Exception as e:  # noqa: BLE001
         log.warning("полная карта недоступна (%s), считаю упрощённо", e)
         sign, sym, element = sun_sign_precise(d)
@@ -268,7 +274,9 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
                 input_data={"birth_date": birth_date,
                             "birth_time": birth_time if time_confirmed else None,
                             "city": city, "lat": lat, "lon": lon, "tz": tz,
-                            "time_known": time_confirmed},
+                            "time_known": time_confirmed,
+                            "precision_reason": ("date_only_missing_timezone" if parsed_time and not time_confirmed
+                                                 else "date_only" if not parsed_time else "calculation_fallback")},
                 precision="sun_only", angular_data_available=False),
         }
 
@@ -311,7 +319,8 @@ def _aspects(subject) -> list[dict]:
 
 
 def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
-                *, coordinates_known: bool, time_confirmed: bool) -> dict:
+                *, coordinates_known: bool, time_confirmed: bool,
+                precision_reason: str = "date_only") -> dict:
     from kerykeion import AstrologicalSubjectFactory  # type: ignore
 
     hour, minute = birth_time or (12, 0)
@@ -329,13 +338,13 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
     if coordinates_known:
         subject = AstrologicalSubjectFactory.from_birth_data(
             **kwargs, lat=float(lat), lng=float(lon),
-            tz_str=tz or "Europe/Moscow", online=False)
+            tz_str=tz or "UTC", online=False)
     else:
-        # без координат считаем по Москве — это честнее, чем поход в интернет,
-        # который в офлайне уронит расчёт целиком
+        # Без координат используем нейтральную 0°/0° reference point только для
+        # гео-независимых планетных долгот; углы и дома всё равно отключены.
         subject = AstrologicalSubjectFactory.from_birth_data(
-            **{**kwargs, "city": "Moscow"}, lat=55.75, lng=37.62,
-            tz_str=tz or "Europe/Moscow", online=False)
+            **{**kwargs, "city": "UTC reference"}, lat=0.0, lng=0.0,
+            tz_str=tz or "UTC", online=False)
 
     m = subject
 
@@ -457,7 +466,8 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
             input_data={"birth_date": d.isoformat(),
                         "birth_time": (f"{hour:02d}:{minute:02d}" if birth_time and time_confirmed else None),
                         "city": city, "lat": lat, "lon": lon, "tz": tz,
-                        "time_known": time_confirmed},
+                        "time_known": time_confirmed,
+                        "precision_reason": precision_reason},
             precision=precision, angular_data_available=angular_data_available),
     }
 
