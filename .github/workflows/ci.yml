@@ -80,6 +80,15 @@ jobs:
           python scripts/palm_accuracy_gauntlet.py \
             --output artifacts/palm-accuracy-matrix.json
 
+      - name: Palm golden corpus schema and critic readiness
+        run: |
+          mkdir -p artifacts
+          python scripts/validate_palm_corpus.py \
+            --manifest data/palm_golden/manifest.template.jsonl \
+            --schema-only
+          python scripts/palm_independent_critic.py \
+            > artifacts/palm-independent-critic.json
+
       - name: LLM golden-set evaluator smoke
         run: |
           mkdir -p artifacts
@@ -113,6 +122,7 @@ jobs:
           path: |
             artifacts/llm-eval-report.json
             artifacts/palm-accuracy-matrix.json
+            artifacts/palm-independent-critic.json
           if-no-files-found: ignore
 
   frontend-quality:
