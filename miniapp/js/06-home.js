@@ -154,7 +154,7 @@
           ${homeAgents.map(a => `
                           <button class="dock-item dock-item--${esc(a.code)}" type="button" style="${this.agentThemeStyle(a, a.code)}" data-act="chat" data-chat="${a.code}" aria-label="${homeFormat('openChatAria', { name: esc(a.name) })}">
 
-              <span class="dock-orb" style="${this.agentThemeStyle(a, a.code)}"><img class="dock-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span>
+              <span class="dock-orb" style="${this.agentThemeStyle(a, a.code)}"><img class="dock-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="" width="66" height="66" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span>
               <span class="dock-name">${esc(a.name.split(' ')[0])}</span>
               ${a.title ? `<span class="dock-role">${esc(a.title)}</span>` : ''}
             </button>`).join('')}
@@ -208,7 +208,7 @@
               ${(a.suggestions && a.suggestions.length) ? `
               <div class="agent-ask-chips">
                 ${a.suggestions.slice(0, 3).map(s => `
-                  <span class="ask-chip" data-act="ask" data-chat="${a.code}" data-q="${esc(s)}">${esc(s)}</span>`).join('')}
+                  <button type="button" class="ask-chip" data-act="ask" data-chat="${a.code}" data-q="${esc(s)}">${esc(s)}</button>`).join('')}
               </div>` : ''}
               <div class="section-kicker" style="margin:15px 0 7px;color:var(--ac)">${homeT('ask')}</div>
               <div class="agent-chips">

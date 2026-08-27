@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -109,14 +109,16 @@ async def reconciliation(ctx=Depends(current_admin), db=Depends(get_db)):
 
 
 @router.get("/reconciliation/{order_id}")
-async def reconciliation_order(order_id: int, ctx=Depends(current_admin), db=Depends(get_db)):
+async def reconciliation_order(order_id: int = Path(..., ge=1, le=2_147_483_647),
+                                  ctx=Depends(current_admin), db=Depends(get_db)):
     if ctx.role != "owner":
         raise HTTPException(403, "сверка доступна только владельцу")
     return await payment_monitor.recheck_order(db, order_id)
 
 
 @router.post("/reconciliation/{order_id}/review")
-async def reconciliation_review(order_id: int, ctx=Depends(current_admin), db=Depends(get_db)):
+async def reconciliation_review(order_id: int = Path(..., ge=1, le=2_147_483_647),
+                                  ctx=Depends(current_admin), db=Depends(get_db)):
     if ctx.role != "owner":
         raise HTTPException(403, "сверка доступна только владельцу")
     result = await payment_monitor.mark_for_review(db, order_id, ctx.tg_id)
@@ -143,7 +145,9 @@ async def reconciliation_export(ctx=Depends(current_admin), db=Depends(get_db)):
     await admin_repo.audit(db, ctx.tg_id, "payment.reconciliation_export",
                            target="aggregate", payload={"status": payload["status"]})
     return Response(content=json.dumps(payload, ensure_ascii=False), media_type="application/json",
-                    headers={"Content-Disposition": 'attachment; filename="payment-reconciliation.json"'})
+                    headers={"Content-Disposition": 'attachment; filename="payment-reconciliation.json"',
+                             "Cache-Control": "no-store", "Pragma": "no-cache",
+                             "X-Content-Type-Options": "nosniff"})
 
 
 class NotificationPreferencesIn(BaseModel):

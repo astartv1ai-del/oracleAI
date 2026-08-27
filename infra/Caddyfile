@@ -11,7 +11,14 @@
 		-Server
 	}
 
-	# Paddle signatures cover the raw request body; proxy it without rewriting.
+			# Prometheus scrapes api:8080/metrics over oracle_internal; never expose it
+		# through the public Caddy edge.
+		handle /metrics {
+			respond 404
+		}
+
+		# Paddle signatures cover the raw request body; proxy it without rewriting.
+
 	handle /api/webhooks/* {
 		request_body {
 			max_size 512KB

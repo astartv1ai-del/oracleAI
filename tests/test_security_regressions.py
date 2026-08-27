@@ -99,6 +99,18 @@ def test_production_config_fails_closed_on_unsafe_database(monkeypatch):
         _validate_production_config()
 
 
+def test_production_config_rejects_dev_mode_in_production(monkeypatch):
+    from app.api.main import _validate_production_config
+
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setattr(settings, "dev_mode", True)
+    monkeypatch.setattr(settings, "bot_token", "test-token")
+    monkeypatch.setattr(settings, "admin_id", 1001)
+    monkeypatch.setattr(settings, "webapp_url", "https://oracle.example")
+    with pytest.raises(RuntimeError, match="DEV_MODE"):
+        _validate_production_config()
+
+
 def test_production_config_fails_closed(monkeypatch):
     from app.api.main import _validate_production_config
 
@@ -268,3 +280,30 @@ def test_telegram_formatting_escapes_untrusted_markup():
     )
     assert tg_rich("<b>unbalanced") == "&lt;b&gt;unbalanced"
     assert tg_rich("<b>trusted</b>") == "<b>trusted</b>"
+
+
+async def test_anonymize_clears_legacy_webhook_payload(db, user):
+    await db.execute(
+        "INSERT INTO webhook_events(event_id, provider, kind, payload, created_at) "
+        "VALUES(?,?,?,?,?)",
+        ("legacy-private-event", "paddle", "transaction.completed", "raw customer payload", "2026-08-26"),
+    )
+    await db.commit()
+    await users.anonymize(db, user["tg_id"])
+    row = await (await db.execute(
+        "SELECT payload FROM webhook_events WHERE event_id=?", ("legacy-private-event",)
+    )).fetchone()
+    assert row["payload"] is None
+
+
+def test_crypto_pay_signature_uses_sha256_derived_token(monkeypatch):
+    import hmac
+    from app.services import cryptobot
+
+    token = "123456:secret-token"
+    body = b'{"update_type":"invoice_paid"}'
+    monkeypatch.setattr(settings, "cryptobot_api_token", token)
+    derived = hmac.new(hashlib.sha256(token.encode()).digest(), body, hashlib.sha256).hexdigest()
+    raw_token_signature = hmac.new(token.encode(), body, hashlib.sha256).hexdigest()
+    assert cryptobot.verify_webhook(body, derived) is True
+    assert cryptobot.verify_webhook(body, raw_token_signature) is False

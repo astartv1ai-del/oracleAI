@@ -30,6 +30,7 @@ router = Router()
 
 DATE_RE = re.compile(r"^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$")
 TIME_RE = re.compile(r"^(\d{1,2})[:.](\d{2})$")
+UNKNOWN_TIME = {"не знаю", "неизвестно", "нет", "unknown", "dont know", "i don't know", "i dont know"}
 
 WELCOME_FALLBACK = (
     "🌌 <b>Звёзды ждали тебя.</b>\n\n"
@@ -261,15 +262,26 @@ async def onb_date(message: Message, state: FSMContext, db):
 @router.message(Onb.time, F.text)
 async def onb_time(message: Message, state: FSMContext, db):
     user = await users.get(db, message.from_user.id)
-    match = TIME_RE.match(message.text.strip().lower())
+    raw_time = message.text.strip().lower()
+    match = TIME_RE.match(raw_time)
     if match and 0 <= int(match.group(1)) < 24 and 0 <= int(match.group(2)) < 60:
         await users.update(db, message.from_user.id,
                            birth_time=f"{int(match.group(1)):02d}:{match.group(2)}",
                            birth_time_known=1)
-    else:
-        # полдень — нейтральная середина суток: ошибка по домам минимальна
+    elif raw_time in UNKNOWN_TIME:
+        # Полдень — нейтральная середина суток: ошибка по домам минимальна.
         await users.update(db, message.from_user.id, birth_time="12:00",
                            birth_time_known=0)
+    else:
+        await message.answer(_copy(
+            user,
+            "Не смогла распознать время. Напиши его как <b>ЧЧ:ММ</b> (например 14:30) "
+            "или «не знаю», если точного времени нет.",
+            "I could not read that time. Use <b>HH:MM</b> (for example 14:30) "
+            "or write ‘I don’t know’ if you are unsure.",
+        ))
+        return
+
     await state.set_state(Onb.city)
     city_question = _g(user, "город, где ты родилась", "город, где ты родился", "город рождения")
     await message.answer(_copy(
@@ -289,52 +301,85 @@ async def onb_city(message: Message, state: FSMContext, db):
         "🌌 <i>Gathering the stars for your chart...</i>",
     ))
 
-    # оба вызова уходят в отдельный поток: геокодирование ходит в сеть, а расчёт
-    # эфемерид держит GIL — синхронно они вешали бота для всех остальных
-    lat, lon, tz = await geo.resolve_city_async(city, db)
-    chart = await astro.compute_chart_async(
-        user["birth_date"], user["birth_time"], city, lat, lon, tz,
-        time_known=bool(user["birth_time_known"]),
-    )
+    if not city:
+        await wait.edit_text(_copy(
+            user,
+            "Напиши город рождения — он нужен, чтобы определить координаты и часовой пояс карты.",
+            "Please send your birth city — it is needed to determine the chart’s coordinates and time zone.",
+        ))
+        return
+
+    # Оба вызова уходят в отдельный поток: геокодирование ходит в сеть, а расчёт
+    # эфемерид держит GIL — синхронно они вешали бота для всех остальных.
+    try:
+        lat, lon, tz = await geo.resolve_city_async(city, db)
+        if lat is None or lon is None:
+            await wait.edit_text(_copy(
+                user,
+                "Я не нашла этот город. Напиши ближайший крупный город или попробуй другое написание — "
+                "это нужно для точных координат и часового пояса.",
+                "I could not find that city. Try a nearby major city or a different spelling — "
+                "the location is needed for accurate coordinates and time zone.",
+            ))
+            return
+        chart = await astro.compute_chart_async(
+            user["birth_date"], user["birth_time"], city, lat, lon, tz,
+            time_known=bool(user["birth_time_known"]),
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("onboarding chart build failed for %s", message.from_user.id)
+        await wait.edit_text(_copy(
+            user,
+            "Не получилось собрать карту сейчас. Данные не потерялись — попробуй ещё раз через минуту "
+            "или укажи ближайший крупный город.",
+            "I could not build the chart right now. Your data is safe — try again in a minute "
+            "or enter a nearby major city.",
+        ))
+        return
+
     await users.update(db, message.from_user.id, birth_city=city, birth_lat=lat,
                        birth_lon=lon, tz=tz,
                        chart_json=json.dumps(chart, ensure_ascii=False))
 
     sun = chart["sun"]
     asc = chart.get("ascendant")
+    moon = next((item for item in chart.get("planets", [])
+                 if item.get("name") == "Луна"), None)
     reveal = _copy(
         user,
         "\n".join([
             "⭐ <b>Твоя карта построена.</b>",
             "",
-            f"{sun['symbol']} Солнце в <b>{sun['sign']}</b> — стихия {sun['element']}.",
         ]),
         "\n".join([
             "⭐ <b>Your chart is ready.</b>",
             "",
-            f"{sun['symbol']} Your Sun is in <b>{sun['sign']}</b> — {sun['element']} element.",
         ]),
     ).split("\n")
-    if asc:
-        reveal.append(_copy(
-            user,
-            f"↗️ Асцендент в <b>{asc['sign']}</b> — каким тебя видят с первого взгляда.",
-            f"↗️ Ascendant in <b>{asc['sign']}</b> — how people see you at first glance.",
-        ))
+    moon_line_ru = (f"Луна в <b>{tg_esc(moon['sign'])}</b> — так ты проживаешь чувства."
+                    if moon else "Луна пока не отображается в сохранённом расчёте.")
+    moon_line_en = (f"Moon in <b>{tg_esc(moon['sign'])}</b> — how you process feelings."
+                    if moon else "The Moon is not available in the saved calculation yet.")
+    precision_line_ru = ("Асцендент в <b>" + tg_esc(asc["sign"]) + "</b> — первое впечатление."
+                         if asc else
+                         "Время рождения не подтверждено — поэтому я не использую дома и Асцендент.")
+    precision_line_en = ("Ascendant in <b>" + tg_esc(asc["sign"]) + "</b> — your first impression."
+                         if asc else
+                         "Birth time is not confirmed, so I will not use houses or the Ascendant.")
     reveal += _copy(
         user,
         "\n".join([
-            "", "Уже вижу три вещи о тебе:",
-            "1️⃣ Ты сильнее, чем позволяешь себе казаться.",
-            f"2️⃣ Твоя стихия ({sun['element']}) подсказывает, как тебе принимать решения.",
-            "3️⃣ Один вопрос ты носишь в себе прямо сейчас — задашь его мне первым. 😉",
+            "", "Вот что я уже заметила о тебе:",
+            f"1️⃣ Солнце в <b>{tg_esc(sun['sign'])}</b> — твоя базовая стихия: {tg_esc(sun['element'])}.",
+            f"2️⃣ {moon_line_ru}",
+            f"3️⃣ {precision_line_ru}",
             "", "Теперь выбери, <b>кем я буду для тебя</b>:",
         ]),
         "\n".join([
-            "", "I can already see three things about you:",
-            "1️⃣ You are stronger than you allow yourself to appear.",
-            f"2️⃣ Your element ({sun['element']}) hints at how you make decisions.",
-            "3️⃣ One question lives within you right now — let it be the first one you ask. 😉",
+            "", "Here is what I can already see about you:",
+            f"1️⃣ Sun in <b>{tg_esc(sun['sign'])}</b> — your core element: {tg_esc(sun['element'])}.",
+            f"2️⃣ {moon_line_en}",
+            f"3️⃣ {precision_line_en}",
             "", "Now choose <b>who I will be for you</b>:",
         ]),
     ).split("\n")

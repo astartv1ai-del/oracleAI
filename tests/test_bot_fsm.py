@@ -13,8 +13,9 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot.onboarding import (
     DeleteMe, Onb, delete_me, delete_me_confirm, onb_age_confirm, onb_age_decline,
-    onb_gender, onb_name,
+    onb_city, onb_gender, onb_name, onb_time,
 )
+
 from app.repo import users
 
 
@@ -57,6 +58,7 @@ class _Message:
     async def answer(self, text: str = "", **kwargs):
         self.replied = text
         self.reply_kwargs = kwargs
+        return self
 
     async def edit_text(self, text: str = "", **kwargs):
         self.replied = text
@@ -130,6 +132,56 @@ async def test_onboarding_gender_skip_keeps_neutral_fallback(db):
     await onb_gender(_Callback(1004, "gender:skip", message), state, db)
     assert (await users.get(db, 1004))["gender"] is None
     assert await state.get_state() == Onb.date.state
+
+
+async def test_onboarding_invalid_time_stays_on_time_step(db):
+    await users.ensure(db, 1007, "Тест")
+    state = _state_for()
+    await state.set_state(Onb.time)
+    message = _Message(1007, "25:90")
+
+    await onb_time(message, state, db)
+
+    assert await state.get_state() == Onb.time.state
+    assert "распознать время" in message.replied
+
+
+async def test_onboarding_unknown_city_is_recoverable(monkeypatch, db):
+    await users.ensure(db, 1008, "Тест")
+    await users.update(db, 1008, birth_date="1990-06-21", birth_time="12:00", birth_time_known=0)
+    state = _state_for()
+    await state.set_state(Onb.city)
+    message = _Message(1008, "Несуществующий город")
+
+    async def unknown_city(*_args, **_kwargs):
+        return None, None, "Europe/Moscow"
+
+    monkeypatch.setattr("app.bot.onboarding.geo.resolve_city_async", unknown_city)
+    await onb_city(message, state, db)
+
+    assert await state.get_state() == Onb.city.state
+    assert "не нашла этот город" in message.replied
+
+
+async def test_onboarding_chart_failure_is_recoverable(monkeypatch, db):
+    await users.ensure(db, 1009, "Тест")
+    await users.update(db, 1009, birth_date="1990-06-21", birth_time="12:00", birth_time_known=0)
+    state = _state_for()
+    await state.set_state(Onb.city)
+    message = _Message(1009, "Казань")
+
+    async def known_city(*_args, **_kwargs):
+        return 55.79, 49.12, "Europe/Moscow"
+
+    async def failed_chart(*_args, **_kwargs):
+        raise RuntimeError("calculator down")
+
+    monkeypatch.setattr("app.bot.onboarding.geo.resolve_city_async", known_city)
+    monkeypatch.setattr("app.bot.onboarding.astro.compute_chart_async", failed_chart)
+    await onb_city(message, state, db)
+
+    assert await state.get_state() == Onb.city.state
+    assert "не получилось собрать карту" in message.replied.lower()
 
 
 async def test_delete_me_enters_confirmation_state(db):

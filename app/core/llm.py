@@ -861,14 +861,16 @@ async def speak(text: str, *, voice: str | None = None, db=None,
 
 # ---------------------------------------------------------------- vision
 
-async def complete_vision(system: str, user_text: str, image_data_url: str,
+async def complete_vision(system: str, user_text: str, image_data_url: str | list[str],
                           tier: str = "main", max_tokens: int = 1400, *,
                           purpose: str = "vision", tg_id: int | None = None,
-                          db=None, response_format: dict | None = None) -> str:
+                          db=None, response_format: dict | None = None,
+                          additional_image_data_urls: list[str] | None = None) -> str:
     """Vision completion with provider fallback.
 
-    The image is passed only to the selected provider and never logged. The
-    caller is responsible for validating the data URL and parsing the result.
+    The primary image and optional bounded focus views are passed only to the
+    selected provider and never logged. The caller is responsible for validating
+    data URLs and parsing the result.
     """
     if not settings.provider_chain:
         raise RuntimeError("Все LLM-провайдеры недоступны")
@@ -878,6 +880,12 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
         max_cost_usd=max(0.01, settings.llm_max_cost_usd),
     )
     errors = []
+    image_payload = ([image_data_url] if isinstance(image_data_url, str)
+                      else list(image_data_url or []))
+    image_payload.extend(additional_image_data_urls or [])
+    image_payload = image_payload[:3]
+    if not image_payload:
+        raise ValueError("vision image set is empty")
     async with _llm_slot():
         for provider_index, provider in enumerate(settings.provider_chain):
             if budget.expired:
@@ -890,7 +898,7 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
                 text = await asyncio.wait_for(
                     _with_retries(
                         lambda p=provider: _vision_with(p, system, user_text,
-                                                         image_data_url, tier,
+                                                         image_payload, tier,
                                                          max_tokens, meter,
                                                          response_format=response_format),
                         provider, "vision", meter=meter),
@@ -920,21 +928,25 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
 
 
 async def _vision_with(provider: str, system: str, user_text: str,
-                       image_data_url: str, tier: str, max_tokens: int,
+                       image_data_url: str | list[str], tier: str, max_tokens: int,
                        meter: _Meter, response_format: dict | None = None) -> str:
+    image_urls = [image_data_url] if isinstance(image_data_url, str) else list(image_data_url or [])
+    image_urls = image_urls[:3]
+    if not image_urls:
+        raise ValueError("vision image set is empty")
     if provider == "anthropic":
         client = _anthropic_client()
         try:
-            header, encoded = image_data_url.split(",", 1)
-            media_type = header.split(";", 1)[0].split(":", 1)[1]
+            content = [{"type": "text", "text": user_text}]
+            for data_url in image_urls:
+                header, encoded = data_url.split(",", 1)
+                media_type = header.split(";", 1)[0].split(":", 1)[1]
+                content.append({"type": "image", "source": {"type": "base64",
+                               "media_type": media_type, "data": encoded}})
             resp = await client.messages.create(
                 model=_models(provider, tier), max_tokens=max_tokens,
                 system=system,
-                messages=[{"role": "user", "content": [
-                    {"type": "text", "text": user_text},
-                    {"type": "image", "source": {"type": "base64",
-                     "media_type": media_type, "data": encoded}},
-                ]}],
+                messages=[{"role": "user", "content": content}],
             )
             meter.add(getattr(resp, "usage", None))
             return "".join(block.text for block in resp.content
@@ -951,14 +963,16 @@ async def _vision_with(provider: str, system: str, user_text: str,
                 {"role": "system", "content": system},
                 {"role": "user", "content": [
                     {"type": "text", "text": user_text},
-                    {"type": "image_url", "image_url": {
-                        "url": image_data_url, "detail": "high"}},
+                    *[{"type": "image_url", "image_url": {
+                        "url": data_url, "detail": "high"}}
+                      for data_url in image_urls],
                 ]},
             ],
             **_openai_token_limit(model, max_tokens),
         }
         if response_format:
             request["response_format"] = response_format
+        request.update(_reasoning_kwargs(model))
         resp = await client.chat.completions.create(**request)
         meter.add(getattr(resp, "usage", None))
         content = resp.choices[0].message.content if resp.choices else ""

@@ -8,3 +8,4 @@ pytest-timeout>=2.3
 httpx==0.28.1
 ruff==0.6.9
 pip-audit==2.9.0
+prometheus-client>=0.22.0

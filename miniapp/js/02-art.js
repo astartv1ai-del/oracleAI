@@ -24,7 +24,7 @@ function agentSprite(a, cheer) {
   const glow = a.accentGlow || 'rgba(230,193,120,.34)';
   const surface = a.surface || 'rgba(230,193,120,.12)';
   return `<span class="agent-sprite${cheer ? ' cheer' : ''}" style="--ac:${esc(ac)};--ac-bright:${esc(bright)};--ac-glow:${esc(glow)};--ac-surface:${esc(surface)}" role="img" aria-label="${esc(a.name || '')}">
-      <img class="agent-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="${esc(a.name || '')}" loading="eager" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'">
+      <img class="agent-face" src="${esc(a.avatar || `/static/img/agents/${a.code}.jpg`)}" alt="${esc(a.name || '')}" width="60" height="60" loading="eager" fetchpriority="high" decoding="async" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'">
       <span class="as-prop">${agentSigil(a.code)}</span>
     </span>`;
 }

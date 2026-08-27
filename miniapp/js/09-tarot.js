@@ -1,4 +1,49 @@
 /* tarot: расклад, выбор схемы, переворот карт, интерпретация */
+const TAROT_I18N = {
+  ru: {
+    pickerTitle: '🎴 Схема расклада', pickerSub: 'Листай, читай описание и выбирай', pickerNote: 'Выбор вернёт тебя к вопросу в чате — задай его и тяни карты ✨',
+    cards: 'карт', progressOf: 'из', openInOrder: 'Открывай карты по порядку — так нить расклада собирается бережно.',
+    questionRequired: 'Сформулируй вопрос картам — чем точнее, тем яснее ответ ✨', savedQuestion: 'Мой вопрос к картам: ',
+    drawFailed: 'Колода пока не ответила. Попробуй ещё раз — вопрос уже сохранён.',
+    premiumCopy: 'Это премиум-расклад. Купи Кристаллы в лавке 💎 или приведи подругу — и получи доступ к нему.', understood: 'Понятно ✨',
+    threadKicker: 'НИТЬ РАСКЛАДА', threadCopy: 'Карты раскрылись. Сначала почувствуй, как роли откликаются вместе, а затем соберём личный смысл без поспешных выводов.',
+    proof: 'Доказательная карточка', deck: 'Колода', ledger: 'Ledger', notSpecified: 'не указан', proofCopy: 'Это подтверждает состав и порядок расклада; теперь раскрой его сюжет через позиции и свой вопрос.',
+    interpret: 'Собрать личный смысл', revealing: '✨ Раскрываю смысл карт по очереди…', historyEmpty: 'Расклад', schemesLoading: 'Схемы ещё подгружаются…',
+    ritualKicker: 'ЛИЧНЫЙ РИТУАЛ', chooseTitle: 'Выбери схему и задай вопрос', pickerCopy: 'Карты не дают готовых приказов — они помогают заметить то, что уже просится в твоё внимание.', tapToBrowse: 'Тапни — откроется весь список раскладов', askAbout: 'О чём хочешь спросить?', ariaQuestion: 'Сформулируй вопрос к картам', placeholder: 'Твой вопрос к картам…', drawingStatus: 'Колода собирает твой расклад…', readyStatus: 'После вопроса вытянем карты по одной.', drawingButton: 'Собираем расклад…', drawButton: 'Потянуть карты', cardKicker: 'ТВОЙ РАСКЛАД', openCards: 'Открой карты по одной', questionLabel: 'Твой вопрос:', ariaOpenCard: 'Открыть карту', reversed: 'перевёрнута', threadHint: 'Открывай карты по порядку: каждая роль подскажет, как читать следующую.',
+  },
+  en: {
+    pickerTitle: '🎴 Reading spread', pickerSub: 'Browse the options, read the details and choose', pickerNote: 'Your choice returns you to the question — ask it and draw the cards ✨',
+    cards: 'cards', progressOf: 'of', openInOrder: 'Open the cards in order so the thread of the reading can unfold gently.',
+    questionRequired: 'Write a question for the cards — the clearer it is, the clearer the answer ✨', savedQuestion: 'My question for the cards: ',
+    drawFailed: 'The deck did not answer yet. Try again — your question is still here.',
+    premiumCopy: 'This is a premium reading. Buy Crystals in the shop 💎 or invite a friend to unlock it.', understood: 'Got it ✨',
+    threadKicker: 'READING THREAD', threadCopy: 'The cards are open. First notice how their roles respond to one another, then we will gather a personal meaning without rushing.',
+    proof: 'Evidence card', deck: 'Deck', ledger: 'Ledger', notSpecified: 'not specified', proofCopy: 'This confirms the reading composition and order; now explore its story through the positions and your question.',
+    interpret: 'Gather the meaning', revealing: '✨ Unfolding the meaning of the cards…', historyEmpty: 'Reading', schemesLoading: 'The spreads are still loading…',
+    ritualKicker: 'PERSONAL RITUAL', chooseTitle: 'Choose a spread and ask a question', pickerCopy: 'Cards do not give ready-made orders — they help you notice what is already asking for your attention.', tapToBrowse: 'Tap to browse all reading spreads', askAbout: 'What would you like to ask?', ariaQuestion: 'Write a question for the cards', placeholder: 'Your question for the cards…', drawingStatus: 'The deck is gathering your reading…', readyStatus: 'After your question, the cards will open one by one.', drawingButton: 'Gathering the reading…', drawButton: 'Draw the cards', cardKicker: 'YOUR READING', openCards: 'Open the cards one by one', questionLabel: 'Your question:', ariaOpenCard: 'Open card', reversed: 'reversed', threadHint: 'Open the cards in order: each role will guide how to read the next one.',
+  },
+};
+const TAROT_CATALOG_EN = {
+  one: { title: 'One card', hint: 'One clear answer to a specific question', positions: ['Answer'] },
+  three: { title: 'Past · Present · Future', hint: 'How the situation developed — and where it leads', positions: ['Past', 'Present', 'Future'] },
+  love: { title: 'Relationships', hint: 'Your feeling, your partner and the connection between you', positions: ['You', 'The other person', 'The connection', 'Advice'] },
+  choice: { title: 'Choice between two', hint: 'Two paths, their fruits and what you do not yet see', positions: ['Your situation', 'Path A', 'Path B', 'Advice'] },
+  money: { title: 'Money and work', hint: 'Your resource, what slows you down and the first step', positions: ['Your resource', 'What blocks you', 'First step'] },
+  career: { title: 'Career and path', hint: 'Where you are, what blocks growth and where the path leads', positions: ['Where you are', 'What blocks growth', 'The path', 'Next step'] },
+  work: { title: 'Work tension', hint: 'Whom to hear, what to avoid and how to leave with dignity', positions: ['The situation', 'What to hear', 'What to avoid', 'Next step'] },
+  celtic: { title: 'Celtic Cross', hint: 'Ten cards for the full picture of a situation', positions: ['The heart of the matter', 'The challenge', 'The foundation', 'The past', 'The possible direction', 'The near future', 'Your stance', 'The environment', 'Hopes and fears', 'The outcome'] },
+  year: { title: 'Wheel of the year', hint: 'Twelve cards — one for each month', positions: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] },
+};
+const tarotLang = () => oracleLang() === 'en' ? 'en' : 'ru';
+const tarotT = (key, fallback = '') => TAROT_I18N[tarotLang()][key] || fallback || key;
+const tarotSpreadText = (spread, field, fallback = '') => {
+  const code = spread && (spread.code || spread.spread);
+  return (tarotLang() === 'en' ? TAROT_CATALOG_EN[code]?.[field] : '')
+    || (spread && spread[field]) || fallback || code || '';
+};
+const tarotPositionText = (code, position, index) =>
+  (tarotLang() === 'en' ? TAROT_CATALOG_EN[code]?.positions?.[index] : '') || position;
+
   app.featureTarot = async function() {
     if (this.chat.pending && this.chat.pending.kind.startsWith('tarot')) return;
     this.chat.pending = { kind: 'tarot-pick', spreads: [], spread: 'three', q: '' };
@@ -9,7 +54,7 @@
     } catch (e) {
       this.chat.pending.spreads = [
         { code: 'one', title: 'Одна карта', emoji: '🂠', tier: 'included', desc: 'Один ясный ответ на конкретный вопрос' },
-        { code: 'three', title: 'Прошлое · Наст · Будущее', emoji: '🂠🂠🂠', tier: 'included', desc: 'Как развивалась ситуация — и куда ведёт' },
+        { code: 'three', title: 'Прошлое · Настоящее · Будущее', emoji: '🂠🂠🂠', tier: 'included', desc: 'Как развивалась ситуация — и куда ведёт' },
         { code: 'love', title: 'На отношения', emoji: '💞', tier: 'included', desc: 'Твоё чувство, партнёр и связь между вами' },
       ];
     }
@@ -19,7 +64,7 @@
 
   app.openSpreadPicker = function() {
     const p = this.chat.pending;
-    if (!p || !p.spreads || !p.spreads.length) { this.toast('Схемы ещё подгружаются…'); return; }
+    if (!p || !p.spreads || !p.spreads.length) { this.toast(tarotT('schemesLoading')); return; }
     haptic('light');
     const sel = p.spread || 'three';
     const rows = p.spreads.map(s => `
@@ -27,24 +72,25 @@
            data-act="pick-choose" data-code="${s.code}" data-owned="${s.owned ? 1 : 0}">
         <div class="sp-pick-ico sp-pick-scheme">${spreadScheme(s.code)}</div>
         <div class="sp-pick-main">
-          <div class="sp-pick-title">${esc(s.title)}${s.tier === 'premium' ? `<span class="sp-pick-lock">🔒 ${s.price_crystals ? s.price_crystals + ' ✦' : 'премиум'}</span>` : ''}</div>
-          <div class="sp-pick-desc">${esc(s.hint || s.desc || '')}</div>
+                     <div class="sp-pick-title">${esc(tarotSpreadText(s, 'title'))}${s.tier === 'premium' ? `<span class="sp-pick-lock">🔒 ${s.price_crystals ? s.price_crystals + ' ✦' : (tarotLang() === 'en' ? 'premium' : 'премиум')}</span>` : ''}</div>
+          <div class="sp-pick-desc">${esc(tarotSpreadText(s, 'hint', s.desc || ''))}</div>
         </div>
         <div class="sp-pick-meta">
-          <span class="sp-pick-cards">${s.cards} карт</span>
+          <span class="sp-pick-cards">${s.cards} ${esc(tarotT('cards'))}</span>
+
           ${s.code === sel ? '<span class="sp-pick-check">✓</span>' : '<span class="sp-pick-radio"></span>'}
         </div>
       </div>`).join('');
     this.showModal(`
       <div class="picker-head">
         <div>
-          <div class="picker-title">🎴 Схема расклада</div>
-          <div class="picker-sub">Листай, читай описание и выбирай</div>
+          <div class="picker-title">${esc(tarotT('pickerTitle'))}</div>
+          <div class="picker-sub">${esc(tarotT('pickerSub'))}</div>
         </div>
         <button class="m-close" data-act="modal-close">✕</button>
       </div>
       <div class="picker-schemes">${rows}</div>
-      <div class="picker-note">Выбор вернёт тебя к вопросу в чате — задай его и тяни карты ✨</div>`, 'full');
+      <div class="picker-note">${esc(tarotT('pickerNote'))}</div>`, 'full');
   };
   // Выбор схемы из полноэкранного списка (премиум → мягкий модал «как открыть»)
 
@@ -54,12 +100,12 @@
     haptic('soft');
     const s = p.spreads.find(x => x.code === code);
     if (s && s.tier === 'premium' && !s.owned) {
-      this.showModal(`<h3>✨ ${esc(s.title)}</h3>
+      this.showModal(`<h3>✨ ${esc(tarotSpreadText(s, 'title'))}</h3>
         <button class="m-close" data-act="modal-close">✕</button>
         <div class="fc-adv" style="margin-top:4px">
-          Это премиум-расклад. Купи Кристаллы в лавке 💎 или приведи подругу — и получи доступ к нему.
+          ${esc(tarotT('premiumCopy'))}
         </div>
-        <button class="btn btn-primary" style="margin-top:14px" data-act="modal-close">Понятно ✨</button>`);
+        <button class="btn btn-primary" style="margin-top:14px" data-act="modal-close">${esc(tarotT('understood'))}</button>`);
       return;
     }
     p.spread = code;
@@ -91,7 +137,7 @@
     const qv = (q || '').trim();
     if (!qv) {
       // Inline-валидация: вопрос остаётся в фокусе сценария и не теряется.
-      p.err = 'Сформулируй вопрос картам — чем точнее, тем яснее ответ ✨';
+      p.err = tarotT('questionRequired');
       this.renderChat(document.getElementById('app-main'));
       return;
     }
@@ -105,7 +151,7 @@
         method: 'POST',
         body: JSON.stringify({ question: qv }),
       });
-      this.chat.messages.push({ role: 'user', text: 'Мой вопрос к картам: ' + qv });
+      this.chat.messages.push({ role: 'user', text: tarotT('savedQuestion') + qv });
       this.chat.pending = {
         kind: 'tarot-cards', question: qv, cards: r.cards, spread,
         positions: r.positions, ledger: r.ledger || null,
@@ -116,7 +162,7 @@
     } catch (e) {
       this.chat.pending = {
         kind: 'tarot-pick', spreads, spread, q: qv,
-        err: 'Колода пока не ответила. Попробуй ещё раз — вопрос уже сохранён.', drawing: false,
+        err: tarotT('drawFailed'), drawing: false,
       };
     }
     this.chat.busy = false;
@@ -132,7 +178,7 @@
     const next = Number.isInteger(p.nextReveal) ? p.nextReveal : p.revealed.filter(Boolean).length;
     if (i !== next) {
       haptic('soft');
-      this.toast('Открывай карты по порядку — так нить расклада собирается бережно.');
+      this.toast(tarotT('openInOrder'));
       return;
     }
     const card = document.querySelector('.tcard[data-i="' + i + '"]');
@@ -163,7 +209,7 @@
     const el = document.querySelector('.tarot-card-progress');
     if (!p || p.kind !== 'tarot-cards' || !el) return;
     const opened = p.revealed.filter(Boolean).length;
-    el.innerHTML = `<span>${opened} из ${p.cards.length}</span><i style="--tarot-progress:${(opened / p.cards.length) * 100}%"></i>`;
+    el.innerHTML = `<span>${opened} ${tarotT('progressOf')} ${p.cards.length}</span><i style="--tarot-progress:${(opened / p.cards.length) * 100}%"></i>`;
   };
 
   app.addInterpretBtn = function() {
@@ -174,23 +220,25 @@
     if (!p || p.kind !== 'tarot-cards' || !w || w.querySelector('[data-act="interpret"]')) return;
     const thread = document.createElement('section');
     thread.className = 'tarot-thread tarot-thread--revealed';
-    thread.setAttribute('aria-label', 'Нить расклада');
+    thread.setAttribute('aria-label', tarotT('threadKicker'));
     const ledger = p.ledger || {};
     const pairs = Array.isArray(ledger.adjacent_combinations) ? ledger.adjacent_combinations : [];
-    thread.innerHTML = `<div class="tarot-thread-kicker">НИТЬ РАСКЛАДА</div>
-      <p>Карты раскрылись. Сначала почувствуй, как роли откликаются вместе, а затем соберём личный смысл без поспешных выводов.</p>
+    thread.innerHTML = `<div class="tarot-thread-kicker">${esc(tarotT('threadKicker'))}</div>
+      <p>${esc(tarotT('threadCopy'))}</p>
       <div class="tarot-thread-map">${p.positions.map((pos, i) => {
         const c = p.cards[i] || {};
-        const orientation = c.reversed ? ' · перевёрнутая' : ' · прямая';
-        return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}${esc(orientation)}</span>`;
+        const orientation = tarotLang() === 'en'
+          ? (c.reversed ? ' · reversed' : ' · upright')
+          : (c.reversed ? ' · перевёрнутая' : ' · прямая');
+        return `<span><b>${esc(tarotPositionText(p.spread, pos, i))}:</b> ${esc(c.name || (tarotLang() === 'en' ? 'card' : 'карта'))}${esc(orientation)}</span>`;
       }).join('')}</div>
-      <div class="tarot-proof"><b>Доказательная карточка</b><span>Колода: ${esc(ledger.deck_id || 'RWS')}</span><span>Ledger: ${esc(ledger.version || 'не указан')} · checksum ${esc(ledger.checksum || '—')}</span>${pairs.length ? `<div class="tarot-proof__pairs">${pairs.map(pair => `<span>${esc(pair.left)} + ${esc(pair.right)} · ${esc(pair.rule)}</span>`).join('')}</div>` : ''}<small>Это подтверждает состав и порядок расклада; теперь раскрой его сюжет через позиции и свой вопрос.</small></div>`;
+      <div class="tarot-proof"><b>${esc(tarotT('proof'))}</b><span>${esc(tarotT('deck'))}: ${esc(ledger.deck_id || 'RWS')}</span><span>${esc(tarotT('ledger'))}: ${esc(ledger.version || tarotT('notSpecified'))} · checksum ${esc(ledger.checksum || '—')}</span>${pairs.length ? `<div class="tarot-proof__pairs">${pairs.map(pair => `<span>${esc(pair.left)} + ${esc(pair.right)} · ${esc(pair.rule)}</span>`).join('')}</div>` : ''}<small>${esc(tarotT('proofCopy'))}</small></div>`;
     w.appendChild(thread);
     const b = document.createElement('button');
     b.className = 'btn btn-primary tarot-interpret-btn';
     b.style.marginTop = '14px';
     b.dataset.act = 'interpret';
-    b.textContent = 'Собрать личный смысл';
+    b.textContent = tarotT('interpret');
     w.appendChild(b);
   };
 
@@ -232,7 +280,7 @@
       }, p.revealed.length * 120 + 750);
       // Во время ожидания показываем индикатор «раскрываю смысл…»
       if (inThread()) {
-        this.chat.messages.push({ role: 'assistant', text: '✨ Раскрываю смысл карт по очереди…' });
+        this.chat.messages.push({ role: 'assistant', text: tarotT('revealing') });
         this.renderChat(document.getElementById('app-main'));
       }
     } catch (e) {
@@ -257,7 +305,7 @@
             <div class="rc-top">
               <span style="font-size:18px">${r.cards && r.cards[0] ? r.cards[0].emoji : '🎴'}</span>
               <div style="flex:1;min-width:0">
-                <div class="rc-title">${esc(r.question || 'Расклад')}</div>
+                <div class="rc-title">${esc(r.question || tarotT('historyEmpty'))}</div>
                 <div class="rc-meta">${fmtDay(r.created_at.slice(0, 10))} · ${esc(r.spread || '')}</div>
               </div>
               <span class="rc-open">›</span>

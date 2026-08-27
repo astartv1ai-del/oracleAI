@@ -229,19 +229,16 @@ async def anonymize(db, tg_id: int) -> None:
         for table in ("orders", "payments", "entitlements", "crystal_ledger"):
             await db.execute(f"UPDATE {table} SET tg_id=0 WHERE tg_id=?", (tg_id,))
 
-        # Remove direct references from retained audit/webhook evidence when the
-        # JSON payload explicitly carries the deleted Telegram id.
+        # Retained audit rows are scrubbed by direct marker. Webhook bodies are
+        # never needed for settlement or idempotency, so clear every legacy raw
+        # payload rather than relying on a provider-specific tg_id field.
         marker = str(tg_id)
         await db.execute(
             "UPDATE admin_audit SET target='deleted-user', payload_json=NULL "
             "WHERE target=? OR payload_json LIKE ? OR payload_json LIKE ?",
             (marker, f'%"tg_id":{marker}%', f'%"tg_id": {marker}%'),
         )
-        await db.execute(
-            "UPDATE webhook_events SET payload=NULL "
-            "WHERE payload LIKE ? OR payload LIKE ?",
-            (f'%"tg_id":{marker}%', f'%"tg_id": {marker}%'),
-        )
+        await db.execute("UPDATE webhook_events SET payload=NULL WHERE payload IS NOT NULL")
 
 
 # ─────────────────────────── выборки и сегменты ──────────────────────────────

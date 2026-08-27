@@ -277,7 +277,8 @@ async def set_order_review(db, order_id: int, admin_id: int | None = None) -> bo
         if not row:
             return False
         try:
-            meta = json.loads(row["meta_json"] or "{}")
+            decoded_meta = json.loads(row["meta_json"] or "{}")
+            meta = decoded_meta if isinstance(decoded_meta, dict) else {}
         except (TypeError, ValueError):
             meta = {}
         if meta.get("review_status") == "manual_review":

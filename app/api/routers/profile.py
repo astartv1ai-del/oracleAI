@@ -150,9 +150,9 @@ class AccountDeletionIn(BaseModel):
     confirm: bool = Field(default=False)
 
 
-@router.get("/account/privacy")
+@router.get("/account/privacy", dependencies=[Depends(rate_limit("read"))])
 async def account_privacy(user=Depends(current_user)):
-    return {
+    payload = {
         "status": user["status"],
         "anonymization": {
             "delete_mode": "anonymize",
@@ -167,9 +167,14 @@ async def account_privacy(user=Depends(current_user)):
             {"key": "accounting_trace", "label": "Служебный платёжный trace", "exportable": False},
         ],
     }
+    return JSONResponse(content=payload, headers={
+        "Cache-Control": "no-store",
+        "Pragma": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
-@router.get("/account/export")
+@router.get("/account/export", dependencies=[Depends(rate_limit("read"))])
 async def export_account(user=Depends(current_user), db=Depends(get_db)):
     """Export a bounded, user-safe account view; never include raw private content."""
     payment_history = await billing.payment_history(db, user["tg_id"], limit=100)
@@ -182,7 +187,10 @@ async def export_account(user=Depends(current_user), db=Depends(get_db)):
         "privacy": "Raw chats, memory text, diary text and provider payloads are excluded from this export.",
     }
     return JSONResponse(content=payload, headers={
-        "Content-Disposition": 'attachment; filename="oracle-account-export.json"'
+        "Content-Disposition": 'attachment; filename="oracle-account-export.json"',
+        "Cache-Control": "no-store",
+        "Pragma": "no-cache",
+        "X-Content-Type-Options": "nosniff",
     })
 
 

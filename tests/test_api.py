@@ -591,9 +591,13 @@ async def test_payment_history_privacy_and_export_are_server_owned(client, db, u
     assert "tg_id" not in item and "payload" not in item
     privacy = await client.get("/api/account/privacy", params=as_user(user))
     assert privacy.status_code == 200
+    assert privacy.headers["cache-control"] == "no-store"
+    assert privacy.headers["x-content-type-options"] == "nosniff"
     assert privacy.json()["anonymization"]["delete_mode"] == "anonymize"
     exported = await client.get("/api/account/export", params=as_user(user))
     assert exported.status_code == 200
+    assert exported.headers["cache-control"] == "no-store"
+    assert exported.headers["x-content-type-options"] == "nosniff"
     body = exported.json()
     assert body["payment_history"][0]["status"] == "paid"
     assert "PRIVATE" not in json.dumps(body)
@@ -626,6 +630,8 @@ async def test_admin_reconciliation_and_notification_settings_are_owner_only(cli
     assert "items" in recon.json()
     forbidden = await client.get("/api/admin/reconciliation", params={"dev_user": user["tg_id"]})
     assert forbidden.status_code == 403
+    invalid_id = await client.get("/api/admin/reconciliation/0", params={"dev_user": 1})
+    assert invalid_id.status_code == 422
 
 
 async def test_admin_dashboard_and_users(client, db, user):
@@ -776,6 +782,38 @@ async def test_no_cache_on_html_and_api(client):
     for path in ("/", "/admin", "/api/health"):
         res = await client.get(path)
         assert res.headers.get("cache-control") == "no-cache", path
+
+
+async def test_miniapp_index_uses_source_assets_in_dev(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "dev_mode", True)
+    monkeypatch.delenv("BUNDLE_ASSETS", raising=False)
+    html = (await client.get("/")).text
+    assert '/static/styles.css?v=' in html
+    assert '/static/js/00-runtime.js?v=' in html
+    assert '/static/dist/' not in html
+
+
+async def test_miniapp_index_uses_hashed_bundles_in_production(client, monkeypatch):
+    from pathlib import Path
+
+    from app.config import settings
+
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / "miniapp" / "dist" / "manifest.json").read_text(encoding="utf-8")
+    )
+    monkeypatch.setattr(settings, "dev_mode", False)
+    response = await client.get("/")
+    assert response.status_code == 200
+    html = response.text
+    assert f'/static/dist/{manifest["css"]}' in html
+    assert f'/static/dist/{manifest["js"]}' in html
+    assert '/static/js/00-runtime.js?v=' not in html
+    assert '/static/styles.css?v=' not in html
+    bundle = await client.get(f'/static/dist/{manifest["js"]}')
+    assert bundle.status_code == 200
+    assert bundle.headers["cache-control"] == "public, max-age=31536000, immutable"
 
 
 async def test_admin_promo_batch(client, db):

@@ -240,6 +240,12 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
 
     sun = (chart or {}).get("sun") or {}
     sign = sun.get("sign", "твоего знака")
+    sign_for = {
+        "Овен": "Овна", "Телец": "Тельца", "Близнецы": "Близнецов",
+        "Рак": "Рака", "Лев": "Льва", "Дева": "Девы",
+        "Весы": "Весов", "Скорпион": "Скорпиона", "Стрелец": "Стрельца",
+        "Козерог": "Козерога", "Водолей": "Водолея", "Рыбы": "Рыб",
+    }.get(sign, sign)
     prefix = _name_prefix(user)
     sphere_title, _hint = _sphere_slot(user)
     moods = ["день ясности", "день тихой силы", "день знаков", "день выбора",
@@ -248,7 +254,7 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
            if card["reversed"] else
            "Карта прямого хода — смелый шаг в первой половине дня принесёт больше.")
     return (
-        f"🌅 {prefix}доброе утро! Сегодня для {sign} — {rnd.choice(moods)}.\n"
+        f"🌅 {prefix}доброе утро! Сегодня для {sign_for} — {rnd.choice(moods)}.\n"
         f"{moon['emoji']} Луна {moon['name']} (~{moon['day']} лунный день): "
         f"{moon['advice']}.\n"
         f"Карта дня: {card['emoji']} <b>{card['name']}</b> — {card['meaning']}.\n"
@@ -903,8 +909,22 @@ async def monthly_report(db, user) -> str:
                 f"✦ Я запомнила о тебе {len(memories)} важных вещей.\n\n"
                 f"Новый месяц — новое небо. Загляни утром за прогнозом ✨")
 
-    await readings_repo.save_report(db, user["tg_id"], "monthly",
-                                    "Итог месяца", body, period=period)
+    await readings_repo.save_report(
+        db, user["tg_id"], "monthly", "Итог месяца", body, period=period,
+        meta={
+            "evidence_schema_version": "monthly-evidence-v1",
+            "evidence_kind": monthly_evidence.kind,
+            "window_days": 30,
+            "readings_count": readings_n,
+            "diary_count": diary_n,
+            "streak_days": streak,
+            "memory_enabled": memory_enabled,
+            "recent_question_count": len(recent),
+            "repeated_question_count": len(repeats),
+            "privacy_note": "raw diary, memory and question text are not copied into report metadata",
+            "evidence_limits": list(monthly_evidence.limits),
+        },
+    )
     return body
 
 

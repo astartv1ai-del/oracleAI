@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from app.core import palm_full_scope, palm_landmarks, palm_vision
+from app.core import palm_full_scope, palm_landmarks, palm_lines, palm_vision
 
 
 def _image_bytes(kind: str) -> bytes:
@@ -33,6 +33,17 @@ def test_full_scope_catalogs_all_line_zones_and_requires_vision_adjudication():
     assert all(item["semantic_labeling"] == "vision_llm" for item in result["zone_evidence"].values())
     assert result["raw_edge_map_stored"] is False
     assert result["raw_mask_stored"] is False
+
+
+def test_onnx_ensemble_returns_explicit_model_agreement_and_no_raw_masks():
+    fixture = (Path(__file__).parent / "fixtures" / "palm" / "palm_hand.jpg").read_bytes()
+    result = palm_lines.analyze_ensemble(fixture)
+    assert result["model"] == "fp16_int8_ensemble"
+    assert result["status"] in {"detected", "no_lines", "needs_vision_review"}
+    assert result["ensemble"]["raw_masks_stored"] is False
+    assert set(result["lines"]) == {"heart_line", "head_line", "life_line"}
+    assert all("ensemble_agreement" in item and "bbox_iou_fp16_int8" in item
+               for item in result["lines"].values())
 
 
 def test_precheck_rejects_invalid_image_without_guessing():

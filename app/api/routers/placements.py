@@ -99,7 +99,9 @@ async def analyze_palm(request: Request, user=Depends(confirmed_age_user), db=De
             raise HTTPException(413, "фото слишком большое; максимум 8 МБ")
     image = await _read_limited_body(request, palm_core.MAX_IMAGE_BYTES)
     try:
-        result = await palm_core.analyze_and_save(db, user, image)
+        result = await palm_core.analyze_and_save(
+            db, user, image, content_type=content_type,
+        )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:  # noqa: BLE001

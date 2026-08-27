@@ -108,13 +108,13 @@ The production configuration gate is now stricter in code and tests, but real se
 
 ## References
 
-[1]: [P0_PRODUCTION_EXECUTION_PLAN.md](P0_PRODUCTION_EXECUTION_PLAN.md) — external gate procedures and evidence rules.  
+[1]: [P0_PRODUCTION_EXECUTION_PLAN.md](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) — external gate procedures and evidence rules.
 [2]: [ARCHITECTURE.md](ARCHITECTURE.md) — component boundaries and request/data flows.  
 [3]: [DEPLOYMENT.md](DEPLOYMENT.md) — production topology and configuration.  
 [4]: [SECURITY.md](SECURITY.md) — authentication, privacy, age, memory and payments.  
 [5]: [PRODUCTION_GAUNTLET.md](PRODUCTION_GAUNTLET.md) — logging findings and phase matrix.  
 [6]: [API_RESILIENCE_MATRIX.md](API_RESILIENCE_MATRIX.md) — negative-path and resilience contracts.  
 [7]: [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) — disposable backup/restore procedure.  
-[8]: [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md) — measured local baseline and LLM latency blocker.  
+[8]: [PERFORMANCE_BASELINE.md](EVIDENCE/PERFORMANCE_BASELINE_2026-08-27.md) — measured local baseline and LLM latency blocker.
 [9]: [DEPLOYMENT.md](DEPLOYMENT.md) — observability and incident procedures.  
 [10]: [LEGAL_REVIEW.md](LEGAL_REVIEW.md) — unresolved owner/legal launch facts.

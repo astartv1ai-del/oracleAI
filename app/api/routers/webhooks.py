@@ -53,6 +53,19 @@ async def _failure(db, provider: str, code: str, *,
 #: Насколько старую подпись принимаем. Защита от переигрывания перехваченного
 #: запроса: подпись сама по себе бессрочна.
 MAX_SIGNATURE_AGE = 300
+MAX_EVENT_ID_LENGTH = 128
+MAX_EVENT_KIND_LENGTH = 64
+
+
+def _bounded_event_id(value: object, *, label: str) -> str:
+    text = str(value or "")
+    if not text or len(text) > MAX_EVENT_ID_LENGTH:
+        raise ValueError(f"{label}_invalid")
+    return text
+
+
+def _bounded_kind(value: object) -> str:
+    return str(value or "unknown")[:MAX_EVENT_KIND_LENGTH]
 
 #: События, после которых доступ открывается. Только то, где реально прошли
 #: деньги: `subscription.updated` (смена плана/перенос даты) и
@@ -96,18 +109,19 @@ def verify_paddle(raw: bytes, header: str, secret: str) -> bool:
 
 
 async def _already_seen(db, event_id: str, provider: str, kind: str,
-                        payload: str) -> bool:
-    """True — событие уже обработано. Ключ идемпотентности на стороне БД."""
+                        payload: str | None = None) -> bool:
+    """True — событие уже обработано; raw provider body is intentionally discarded."""
     try:
         async with transaction(db):
             cur = await db.execute(
                 "INSERT OR IGNORE INTO webhook_events(event_id, provider, kind, "
                 "payload, created_at) VALUES(?,?,?,?,?)",
-                (event_id, provider, kind, payload[:8000], utcnow()))
+                (event_id[:MAX_EVENT_ID_LENGTH], provider[:32], kind[:MAX_EVENT_KIND_LENGTH],
+                 None, utcnow()))
         return not cur.rowcount
     except Exception as e:  # noqa: BLE001
         await _failure(db, provider, "idempotency_journal_unavailable", status_code=503)
-        log.error("журнал вебхуков недоступен: %s", e)
+        log.error("журнал вебхуков недоступен: %s", type(e).__name__)
         return False          # лучше обработать дважды, чем потерять оплату
 
 
@@ -142,12 +156,16 @@ async def paddle(request: Request, db=Depends(get_db),
     except ValueError as e:
         await _failure(db, "paddle", "body_not_json", status_code=400)
         raise HTTPException(400, "тело не JSON") from e
+    if not isinstance(body, dict):
+        await _failure(db, "paddle", "body_shape_invalid", status_code=400)
+        raise HTTPException(400, "некорректная структура тела")
 
-    event_id = str(body.get("event_id") or body.get("notification_id") or "")
-    kind = str(body.get("event_type") or "")
-    if not event_id:
-        await _failure(db, "paddle", "event_id_missing", status_code=400)
-        raise HTTPException(400, "нет event_id")
+    try:
+        event_id = _bounded_event_id(body.get("event_id") or body.get("notification_id"), label="event_id")
+    except ValueError:
+        await _failure(db, "paddle", "event_id_invalid", status_code=400)
+        raise HTTPException(400, "некорректный event_id")
+    kind = _bounded_kind(body.get("event_type"))
     # Do not claim the event before the entitlement transaction. If billing
     # fails, Paddle must be able to retry rather than seeing a false duplicate.
     if kind not in GRANTING_EVENTS:
@@ -156,9 +174,11 @@ async def paddle(request: Request, db=Depends(get_db),
         return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "ignored": kind}
 
     data = body.get("data") or {}
+    if not isinstance(data, dict):
+        await _failure(db, "paddle", "data_shape_invalid", status_code=400)
+        raise HTTPException(400, "некорректная структура data")
     if data.get("status") != "completed":
-        log.warning("вебхук %s имеет неожиданный статус %s", event_id,
-                    data.get("status"))
+        log.warning("Paddle webhook имеет неожиданный статус")
         duplicate = await _already_seen(
             db, event_id, "paddle", kind, raw.decode("utf-8", "ignore"))
         return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "ignored": "status"}
@@ -175,18 +195,18 @@ async def paddle(request: Request, db=Depends(get_db),
         await _failure(db, "paddle", "pending_order_binding_failed")
         return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "unmatched": True}
     if order["surface"] != "web" or order["kind"] != "plan":
-        log.error("вебхук %s с недопустимым типом заказа", event_id)
+        log.error("Paddle webhook с недопустимым типом заказа")
         return {"ok": True, "unmatched": True}
     tg_id = int(order["tg_id"])
     plan = await billing_repo.get_plan(db, order["sku"] or "")
     if not plan or not plan.get("is_active"):
-        log.error("вебхук %s для неактивного тарифа %s", event_id, order["sku"])
+        log.error("Paddle webhook для неактивного тарифа")
         return {"ok": True, "unmatched": True}
     order_meta = billing_svc._order_meta(order)
     expected_transaction = str(order_meta.get("paddle_transaction_id") or "")
     actual_transaction = str(data.get("id") or "")
     if expected_transaction and actual_transaction != expected_transaction:
-        log.error("вебхук %s не совпал с transaction_id заказа", event_id)
+        log.error("Paddle webhook не совпал с transaction_id заказа")
         return {"ok": True, "unmatched": True}
     expected_price = settings.paddle_price_id(order["sku"] or "")
     if expected_price:
@@ -195,7 +215,7 @@ async def paddle(request: Request, db=Depends(get_db),
             for item in (data.get("items") or []) if isinstance(item, dict)
         }
         if expected_price not in price_ids:
-            log.error("вебхук %s не совпал с price_id тарифа", event_id)
+            log.error("Paddle webhook не совпал с price_id тарифа")
             return {"ok": True, "unmatched": True}
     result = await billing_svc.apply_payment(
         db, order["payload"], charge_id=event_id, amount_stars=0,
@@ -205,8 +225,8 @@ async def paddle(request: Request, db=Depends(get_db),
     duplicate = await _already_seen(
         db, event_id, "paddle", kind, raw.decode("utf-8", "ignore"))
     if duplicate:
-        log.info("вебхук %s уже записан после идемпотентной обработки", event_id)
-    log.info("web-оплата: клиентка %s, тариф %s", tg_id, order["sku"])
+        log.info("Paddle webhook уже записан после идемпотентной обработки")
+    log.info("web-оплата успешно обработана")
     return {"ok": True, "granted": bool(result), "duplicate": duplicate}
 
 
@@ -232,16 +252,29 @@ async def cryptobot_webhook(request: Request, db=Depends(get_db)):
     except ValueError as e:
         await _failure(db, "cryptobot", "body_not_json", status_code=400)
         raise HTTPException(400, "тело не JSON") from e
+    if not isinstance(body, dict):
+        await _failure(db, "cryptobot", "body_shape_invalid", status_code=400)
+        raise HTTPException(400, "некорректная структура тела")
 
     payload_data = body.get("payload") or {}
+    if not isinstance(payload_data, dict):
+        await _failure(db, "cryptobot", "payload_shape_invalid", status_code=400)
+        raise HTTPException(400, "некорректная структура payload")
     update_type = str(payload_data.get("update_type") or "")
     invoice = payload_data.get("payload") or {}
     if not isinstance(invoice, dict):
         invoice = {}
-    invoice_id = str(invoice.get("invoice_id") or "")
+    try:
+        invoice_id = str(int(invoice.get("invoice_id")))
+        if int(invoice_id) <= 0 or len(invoice_id) > MAX_EVENT_ID_LENGTH:
+            raise ValueError
+    except (TypeError, ValueError):
+        await _failure(db, "cryptobot", "invoice_id_invalid", status_code=400)
+        raise HTTPException(400, "некорректный invoice_id")
+    update_type = _bounded_kind(update_type)
 
     if update_type != "invoice_paid":
-        event_key = f"{invoice_id}:{update_type or 'unknown'}"
+        event_key = f"{invoice_id}:{update_type}"
         duplicate = await _already_seen(
             db, event_key, "cryptobot", update_type or "unknown",
             raw.decode("utf-8", "ignore"))
@@ -258,18 +291,18 @@ async def cryptobot_webhook(request: Request, db=Depends(get_db)):
             raw.decode("utf-8", "ignore"))
         return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "unmatched": True}
     if order["kind"] != "crystals" or (order["surface"] or "") == "web":
-        log.error("крипто-вебхук %s с недопустимым заказом", invoice_id)
+        log.error("Crypto Pay webhook с недопустимым заказом")
         return {"ok": True, "unmatched": True}
 
     order_meta = billing_svc._order_meta(order)
     expected_invoice = str(order_meta.get("cryptobot_invoice_id") or "")
     if expected_invoice and expected_invoice != invoice_id:
-        log.error("крипто-вебхук %s не совпал с invoice_id заказа", invoice_id)
+        log.error("Crypto Pay webhook не совпал с invoice_id заказа")
         return {"ok": True, "unmatched": True}
     expected_asset = str(order_meta.get("asset") or "").upper()
     actual_asset = str(invoice.get("asset") or "").upper()
     if expected_asset and actual_asset and actual_asset != expected_asset:
-        log.error("крипто-вебхук %s не совпал с asset заказа", invoice_id)
+        log.error("Crypto Pay webhook не совпал с asset заказа")
         return {"ok": True, "unmatched": True}
     if str(invoice.get("status") or "paid").lower() != "paid":
         return {"ok": True, "unmatched": True}
@@ -279,11 +312,11 @@ async def cryptobot_webhook(request: Request, db=Depends(get_db)):
         amount_stars=0, provider="cryptobot",
         currency=str(invoice.get("fiat") or invoice.get("asset") or "USD"))
     await analytics.track(db, "crypto_payment", order["tg_id"],
-                          props={"sku": order["sku"], "invoice_id": invoice_id,
+                          props={"sku": order["sku"],
                                  "asset": actual_asset or expected_asset or "crypto"},
                           surface="bot")
     duplicate = await _already_seen(
         db, f"{invoice_id}:paid", "cryptobot", "invoice_paid",
         raw.decode("utf-8", "ignore"))
-    log.info("крипто-оплата: пользователь %s, пакет %s", order["tg_id"], order["sku"])
+    log.info("крипто-оплата успешно обработана")
     return {"ok": True, "granted": bool(result), "duplicate": duplicate}

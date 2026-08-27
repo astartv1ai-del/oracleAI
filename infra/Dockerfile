@@ -1,6 +1,15 @@
 # Runtime image for the complete OracleAI stack.
 # The same image is used by API, Telegram bot, Celery worker and Beat so that
 # every process runs identical application, LLM-agent and local-engine code.
+# Frontend bundles are built in a separate Node stage and copied into the Python image.
+FROM node:22.13.0-bookworm-slim AS frontend-builder
+WORKDIR /opt/oracle
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit
+COPY miniapp ./miniapp
+COPY scripts/build_frontend.mjs ./scripts/build_frontend.mjs
+RUN npm run build:frontend
+
 FROM python:3.12-slim-bookworm@sha256:0f5b26b9518d002b6173fd61daad821fa340635ebfec5bba471013f9ca114579
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -31,6 +40,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # is served by FastAPI as the public landing/SEO surface.
 COPY app ./app
 COPY miniapp ./miniapp
+COPY --from=frontend-builder /opt/oracle/miniapp/dist ./miniapp/dist
 COPY admin ./admin
 COPY web ./web
 COPY models ./models

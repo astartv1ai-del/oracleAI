@@ -534,10 +534,25 @@ async def _run_palm_scanner(db, user, args) -> str:
         score = float(quality.get("score") or 0)
     except (TypeError, ValueError):
         pass
-    usable = reading.get("status") == "complete" and score >= 0.6
+    precheck_score = quality.get("precheck_score", score)
+    try:
+        precheck_score = float(precheck_score or 0)
+    except (TypeError, ValueError):
+        precheck_score = 0.0
+    usable = reading.get("status") == "complete" and max(score, precheck_score) >= 0.45
     if not usable:
+        limitation = {
+            "status": reading.get("status") or "needs_photo",
+            "quality_state": "needs_photo",
+            "image_quality": quality,
+            "photo_assessment": reading.get("photo_assessment") or {},
+            "requires_view": reading.get("requires_view") or [],
+            "limitations": (reading.get("limitations") or [])[:8],
+            "rule": "UNKNOWN не превращается в OBSERVED; предложи только конкретную пересъёмку.",
+        }
         return ("кадр недостаточно качественный для разбора — предложи переснять ладонь целиком "
-                "при ровном свете, без бликов и фильтров")
+                "при ровном свете, без бликов и фильтров\n"
+                "[PALM_LIMITATION]" + json.dumps(limitation, ensure_ascii=False, separators=(",", ":")))
     zones = []
     for item in reading.get("observations") or []:
         topic = str(item.get("topic") or "unknown")
@@ -545,26 +560,33 @@ async def _run_palm_scanner(db, user, args) -> str:
             "topic": topic,
             "label": PALM_TOPIC_LABELS.get(topic, topic),
             "visibility": item.get("visibility", "unclear"),
+            "evidence_state": item.get("evidence_state", "unknown"),
             "confidence": item.get("confidence", 0),
             "summary": item.get("summary", ""),
         })
     payload = {
         "reading_id": reading.get("id"),
+        "evidence_contract_version": reading.get("evidence_contract_version", "palm-evidence-v1"),
+        "confidence_semantics": reading.get("confidence_semantics", "confidence is bounded visual support, not certainty"),
         "hand_side": reading.get("hand_side", "unknown"),
         "hand_shape_element": reading.get("hand_shape_element", "unknown"),
         "image_quality": {"score": round(score, 2), "issues": quality.get("issues") or [],
-                           "precheck_score": quality.get("precheck_score", score),
-                           "precheck_issues": quality.get("precheck_issues") or []},
+                           "precheck_score": round(precheck_score, 2),
+                           "precheck_issues": quality.get("precheck_issues") or [],
+                           "quality_gate": "degraded" if max(score, precheck_score) < 0.6 else "usable"},
         "visual_precheck": reading.get("visual_precheck") or {},
         "computer_vision": reading.get("computer_vision") or {},
         "zones": zones,
         "lines": reading.get("lines") or {},
         "mounts": reading.get("mounts") or {},
         "fingers": reading.get("fingers") or {},
+        "markings": reading.get("markings") or [],
+        "semantic_summary": reading.get("semantic_summary") or {},
         "interpretive_prompts": reading.get("interpretive_prompts") or [],
         "limitations": reading.get("limitations") or [],
         "rule": ("Традиционная хиромантия по видимому: не добавляй невидимые признаки, "
-                 "без медицинских выводов, предсказаний и сроков."),
+                 "без медицинских выводов, предсказаний и сроков. Учитывай semantic_summary и evidence_refs; "
+                 "degraded quality означает осторожную интерпретацию, а не право додумывать."),
     }
     return "[Полное сканирование ладони — evidence vision-наблюдений]\n" + json.dumps(
         payload, ensure_ascii=False, separators=(",", ":"))
@@ -632,11 +654,19 @@ async def _run_palm_history(db, user, args) -> str:
 # ---------------------------------------------------------------- skills
 
 async def _run_draw_tarot(db, user, args) -> str:
-    try:
-        requested = int(args.get("n", 3) or 3)
-    except (TypeError, ValueError):
+    args = args or {}
+    raw_requested = args.get("n", 3)
+    if isinstance(raw_requested, bool):
         return "число карт должно быть целым от 1 до 12"
-    n = max(1, min(requested, 12))
+    if isinstance(raw_requested, int):
+        requested = raw_requested
+    elif isinstance(raw_requested, str) and raw_requested.strip().isdigit():
+        requested = int(raw_requested.strip())
+    else:
+        return "число карт должно быть целым от 1 до 12"
+    if not 1 <= requested <= 12:
+        return "число карт должно быть целым от 1 до 12"
+    n = requested
     spread_code = str(args.get("spread", "") or "").strip()
     if spread_code and spread_code not in tarot.SPREADS:
         return "неизвестная схема расклада — выбери доступную схему из каталога"
@@ -659,11 +689,20 @@ async def _run_get_chart(db, user, args) -> str:
         chart = {}
     if not chart:
         return "карта ещё не построена — попроси клиентку пройти /start"
-    known = "точное" if user["birth_time_known"] else "НЕТОЧНОЕ (дома не использовать)"
-    lines = [await guide(db, "natal"), "", f"Время рождения: {known}",
-             astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))]
+    precision = str(chart.get("precision") or "")
+    angular = bool((chart.get("calculation") or {}).get("angular_data_available"))
+    if precision == "exact" and angular:
+        known = "точное; рассчитаны углы и дома"
+    elif precision == "time_without_location":
+        known = "время известно, но координаты не подтверждены (дома не использовать)"
+    elif precision == "date_only":
+        known = "дата без подтверждённого времени/полного часового контекста (дома не использовать)"
+    else:
+        known = "упрощённое/неполное (дома не использовать)"
+    lines = [await guide(db, "natal"), "", f"Точность рождения: {known}",
+             astro.chart_brief(chart, time_known=(precision == "exact" and angular))]
     houses = chart.get("houses") or []
-    if houses and user["birth_time_known"]:
+    if houses and angular and precision == "exact":
         lines.append("Куспиды домов: " + "; ".join(
             f"{h['n']}-й в {h['sign']}" for h in houses))
     return "\n".join(lines)
@@ -984,8 +1023,10 @@ async def _run_get_nakshatra(db, user, args) -> str:
 
 
 async def _run_get_vimshottari_dasha(db, user, args) -> str:
-    if not _user_field(user, "birth_date") or not _user_field(user, "birth_time"):
-        return "для точной Vimshottari Dasha нужны дата и подтверждённое время рождения"
+    if (not _user_field(user, "birth_date") or not _user_field(user, "birth_time")
+            or not bool(_user_field(user, "birth_time_known"))
+            or not _user_field(user, "tz")):
+        return "для точной Vimshottari Dasha нужны дата, подтверждённое время и часовой пояс рождения"
     try:
         result = vedic.get_vimshottari_dasha(
             user["birth_date"], user["birth_time"], _user_field(user, "tz"),
