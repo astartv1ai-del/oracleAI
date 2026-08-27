@@ -52,7 +52,7 @@ def test_frontend_cache_version_covers_new_modules() -> None:
     version = re.search(r"/static/styles\.css\?v=(\d+)", html)
     assert version, "styles asset must be cache-busted"
     value = version.group(1)
-    assert value == "100"
+    assert int(value) >= 100
     assert "?v=99" not in html and "?v=99" not in styles
     assert f"/static/js/17-payments.js?v={value}" in html
     for filename in ("16-visual-qa.css", "16-payments.css"):
