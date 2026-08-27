@@ -16,22 +16,37 @@
 | Разработка | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Ветки, стиль, тесты и требования к pull request. |
 | Релизы | [docs/CHANGELOG.md](docs/CHANGELOG.md) | История изменений с версии 2.0. |
 
-## Быстрый запуск
+## Быстрый запуск через Docker
+
+Docker Compose — основной способ запуска полного стека. Один общий образ содержит API, Telegram-бота, LLM-agent runtime, астрологический движок, palm/CV-модели, Mini App, admin-панель и public landing. Compose дополнительно запускает PostgreSQL + pgvector, Redis, Celery worker/Beat и Caddy.
 
 ```bash
 cp .env.example .env
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# В отдельном терминале: Telegram-бот
-python -m app.bot.main
-
-# В отдельном терминале: FastAPI, Mini App и публичный лендинг
-APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
+# Для Telegram-сценариев укажите BOT_TOKEN и ADMIN_ID.
+# Для облачного LLM укажите OPENAI_API_KEY или ANTHROPIC_API_KEY.
+make up
+curl http://localhost:8080/api/health
 ```
 
-Откройте `http://127.0.0.1:8080/?dev_user=<telegram_id>` только в локальном режиме разработки. Значение `DEV_MODE=1` запрещено в production, поскольку оно отключает проверку Telegram-подписи.[1]
+Порты разработки по умолчанию — `8080` для HTTP и `8443` для HTTPS. Откройте `http://localhost:8080/?dev_user=<telegram_id>` только при `APP_ENV=dev` и `DEV_MODE=1`; этот режим отключает проверку Telegram-подписи и запрещён в production.[1]
+
+Основные операции выполняются через Makefile:
+
+```bash
+make ps                         # состояние всех сервисов
+make logs                       # общие логи API, бота, worker, Beat, Redis и PostgreSQL
+make selfcheck                  # smoke-проверка из API-контейнера
+make worker-scale N=3          # масштабировать только Celery worker
+make down                      # остановить стек без удаления томов
+```
+
+Миграции PostgreSQL запускаются одноразовым сервисом `migrate` до API, бота, worker и Beat. Для локальной модели OpenAI-compatible используйте отдельный профиль после заполнения `CUSTOM_LLM_BASE_URL`, `CUSTOM_LLM_MODEL` и `CUSTOM_LLM_MODEL_LITE`:
+
+```bash
+make up-local-llm
+```
+
+Если Docker недоступен, приложение по-прежнему можно запускать вручную по старой схеме из [docs/README.md](docs/README.md), но при этом Celery/Redis и PostgreSQL придётся поднимать отдельно.
 
 ## Технологическая основа
 
@@ -39,9 +54,9 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 |---|---|
 | Клиент | Telegram Mini App, Vanilla JavaScript, модульный CSS, Telegram WebApp API. |
 | Сервер | Python, FastAPI, Pydantic, aiogram. |
-| Хранилище | SQLite в WAL-режиме, схема и обратимые миграции. |
+| Хранилище | PostgreSQL + pgvector в Docker; SQLite/WAL остаётся fallback для offline/dev и тестов. |
 | AI | Резервируемая цепочка custom / Anthropic / OpenAI и офлайн-ответы. |
-| Инфраструктура | Docker Compose, Caddy, healthcheck, Sentry и резервное копирование. |
+| Инфраструктура | Docker Compose, Caddy, healthcheck, Sentry, PostgreSQL, Redis, Celery и encrypted backup-профиль. |
 
 ## Ключевые команды
 

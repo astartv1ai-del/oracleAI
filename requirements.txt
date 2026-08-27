@@ -41,3 +41,6 @@ opencv-python-headless>=4.10.0
 # PDF-разборы (товар для маркетплейсов). Диапазон сознательно: системные
 # libcairo2/libpango ставятся в infra/Dockerfile; локально пакет опционален.
 weasyprint>=62.0
+
+# MediaPipe Tasks runtime for the vendored hand_landmarker.task asset.
+mediapipe==1.0.1

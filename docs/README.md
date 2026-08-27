@@ -46,9 +46,25 @@
 | [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
 | [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 
+## Docker-first запуск
+
+Для полного стека нужен Docker Engine с Compose v2. Из корня репозитория выполните:
+
+```bash
+cp .env.example .env
+# Заполните BOT_TOKEN/ADMIN_ID и ключ хотя бы одного LLM-провайдера при необходимости.
+make up
+make ps
+make selfcheck
+```
+
+Compose поднимает PostgreSQL + pgvector, Redis, одноразовую миграцию, API, Telegram-бота, Celery worker/Beat и Caddy. Общий application image также содержит Mini App, admin, landing, astrology engine, palm ONNX/MediaPipe assets и LLM runtime. Порты dev по умолчанию: `8080` (HTTP) и `8443` (HTTPS). Операционные команды собраны в корневом `Makefile`.
+
+Для optional локального OpenAI-compatible LLM сначала задайте `CUSTOM_LLM_BASE_URL=http://ollama:11434/v1`, `CUSTOM_LLM_MODEL` и `CUSTOM_LLM_MODEL_LITE`, затем выполните `make up-local-llm`.
+
 ## Локальная среда
 
-Для работы нужен Python 3.11+ и доступ к Telegram-боту только при проверке настоящей авторизации. Установка зависимостей и создание `.env` выполняются один раз.
+Для ручного запуска без Docker нужен Python 3.11+ и доступ к Telegram-боту только при проверке настоящей авторизации. Установка зависимостей и создание `.env` выполняются один раз.
 
 ```bash
 cd /path/to/oracleAI

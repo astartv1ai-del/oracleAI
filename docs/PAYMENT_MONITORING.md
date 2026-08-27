@@ -69,3 +69,17 @@ Mini App теперь запрашивает `/api/shop/payment-history`, кот
 [6]: https://docs.ton.org/applications/payments/overview "TON payment processing overview"
 
 Для ссылок на кабинеты provider можно задать `TELEGRAM_STARS_DASHBOARD_URL`, `CRYPTOBOT_DASHBOARD_URL` и `PADDLE_DASHBOARD_URL`. Сервер принимает только HTTP(S) URL без username/password, обрезает длину и отдаёт их как обычные external links с `noopener noreferrer`; если переменная не задана, кнопка не отображается.
+
+## Security audit privacy/reconciliation and provider status — 2026-08-27
+
+Проведён отдельный аудит новых endpoint-ов `/api/account/privacy`, `/api/account/export`, `/api/account/delete`, `/api/admin/reconciliation*` и `/api/admin/payment-notifications`. Privacy routes используют signed Telegram identity через `current_user`; deletion требует отдельное `confirm=true` и write rate limit. Export/privacy responses теперь имеют `Cache-Control: no-store`, `Pragma: no-cache` и `X-Content-Type-Options: nosniff`; export дополнительно ограничен read rate limit. Reconciliation routes защищены router-wide admin rate limit и server-side owner check; `order_id` ограничен положительным 32-bit integer. Export сверки содержит только aggregate status/provider states/counters, без order IDs, payloads, Telegram IDs и secrets.
+
+В ходе аудита обнаружено и исправлено хранение raw provider bodies: прежний idempotency journal записывал первые 8 KB Paddle/Crypto Pay payload в `webhook_events.payload`. Теперь event ID/kind/provider сохраняются для idempotency/timeline, а payload всегда `NULL`. Named migration `2026_08_webhook_payload_redaction` очищает legacy rows; account anonymization также очищает любые оставшиеся legacy webhook bodies, даже если provider payload не содержит `tg_id`.
+
+Для Crypto Pay исправлены две интеграционные ошибки. Webhook HMAC теперь использует SHA256(app token) как ключ и подписывает непроцессированное тело запроса; outbound API использует официальный `Crypto-Pay-API-Token` header. Invoice IDs, Paddle event IDs и event kinds ограничены и валидируются, malformed JSON shapes получают bounded 400, а Crypto Pay analytics больше не сохраняет invoice ID. Логи webhook больше не выводят Telegram ID/provider invoice ID. Health monitor остаётся read-only: `getBalance` не меняет orders, payments, entitlements или ledger.
+
+Persisted notification settings и order `meta_json` теперь нормализуются безопасно: повреждённые часы/cooldown откатываются к defaults, строка `"false"` не превращается в truthy boolean, а malformed/list metadata не вызывает `AttributeError` при recheck. Общий response cache middleware больше не перезаписывает endpoint-specific `no-store`.
+
+По состоянию репозитория отсутствуют tracked production log files или live provider delivery records. Проверены только код, тестовые fixtures, миграции и документация. Реальные Crypto Pay/Paddle credentials, dashboard delivery history, webhook retries, balance calls и provider logs в этой среде недоступны и не имитировались.
+
+Official provider contracts used during audit: Crypto Pay API documents `Crypto-Pay-API-Token`, SHA256-derived webhook HMAC and webhook retry/disable behavior; Paddle documents notification-destination-specific secrets, raw-body HMAC and `transaction.completed` fulfillment. Production sandbox evidence remains an external release gate.
