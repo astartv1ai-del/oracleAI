@@ -15,6 +15,8 @@
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
 | [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
 | [LLM_AGENT_TECHNICAL_AUDIT.md](LLM_AGENT_TECHNICAL_AUDIT.md) | AI, backend, QA, privacy | Полная карта agent prompts, memory/context integrity, tools/skills, conflict handling и palm vision pipeline. |
+| [AI_ONBOARDING_GAUNTLET.md](AI_ONBOARDING_GAUNTLET.md) | Все владельцы релиза | Машиночитаемый evidence ledger для AI, onboarding, Telegram, admin и visual surfaces. |
+| [AI_SYSTEM_FINAL_REVIEW.md](AI_SYSTEM_FINAL_REVIEW.md) | Release, QA, security | Финальный локальный review с тестами, verdict и конкретными внешними blockers. |
 | [PALM_ENGINE_RESEARCH.md](PALM_ENGINE_RESEARCH.md) | AI, CV, legal, product | Исследование palm-line engines, лицензий, model contracts и безопасного integration boundary. |
 | [LAUNCH_GOVERNANCE.md](LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
 | [PRODUCTION_READINESS_AND_LAUNCH_PLAN.md](PRODUCTION_READINESS_AND_LAUNCH_PLAN.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |

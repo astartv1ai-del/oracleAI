@@ -149,7 +149,12 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
             messages = build_bounded_history(history, question,
                                               recent_limit=history_limit)
 
+            allowed_tools = frozenset(spec.skills)
+
             async def executor(name: str, args: dict) -> str:
+                if name not in allowed_tools:
+                    log.warning("агент %s запросил запрещённый инструмент %s", spec.code, name)
+                    return "инструмент не разрешён для этого проводника — продолжи без него"
                 tool_args = dict(args or {})
                 if name == "activate_skill":
                     # The model can choose only a skill name; the active agent

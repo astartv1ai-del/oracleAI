@@ -6,6 +6,9 @@
 
 ### Added
 
+- Добавлены `AI_ONBOARDING_GAUNTLET.md` и `AI_SYSTEM_FINAL_REVIEW.md` как evidence contracts для AI, onboarding, Telegram и admin release review.
+- Добавлены regression tests для invalid-time, unknown-city и chart-failure recovery в Telegram onboarding.
+- Добавлен runtime regression test на отказ от model-generated tool call вне allow-list текущего агента.
 - Добавлены versioned JSON-контракты для natal, synastry, transit, composite и solar returns product paths.
 - Добавлены owner-scoped маршруты `POST /api/synastry`, `POST /api/transits`, `POST /api/composite` и `POST /api/returns` с явными precision-gates.
 - Mini App получил отдельные journeys «Полная синастрия», «Транзиты», «Композит пары» и «Солнечный возврат»; Astrologer agent получает deterministic evidence для всех путей.
@@ -44,7 +47,8 @@
 - Добавлены synthetic memory evaluator, API resilience matrix, PDF golden-case runner, Tarot contract tests, disposable backup/restore drill and directional chart/Tarot/memory/PDF performance benchmark.
 - Account deletion получил confirm-gated idempotent API contract; anonymization clears user history and disables memory, push and age flags. Memory recall cache now respects requested result limits.
 - Playwright visual baseline расширен до chart/history/memory/Tarot states, reduced-motion reference and seeded synthetic data; localized accessible names added for the previously failing inputs and tool controls.
-- Agent prompt/context hardening централизовал untrusted wrappers для memory, profile summaries, diary и evidence blocks; добавлен deterministic consistency gate против взаимоисключающих start/stop directives, а pre-tool fallback теперь intent-gated для chart/transit calls.
+- Agent prompt/context hardening централизовал untrusted wrappers для memory, profile summaries, diary и evidence blocks; runtime теперь дополнительно отклоняет forbidden model tool calls по server-side agent allow-list; добавлен deterministic consistency gate против взаимоисключающих start/stop directives, а pre-tool fallback теперь intent-gated для chart/transit calls.
+- Telegram onboarding больше не принимает произвольную невалидную строку времени как «время неизвестно»; неизвестный город и сбой расчёта карты оставляют FSM на retryable city state с локализованным объяснением.
 - Mira получил topic-aware reshoot guidance, explicit `reading_id` retrieval и optional integrity-checked ONNX line evidence helper с vendored MIT model variants; raw masks не сохраняются, hard precheck skips heavy CV, а LLM остаётся авторитетом для видимого изображения и uncertainty.
 - Последний bounded live synthetic LLM run: 12/12 cases, 0 critical violations, mean 0.9167, language 1.0, next-step 1.0, calibration 0.8; p95 25.088 s против цели 15 s остаётся staging blocker. Palm-line CPU baseline: fp16 около 8.35 s p50, int8 остаётся отдельным quality tradeoff.
 - Добавлен явный authenticated boot recovery state: Mini App больше не показывает полноценный home shell после неуспешного `/api/me`, а предлагает повторить вход внутри Telegram.

@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.core import memory, palm_lines, skills
 from app.core.agents.base import build_system_prompt
 from app.core.agents.specs import get
+from app.core.agents import runtime
 from PIL import Image, ImageDraw
 import io
 
@@ -120,6 +121,22 @@ async def test_mira_photo_guide_is_topic_aware_and_actionable(db, user):
     assert "приблизься" in guidance
     assert "цифровой зум" in guidance
 
+
+
+async def test_runtime_rejects_forbidden_model_tool_call(monkeypatch, db, user):
+    captured = {}
+
+    async def fake_run_agent(system, messages, tools, execute, **kwargs):
+        captured["result"] = await execute("get_chart", {})
+        return "Готовый безопасный ответ на вопрос пользователя. " * 8
+
+    monkeypatch.setattr(runtime.llm, "enabled", lambda: True)
+    monkeypatch.setattr(runtime.llm, "run_agent", fake_run_agent)
+
+    answer = await runtime.answer(db, user, "Расскажи о моём раскладе", agent="tarot")
+
+    assert "не разрешён" in captured["result"]
+    assert "Готовый безопасный ответ" in answer
 
 
 def test_consistency_gate_rejects_mutually_exclusive_start_directives():
