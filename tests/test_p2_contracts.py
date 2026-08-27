@@ -31,7 +31,7 @@ def test_payment_locale_dictionaries_have_matching_keys() -> None:
     ru_keys = set(re.findall(key_pattern, match.group(1)))
     en_keys = set(re.findall(key_pattern, match.group(2)))
     assert ru_keys == en_keys
-    assert {"heroCopy", "paymentPassed", "paymentFailed", "payProduct"} <= ru_keys
+    assert {"heroCopy", "paid", "paymentFailed", "pay"} <= ru_keys
 
 
 def test_p2_register_keeps_unperformed_external_gates_explicit() -> None:
