@@ -9,6 +9,10 @@ __pycache__/
 /data/*
 !/data/llm_eval/
 !/data/llm_eval/*.jsonl
+!/data/palm_golden/
+!/data/palm_golden/*.json
+!/data/palm_golden/*.jsonl
+!/data/palm_golden/*.md
 # Local agent/index state — not project source
 .omc/
 .codegraph/

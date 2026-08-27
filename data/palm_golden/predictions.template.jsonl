@@ -1,0 +1,13 @@
+{
+  "record_id": "template-001",
+  "quality_state": "usable",
+  "view_type": "open_palm",
+  "observations": [
+    {
+      "topic": "palm_region",
+      "visibility": "unclear",
+      "evidence_state": "unknown",
+      "confidence": 0.0
+    }
+  ]
+}

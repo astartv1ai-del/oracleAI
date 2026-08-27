@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OracleAI Palm Golden Review Record",
+  "description": "Structural contract only. Raw images remain in protected review storage and are never committed here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_id",
+    "image_path",
+    "image_sha256",
+    "source",
+    "consent",
+    "split",
+    "capture",
+    "regions",
+    "expected_claims",
+    "prohibited_claims",
+    "adjudication"
+  ],
+  "properties": {
+    "record_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,95}$"},
+    "image_path": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.).+\\.(jpg|jpeg|png|webp)$"},
+    "image_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "license_or_permission", "collected_at"],
+      "properties": {
+        "kind": {"enum": ["consented_user", "synthetic_contract", "public_permitted", "internal_fixture"]},
+        "license_or_permission": {"type": "string", "minLength": 1},
+        "collected_at": {"type": "string", "minLength": 1}
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "raw_image_retention", "review_use"],
+      "properties": {
+        "status": {"enum": ["granted", "synthetic_no_person", "not_applicable"]},
+        "raw_image_retention": {"type": "string", "minLength": 1},
+        "review_use": {"const": true}
+      }
+    },
+    "split": {"enum": ["train", "dev", "test", "challenge"]},
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quality_state", "view_type", "hand_count", "hand_side", "expected_user_action"],
+      "properties": {
+        "quality_state": {"enum": ["usable", "reshoot_recommended", "invalid_image"]},
+        "view_type": {"enum": ["open_palm", "folded_edge", "unclear", "not_applicable"]},
+        "hand_count": {"type": "integer", "minimum": 0, "maximum": 2},
+        "hand_side": {"type": "string", "minLength": 1},
+        "expected_user_action": {"enum": ["analyze", "reshoot", "reject"]}
+      }
+    },
+    "regions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["region_id", "topic", "visibility", "evidence_state", "expected_confidence_band", "annotator_refs"],
+        "properties": {
+          "region_id": {"type": "string", "minLength": 1},
+          "topic": {"type": "string", "minLength": 1},
+          "visibility": {"enum": ["clear", "partial", "unclear", "not_visible"]},
+          "evidence_state": {"enum": ["observed", "inferred", "unknown", "not_supported"]},
+          "expected_confidence_band": {"enum": ["zero", "low", "medium", "high"]},
+          "annotator_refs": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "bbox_norm": {"type": "array", "prefixItems": [{"type": "number", "minimum": 0, "maximum": 1}, {"type": "number", "minimum": 0, "maximum": 1}, {"type": "number", "minimum": 0, "maximum": 1}, {"type": "number", "minimum": 0, "maximum": 1}], "minItems": 4, "maxItems": 4}
+        }
+      }
+    },
+    "expected_claims": {"type": "array", "items": {"type": "object"}},
+    "prohibited_claims": {"type": "array", "items": {"type": "string"}},
+    "adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "annotators", "domain_reviewer_required"],
+      "properties": {
+        "status": {"type": "string", "minLength": 1},
+        "annotators": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "domain_reviewer_required": {"const": true},
+        "domain_reviewer": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
