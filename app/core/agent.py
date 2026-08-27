@@ -240,6 +240,12 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
 
     sun = (chart or {}).get("sun") or {}
     sign = sun.get("sign", "твоего знака")
+    sign_for = {
+        "Овен": "Овна", "Телец": "Тельца", "Близнецы": "Близнецов",
+        "Рак": "Рака", "Лев": "Льва", "Дева": "Девы",
+        "Весы": "Весов", "Скорпион": "Скорпиона", "Стрелец": "Стрельца",
+        "Козерог": "Козерога", "Водолей": "Водолея", "Рыбы": "Рыб",
+    }.get(sign, sign)
     prefix = _name_prefix(user)
     sphere_title, _hint = _sphere_slot(user)
     moods = ["день ясности", "день тихой силы", "день знаков", "день выбора",
@@ -248,7 +254,7 @@ def _forecast_offline(user, chart: dict, sky: dict) -> str:
            if card["reversed"] else
            "Карта прямого хода — смелый шаг в первой половине дня принесёт больше.")
     return (
-        f"🌅 {prefix}доброе утро! Сегодня для {sign} — {rnd.choice(moods)}.\n"
+        f"🌅 {prefix}доброе утро! Сегодня для {sign_for} — {rnd.choice(moods)}.\n"
         f"{moon['emoji']} Луна {moon['name']} (~{moon['day']} лунный день): "
         f"{moon['advice']}.\n"
         f"Карта дня: {card['emoji']} <b>{card['name']}</b> — {card['meaning']}.\n"

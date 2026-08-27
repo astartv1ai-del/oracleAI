@@ -1,4 +1,34 @@
 /* chat: чат-агент, сессии, лунная неделя, тулбокс, отправка */
+const CHAT_I18N = {
+  ru: {
+    back: 'Вернуться к проводникам', toGuides: 'К проводникам', myChats: 'МОИ ЧАТЫ', newChat: 'Новый', startChat: 'Начать новый чат',
+    myChatsAria: 'Открыть мои чаты', conversations: 'Твои разговоры', sessionCopy: 'каждый чат хранит свой контекст', deleteChat: 'Удалить этот чат', deleteChatTitle: 'Удалить чат',
+    firstConversation: 'Первый разговор создастся, когда ты отправишь сообщение.', continueDialog: 'Здесь можно продолжить диалог.', chooseGuide: 'Выбор проводника', presence: 'рядом', addPalm: 'Добавить фото ладони', palmPhoto: 'Фото ладони', tools: 'Инструменты',
+    messageFor: 'Сообщение для', stop: 'Остановить запрос', send: 'Отправить сообщение', ideas: 'Идеи для своего вопроса', toolAria: 'Инструменты текущего проводника', toolsEyebrow: 'ИНСТРУМЕНТЫ ДИАЛОГА', toolsTitle: 'С чем поработаем?', toolsIntro: 'Выбери один точный шаг — результат появится прямо в этом разговоре.', closeTools: 'Закрыть инструменты', withGuide: 'С', inDialog: 'в этом диалоге',
+  },
+  en: {
+    back: 'Back to guides', toGuides: 'Back to guides', myChats: 'MY CHATS', newChat: 'New', startChat: 'Start a new chat',
+    myChatsAria: 'Open my chats', conversations: 'Your conversations', sessionCopy: 'each chat keeps its own context', deleteChat: 'Delete this chat', deleteChatTitle: 'Delete chat',
+    firstConversation: 'Your first conversation will appear when you send a message.', continueDialog: 'Continue the conversation here.', chooseGuide: 'Choose a guide', presence: 'here', addPalm: 'Add a palm photo', palmPhoto: 'Palm photo', tools: 'Tools',
+    messageFor: 'Message for', stop: 'Stop request', send: 'Send message', ideas: 'Ideas for your question', toolAria: 'Tools for this guide', toolsEyebrow: 'DIALOGUE TOOLS', toolsTitle: 'What would you like to explore?', toolsIntro: 'Choose one focused step — the result will appear in this conversation.', closeTools: 'Close tools', withGuide: 'With', inDialog: 'in this conversation',
+  },
+};
+const CHAT_AGENT_EN = {
+  oracle: { name: 'Lilith', title: 'Personal Oracle' },
+  astro: { name: 'Urania', title: 'Astrologer' },
+  tarot: { name: 'Madame Lenormand', title: 'Tarot reader' },
+  chiromant: { name: 'Mira', title: 'Palm guide' },
+};
+const CHAT_SUGGESTIONS_EN = {
+  oracle: ['Help me sort through what I feel today.', 'What is one gentle step I can take?', 'Help me name what matters right now.'],
+  astro: ['What does my chart say about my strengths?', 'Explain my current rhythm through the chart.', 'What can I notice about my Moon and Venus?'],
+  tarot: ['What matters most to notice in this situation?', 'How can I move gently in this relationship?', 'Where should I place my energy this week?'],
+  chiromant: ['Can you check the quality of my palm photo?', 'Show me the visible zones of my palm.', 'Compare my two palm readings without fate claims.'],
+};
+const chatLang = () => oracleLang() === 'en' ? 'en' : 'ru';
+const chatT = (key, fallback = '') => CHAT_I18N[chatLang()][key] || fallback || key;
+const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[agent.code]?.[field] : '') || agent[field] || '';
+
   app.openChat = function(key, after) {
     haptic('soft');
     // Панель инструментов не должна оставаться поверх нового диалога.
@@ -239,7 +269,10 @@
     const busy = this.chat.busy;
     const pending = this.chat.pending;
     const agents = this.agents.length ? this.agents : AGENT_FALLBACK;
-    const suggest = (TEMPLATES[a.code] || a.suggestions || []).slice(0, 3);
+    const suggest = (chatLang() === 'en' ? CHAT_SUGGESTIONS_EN[a.code] : null)
+      || (TEMPLATES[a.code] || a.suggestions || []).slice(0, 3);
+    const displayName = chatAgentField(a, 'name');
+    const displayTitle = chatAgentField(a, 'title') || a.role || (chatLang() === 'en' ? 'Guide' : 'Проводник');
     const currentFeatures = FEATURES[a.code] || [];
     const sessionCount = (this.chat.sessions || []).length;
     const last = messages[messages.length - 1];
@@ -252,21 +285,26 @@
         : `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${richMd(m.text)}${m.routing ? this.routingHtml(m.routing) : ''}${m.proof ? this.proofHtml(m.proof) : ''}</div>`).join('');
 
     // Первый экран чата — короткая, персональная точка входа вместо универсального hero-текста.
-    const introGuides = {
+    const introGuides = chatLang() === 'en' ? {
+      oracle: { kicker: 'A SPACE FOR CLARITY', title: 'Start with what matters most right now', text: 'Write one thought, feeling or question — together we will find a gentle orientation.' },
+      astro: { kicker: 'AN ASTROLOGICAL ORIENTATION', title: 'See your rhythm through the chart', text: 'Build your natal chart or ask about a coming period — using only the data available.' },
+      tarot: { kicker: 'A READING FOR YOUR QUESTION', title: 'Shape your question for the cards', text: 'Choose a spread and look at the situation from several calm perspectives.' },
+      chiromant: { kicker: 'A CAREFUL PALM READING', title: 'Start with what is actually visible', text: 'Share a palm photo: Mira will read visible zones and connect them to your question.' },
+    } : {
       oracle: { kicker: 'ТВОЁ ПРОСТРАНСТВО ДЛЯ ЯСНОСТИ', title: 'Начни с того, что сейчас важнее всего', text: 'Можно написать одну мысль, чувство или вопрос — вместе найдём бережный ориентир.' },
       astro: { kicker: 'АСТРОЛОГИЧЕСКИЙ ОРИЕНТИР', title: 'Посмотри на свой ритм через карту', text: 'Собери натальную карту или задай вопрос о ближайшем периоде — только на основе доступных данных.' },
       tarot: { kicker: 'РАСКЛАД ПО СЮЖЕТУ ВОПРОСА', title: 'Сформулируй вопрос к картам', text: 'Выберем схему и спокойно посмотрим на ситуацию с разных сторон.' },
-      chiromant: { kicker: 'БЕРЕЖНОЕ ЧТЕНИЕ ЛАДОНИ', title: 'Сначала — что действительно видно', text: 'Пришли фото ладони: Мира разберёт видимые зоны и свяжет их с твоим вопросом.' }
+      chiromant: { kicker: 'БЕРЕЖНОЕ ЧТЕНИЕ ЛАДОНИ', title: 'Сначала — что действительно видно', text: 'Пришли фото ладони: Мира разберёт видимые зоны и свяжет их с твоим вопросом.' },
     };
     const introGuide = introGuides[a.code] || introGuides.oracle;
     const introHtml = messages.length <= 1 ? `
-        <section class="agent-intro agent-intro--compact agent-intro--${esc(a.code)}" style="${this.agentThemeStyle(a, a.code)}" aria-label="Знакомство с проводником">
+        <section class="agent-intro agent-intro--compact agent-intro--${esc(a.code)}" style="${this.agentThemeStyle(a, a.code)}" aria-label="${esc(chatLang() === 'en' ? 'Guide introduction' : 'Знакомство с проводником')}">
           <span class="ai-kicker">${introGuide.kicker}</span>
           <div class="ai-persona">
             <div class="ai-face">${agentSprite(a, false)}</div>
             <div class="ai-persona-copy">
-              <div class="ai-name">${esc(a.name || 'Лилит')}</div>
-              <div class="ai-role">${esc(a.title || 'Личный Оракул')}</div>
+              <div class="ai-name">${esc(displayName || (chatLang() === 'en' ? 'Guide' : 'Проводник'))}</div>
+              <div class="ai-role">${esc(displayTitle)}</div>
             </div>
           </div>
           <div class="ai-next">
@@ -280,42 +318,43 @@
     main.innerHTML = `
       <div class="chat-shell chat-shell--${esc(a.code)}" style="${this.agentThemeStyle(a, a.code)}">
         <div class="chat-head">
-          <button class="back" data-act="back" aria-label="Вернуться к проводникам" title="К проводникам">‹</button>
+          <button class="back" data-act="back" aria-label="${esc(chatT('back'))}" title="${esc(chatT('toGuides'))}">‹</button>
           <div class="agent-avatar" style="${this.agentThemeStyle(a, a.code)}">${agentSprite(a, cheer)}</div>
           <div style="flex:1;min-width:0">
-            <h1 class="cname">${esc(a.name || 'Лилит')}</h1>
-            <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
+            <h1 class="cname">${esc(displayName || (chatLang() === 'en' ? 'Guide' : 'Проводник'))}</h1>
+            <div class="tsub">${esc(displayTitle)}</div>
             <div class="chat-proof-strip" role="group" aria-label="${homeT('profileQuality')}">
               <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
             </div>
           </div>
-          <button type="button" class="chat-thread-toggle" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="Открыть мои чаты">
+          <button type="button" class="chat-thread-toggle" data-act="sessions" aria-expanded="false" aria-controls="sess-panel" aria-label="${esc(chatT('myChatsAria'))}">
             <span class="chat-thread-toggle__icon">${sigilIcon('monthly')}</span>
-            <span class="chat-thread-toggle__copy"><small>МОИ ЧАТЫ</small><b>${sessionCount || 1} из 5</b></span>
+            <span class="chat-thread-toggle__copy"><small>${esc(chatT('myChats'))}</small><b>${sessionCount || 1} ${chatLang() === 'en' ? 'of' : 'из'} 5</b></span>
             <span class="chat-thread-toggle__chevron" aria-hidden="true">⌄</span>
           </button>
-          <button type="button" class="chat-new-session" data-act="new-session" aria-label="Начать новый чат" title="Начать новый чат">
-            ${sigilIcon('spark')}<span>Новый</span>
+          <button type="button" class="chat-new-session" data-act="new-session" aria-label="${esc(chatT('startChat'))}" title="${esc(chatT('startChat'))}">
+            ${sigilIcon('spark')}<span>${esc(chatT('newChat'))}</span>
           </button>
         </div>
-        <section class="sess-panel" id="sess-panel" style="display:none" aria-label="Мои чаты с ${esc(a.name || 'проводником')}">
+        <section class="sess-panel" id="sess-panel" style="display:none" aria-label="${esc(chatT('myChats'))} ${esc(displayName)}">
           <div class="sess-head">
-            <div><span>Твои разговоры</span><small>${sessionCount || 0} из 5 · каждый чат хранит свой контекст</small></div>
-            <button type="button" class="sess-create" data-act="new-session">${sigilIcon('spark')}<span>Новый</span></button>
+            <div><span>${esc(chatT('conversations'))}</span><small>${sessionCount || 0} ${chatLang() === 'en' ? 'of' : 'из'} 5 · ${esc(chatT('sessionCopy'))}</small></div>
+            <button type="button" class="sess-create" data-act="new-session">${sigilIcon('spark')}<span>${esc(chatT('newChat'))}</span></button>
           </div>
           <div class="sess-list">
             ${sessionCount ? (this.chat.sessions || []).map(s => `
               <div class="sess-row ${s.id === this.chat.tid ? 'active' : ''}" data-act="open-session" data-tid="${s.id}">
                 <span class="sess-status" aria-hidden="true"></span>
-                <div class="sess-copy"><div class="sess-t">${esc(s.title || 'Новый разговор')}</div><div class="sess-prev">${esc(s.last_text || 'Здесь можно продолжить диалог.')}</div></div>
-                <button type="button" class="sess-del" data-act="del-session" data-tid="${s.id}" aria-label="Удалить этот чат" title="Удалить чат">✕</button>
-              </div>`).join('') : '<div class="sess-empty">Первый разговор создастся, когда ты отправишь сообщение.</div>'}
+                <div class="sess-copy"><div class="sess-t">${esc(s.title || (chatLang() === 'en' ? 'New conversation' : 'Новый разговор'))}</div><div class="sess-prev">${esc(s.last_text || chatT('continueDialog'))}</div></div>
+                <button type="button" class="sess-del" data-act="del-session" data-tid="${s.id}" aria-label="${esc(chatT('deleteChat'))}" title="${esc(chatT('deleteChatTitle'))}">✕</button>
+              </div>            `).join('') : `<div class="sess-empty">${esc(chatT('firstConversation'))}</div>`}
+
           </div>
         </section>
-        <div class="agent-tabs" role="tablist" aria-label="Выбор проводника">
+        <div class="agent-tabs" role="tablist" aria-label="${esc(chatT('chooseGuide'))}">
           ${agents.slice(0, 4).map(b => `
             <button type="button" class="atab ${b.code === a.code ? 'active' : ''}" style="${this.agentThemeStyle(b, b.code)}" data-act="chat" data-chat="${b.code}" role="tab" aria-selected="${b.code === a.code ? 'true' : 'false'}">
-              <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(b.name.split(' ')[0])}</span>
+              <span class="atab-face"><img src="${esc(b.avatar || `/static/img/agents/${b.code}.jpg`)}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/img/oracle-mark.png'"></span><span>${esc(chatAgentField(b, 'name').split(' ')[0])}</span>
             </button>`).join('')}
         </div>
         <div class="chat-messages" id="chat-messages">
@@ -326,35 +365,35 @@
         </div>
         <div class="composer">
                       <div class="composer-context">
-            <span class="composer-presence"><i aria-hidden="true"></i>${esc(a.name || 'Проводник')} рядом</span>
+            <span class="composer-presence"><i aria-hidden="true"></i>${esc(displayName || chatT('presence'))} ${esc(chatT('presence'))}</span>
             <div class="composer-context-actions">
-              ${a.code === 'chiromant' ? '<button type="button" class="palm-quick-upload" data-act="palm-start" aria-label="Добавить фото ладони"><span aria-hidden="true">✋</span><span>Фото ладони</span></button>' : ''}
-              <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="Открыть палитру инструментов" aria-expanded="false" aria-controls="tool-expand"><span class="composer-tools-copy__icon">${sigilIcon('spark')}</span><span>Инструменты</span><span class="composer-tools-copy__chevron" aria-hidden="true">↑</span></button>
+              ${a.code === 'chiromant' ? `<button type="button" class="palm-quick-upload" data-act="palm-start" aria-label="${esc(chatT('addPalm'))}"><span aria-hidden="true">✋</span><span>${esc(chatT('palmPhoto'))}</span></button>` : ''}
+              <button type="button" class="composer-tools-copy" data-act="tool-toggle" aria-label="${esc(chatT('tools'))}" aria-expanded="false" aria-controls="tool-expand"><span class="composer-tools-copy__icon">${sigilIcon('spark')}</span><span>${esc(chatT('tools'))}</span><span class="composer-tools-copy__chevron" aria-hidden="true">↑</span></button>
             </div>
           </div>
 
           <div class="composer-top">
-            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
-            ${busy ? '<button class="send-btn" id="send-btn" data-act="cancel-chat" aria-label="Остановить запрос">×</button>' : '<button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение">➤</button>'}
+            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="${esc(chatLang() === 'en' ? 'Write to ' : 'Напиши ')}${esc(displayName || (chatLang() === 'en' ? 'your guide' : 'Проводник'))} — ${chatLang() === 'en' ? 'just as it is…' : 'как есть…'}" autocomplete="off" spellcheck="true" aria-label="${esc(chatT('messageFor'))} ${esc(displayName || (chatLang() === 'en' ? 'your guide' : 'Проводник'))}">${esc(this.chat.draft || '')}</textarea>
+            ${busy ? `<button class="send-btn" id="send-btn" data-act="cancel-chat" aria-label="${esc(chatT('stop'))}">×</button>` : `<button class="send-btn" id="send-btn" data-act="send" aria-label="${esc(chatT('send'))}">➤</button>`}
           </div>
           ${suggest.length ? `
-          <div class="suggest-chips" role="group" aria-label="Идеи для своего вопроса">
+          <div class="suggest-chips" role="group" aria-label="${esc(chatT('ideas'))}">
             ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
           </div>` : ''}
         </div>
         <div class="tool-expand" id="tool-expand" aria-hidden="true">
           <div class="te-mask" data-act="tool-toggle"></div>
-          <section class="te-sheet" role="dialog" aria-modal="true" aria-label="Инструменты текущего проводника">
+          <section class="te-sheet" role="dialog" aria-modal="true" aria-label="${esc(chatT('toolAria'))}">
             <div class="te-handle" aria-hidden="true"></div>
             <div class="te-head">
-              <div><span class="te-eyebrow">ИНСТРУМЕНТЫ ДИАЛОГА</span><span class="te-title">С чем поработаем?</span><p class="te-intro">Выбери один точный шаг — результат появится прямо в этом разговоре.</p></div>
-              <button class="te-close" data-act="tool-toggle" aria-label="Закрыть инструменты">✕</button>
+              <div><span class="te-eyebrow">${esc(chatT('toolsEyebrow'))}</span><span class="te-title">${esc(chatT('toolsTitle'))}</span><p class="te-intro">${esc(chatT('toolsIntro'))}</p></div>
+              <button class="te-close" data-act="tool-toggle" aria-label="${esc(chatT('closeTools'))}">✕</button>
             </div>
             <div class="te-body">
               ${currentFeatures.length ? `
                 <div class="te-group te-current">
                   <div class="te-current-title" style="${this.agentThemeStyle(a, a.code)}">
-                    <span>С ${esc(a.name || 'проводником')}</span><small>в этом диалоге</small>
+                    <span>${esc(chatT('withGuide'))} ${esc(displayName || (chatLang() === 'en' ? 'guide' : 'проводником'))}</span><small>${esc(chatT('inDialog'))}</small>
                   </div>
                   <div class="te-grid">
                     ${currentFeatures.map(f => `
@@ -376,33 +415,37 @@
     switch (p.kind) {
       case 'tarot-pick':
         return (() => {
-          const cur = p.spreads.find(s => s.code === p.spread) || { title: 'Расклад', emoji: '🎴', hint: 'Тапни, чтобы выбрать схему' };
-          const prompts = [
+          const cur = p.spreads.find(s => s.code === p.spread) || { title: tarotLang() === 'en' ? 'Reading' : 'Расклад', emoji: '🎴', hint: tarotLang() === 'en' ? 'Tap to choose a spread' : 'Тапни, чтобы выбрать схему' };
+          const prompts = tarotLang() === 'en' ? [
+            'What matters most to notice in this situation?',
+            'How can I move gently in this relationship?',
+            'Where should I place my energy this week?',
+          ] : [
             'Что сейчас важнее всего увидеть в этой ситуации?',
             'Как мне бережно действовать в отношениях?',
             'На что направить энергию в ближайшую неделю?',
           ];
           return `<div class="msg assistant">
             <div class="chat-widget tarot-picker-widget ${p.drawing ? 'is-drawing' : ''}">
-              <div class="tarot-kicker">ЛИЧНЫЙ РИТУАЛ</div>
-              <div class="w-title" style="margin:0">🎴 Выбери схему и задай вопрос</div>
-              <div class="w-sub tarot-picker-sub">Карты не дают готовых приказов — они помогают заметить то, что уже просится в твоё внимание.</div>
+              <div class="tarot-kicker">${esc(tarotT('ritualKicker'))}</div>
+              <div class="w-title" style="margin:0">🎴 ${esc(tarotT('chooseTitle'))}</div>
+              <div class="w-sub tarot-picker-sub">${esc(tarotT('pickerCopy'))}</div>
               <button class="pick-sel-btn" data-act="pick-open" ${p.drawing ? 'disabled' : ''}>
                 <span class="pick-sel-ico">${esc(cur.emoji || '🎴')}</span>
                 <span class="pick-sel-txt">
-                  <span class="pick-sel-t">${esc(cur.title)}</span>
-                  <span class="pick-sel-d">${esc(cur.hint || cur.desc || 'Выбрать схему расклада')}</span>
+                  <span class="pick-sel-t">${esc(tarotSpreadText(cur, 'title'))}</span>
+                  <span class="pick-sel-d">${esc(tarotSpreadText(cur, 'hint', cur.desc || (tarotLang() === 'en' ? 'Choose a reading spread' : 'Выбрать схему расклада')))}</span>
                 </span>
                 <span class="pick-sel-go">›</span>
               </button>
-              <div class="swipe-hint">Тапни — откроется весь список раскладов</div>
-              <div class="tarot-question-label">О чём хочешь спросить?</div>
+              <div class="swipe-hint">${esc(tarotT('tapToBrowse'))}</div>
+              <div class="tarot-question-label">${esc(tarotT('askAbout'))}</div>
               <div class="tarot-question-prompts">${prompts.map(value => `<button class="tarot-question-prompt${p.q === value ? ' is-active' : ''}" data-act="tarot-question" data-value="${q(value)}" ${p.drawing ? 'disabled' : ''}>${esc(value)}</button>`).join('')}</div>
               ${p.err ? `<div class="s-err">${esc(p.err)}</div>` : ''}
-              <textarea class="ipt" id="tarot-q" rows="2" aria-label="Сформулируй вопрос к картам" placeholder="Твой вопрос к картам…" ${p.drawing ? 'disabled' : ''}
+              <textarea class="ipt" id="tarot-q" rows="2" aria-label="${esc(tarotT('ariaQuestion'))}" placeholder="${esc(tarotT('placeholder'))}" ${p.drawing ? 'disabled' : ''}
                 style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
-              <div class="tarot-draw-status" aria-live="polite">${p.drawing ? '<span class="tarot-draw-orbit" aria-hidden="true"></span><span>Колода собирает твой расклад…</span>' : '<span class="tarot-draw-dot" aria-hidden="true"></span><span>После вопроса вытянем карты по одной.</span>'}</div>
-              <button class="btn btn-primary tarot-draw-btn" style="margin-top:10px" data-act="draw" ${p.drawing ? 'disabled aria-busy="true"' : ''}>${p.drawing ? 'Собираем расклад…' : 'Потянуть карты'}</button>
+              <div class="tarot-draw-status" aria-live="polite">${p.drawing ? `<span class="tarot-draw-orbit" aria-hidden="true"></span><span>${esc(tarotT('drawingStatus'))}</span>` : `<span class="tarot-draw-dot" aria-hidden="true"></span><span>${esc(tarotT('readyStatus'))}</span>`}</div>
+              <button class="btn btn-primary tarot-draw-btn" style="margin-top:10px" data-act="draw" ${p.drawing ? 'disabled aria-busy="true"' : ''}>${esc(p.drawing ? tarotT('drawingButton') : tarotT('drawButton'))}</button>
             </div></div>`;
         })();
 
@@ -411,13 +454,13 @@
         const total = p.cards.length;
         return `<div class="msg assistant">
           <div class="chat-widget tarot-cards-widget">
-            <div class="tarot-kicker">ТВОЙ РАСКЛАД</div>
+            <div class="tarot-kicker">${esc(tarotT('cardKicker'))}</div>
             <div class="tarot-cards-head">
               <div>
-                <div class="w-title">Открой карты по одной</div>
-                ${p.question ? `<div class="w-sub">Твой вопрос: <b>«${esc(p.question)}»</b></div>` : ''}
+                <div class="w-title">${esc(tarotT('openCards'))}</div>
+                ${p.question ? `<div class="w-sub">${esc(tarotT('questionLabel'))} <b>«${esc(p.question)}»</b></div>` : ''}
               </div>
-              <div class="tarot-card-progress" aria-label="Открыто карт: ${opened} из ${total}"><span>${opened} из ${total}</span><i style="--tarot-progress:${(opened / total) * 100}%"></i></div>
+              <div class="tarot-card-progress" aria-label="${esc(tarotT('openCards'))}: ${opened} ${esc(tarotT('progressOf'))} ${total}"><span>${opened} ${esc(tarotT('progressOf'))} ${total}</span><i style="--tarot-progress:${(opened / total) * 100}%"></i></div>
             </div>
             <div class="tarot-grid sh-${esc(p.spread || 'three')}">
               ${p.positions.map((pos, i) => {
@@ -425,29 +468,29 @@
                 const canReveal = i === (Number.isInteger(p.nextReveal) ? p.nextReveal : opened);
                 return `
                 <div class="tpos${canReveal && !p.revealed[i] ? ' is-next' : ''}" data-i="${i}">
-                  <button type="button" class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" aria-label="${p.revealed[i] ? esc(c.name) : 'Открыть карту: ' + esc(pos)}" ${p.revealed[i] ? 'aria-pressed="true"' : 'aria-pressed="false"'}>
+                  <button type="button" class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" aria-label="${p.revealed[i] ? esc(c.name) : tarotT('ariaOpenCard') + ': ' + esc(tarotPositionText(p.spread, pos, i))}" ${p.revealed[i] ? 'aria-pressed="true"' : 'aria-pressed="false"'}>
                     <span class="tcard-inner">
                       <span class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></span>
                       <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
-                        ${c.reversed ? '<span class="t-rev">↺ перевёрнута</span>' : ''}</span>
+                        ${c.reversed ? `<span class="t-rev">↺ ${esc(tarotT('reversed'))}</span>` : ''}</span>
                     </span>
                   </button>
-                  <div class="tpos-pos">${esc(pos)}</div>
+                  <div class="tpos-pos">${esc(tarotPositionText(p.spread, pos, i))}</div>
                   <div class="tpos-mean">${esc(c.name)}${c.reversed ? ' ↺' : ''}</div>
                   <div class="tpos-desc">${esc(c.meaning)}</div>
                 </div>`;
               }).join('')}
             </div>
-            ${p.allRevealed ? `<section class="tarot-thread tarot-thread--revealed" aria-label="Нить расклада">
-                <div class="tarot-thread-kicker">НИТЬ РАСКЛАДА</div>
-                <p>Карты раскрылись. Сначала почувствуй, как роли откликаются вместе, а затем соберём личный смысл без поспешных выводов.</p>
+            ${p.allRevealed ? `<section class="tarot-thread tarot-thread--revealed" aria-label="${esc(tarotT('threadKicker'))}">
+                <div class="tarot-thread-kicker">${esc(tarotT('threadKicker'))}</div>
+                <p>${esc(tarotT('threadCopy'))}</p>
                 <div class="tarot-thread-map">${p.positions.map((pos, i) => {
                   const c = p.cards[i] || {};
-                  return `<span><b>${esc(pos)}:</b> ${esc(c.name || 'карта')}</span>`;
+                  return `<span><b>${esc(tarotPositionText(p.spread, pos, i))}:</b> ${esc(c.name || (tarotLang() === 'en' ? 'card' : 'карта'))}</span>`;
                 }).join('')}</div>
               </section>
-              <button class="btn btn-primary tarot-interpret-btn" style="margin-top:14px" data-act="interpret">Собрать личный смысл</button>`
-              : `<div class="t-hint">Открывай карты по порядку: каждая роль подскажет, как читать следующую.</div>`}
+              <button class="btn btn-primary tarot-interpret-btn" style="margin-top:14px" data-act="interpret">${esc(tarotT('interpret'))}</button>`
+              : `<div class="t-hint">${esc(tarotT('threadHint'))}</div>`}
           </div></div>`;
       }
 

@@ -1,7 +1,7 @@
 # Local browser baseline
 
-**Date:** 2026-08-26  
-**URL:** `http://127.0.0.1:8080/?dev_user=10001`  
+**Date:** 2026-08-27
+**URL:** `http://127.0.0.1:8080/?dev_user=10001` (RU), `http://127.0.0.1:8080/?dev_user=10002` (EN)
 **Environment:** `APP_ENV=dev`, `DEV_MODE=1`, `LLM_PROVIDER=off`, disposable SQLite DB.
 
 The Mini App loaded with HTTP 200 and rendered the first-use surface without a visible browser extraction error. The page title is `OracleAI — твой мягкий ритуал дня`. The initial surface exposes profile, notifications, today, diary, four guide entry points (Lilith, Urania, Madame Lenormand, Mira), bottom navigation (Today, Dialogues, Profile), and an onboarding prompt with Start/Skip actions.
@@ -38,11 +38,11 @@ Pages 1–5 preserve the localized premium layout and the same corrected truth s
 
 ## Expanded visual baseline — deterministic Playwright capture
 
-The new harness `scripts/capture_visual_baseline.py` captured synthetic RU/EN age-gate, home, chat and profile states at 360×800, 390×844 and 430×932. Aggregate DOM checks passed for every state: no horizontal overflow, zero unnamed focusable controls and zero images without `alt` attributes.
+The harness `scripts/capture_visual_baseline.py` captures distinct server-side RU/EN synthetic identities at 360×800, 390×844 and 430×932. Covered states are age-gate, home, chat, payment, profile, chart/history/memory tabs and modals, and Tarot picker. The latest aggregate DOM report passed for every state: no horizontal overflow, zero unnamed focusable controls, zero images without `alt` attributes, and explicit expected-locale markers with the opposite hero marker absent.
 
-Visual inspection of the locally generated 390×844 RU home and chat captures shows clear hero hierarchy, a single primary CTA above the safe-area dock, a readable daily-ritual card, a stable bottom navigation, a focused current-agent card, proof badges and distinct tool chips. No obvious clipping or decorative layer obscures the primary action in these inspected states. Generated captures are kept outside the source tree.
+Visual inspection of the locally generated RU home and chat captures shows clear hero hierarchy, a single primary CTA above the safe-area dock, a readable daily-ritual card, a stable bottom navigation, a focused current-agent card, proof badges and distinct tool chips. The EN Tarot capture now shows English picker prompts, question placeholder, draw CTA, agent labels, composer presence, tools label and suggestion chips. No obvious clipping or decorative layer obscures the primary action in these inspected states. Generated captures are kept outside the source tree.
 
-Visual inspection of the locally generated 390×844 EN home capture confirms that the English hero, helper copy and navigation labels fit cleanly. The prior Russian helper-copy fallback was corrected in `HOME_I18N` and is protected by an English localization regression. Generated captures are kept outside the source tree.
+Visual inspection of the locally generated EN home and Tarot captures confirms that the English hero, helper copy, navigation labels, agent labels and Tarot picker copy fit cleanly. The prior Russian helper-copy fallback was corrected in `HOME_I18N`; the later mixed-language Tarot/chat-shell findings are now covered by explicit locale dictionaries and static regressions. Generated captures are kept outside the source tree.
 
 ## Unified archive profile capture
 
@@ -50,6 +50,6 @@ The latest profile screenshots at 390×844 remain visually stable: the existing 
 
 ## Browser runtime check — latest source
 
-The local Mini App loaded at `/?dev_user=10001` and exposed labeled controls for profile, notifications, daily ritual, four agents and the three-item dock. The deterministic harness confirms the RU/EN fallback copy is localized; the previous mixed-language English defect is no longer present. The first-use overlay was dismissed successfully using its visible skip control. Browser screenshot upload was unavailable in this run, so no additional manual visual claim is made from that interaction alone.
+The local Mini App loaded at both server-side locale identities and exposed labeled controls for profile, notifications, daily ritual, four agents and the four-item dock (Today/Guides/Pay/Mine). The deterministic harness confirms expected RU/EN copy for home, chat, Tarot and payment surfaces; it does not claim that all generated AI/user-authored message text is translated. The first-use overlay and chat guide were dismissed through explicit state setup for reproducible capture. Browser screenshot upload was unavailable in the interactive session; the Playwright artifacts and report are the reproducible local evidence.
 
 The browser reached the profile screen and exposed the expected tab controls (`Сводка`, `Карта`, `История`, `Память`). A subsequent click snapshot became stale and the browser session then returned to `about:blank`; this is recorded as a browser-session instability, not a product failure. The deterministic Playwright harness remains the authoritative visual/accessibility check and reports no overflow, unnamed focusable controls or missing image alt attributes.
