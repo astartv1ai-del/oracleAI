@@ -170,7 +170,7 @@ def analyze_ensemble(image_bytes: bytes, *, view_type: str | None = None) -> dic
             disagreements.append(name)
         combined = dict(first)
         combined["detected"] = stable
-        combined["ensemble_agreement"] = not (name in disagreements)
+        combined["ensemble_agreement"] = name not in disagreements
         combined["bbox_iou_fp16_int8"] = round(iou, 4)
         combined["confidence"] = round(min(float(first.get("confidence", 0)), float(second.get("confidence", 0))), 4)
         lines[name] = combined
