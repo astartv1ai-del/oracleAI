@@ -53,6 +53,10 @@ class ChatDenied(Exception):
         self.verdict = verdict
 
 
+class ChatRequestInProgress(Exception):
+    """The same idempotent request is already being processed."""
+
+
 async def _refund(db, user, verdict) -> None:
     """Возвращает списанное, если ответ так и не был получен."""
     if verdict.charge == limits.CRYSTALS:
@@ -81,7 +85,8 @@ def _proof_payload(spec, user, *, tools_used: list[str], mode: str) -> dict:
 
 async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
               surface: str = "bot", allow_paid: bool = True,
-              thread_id: int | None = None) -> dict:
+              thread_id: int | None = None,
+              idempotency_key: str | None = None) -> dict:
     """Задаёт вопрос агенту. Поднимает `ChatDenied`, если доступа нет.
 
     `thread_id` — конкретная сессия (многочатовой режим Mini App). Без него —
@@ -91,6 +96,21 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     question = (text or "").strip()[:MAX_QUESTION_LEN]
     if not question:
         raise ValueError("пустой вопрос")
+    request_key = (idempotency_key or "").strip()[:160]
+    if request_key:
+        claim = await dialog.claim_chat_request(db, user["tg_id"], request_key)
+        if claim["state"] == "completed":
+            return claim["response"]
+        if claim["state"] == "processing":
+            raise ChatRequestInProgress("этот вопрос уже обрабатывается")
+        if claim["state"] == "conflict":
+            raise ValueError("ключ запроса уже связан с другим пользователем")
+
+    async def finish_request(response=None, *, failed=False):
+        if request_key:
+            await dialog.finish_chat_request(
+                db, user["tg_id"], request_key, response, failed=failed,
+            )
     safety_level, safety_category = safety.classify(question)
     routing = route_agent(question)
     requested_agent = agent
@@ -118,6 +138,7 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
             db, analytics.E_FIRST_QUESTION, user["tg_id"],
             props={"agent": agent, "safety": "crisis"}, surface=surface,
         )
+        await finish_request(result)
         return result
 
     # Зона бюджета заперта на пользователя: два устройства не должны пройти
@@ -129,8 +150,10 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
             await analytics.track(db, analytics.E_LIMIT_HIT, user["tg_id"],
                                   props={"reason": verdict.reason, "agent": agent},
                                   surface=surface)
+            await finish_request(failed=True)
             raise ChatDenied(verdict)
         if not await limits.consume(db, user, verdict):
+            await finish_request(failed=True)
             raise ChatDenied(verdict)
 
         await dialog.save_message(
@@ -151,6 +174,7 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
                 trace=tool_trace)
     except Exception:
         await _refund(db, user, verdict)
+        await finish_request(failed=True)
         raise
     if level == safety.SOFTEN:
         await safety.record(db, user["tg_id"], category, "soften", question)
@@ -179,7 +203,7 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
         _spawn(agent_core.extract_memory_llm(db, user, question, answer))
 
     fresh = await users.get(db, user["tg_id"])
-    return {
+    response = {
         "answer": answer,
         "agent": spec.code,
         "requested_agent": requested_agent,
@@ -192,6 +216,8 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
         "allowance": (await limits.allowance(db, fresh,
                                              check_followup=False)).as_dict(),
     }
+    await finish_request(response)
+    return response
 
 
 async def _crisis_answer(db, user, question: str, category: str, agent: str,

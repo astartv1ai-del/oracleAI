@@ -68,11 +68,10 @@ async def _reset_api_rate_limits():
     """Внутрипроцессное состояние между тестами: API-лимитер накапливает корзину
     «write», кеш touch проносит last_seen между тестами, фоновые записи событий
     (G14) могут жить дольше теста и дёргать чужое соединение."""
-    from app.api import deps
     from app.core import memory
     from app.repo import users
-    from app.services import analytics
-    deps._hits.clear()
+    from app.services import analytics, rate_limit as rate_limit_service
+    rate_limit_service.reset_limiter_for_tests()
     users._last_seen_cache.clear()
     memory._recall_cache.clear()
     await analytics.drain()
