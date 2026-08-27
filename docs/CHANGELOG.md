@@ -17,6 +17,9 @@
 - Tarot finalization повторно проверяет владельца и не позволяет перезаписать уже сохранённую интерпретацию; malformed upload size headers для palm получают явный 400.
 - Добавлен формальный `tarot-replay-v1`: ledger восстанавливается из сохранённых карт, позиций и ориентаций, а checksum защищает исторический payload от незаметного изменения.
 - Добавлен `scripts.pdf_matrix` для локального PDF preflight: 6 детерминированных RU/EN exact/date-only, long-field и edge-latitude кейсов с внешними HTML/PDF артефактами и `summary.json`.
+- Добавлен privacy-safe `product_cost_events` ledger: server-owned SKU/catalog/channel/purpose dimensions, LLM retry/latency/token cost, delivery/refund/support categories, retention и product KPI aggregation; gross Stars не объявляются net revenue или contribution.
+- Добавлен воспроизводимый `scripts/domain_qa.py` и `ASTRONOMY_REFERENCE_QA.md`: 8/8 критических cross-implementation кейсов проходят, включая date-only и fail-closed ambiguous DST; external ephemeris authority comparison остаётся открытым.
+- Добавлен `P0_PRODUCTION_EXECUTION_PLAN.md` с owner-led процедурами, acceptance evidence, go/no-go gate, redaction policy и rollback для Telegram auth, payments, live LLM и backup/restore.
 
 
 ### Changed

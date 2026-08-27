@@ -183,7 +183,8 @@ async def voice_msg(message: Message, state: FSMContext, db):
         log.warning("голосовое не скачалось: %s", e)
         await message.answer("Не расслышала... напиши словами, милая 🌙")
         return
-    text = await llm.transcribe(buf.getvalue())
+    text = await llm.transcribe(
+        buf.getvalue(), db=db, tg_id=message.from_user.id, surface="bot")
     if not text:
         await message.answer("Я пока не слышу голоса — напиши свой вопрос текстом 🌙")
         return

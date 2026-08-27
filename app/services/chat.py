@@ -16,6 +16,7 @@ import logging
 from datetime import datetime, timezone
 
 from ..core import agent as agent_core
+from ..core import product_cost
 from ..core import agents, safety, tarot
 from ..core.agents.routing import DEFAULT_AGENT, route_agent
 from ..repo import analytics as analytics_repo
@@ -139,11 +140,14 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     allowance_line = _allowance_line(verdict)
     tool_trace: list[str] = []
     try:
-        answer = await agent_core.ask_oracle(
-            db, user, question, agent=spec.code, thread_id=thread["id"],
-            allowance_line=allowance_line,
-            extra_rules=safety.soften_rule(category) if level == safety.SOFTEN else "",
-            trace=tool_trace)
+        with product_cost.context(
+                sku=f"chat:{spec.code}", channel=surface if surface in {"bot", "miniapp"} else "system",
+                result_category="question", reference_id=f"thread:{thread['id']}"):
+            answer = await agent_core.ask_oracle(
+                db, user, question, agent=spec.code, thread_id=thread["id"],
+                allowance_line=allowance_line,
+                extra_rules=safety.soften_rule(category) if level == safety.SOFTEN else "",
+                trace=tool_trace)
     except Exception:
         await _refund(db, user, verdict)
         raise
@@ -156,6 +160,11 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     await analytics.track(db, analytics.E_QUESTION, user["tg_id"],
                           props={"agent": spec.code, "charge": verdict.charge},
                           surface=surface)
+    await product_cost.record_event(
+        db, event_kind="delivery", tg_id=user["tg_id"], sku=f"chat:{spec.code}",
+        channel=surface if surface in {"bot", "miniapp"} else "system",
+        result_category="question", status="delivered", units=1,
+        reference_id=f"thread:{thread['id']}")
     await analytics.track_once(
         db, analytics.E_FIRST_QUESTION, user["tg_id"],
         props={"agent": spec.code}, surface=surface,
@@ -296,14 +305,24 @@ async def interpret(db, user, reading_id: int, *, surface: str = "bot") -> str:
             (row["question"] or "").replace("Расклад «", "").rstrip("»"))
     positions = item["positions"][:len(cards)]
 
-    answer = await agent_core.interpret_reading(db, user, item["title"], cards,
-                                                positions,
-                                                question=row["question"] or None)
+    with product_cost.context(
+            sku=f"spread:{row['spread'] or 'unknown'}",
+            channel=surface if surface in {"bot", "miniapp"} else "system",
+            result_category="tarot", reference_id=f"reading:{reading_id}"):
+        answer = await agent_core.interpret_reading(
+            db, user, item["title"], cards, positions,
+            question=row["question"] or None)
     await readings.finish_reading(db, reading_id, user["tg_id"], answer)
     thread = await dialog.ensure_thread(db, user["tg_id"], "tarot")
     await dialog.save_message(db, user["tg_id"], "assistant", answer,
                               thread_id=thread["id"], agent="tarot",
                               surface=surface)
+    await product_cost.record_event(
+        db, event_kind="delivery", tg_id=user["tg_id"],
+        sku=f"spread:{row['spread'] or 'unknown'}",
+        channel=surface if surface in {"bot", "miniapp"} else "system",
+        result_category="tarot", status="delivered", units=1,
+        reference_id=f"reading:{reading_id}")
     return answer
 
 

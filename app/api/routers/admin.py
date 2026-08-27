@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ...config import settings
+from ...core import product_cost
 from ...data.session import healthcheck
 from ...repo import admin as admin_repo
 from ...repo import (analytics as analytics_repo, billing, comms, content, crm,
@@ -418,6 +419,13 @@ async def refund(order_id: int, ctx=Depends(require("grants")), db=Depends(get_d
     if charge_id and not await telegram.refund_star_payment(order["tg_id"], charge_id):
         raise HTTPException(502, "Telegram отказал в возврате")
     await billing.refund_order(db, order_id)
+    await product_cost.record_event(
+        db, event_kind="refund", tg_id=order["tg_id"],
+        sku=order["sku"] or order["kind"],
+        channel=order["surface"] if order["surface"] in {"bot", "miniapp", "web"} else "system",
+        result_category=order["kind"], status="refunded", units=1,
+        reference_id=f"order:{order_id}", order_id=order_id,
+        reason="provider_refund")
     await admin_repo.audit(db, ctx.tg_id, "order.refund", target=str(order_id),
                            payload={"tg_id": order["tg_id"],
                                     "stars": order["amount_stars"]})

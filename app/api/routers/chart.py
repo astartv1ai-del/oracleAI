@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from ...core import agent as agent_core
+from ...core import product_cost
 from ...core import astro, chart_rendering, geo, memory
 from ...core.chart_contract import public_calculation_contract
 from ...core.matrix import compute_matrix
@@ -428,6 +429,10 @@ async def build_report(kind: str, item: ReportIn | None = None,
     existing = await readings.get_report(db, user["tg_id"], kind,
                                         item.partner_date if kind == "synastry" else None)
     if existing and existing["body"] and not refresh:
+        await product_cost.record_event(
+            db, event_kind="delivery", tg_id=user["tg_id"], sku=f"report:{kind}",
+            channel="miniapp", result_category="report", status="delivered", units=1,
+            reference_id=f"report:{existing['id']}")
         return {"kind": kind, "title": existing["title"], "body": existing["body"],
                 "cached": True, "report_id": existing["id"]}
 
@@ -438,13 +443,19 @@ async def build_report(kind: str, item: ReportIn | None = None,
     if kind == "synastry" and not partner_date:
         raise HTTPException(400, "для синастрии нужна дата партнёра")
 
-    result = await agent_core.build_report(
-        db, user, kind, partner_date=partner_date,
-        partner_name=item.partner_name, force=refresh)
+    with product_cost.context(
+            sku=f"report:{kind}", channel="miniapp", result_category="report"):
+        result = await agent_core.build_report(
+            db, user, kind, partner_date=partner_date,
+            partner_name=item.partner_name, force=refresh)
     if not await billing.consume_entitlement(db, user["tg_id"], "report", kind):
         # право исчезло между проверкой и списанием (второе устройство) —
         # отчёт уже сохранён, отдаём его, повторно не спишем
         pass
     await analytics.track(db, "report_built", user["tg_id"],
                           props={"kind": kind}, surface="miniapp")
+    await product_cost.record_event(
+        db, event_kind="delivery", tg_id=user["tg_id"], sku=f"report:{kind}",
+        channel="miniapp", result_category="report", status="delivered", units=1,
+        reference_id=f"report:{result.get('report_id') or 'cached'}")
     return result

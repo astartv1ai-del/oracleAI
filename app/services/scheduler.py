@@ -274,7 +274,9 @@ async def _voice_forecast(bot, db, user, text: str, day: str) -> None:
     lang = "en" if user["lang"] == "en" else "ru"
     clean = (text or "").replace("<b>", "").replace("</b>", "") \
                         .replace("<i>", "").replace("</i>", "")
-    audio = await llm.speak(clean)
+    audio = await llm.speak(
+        clean, db=db, tg_id=user["tg_id"], surface="bot",
+        reference_id=f"forecast:{day}")
     if not audio:
         return
     try:

@@ -187,11 +187,12 @@ def estimate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> flo
 
 async def record_usage(db, *, provider: str, model: str, purpose: str,
                        prompt_tokens: int = 0, completion_tokens: int = 0,
-                       latency_ms: int = 0, ok: bool = True,
-                       tg_id: int | None = None) -> None:
-    """Пишет вызов в `llm_usage`. Сбой журнала не должен ронять ответ клиентке."""
+                       retry_count: int = 0, latency_ms: int = 0,
+                       ok: bool = True, tg_id: int | None = None) -> None:
+    """Пишет legacy usage и product-level cost evidence без влияния на ответ."""
     if db is None:
         return
+    cost_usd = estimate_cost(model, prompt_tokens, completion_tokens)
     try:
         from ..data.session import transaction, utcnow
         now = utcnow()
@@ -201,10 +202,18 @@ async def record_usage(db, *, provider: str, model: str, purpose: str,
                 "prompt_tokens, completion_tokens, cost_usd, latency_ms, ok, day, "
                 "created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                 (tg_id, provider, model, purpose, prompt_tokens, completion_tokens,
-                 estimate_cost(model, prompt_tokens, completion_tokens),
-                 latency_ms, int(ok), now[:10], now))
+                 cost_usd, latency_ms, int(ok), now[:10], now))
     except Exception as e:  # noqa: BLE001
         log.debug("расход LLM не записан: %s", e)
+    try:
+        from . import product_cost
+        await product_cost.record_llm(
+            db, provider=provider, model=model, purpose=purpose, tg_id=tg_id,
+            prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+            retry_count=retry_count, latency_ms=latency_ms, cost_usd=cost_usd,
+            ok=ok)
+    except Exception as e:  # noqa: BLE001
+        log.debug("product cost не записан: %s", e)
 
 
 class _Meter:
@@ -213,6 +222,7 @@ class _Meter:
     def __init__(self) -> None:
         self.prompt = 0
         self.completion = 0
+        self.retries = 0
         self.started = time.monotonic()
 
     def add(self, usage) -> None:
@@ -338,13 +348,16 @@ async def _stream_chat(client, model: str, messages: list[dict], max_tokens: int
     return text, calls
 
 
-async def _with_retries(coro_factory, provider: str, what: str):
+async def _with_retries(coro_factory, provider: str, what: str,
+                       *, meter: _Meter | None = None):
     last = None
     for attempt in range(RETRIES):
         try:
             return await coro_factory()
         except Exception as e:  # noqa: BLE001
             last = e
+            if meter is not None:
+                meter.retries = max(meter.retries, attempt)
             log.warning("%s/%s попытка %d: %s", provider, what, attempt + 1, e)
             await asyncio.sleep(0.8 * (attempt + 1))
     raise last
@@ -376,7 +389,7 @@ async def complete(system: str, user_text: str, tier: str = "lite",
                     _with_retries(
                         lambda p=provider: _complete_with(p, system, user_text, tier,
                                                           max_tokens, meter),
-                        provider, "complete"),
+                        provider, "complete", meter=meter),
                     timeout=budget.remaining,
                 )
                 budget.add_usage(model, meter.prompt, meter.completion)
@@ -386,7 +399,8 @@ async def complete(system: str, user_text: str, tier: str = "lite",
                                    purpose=purpose,
                                    prompt_tokens=meter.prompt,
                                    completion_tokens=meter.completion,
-                                   latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                                   retry_count=meter.retries, latency_ms=meter.ms,
+                                   ok=False, tg_id=tg_id)
                 if budget.expired or "budget exceeded" in str(e).lower():
                     break
                 continue
@@ -394,7 +408,8 @@ async def complete(system: str, user_text: str, tier: str = "lite",
             await record_usage(db, provider=provider, model=model, purpose=purpose,
                                prompt_tokens=meter.prompt,
                                completion_tokens=meter.completion,
-                               latency_ms=latency_ms, ok=True, tg_id=tg_id)
+                               retry_count=meter.retries, latency_ms=latency_ms,
+                               ok=True, tg_id=tg_id)
             log_event(
                 log,
                 logging.WARNING if provider_index else logging.INFO,
@@ -490,7 +505,8 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
                                    purpose=purpose,
                                    prompt_tokens=meter.prompt,
                                    completion_tokens=meter.completion,
-                                   latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                                   retry_count=meter.retries, latency_ms=meter.ms,
+                                   ok=False, tg_id=tg_id)
                 if budget.expired or "budget exceeded" in str(e).lower():
                     break
                 continue
@@ -498,7 +514,8 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
             await record_usage(db, provider=provider, model=model, purpose=purpose,
                                prompt_tokens=meter.prompt,
                                completion_tokens=meter.completion,
-                               latency_ms=latency_ms, ok=True, tg_id=tg_id)
+                               retry_count=meter.retries, latency_ms=latency_ms,
+                               ok=True, tg_id=tg_id)
             log_event(
                 log,
                 logging.WARNING if provider_index else logging.INFO,
@@ -560,7 +577,7 @@ async def _run_anthropic(system, messages, tools, execute, tier, max_tokens,
                     lambda: client.messages.create(
                         model=_models("anthropic", tier), max_tokens=max_tokens,
                         system=sys_block, tools=tools, messages=msgs),
-                    "anthropic", "agent")
+                    "anthropic", "agent", meter=meter)
                 meter.add(getattr(resp, "usage", None))
                 if budget is not None:
                     budget.add_usage(
@@ -634,7 +651,7 @@ async def _run_openai_like(provider, system, messages, tools, execute,
             text, calls = await _with_retries(
                 lambda: _stream_chat(client, model, msgs, max_tokens, oa_tools,
                                      meter=meter),
-                provider, "agent")
+                provider, "agent", meter=meter)
             # Сохраняем собранный текст до add_usage/reserve_tools: бюджет может
             # бросить «cost/tool-call budget exceeded», и без этого частичный
             # ответ терялся бы и уходил в офлайн-шаблон.
@@ -758,30 +775,50 @@ def _fallback_text() -> str:
 
 # ---------------------------------------------------------------- голос
 
-async def transcribe(file_bytes: bytes, filename: str = "voice.ogg") -> str | None:
+async def transcribe(file_bytes: bytes, filename: str = "voice.ogg", *,
+                     db=None, tg_id: int | None = None,
+                     surface: str = "bot") -> str | None:
     """Расшифровка голосового (Whisper, только настоящий OpenAI)."""
     if not settings.openai_key:
         return None
     client = None
+    started = time.monotonic()
+    ok = False
+    text = None
     try:
         from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=settings.openai_key, timeout=60)
         resp = await client.audio.transcriptions.create(
             model="whisper-1", file=(filename, file_bytes), language="ru",
         )
-        return (resp.text or "").strip() or None
+        text = (resp.text or "").strip() or None
+        ok = bool(text)
+        return text
     except Exception:
         return None
     finally:
         if client is not None:
             await _close_client(client)
+        try:
+            from . import product_cost
+            await product_cost.record_event(
+                db, event_kind="voice", tg_id=tg_id, sku="voice:transcribe",
+                channel=surface if surface in {"bot", "miniapp", "web"} else "system",
+                purpose="voice:transcribe", result_category="question",
+                status="succeeded" if ok else "failed", units=1,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                artifact_bytes=len(file_bytes or b""))
+        except Exception:
+            pass
 
 
 def tts_enabled() -> bool:
     return bool(settings.openai_key and settings.tts_model)
 
 
-async def speak(text: str, *, voice: str | None = None) -> bytes | None:
+async def speak(text: str, *, voice: str | None = None, db=None,
+                tg_id: int | None = None, surface: str = "system",
+                reference_id: str | None = None) -> bytes | None:
     """Текст → голос Оракула (OGG/Opus для голосового сообщения Telegram).
 
     None означает «озвучки не будет» — тариф с аудио должен деградировать до
@@ -790,6 +827,8 @@ async def speak(text: str, *, voice: str | None = None) -> bytes | None:
     if not tts_enabled() or not (text or "").strip():
         return None
     client = None
+    started = time.monotonic()
+    audio = None
     try:
         from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=settings.openai_key, timeout=120)
@@ -799,13 +838,25 @@ async def speak(text: str, *, voice: str | None = None) -> bytes | None:
             input=text[:4000],
             response_format="opus",
         )
-        return resp.read() if hasattr(resp, "read") else bytes(resp.content)
+        audio = resp.read() if hasattr(resp, "read") else bytes(resp.content)
+        return audio
     except Exception as e:  # noqa: BLE001
         log.info("озвучка не удалась: %s", e)
         return None
     finally:
         if client is not None:
             await _close_client(client)
+        try:
+            from . import product_cost
+            await product_cost.record_event(
+                db, event_kind="voice", tg_id=tg_id, sku="voice:tts",
+                channel=surface if surface in {"bot", "miniapp", "web"} else "system",
+                purpose="voice:tts", result_category="daily",
+                status="succeeded" if audio else "failed", units=1,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                artifact_bytes=len(audio or b""), reference_id=reference_id)
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------- vision
@@ -842,7 +893,7 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
                                                          image_data_url, tier,
                                                          max_tokens, meter,
                                                          response_format=response_format),
-                        provider, "vision"),
+                        provider, "vision", meter=meter),
                     timeout=budget.remaining,
                 )
                 budget.add_usage(model, meter.prompt, meter.completion)
@@ -851,7 +902,8 @@ async def complete_vision(system: str, user_text: str, image_data_url: str,
                 await record_usage(db, provider=provider, model=model,
                                    purpose=purpose, prompt_tokens=meter.prompt,
                                    completion_tokens=meter.completion,
-                                   latency_ms=meter.ms, ok=False, tg_id=tg_id)
+                                   retry_count=meter.retries, latency_ms=meter.ms,
+                                   ok=False, tg_id=tg_id)
                 if budget.expired or "budget exceeded" in str(exc).lower():
                     break
                 continue

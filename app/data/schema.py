@@ -391,6 +391,32 @@ CREATE TABLE IF NOT EXISTS events (
     day        TEXT,                          -- YYYY-MM-DD (UTC) для быстрых группировок
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS product_cost_events (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id            INTEGER,
+    event_kind       TEXT NOT NULL,           -- llm|pdf|voice|tool|delivery|refund|support
+    sku              TEXT NOT NULL,
+    catalog_version  TEXT DEFAULT 'legacy',
+    channel          TEXT DEFAULT 'system',   -- bot|miniapp|web|system
+    purpose          TEXT,
+    provider         TEXT,
+    model            TEXT,
+    result_category  TEXT,
+    status           TEXT DEFAULT 'succeeded',
+    units            INTEGER DEFAULT 1,
+    input_tokens     INTEGER DEFAULT 0,
+    output_tokens    INTEGER DEFAULT 0,
+    retry_count      INTEGER DEFAULT 0,
+    latency_ms       INTEGER DEFAULT 0,
+    duration_ms      INTEGER DEFAULT 0,
+    artifact_bytes   INTEGER DEFAULT 0,
+    cost_usd         REAL,
+    reference_id     TEXT,
+    order_id         INTEGER,
+    reason           TEXT,
+    day              TEXT,
+    created_at       TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS daily_stats (
     day        TEXT PRIMARY KEY,
     stats_json TEXT,
@@ -552,6 +578,9 @@ CREATE INDEX IF NOT EXISTS idx_bt_status     ON broadcast_targets(broadcast_id, 
 CREATE INDEX IF NOT EXISTS idx_usage_day     ON llm_usage(day, purpose);
 CREATE INDEX IF NOT EXISTS idx_usage_user    ON llm_usage(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_usage_created ON llm_usage(created_at);
+CREATE INDEX IF NOT EXISTS idx_product_cost_day_sku ON product_cost_events(day, sku, event_kind);
+CREATE INDEX IF NOT EXISTS idx_product_cost_created ON product_cost_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_product_cost_order ON product_cost_events(order_id);
 CREATE INDEX IF NOT EXISTS idx_safety_user   ON safety_events(tg_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_horo_day      ON horoscopes(day);
 CREATE INDEX IF NOT EXISTS idx_practice_user ON practices(tg_id, code);
