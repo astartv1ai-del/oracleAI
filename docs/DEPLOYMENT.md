@@ -2,18 +2,21 @@
 
 ## Модель production-развёртывания
 
-Production-стек собирается из четырёх сервисов Docker Compose: `bot`, `api`, `caddy` и `backup`. Два прикладных сервиса используют общий именованный том `oracle_data` для SQLite, Caddy завершает TLS на 80/443, а `backup` создаёт резервные копии базы в отдельном томе.[1]
+Production-like стек собирается Docker Compose из `postgres`, `redis`, `migrate`, `api`, `bot`, `worker`, `beat` и `caddy`. Один общий application image содержит API, Telegram-бота, LLM-agent runtime, астрологический движок, ONNX/MediaPipe palm engines, Mini App, admin и landing. `worker` и `beat` используют тот же image и подключаются к Redis/PostgreSQL.[1]
 
 ```mermaid
 flowchart LR
-    T[Telegram] -->|Webhook / Mini App| C[Caddy :443]
+    T[Telegram] -->|Mini App / bot| C[Caddy :443]
     U[Browser / Telegram WebView] -->|HTTPS| C
     C --> A[api: FastAPI]
     T --> B[bot: aiogram]
-    A <--> D[(oracle_data: SQLite)]
-    B <--> D
-    K[backup] --> D
-    K --> BK[(oracle_backups)]
+    A <--> P[(PostgreSQL + pgvector)]
+    B <--> P
+    A --> R[(Redis)]
+    R --> W[Celery worker]
+    R --> H[Celery Beat]
+    K[backup profile] --> P
+    K --> BK[(encrypted dumps)]
 ```
 
 ## Предварительные условия
@@ -23,7 +26,7 @@ flowchart LR
 | Linux-хост с Docker Engine и Docker Compose v2 | Официальный способ запуска production-стека. |
 | Домен с A/AAAA-записью на сервер | Нужен Caddy для автоматического TLS и Telegram Mini App. |
 | Открытые TCP-порты 80 и 443 | Нужны HTTP→HTTPS и выдача сертификата. |
-| Защищённый доступ к серверу | SQLite, токены бота и платёжные секреты являются критичными данными. |
+| Защищённый доступ к серверу | PostgreSQL, Redis, токены бота и платёжные секреты являются критичными данными. |
 | Созданный Telegram-бот | Требуются `BOT_TOKEN`, `BOT_USERNAME`, `WEBAPP_URL`. |
 | Резервное хранилище вне сервера | Локальный volume не защищает от потери хоста. |
 
@@ -45,7 +48,7 @@ chmod 600 .env
 | LLM | `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `CUSTOM_*` | Достаточно ключа выбранного провайдера; offline fallback остаётся аварийным режимом. |
 | Платежи | `PADDLE_API_KEY`, `PADDLE_API_URL`, `PADDLE_CHECKOUT_URL`, `PADDLE_PRICE_IDS`, `PADDLE_WEBHOOK_SECRET` | Нужны вместе при включении web checkout; `PADDLE_PRICE_IDS` связывает внутренние планы с `pri_...` на сервере. |
 | Наблюдаемость | `SENTRY_DSN`, `LOG_LEVEL`, `RELEASE_ID`, `LOG_FILE` | JSONL logs идут в stdout; `LOG_FILE` опционален и должен быть writable. Sentry — опционально, но рекомендован для production. |
-| Резервное копирование | `BACKUP_ENCRYPTION_KEY_HOST_PATH`, `BACKUP_REQUIRE_ENCRYPTION`, `BACKUP_KEEP`, `BACKUP_S3_URL`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`, `BACKUP_S3_BUCKET` | Production fail-closed требует отдельный host key, encrypted snapshot, checksum, off-site copy и restore drill. |
+| Резервное копирование | `BACKUP_ENCRYPTION_KEY_HOST_PATH`, `BACKUP_REQUIRE_ENCRYPTION`, `BACKUP_KEEP` | Профиль `backup` требует отдельный host key, encrypted PostgreSQL dump, checksum, off-site copy и restore drill. |
 
 Конфигурация читается dataclass-настройками в `app/config.py`; неизвестные или небезопасные значения не следует «исправлять» прямо в контейнере.[2]
 
@@ -67,15 +70,15 @@ docker compose -f infra/docker-compose.yml ps
 curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 ```
 
-Минимальный smoke test включает: `GET /api/health` с ответом `{"ok":true}`, открытие русского и английского лендинга, запуск Mini App из Telegram, подтверждение 16+ тестовой учётной записью, смену языка, выключение/включение памяти и один ответ проводника. Для web checkout сначала создайте Paddle transaction через серверный API и проверьте sandbox webhook только по `transaction.completed`; не подставляйте `tg_id` или тариф вручную в hosted URL.
+Минимальный smoke test включает: успешный `migrate`, `GET /api/health` с ответом `{"ok":true}`, `celery inspect ping`, открытие русского и английского лендинга, запуск Mini App из Telegram, подтверждение 16+ тестовой учётной записью, смену языка, выключение/включение памяти и один ответ проводника. Для web checkout сначала создайте Paddle transaction через серверный API и проверьте sandbox webhook только по `transaction.completed`; не подставляйте `tg_id` или тариф вручную в hosted URL.
 
 ## Обновление версии
 
-> Перед обновлением обязательна подтверждённая резервная копия БД. SQLite нельзя считать «просто файлом», который безопасно копируется во время произвольной записи.
+> Перед обновлением обязательна подтверждённая резервная копия PostgreSQL. Dump создаётся профилем `backup`; не копируйте файлы тома PostgreSQL или SQLite во время записи.
 
 ```bash
 cd /srv/oracleAI
-./scripts/backup_db.sh
+docker compose --profile backup -f infra/docker-compose.yml up -d backup
 git fetch --all --tags
 git checkout <approved-commit-or-tag>
 docker compose -f infra/docker-compose.yml build
@@ -89,9 +92,11 @@ curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 
 После изменения фронтенда проверьте версии cache-busting в `miniapp/index.html` и `miniapp/styles.css`; Telegram WebView может держать старые ассеты дольше обычного браузера.[3]
 
-## Миграции и SQLite
+## Миграции и хранилище
 
-Миграции запускаются приложением при открытии сессии в последовательности **таблицы → новые колонки → индексы**. Не выполняйте ручные `ALTER TABLE` в production без кода миграции и резервной копии: порядок создан именно для безопасной работы со старыми базами.[4]
+В Docker Compose production-like режим использует PostgreSQL + pgvector. Сервис `migrate` выполняет `alembic upgrade head` и должен завершиться успешно до запуска API, бота, worker и Beat. Runtime также выполняет идемпотентный bootstrap для свежей базы. Не выполняйте ручные `ALTER TABLE` в production без кода миграции и резервной копии.[4]
+
+SQLite/WAL остаётся поддерживаемым fallback для ручного dev/test-запуска, когда `DATABASE_URL` пуст. В этом режиме API и бот используют общий `DATA_DIR` и применяют SQLite-миграции при открытии соединения.
 
 | Операция | Допустимый подход | Недопустимый подход |
 |---|---|---|
@@ -102,7 +107,14 @@ curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 
 ## Резервное копирование и восстановление
 
-Сервис `backup` и `scripts/backup_db.sh` предназначены для подготовки SQLite-backup. Настройте независимое копирование результата из `oracle_backups` в зашифрованное внешнее хранилище, retention-политику и регулярную проверку восстановления.[1]
+Профиль `backup` создаёт проверяемый custom-format `pg_dump`, шифрует его AES-256-CBC через host key, сохраняет SHA-256 checksum и применяет retention. Включите его только после создания `/etc/oracle/backup.key`; результат следует дополнительно копировать во внешнее зашифрованное хранилище.
+
+```bash
+install -d -m 700 /etc/oracle
+openssl rand -base64 48 > /etc/oracle/backup.key
+chmod 600 /etc/oracle/backup.key
+docker compose --profile backup -f infra/docker-compose.yml up -d backup
+```
 
 | Контроль | Минимум |
 |---|---|
@@ -112,19 +124,17 @@ curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 | Проверка | Периодически восстановить в изолированном контуре и выполнить `selfcheck`. |
 | RPO/RTO | Зафиксировать владельцем продукта до публичного запуска. |
 
-Процедура восстановления: остановите writer-сервисы, сохраните текущую повреждённую БД как forensic-копию, затем используйте проверяемый helper:
+Процедура восстановления PostgreSQL: остановите writer-сервисы, сохраните текущий кластер как forensic-копию, проверьте checksum, расшифруйте dump во временный файл и восстановите его через helper. После проверки запустите миграцию и только затем поднимайте приложение.
 
 ```bash
 BACKUP_ENCRYPTION_KEY_FILE=/etc/oracle/backup.key \
-  ./scripts/restore_db.sh /srv/oracle/backups/oracle-<дата>.db.enc \
-  /srv/oracle/data/oracle.db
+  ./infra/restore-postgres.sh /srv/oracle/backups/oracle-<дата>.dump.enc
+make migrate
+make up
+make selfcheck
 ```
 
-`restore_db.sh` проверяет checksum, расшифровывает во временный файл, выполняет
-`PRAGMA integrity_check`, сохраняет rollback-копию текущей базы и только затем
-заменяет destination. После восстановления поднимите API и бот, выполните
-healthcheck/selfcheck и вручную проверьте тестовую учётную запись. Зафиксируйте
-инцидент и время последней подтверждённой записи.
+`restore-postgres.sh` проверяет checksum, расшифровывает dump во временный файл, останавливает writer-сервисы и передаёт custom-format dump в `pg_restore --clean --if-exists`. Для legacy/fallback SQLite остаётся отдельный `scripts/restore_db.sh`; он не предназначен для PostgreSQL-тома.
 
 ## Наблюдаемость и инциденты
 
@@ -142,7 +152,7 @@ healthcheck/selfcheck и вручную проверьте тестовую уч
 
 ## References
 
-[1]: [infra/docker-compose.yml](../infra/docker-compose.yml), [infra/Caddyfile](../infra/Caddyfile) и [scripts/backup_db.sh](../scripts/backup_db.sh) — состав runtime-стека, TLS и backup.
+[1]: [infra/docker-compose.yml](../infra/docker-compose.yml), [infra/Caddyfile](../infra/Caddyfile) и [infra/backup-postgres.sh](../infra/backup-postgres.sh) — состав runtime-стека, TLS и backup.
 [2]: [app/config.py](../app/config.py), [.env.production.example](../.env.production.example) — типизированная конфигурация и production-шаблон.
 [3]: [miniapp/index.html](../miniapp/index.html) и [miniapp/styles.css](../miniapp/styles.css) — подключение versioned клиентских ассетов.
-[4]: [app/data/schema.py](../app/data/schema.py) и [app/data/migrations.py](../app/data/migrations.py) — порядок и правила миграций.
+[4]: [alembic/versions/0001_pg_baseline.py](../alembic/versions/0001_pg_baseline.py), [alembic/versions/0002_task_jobs.py](../alembic/versions/0002_task_jobs.py) и [app/data/migrations.py](../app/data/migrations.py) — порядок и правила миграций.

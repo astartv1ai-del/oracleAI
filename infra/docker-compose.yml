@@ -1,166 +1,257 @@
-# Запуск на VPS:  docker compose -f infra/docker-compose.yml up -d --build
-# Домен в Caddyfile + WEBAPP_URL=https://домен в ../.env
+# Complete OracleAI stack.
+# From the repository root:
+#   cp .env.example .env
+#   docker compose -f infra/docker-compose.yml up -d --build
 #
-# Bot остаётся единственным владельцем Telegram polling и рассылок. API можно
-# масштабировать отдельно. Тяжёлые LLM-задачи выполняются Celery worker-ами через
-# Redis, а периодические maintenance-задачи запускаются одним Celery Beat.
+# Production-like default topology uses PostgreSQL + pgvector and Redis. The
+# application image is shared by API, bot, Celery worker and Beat so all LLM
+# agents and local CV/astrology engines are always on the same release.
+
+x-app-common: &app-common
+  build:
+    context: ..
+    dockerfile: infra/Dockerfile
+  env_file:
+    - ../.env
+  environment: &app-environment
+    APP_ENV: ${APP_ENV:-dev}
+    DATA_DIR: /opt/oracle/data
+    DB_PATH: /opt/oracle/data/oracle.db
+    DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://oracle:oracle@postgres:5432/oracle}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    CELERY_ENABLED: ${CELERY_ENABLED:-1}
+    CELERY_TASK_ALWAYS_EAGER: ${CELERY_TASK_ALWAYS_EAGER:-0}
+    PGVECTOR_ENABLED: ${PGVECTOR_ENABLED:-1}
+  networks:
+    - oracle_internal
+  init: true
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
 
 services:
-  bot:
-    build: { context: .., dockerfile: infra/Dockerfile }
-    security_opt: ["no-new-privileges:true"]
-    env_file: ../.env
-    volumes: [ oracle_data:/opt/oracle/data ]
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-oracle}
+      POSTGRES_USER: ${POSTGRES_USER:-oracle}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oracle}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/10-pgvector.sql:ro
+    networks:
+      - oracle_internal
     restart: unless-stopped
-    stop_grace_period: 30s        # успеть закрыть WAL и сохранить прогресс рассылки
     healthcheck:
-      # HTTP бот не поднимает, поэтому liveness решается по хартбиту планировщика
-      # (см. scripts/healthcheck.py): бот жив, пока тик регулярно обновляет метку
-      test: ["CMD", "python", "/opt/oracle/scripts/healthcheck.py"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "5" }
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
-    volumes: [ redis_data:/data ]
+    volumes:
+      - redis_data:/data
+    networks:
+      - oracle_internal
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  worker:
-    build: { context: .., dockerfile: infra/Dockerfile }
-    command: celery -A app.tasks.celery_app:celery_app worker --loglevel=INFO --queues=llm,maintenance --concurrency=2
-    env_file: ../.env
-    environment:
-      CELERY_ENABLED: "1"
+  migrate:
+    <<: *app-common
+    command: ["alembic", "upgrade", "head"]
     depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app-common
+    command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]
+    volumes:
+      - oracle_logs:/opt/oracle/logs
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
-    restart: unless-stopped
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  bot:
+    <<: *app-common
+    command: ["python", "-m", "app.bot.main"]
+    volumes:
+      - oracle_logs:/opt/oracle/logs
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "/opt/oracle/scripts/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  worker:
+    <<: *app-common
+    command: ["celery", "-A", "app.tasks.celery_app:celery_app", "worker", "--loglevel=INFO", "--queues=llm,maintenance", "--concurrency=2"]
+    environment:
+      <<: *app-environment
+      CELERY_ENABLED: "1"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     stop_grace_period: 60s
     healthcheck:
       test: ["CMD-SHELL", "celery -A app.tasks.celery_app:celery_app inspect ping -d celery@$$HOSTNAME >/dev/null 2>&1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-    logging:
-      driver: json-file
-      options: { max-size: "10m", max-file: "5" }
+      retries: 5
+      start_period: 30s
 
   beat:
-    build: { context: .., dockerfile: infra/Dockerfile }
-    command: celery -A app.tasks.celery_app:celery_app beat --loglevel=INFO
-    env_file: ../.env
+    <<: *app-common
+    command: ["celery", "-A", "app.tasks.celery_app:celery_app", "beat", "--loglevel=INFO"]
     environment:
+      <<: *app-environment
       CELERY_ENABLED: "1"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
-    restart: unless-stopped
     stop_grace_period: 30s
-    logging:
-      driver: json-file
-      options: { max-size: "10m", max-file: "5" }
-
-  api:
-    build: { context: .., dockerfile: infra/Dockerfile }
-    security_opt: ["no-new-privileges:true"]
-    # 1 воркер обязателен: rate-limiter `_hits` и бакет исходящих — in-process
-    # (G22). Несколько воркеров дадут каждому свой запас и удвоят бюджет.
-    command: >
-      uvicorn app.api.main:app --host 0.0.0.0 --port 8080 --workers 1
-    env_file: ../.env
-    environment:
-      CELERY_ENABLED: "1"
-    volumes: [ oracle_data:/opt/oracle/data ]
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    expose: [ "8080" ]
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    logging:
-      driver: json-file
-      options: { max-size: "10m", max-file: "5" }
 
   caddy:
     image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
-    security_opt: ["no-new-privileges:true"]
-    env_file: ../.env
-    ports: [ "80:80", "443:443" ]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    env_file:
+      - ../.env
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      - oracle_internal
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       api:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  # Ежедневный backup чувствительной SQLite-базы. Production требует ключ:
-  # raw .db snapshots не создаются, копия получает checksum и уходит off-site.
-  backup:
-    image: alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
-    security_opt: ["no-new-privileges:true"]
+  # Optional local OpenAI-compatible LLM. It is deliberately not enabled by
+  # default: model downloads are large. Set CUSTOM_LLM_BASE_URL=http://ollama:11434/v1,
+  # CUSTOM_LLM_MODEL and CUSTOM_LLM_MODEL_LITE in .env before enabling this profile.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-llm"]
     volumes:
-      - oracle_data:/data:ro
-      - oracle_backups:/backups
-      - ${BACKUP_ENCRYPTION_KEY_HOST_PATH:-/etc/oracle/backup.key}:/run/secrets/oracle-backup-key:ro
+      - ollama_data:/root/.ollama
+    networks:
+      - oracle_internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "OLLAMA_HOST=127.0.0.1:11434 curl -fsS http://127.0.0.1:11434/api/tags >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  ollama-init:
+    image: ollama/ollama:latest
+    profiles: ["local-llm"]
     environment:
-      BACKUP_S3_URL: ${BACKUP_S3_URL:-}
-      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
-      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
-      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
-      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      OLLAMA_HOST: ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:8b}
+    command: ["/bin/sh", "-c", "ollama pull \"$$OLLAMA_MODEL\""]
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - oracle_internal
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  # Encrypted PostgreSQL backups are opt-in so a local developer can start the
+  # application without first creating a host secret. Enable with:
+  #   docker compose --profile backup -f infra/docker-compose.yml up -d backup
+  backup:
+    image: postgres:16-bookworm
+    profiles: ["backup"]
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-oracle}
+      PGUSER: ${POSTGRES_USER:-oracle}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-oracle}
       BACKUP_ENCRYPTION_KEY_FILE: /run/secrets/oracle-backup-key
       BACKUP_REQUIRE_ENCRYPTION: ${BACKUP_REQUIRE_ENCRYPTION:-1}
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
-    entrypoint: >
-      sh -c "apk add --no-cache openssl sqlite s3cmd >/dev/null &&
-             [ -r \"\$BACKUP_ENCRYPTION_KEY_FILE\" ] ||
-               { echo 'backup key is required'; exit 1; };
-             while true; do
-               ts=\$$(date -u +%Y%m%d-%H%M%S);
-               tmp=/backups/.oracle-\$\$ts.db.tmp;
-               file=/backups/oracle-\$\$ts.db.enc;
-               sqlite3 /data/oracle.db \".backup '\$\$tmp'\" &&
-               [ \"\$(sqlite3 \"\$\$tmp\" 'PRAGMA integrity_check;')\" = ok ] &&
-               openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
-                 -pass file:\"\$BACKUP_ENCRYPTION_KEY_FILE\" \
-                 -in \"\$\$tmp\" -out \"\$\$file\" &&
-               rm -f \"\$\$tmp\" &&
-               sha256sum \"\$\$file\" > \"\$\$file.sha256\" &&
-               echo \"encrypted backup ok: `basename \"\$\$file\"`\";
-               if [ -n \"\$BACKUP_S3_URL\" ] && [ -n \"\$BACKUP_S3_BUCKET\" ]; then
-                 export AWS_ACCESS_KEY_ID=\$BACKUP_S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$BACKUP_S3_SECRET_KEY;
-                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION \
-                       put \"\$\$file\" s3://\$BACKUP_S3_BUCKET/ &&
-                 s3cmd --host=\$BACKUP_S3_URL --region=\$BACKUP_S3_REGION \
-                       put \"\$\$file.sha256\" s3://\$BACKUP_S3_BUCKET/;
-               fi;
-               find /backups -maxdepth 1 -type f -name 'oracle-*.db.enc' -mtime +14 -delete;
-               find /backups -maxdepth 1 -type f -name 'oracle-*.db.enc.sha256' -mtime +14 -delete;
-               sleep 86400;
-             done"
+    volumes:
+      - oracle_backups:/backups
+      - ${BACKUP_ENCRYPTION_KEY_HOST_PATH:-/etc/oracle/backup.key}:/run/secrets/oracle-backup-key:ro
+      - ./backup-postgres.sh:/usr/local/bin/backup-postgres.sh:ro
+    networks:
+      - oracle_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/usr/local/bin/backup-postgres.sh"]
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
-  oracle_data:
-  oracle_backups:
+  postgres_data:
   redis_data:
+  oracle_backups:
+  oracle_logs:
   caddy_data:
   caddy_config:
+  ollama_data:
+
+networks:
+  oracle_internal:
+    driver: bridge
