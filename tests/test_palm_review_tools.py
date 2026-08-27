@@ -10,6 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _load_script(name: str):
     path = ROOT / "scripts" / name
+    scripts_dir = str(ROOT / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
     spec = importlib.util.spec_from_file_location(path.stem, path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -199,3 +202,26 @@ def test_corpus_diff_gate_blocks_pending_and_accepts_adjudicated(tmp_path):
     passed = subprocess.run(command, check=False, capture_output=True, text=True)
     assert passed.returncode == 0
     assert json.loads(passed.stdout)["status"] == "PASS"
+
+
+def test_corpus_diff_gate_blocks_missing_base_ref(tmp_path):
+    diff_gate = _load_script("check_palm_corpus_diff.py")
+    current = _records_from_test_registry_record()
+    assert current["record_id"] == "gold-001"
+    manifest_path = tmp_path / "manifest.jsonl"
+    registry_path = tmp_path / "reviewers.json"
+    manifest_path.write_text(json.dumps(current) + "\n", encoding="utf-8")
+    registry_path.write_text(json.dumps(_reviewer_registry()), encoding="utf-8")
+    command = [sys.executable, str(ROOT / "scripts/check_palm_corpus_diff.py"), "--manifest", str(manifest_path), "--reviewers", str(registry_path), "--base-ref", "refs/heads/definitely-missing"]
+    missing_ref = subprocess.run(command, check=False, capture_output=True, text=True)
+    assert missing_ref.returncode == 1
+    assert "base ref is unavailable" in missing_ref.stdout
+    assert diff_gate._records_from_text(manifest_path.read_text(encoding="utf-8"))["gold-001"] == current
+
+
+def _records_from_test_registry_record():
+    record = _record()
+    record["regions"][0]["annotator_refs"] = ["human-a", "human-b"]
+    record["adjudication"]["annotators"] = ["human-a", "human-b"]
+    record["adjudication"]["domain_reviewer"] = "domain-c"
+    return record

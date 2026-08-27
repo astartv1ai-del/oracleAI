@@ -9,3 +9,7 @@ The bulk-delete behavior was not executed during visual inspection because it is
 ## Final visual QA
 
 The final 375px captures show the welcome CTA with readable light text, no lunar illustration or moon-like ring, and the first fold now presents a clear sequence: greeting, single invitation, prompt row, and one action. Chat suggestions occupy one compact horizontal rail beneath the composer; the workspace trigger remains compact and the opened picker exposes New chat plus Delete all chats with the memory-preservation note.
+
+## Second start-page pass
+
+The revised composition was checked at 375px and 1440px. It now reads as one primary welcome narrative followed directly by the daily rhythm card; the former separate seasonal card no longer competes with the main CTA. The desktop frame preserves the same hierarchy and gives the welcome card enough width for a two-line display title without stretching the product chrome. The first fold exposes the CTA, seasonal signal, progress state, and both daily anchors while avoiding horizontal overflow.
