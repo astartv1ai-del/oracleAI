@@ -13,10 +13,10 @@
   -webkit-backface-visibility: hidden;
   overflow: hidden;
   padding: 12px 8px; border: 2px solid var(--gold);
-  background: url("/static/img/card-face-src.png") center / cover no-repeat;
+  background: url("/static/img/card-face.jpg") center / cover no-repeat;
   box-shadow: 0 16px 34px -12px rgba(0,0,0,.8), 0 0 18px var(--gold-glow);
 }
-.tb-front { background: url("/static/img/card-face-src.png") center / cover no-repeat; }
+.tb-front { background: url("/static/img/card-face.jpg") center / cover no-repeat; }
 .tb-front::before {
   content: ""; position: absolute; inset: 6px; border-radius: 11px; z-index: 3;
   border: 1px solid rgba(230,193,120,.4); pointer-events: none;
@@ -58,7 +58,7 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
   background:
     radial-gradient(115% 85% at 50% 42%, rgba(8,6,18,.42) 0%, rgba(8,6,18,.88) 80%),
-    url("/static/img/card-back-src.png") center / cover no-repeat;
+    url("/static/img/card-back.jpg") center / cover no-repeat;
   border: 2px solid var(--gold);
   box-shadow: 0 16px 34px -12px rgba(0,0,0,.8), 0 0 14px var(--gold-glow);
 }

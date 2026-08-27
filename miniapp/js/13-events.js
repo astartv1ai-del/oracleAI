@@ -17,6 +17,17 @@ document.addEventListener('keydown', function (event) {
     event.preventDefault();
     app.doSend();
   }
+  // Esc закрывает верхний модал/sheet — удобно на ПК и для скринридеров.
+  if (event.key === 'Escape') {
+    const tool = document.getElementById('tool-expand');
+    if (tool && tool.classList.contains('open') && typeof app.setToolbox === 'function') {
+      app.setToolbox(false);
+      return;
+    }
+    if (document.getElementById('app-modal') && typeof app.closeModal === 'function') {
+      app.closeModal();
+    }
+  }
 });
 
 

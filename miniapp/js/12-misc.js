@@ -715,6 +715,7 @@
     try {
       await api('/api/profile', { method: 'POST', body: JSON.stringify({ lang }) });
       localStorage.setItem('oracle_lang', lang);
+      try { document.documentElement.lang = lang; } catch (e) {}
       this.me = Object.assign({}, this.me, { lang });
       syncDocumentLocale();
       this.closeModal();
@@ -727,7 +728,9 @@
   // панель уведомлений: прогноз дня + утреннее напоминание
 
   app.openBell = async function() {
-    this.showModal(`<h3>Уведомления</h3><button class="m-close" data-act="modal-close">✕</button>
+    this.markBellSeen && this.markBellSeen();
+    const bellTitle = oracleLang() === 'en' ? 'Notifications' : 'Уведомления';
+    this.showModal(`<h3>${esc(bellTitle)}</h3><button class="m-close" data-act="modal-close" aria-label="${oracleLang() === 'en' ? 'Close' : 'Закрыть'}">✕</button>
       <div id="bell-body" style="margin-top:8px"><div class="loader-ring"></div></div>`);
     try {
       if (!this.today) this.today = await api('/api/today');
