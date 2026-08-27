@@ -8,11 +8,14 @@
     "test:axe": "node scripts/run_axe_core.mjs",
     "test:lighthouse": "node scripts/run_lighthouse_axe.mjs"
   },
+  "overrides": {
+    "@puppeteer/browsers": "3.2.1"
+  },
   "devDependencies": {
     "axe-core": "4.13.0",
     "chrome-launcher": "1.2.1",
     "esbuild": "0.28.2",
-    "lighthouse": "13.4.1",
+    "lighthouse": "12.6.1",
     "playwright-core": "1.62.1"
   }
 }

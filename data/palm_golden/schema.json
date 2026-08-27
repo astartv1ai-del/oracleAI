@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oracleai.local/contracts/palm-golden-record.schema.json",
+  "title": "OracleAI Palm Golden Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_id",
+    "image_path",
+    "image_sha256",
+    "source",
+    "consent",
+    "split",
+    "capture",
+    "regions",
+    "expected_claims",
+    "prohibited_claims",
+    "adjudication"
+  ],
+  "properties": {
+    "record_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,95}$"},
+    "image_path": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.).+\\.(jpg|jpeg|png|webp)$"},
+    "image_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source": {"type": "object"},
+    "consent": {"type": "object"},
+    "split": {"enum": ["train", "dev", "test", "challenge"]},
+    "capture": {"type": "object"},
+    "regions": {"type": "array", "minItems": 1},
+    "expected_claims": {"type": "array"},
+    "prohibited_claims": {"type": "array"},
+    "adjudication": {"type": "object"}
+  }
+}

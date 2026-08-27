@@ -437,7 +437,11 @@
             "lon": 49.12,
             "tz": "Europe/Moscow",
             "time_known": true,
-            "precision_reason": "exact"
+            "precision_reason": "exact",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "d875a5960f114f64",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -880,7 +884,11 @@
             "lon": 13.405,
             "tz": "Europe/Berlin",
             "time_known": true,
-            "precision_reason": "exact"
+            "precision_reason": "exact",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "15dcd0787fe82186",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -1323,7 +1331,11 @@
             "lon": 88.3639,
             "tz": "Asia/Kolkata",
             "time_known": true,
-            "precision_reason": "exact"
+            "precision_reason": "exact",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "1cbfaa3702fb855b",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -1766,7 +1778,11 @@
             "lon": 0.0,
             "tz": "UTC",
             "time_known": true,
-            "precision_reason": "exact"
+            "precision_reason": "exact",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "d00613e00f1a8b0d",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -2209,7 +2225,11 @@
             "lon": -149.9003,
             "tz": "America/Anchorage",
             "time_known": true,
-            "precision_reason": "exact"
+            "precision_reason": "exact",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "0853faf04d60ecd6",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -2652,7 +2672,11 @@
             "lon": 151.2093,
             "tz": "Australia/Sydney",
             "time_known": true,
-            "precision_reason": "exact"
+            "precision_reason": "exact",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "f05588d10ee59a49",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -3095,7 +3119,11 @@
             "lon": 0.0,
             "tz": "UTC",
             "time_known": true,
-            "precision_reason": "exact"
+            "precision_reason": "exact",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "c70beb8dbb85b633",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -3389,7 +3417,11 @@
             "lon": 49.12,
             "tz": "Europe/Moscow",
             "time_known": false,
-            "precision_reason": "date_only"
+            "precision_reason": "date_only",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "ab29c7db47c1ed27",
+            "location_reason": "valid",
+            "local_time_status": "not_applicable"
           },
           "precision": "date_only",
           "angular_data_available": false,
@@ -3691,7 +3723,11 @@
             "lon": 49.12,
             "tz": null,
             "time_known": false,
-            "precision_reason": "date_only_missing_timezone"
+            "precision_reason": "date_only_missing_timezone",
+            "adapter_version": "oracleai-kerykeion-engine-v2",
+            "request_fingerprint": "ad4adf97971963f0",
+            "location_reason": "valid",
+            "local_time_status": "no_timezone"
           },
           "precision": "date_only",
           "angular_data_available": false,

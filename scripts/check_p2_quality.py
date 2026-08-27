@@ -116,7 +116,7 @@ def run_checks() -> list[dict]:
     ))
     payment_contract = all(marker in payment_ui for marker in (
         "Доступ откроется только после подтверждения провайдера",
-        "История заказов", "payment-retry", "payProduct", "aria-label=",
+        "История заказов", "payment-retry", 'data-act="pay-stars"', "aria-label=",
     ))
     checks.append(_check(
         "payment_ux_contract", payment_contract,

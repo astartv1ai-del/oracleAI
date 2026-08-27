@@ -10,6 +10,11 @@ from dataclasses import dataclass, asdict
 from typing import Any
 
 CHART_CONTRACT_VERSION = 1
+ORACLE_ENGINE_NAME = "OracleAI Engine"
+ORACLE_ENGINE_ADAPTER_VERSION = "oracleai-kerykeion-engine-v2"
+KERYKEION_VERSION = "5.12.9"
+EPHEMERIS_BACKEND = "Kerykeion"
+EPHEMERIS_NAME = "Swiss Ephemeris"
 
 ASPECT_ANGLES: dict[str, float] = {
     "conjunction": 0.0,
@@ -86,9 +91,19 @@ def public_calculation_contract(chart: dict[str, Any]) -> dict[str, Any]:
     """Return the stable subset exposed to downstream clients."""
     metadata = chart.get("calculation") or {}
     config = metadata.get("config") or {}
+    input_data = metadata.get("input") or {}
+    adapter_version = input_data.get("adapter_version", ORACLE_ENGINE_ADAPTER_VERSION)
     return {
         "contract_version": metadata.get("contract_version", CHART_CONTRACT_VERSION),
         "engine": config.get("ephemeris_engine", chart.get("engine")),
+        "engine_provenance": {
+            "product_engine": ORACLE_ENGINE_NAME,
+            "adapter_version": adapter_version,
+            "backend": EPHEMERIS_BACKEND,
+            "backend_version": KERYKEION_VERSION,
+            "ephemeris": EPHEMERIS_NAME,
+            "license_notice": "AGPL-3.0/commercial licensing obligations apply to the selected distribution model.",
+        },
         "zodiac_type": config.get("zodiac_type", chart.get("zodiac_type")),
         "house_system": config.get("house_system", chart.get("house_system")),
         "house_system_name": config.get("house_system_name", chart.get("house_system_name")),
@@ -96,7 +111,7 @@ def public_calculation_contract(chart: dict[str, Any]) -> dict[str, Any]:
         "node_mode": config.get("node_mode", chart.get("lunar_nodes", {}).get("mode", "true")),
         "active_points": list(config.get("active_points") or []),
         "aspect_policy": config.get("aspect_policy") or ASPECT_POLICY,
-        "input": metadata.get("input") or {},
+        "input": input_data,
         "precision": metadata.get("precision", chart.get("precision")),
         "angular_data_available": bool(metadata.get("angular_data_available")),
     }

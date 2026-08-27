@@ -23,13 +23,14 @@ The final verdict is **BLOCKED**, not because the deterministic local checks fai
 | Skill boundary | Tarot tool arguments no longer clamp invalid values silently. Chart skill headlines use actual chart precision and angular availability rather than only a profile flag. Vimshottari tool access requires date, confirmed time and timezone. |
 | Report history | Monthly reports now store `monthly-evidence-v1` aggregate-only metadata, including counts and limits, without copying raw diary, memory or question text into report metadata. Existing purchased reports remain append-only. |
 | Documentation | Added `ACCURACY_MATRIX.md`, `ASTROLOGY.md`, `TAROT.md`, `VEDIC.md`, `MATRIX.md`, this result report and an external evidence record. |
-| Tests and fixtures | Added version-pinned deterministic `tests/fixtures/domain_golden.json`, `tests/test_domain_gauntlet.py`, Tarot adversarial cases, legacy history cases, PDF precision cases and skill-wrapper adversarial cases. |
+| Improved engine v2 | Added `app/core/astrology_engine.py` with strict canonical request normalization, explicit truth state, versioned request fingerprint, bounded defensive-copy cache and no-LLM calculator boundary; wired it into `astro.compute_chart`. |
+| Tests and fixtures | Added version-pinned deterministic `tests/fixtures/domain_golden.json`, tracked `scripts/build_domain_golden.py`, `tests/test_domain_gauntlet.py`, Tarot adversarial cases, legacy history cases, PDF precision cases and skill-wrapper adversarial cases. |
 
 ## Verification record
 
 | Check | Outcome |
 |---|---|
-| Focused domain/Tarot/grounding/PDF/product tests | Passed: 57 tests in the final focused run. |
+| Focused domain/Tarot/grounding/PDF/product tests | Passed: 57 tests in the earlier Gauntlet run; the expanded engine-v2/domain suite passed 72 tests in the follow-on run. |
 | Full suite excluding Palm/CV | The pre-merge run passed; after the latest origin/master documentation merge, one unrelated existing `test_p2_contracts.py::test_payment_locale_dictionaries_have_matching_keys` failure remains because the test expects legacy payment keys absent from the current remote frontend. |
 | Full `pytest -q` | Two additional failures remain in the intentionally out-of-scope Palm/CV area: missing ONNX runtime produces `unavailable` where the old test expects a line status, and the ensemble test expects a legacy model label. No Gauntlet astrology/Tarot/Vedic/Matrix test failed. |
 | Ruff | Passed for `app admin tests scripts`. |

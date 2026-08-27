@@ -6,12 +6,43 @@
     fate_line: 'Линия судьбы', sun_line: 'Линия Солнца', relationship_line: 'Линии отношений',
     mount_venus: 'Холм Венеры', mount_moon: 'Холм Луны', fingers: 'Пальцы', unknown: 'Наблюдение'
   };
+  const PALM_TOPICS_EN = {
+    heart_line: 'Heart line', head_line: 'Head line', life_line: 'Life line', fate_line: 'Fate line',
+    sun_line: 'Sun line', relationship_line: 'Relationship lines', mount_venus: 'Mount of Venus',
+    mount_moon: 'Mount of Moon', fingers: 'Fingers', unknown: 'Observation'
+  };
   const VISIBILITY = { clear: 'видно', partial: 'частично', unclear: 'неясно', not_visible: 'не видно' };
+  const VISIBILITY_EN = { clear: 'visible', partial: 'partial', unclear: 'unclear', not_visible: 'not visible' };
+  const PALM_I18N = {
+    ru: {
+      title: 'Чтение ладони', subtitle: 'Я опишу только видимые зоны на фото и свяжу их с вопросами, важными именно тебе.',
+      guideTitle: 'Снимок, который поможет', guide: 'Одна ладонь целиком · ровный свет · камера сверху · пальцы расслаблены. Без фильтров, бликов и украшений.',
+      full: 'целиком', glare: 'без бликов', fingers: 'пальцы свободны', camera: 'Сфотографировать ладонь', cameraSmall: 'Камера · один кадр', gallery: 'Выбрать из галереи', gallerySmall: 'JPEG, PNG или WebP · до 8 МБ',
+      folded: 'Для линий отношений, детей и путешествий нужен отдельный кадр согнутой ладони ребром к камере.', privacy: 'Фото используется для текущего разбора. Сохраняются только структурированные observations и технический fingerprint; исходное изображение не сохраняется. Удалить чтение можно из истории.',
+      disclaimer: 'Мира читает только различимые линии и зоны: чем яснее кадр, тем глубже разбор.', looking: 'Смотрю на линии', checking: 'Проверяю качество кадра и отделяю наблюдаемое от интерпретации…', photo: 'Фото', quality: 'Качество', observations: 'Наблюдения',
+      result: 'Что видно на ладони', needs: 'Нужен более ясный кадр', qualityLabel: 'Качество кадра', boundaries: 'Границы чтения', prompts: 'Вопросы к себе', more: 'Подробнее с Мирой', newPhoto: 'Новое фото', retry: 'Переснять фото', change: 'Изменить', usable: 'свет/резкость пригодны', checkFrame: 'нужна проверка кадра', precheck: 'детерминированная проверка изображения', viewUnknown: 'ракурс не указан', details: 'Показать карту зон и техник',
+      typeError: 'Выбери JPEG, PNG или WebP. Другие форматы не отправляются.', sizeError: 'Выбери изображение до 8 МБ.', failTitle: 'Не получилось прочитать фото', failCopy: 'Проверь кадр и попробуй ещё раз.',
+      privacyLabel: 'Приватность изображения', detected: 'ладонь распознана', notDetected: 'ладонь не подтверждена', observed: 'наблюдается', inferred: 'осторожная интерпретация', unknown: 'не подтверждено', notSupported: 'не поддерживается', openPalm: 'раскрытая ладонь', foldedEdge: 'согнутый край',
+    },
+    en: {
+      title: 'Palm reading', subtitle: 'I will describe only visible zones in the photo and connect them to questions that matter to you.',
+      guideTitle: 'A photo that helps', guide: 'One whole palm · even light · camera above · relaxed fingers. No filters, glare or jewellery.',
+      full: 'whole palm', glare: 'no glare', fingers: 'fingers clear', camera: 'Take a palm photo', cameraSmall: 'Camera · one frame', gallery: 'Choose from gallery', gallerySmall: 'JPEG, PNG or WebP · up to 8 MB',
+      folded: 'Relationship, children and travel lines require a separate folded-edge photo with the side of the palm facing the camera.', privacy: 'The photo is used for the current reading. Only structured observations and a technical fingerprint are retained; the original image is not stored. You can delete the reading from history.',
+      disclaimer: 'Mira reads only distinguishable lines and zones: the clearer the frame, the deeper the reflection.', looking: 'Looking at the lines', checking: 'Checking image quality and separating observations from interpretation…', photo: 'Photo', quality: 'Quality', observations: 'Observations',
+      result: 'What is visible on your palm', needs: 'A clearer photo is needed', qualityLabel: 'Image quality', boundaries: 'Reading boundaries', prompts: 'Questions for reflection', more: 'Ask Mira for more', newPhoto: 'New photo', retry: 'Retake photo', change: 'Change', usable: 'light/sharpness are usable', checkFrame: 'frame needs checking', precheck: 'deterministic image check', viewUnknown: 'view not specified', details: 'Show zone and technique map',
+      typeError: 'Choose JPEG, PNG or WebP. Other formats are not sent.', sizeError: 'Choose an image up to 8 MB.', failTitle: 'The photo could not be read', failCopy: 'Check the frame and try again.',
+      privacyLabel: 'Image privacy', detected: 'palm detected', notDetected: 'palm not confirmed', observed: 'observed', inferred: 'qualified inference', unknown: 'not confirmed', notSupported: 'not supported', openPalm: 'open palm', foldedEdge: 'folded edge',
+    },
+  };
+  const pt = key => (PALM_I18N[oracleLang()] || PALM_I18N.ru)[key] || PALM_I18N.ru[key] || key;
+  const evidenceStateLabel = state => ({ observed: pt('observed'), inferred: pt('inferred'), unknown: pt('unknown'), not_supported: pt('notSupported') }[state] || pt('unknown'));
+  const viewTypeLabel = view => ({ open_palm: pt('openPalm'), folded_edge: pt('foldedEdge') }[view] || pt('viewUnknown'));
   const palmGuide = () => `
     <div class="palm-guide" role="note">
-      <b>Снимок, который поможет</b>
-      <span>Одна ладонь целиком · ровный свет · камера сверху · пальцы расслаблены. Без фильтров, бликов и украшений.</span>
-      <div class="palm-guide__steps"><i>1</i><i>2</i><i>3</i><small>целиком</small><small>без бликов</small><small>пальцы свободны</small></div>
+      <b>${esc(pt('guideTitle'))}</b>
+      <span>${esc(pt('guide'))}</span>
+      <div class="palm-guide__steps"><i>1</i><i>2</i><i>3</i><small>${esc(pt('full'))}</small><small>${esc(pt('glare'))}</small><small>${esc(pt('fingers'))}</small></div>
     </div>`;
 
   app.featurePalm = function () {
@@ -21,38 +52,39 @@
   };
 
   app.palmPickerHtml = function () {
-    const preview = this._palmPreview ? `<div class="palm-preview"><img src="${esc(this._palmPreview)}" alt="Предпросмотр выбранной ладони"><button type="button" class="palm-preview__clear" data-act="tool-fn" data-fn="featurePalm">Изменить</button></div>` : '';
+    const preview = this._palmPreview ? `<div class="palm-preview"><img src="${esc(this._palmPreview)}" alt="${esc(pt('title'))}"><button type="button" class="palm-preview__clear" data-act="tool-fn" data-fn="featurePalm">${esc(pt('change'))}</button></div>` : '';
     return `<section class="palm-result" aria-live="polite">
-      <div class="w-title">✋ Чтение ладони</div>
-      <p class="w-sub">Я опишу видимые зоны на фото и свяжу их с вопросами, которые важны именно тебе.</p>
+      <div class="w-title">✋ ${esc(pt('title'))}</div>
+      <p class="w-sub">${esc(pt('subtitle'))}</p>
       ${preview}
       ${palmGuide()}
       <div class="palm-upload-actions" role="group" aria-label="Источник фотографии">
         <label class="palm-upload palm-upload--primary" for="palm-camera">
           <span class="palm-upload__icon" aria-hidden="true">⌾</span>
-          <b>Сфотографировать ладонь</b>
-          <small>Камера · один кадр</small>
+          <b>${esc(pt('camera'))}</b>
+          <small>${esc(pt('cameraSmall'))}</small>
         </label>
         <label class="palm-upload" for="palm-gallery">
           <span class="palm-upload__icon" aria-hidden="true">＋</span>
-          <b>Выбрать из галереи</b>
-          <small>JPEG, PNG или WebP · до 8 МБ</small>
+          <b>${esc(pt('gallery'))}</b>
+          <small>${esc(pt('gallerySmall'))}</small>
         </label>
       </div>
       <input id="palm-camera" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" data-palm-input>
       <input id="palm-gallery" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" data-palm-input>
-      <p class="palm-disclaimer">Мира читает только различимые линии и зоны: чем яснее кадр, тем глубже разбор.</p>
+      <p class="palm-disclaimer">${esc(pt('disclaimer'))}</p>
+      <div class="palm-limitations"><b>${esc(pt('privacyLabel'))}</b><p>${esc(pt('privacy'))}</p></div>
     </section>`;
   };
 
   app.palmLoadingHtml = function () {
-    const preview = this._palmPreview ? `<div class="palm-preview palm-preview--loading"><img src="${esc(this._palmPreview)}" alt="Загруженная ладонь"><span>◌</span></div>` : '';
+    const preview = this._palmPreview ? `<div class="palm-preview palm-preview--loading"><img src="${esc(this._palmPreview)}" alt="${esc(pt('title'))}"><span>◌</span></div>` : '';
     return `<section class="palm-result" role="status" aria-live="polite">
-      <div class="w-title">✋ Смотрю на линии</div>
+      <div class="w-title">✋ ${esc(pt('looking'))}</div>
       ${preview}
-      <div class="palm-progress"><span class="is-on">Фото</span><i></i><span class="is-on">Качество</span><i></i><span>Наблюдения</span></div>
+      <div class="palm-progress"><span class="is-on">${esc(pt('photo'))}</span><i></i><span class="is-on">${esc(pt('quality'))}</span><i></i><span>${esc(pt('observations'))}</span></div>
       <div class="palm-loading"><span></span><span></span><span></span></div>
-      <p class="w-sub">Проверяю качество кадра и отделяю наблюдаемое от интерпретации…</p>
+      <p class="w-sub">${esc(pt('checking'))}</p>
     </section>`;
   };
 
@@ -60,12 +92,12 @@
     const obs = Array.isArray(result.observations) ? result.observations : [];
     if (!obs.length) return '<p class="palm-muted">На этом кадре пока недостаточно деталей для уверенного чтения.</p>';
     return obs.slice(0, 6).map(item => {
-      const topic = PALM_TOPICS[item.topic] || item.topic || 'Наблюдение';
-      const visibility = VISIBILITY[item.visibility] || 'неясно';
+      const topic = (oracleLang() === 'en' ? PALM_TOPICS_EN[item.topic] : PALM_TOPICS[item.topic]) || item.topic || pt('unknown');
+      const visibility = (oracleLang() === 'en' ? VISIBILITY_EN[item.visibility] : VISIBILITY[item.visibility]) || pt('unknown');
       const confidence = Math.round(Number(item.confidence || 0) * 100);
       return `
       <div class="palm-observation">
-        <div><b>${esc(topic)}</b><span>${esc(visibility)} · ${confidence}%</span></div>
+        <div><b>${esc(topic)}</b><span>${esc(visibility)} · ${esc(evidenceStateLabel(item.evidence_state))} · ${confidence}%</span></div>
         <div class="palm-confidence"><i style="width:${confidence}%"></i></div>
         <p>${esc(item.summary || 'Описание отсутствует')}</p>
       </div>`;
@@ -85,48 +117,60 @@
       });
     });
     return items.slice(0, 12).map(({ label, detail }) => {
-      const visibility = VISIBILITY[detail.visibility] || 'неясно';
+      const visibility = (oracleLang() === 'en' ? VISIBILITY_EN[detail.visibility] : VISIBILITY[detail.visibility]) || pt('unknown');
       const confidence = Math.round(Number(detail.confidence || 0) * 100);
-      return `<div class="palm-detail-row"><div><b>${esc(label)}</b><span>${esc(visibility)} · ${confidence}%</span></div><div class="palm-confidence"><i style="width:${confidence}%"></i></div><p>${esc(detail.summary || detail.shape || 'Отдельное описание не передано')}</p></div>`;
+      return `<div class="palm-detail-row"><div><b>${esc(label)}</b><span>${esc(visibility)} · ${esc(evidenceStateLabel(detail.evidence_state))} · ${confidence}%</span></div><div class="palm-confidence"><i style="width:${confidence}%"></i></div><p>${esc(detail.summary || detail.shape || 'Отдельное описание не передано')}</p></div>`;
     }).join('');
   }
 
   app.palmHtml = function (result) {
+    this._palmResult = result;
     const q = result.image_quality || {};
     const pre = result.visual_precheck || {};
     const needs = result.status === 'needs_photo';
     const limitations = Array.isArray(result.limitations) ? result.limitations : [];
     const prompts = Array.isArray(result.interpretive_prompts) ? result.interpretive_prompts : [];
     const pa = result.photo_assessment || {};
-    const detected = result.hand_detected ? 'ладонь распознана' : 'ладонь не подтверждена';
-    const preCopy = pre.width ? `${pre.width}×${pre.height} · ${pre.status === 'usable' ? 'свет/резкость пригодны' : 'нужна проверка кадра'}` : 'детерминированная проверка изображения';
+    const detected = result.hand_detected ? pt('detected') : pt('notDetected');
+    const preCopy = pre.width ? `${pre.width}×${pre.height} · ${pre.status === 'usable' ? pt('usable') : pt('checkFrame')}` : pt('precheck');
     return `<section class="palm-result" aria-live="polite">
-      <div class="w-title">✋ ${needs ? 'Нужен более ясный кадр' : 'Что видно на ладони'}</div>
-      <div class="palm-quality" style="--quality:${Math.round(Number(q.score || 0) * 100)}"><b>Качество кадра</b><span>${Math.round(Number(q.score || 0) * 100)}%</span></div>
-      <div class="palm-evidence-strip"><span>◉ ${esc(detected)}</span><span>⌁ ${esc(pa.view_type || 'ракурс не указан')}</span><span>✦ ${esc(preCopy)}</span></div>
+      <div class="w-title">✋ ${needs ? esc(pt('needs')) : esc(pt('result'))}</div>
+      <div class="palm-quality" style="--quality:${Math.round(Number(q.score || 0) * 100)}"><b>${esc(pt('qualityLabel'))}</b><span>${Math.round(Number(q.score || 0) * 100)}%</span></div>
+      <div class="palm-evidence-strip"><span>◉ ${esc(detected)}</span><span>⌁ ${esc(viewTypeLabel(pa.view_type))}</span><span>✦ ${esc(preCopy)}</span></div>
       ${textFromResult(result)}
-      ${detailRows(result) ? `<details class="palm-details"><summary>Показать карту зон и техник <span>⌄</span></summary><div class="palm-detail-list">${detailRows(result)}</div></details>` : ''}
-      ${limitations.length ? `<div class="palm-limitations"><b>Границы чтения</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}
-      ${prompts.length ? `<div class="palm-prompts"><b>Вопросы к себе</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
-      <p class="palm-disclaimer">Линия жизни раскрывается через форму, непрерывность и ритм ресурса; здоровье и длительность жизни не считываются по линиям.</p>
+      ${detailRows(result) ? `<details class="palm-details"><summary>${esc(pt('details'))} <span>⌄</span></summary><div class="palm-detail-list">${detailRows(result)}</div></details>` : ''}
+      ${limitations.length ? `<div class="palm-limitations"><b>${esc(pt('boundaries'))}</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}
+      ${prompts.length ? `<div class="palm-prompts"><b>${esc(pt('prompts'))}</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
+      <p class="palm-disclaimer">${esc(pt('disclaimer'))}</p>
+      <div class="palm-limitations"><b>${esc(pt('privacyLabel'))}</b><p>${esc(pt('privacy'))}</p></div>
       <div class="palm-actions">
         ${needs
-          ? '<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Переснять фото</button>'
-          : '<button class="btn btn-primary" data-act="ask" data-chat="chiromant" data-q="Разбери мою ладонь подробнее по этому снимку: линии, холмы и тип руки.">Подробнее с Мирой</button><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Новое фото</button>'}
+          ? `<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">${esc(pt('retry'))}</button>`
+          : `<button class="btn btn-primary" data-act="ask" data-chat="chiromant" data-q="${esc(oracleLang() === 'en' ? 'Explain my palm in more detail from this photo: lines, mounts and hand shape.' : 'Разбери мою ладонь подробнее по этому снимку: линии, холмы и тип руки.')}">${esc(pt('more'))}</button><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">${esc(pt('newPhoto'))}</button>`}
       </div>
     </section>`;
+  };
+
+  app.refreshPalmLocale = function () {
+    const pending = this.chat && this.chat.pending;
+    if (!pending || pending.kind !== 'palm') return;
+    if (pending.loading) pending.html = this.palmLoadingHtml();
+    else if (this._palmResult) pending.html = this.palmHtml(this._palmResult);
+    else pending.html = this.palmPickerHtml();
   };
 
   async function upload(file) {
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (file.type && !allowed.includes(file.type.toLowerCase())) {
-      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ Нужен снимок ладони</div><p class="palm-muted">Выбери JPEG, PNG или WebP. Другие форматы не отправляются.</p><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Выбрать другое фото</button></section>` };
+      app._palmResult = null;
+      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ ${esc(pt('title'))}</div><p class="palm-muted">${esc(pt('typeError'))}</p><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">${esc(pt('change'))}</button></section>` };
       app.renderChat(document.getElementById('app-main'));
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ Фото слишком большое</div><p class="palm-muted">Выбери изображение до 8 МБ.</p><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Попробовать снова</button></section>` };
+      app._palmResult = null;
+      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ ${esc(pt('needs'))}</div><p class="palm-muted">${esc(pt('sizeError'))}</p><button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">${esc(pt('retry'))}</button></section>` };
       app.renderChat(document.getElementById('app-main'));
       return;
     }
@@ -148,11 +192,13 @@
       try { body = await response.json(); } catch (e) {}
       if (!response.ok) throw new Error((body && body.detail) || 'Не удалось прочитать фото');
       if (!widAlive(key, view, pend)) return;
+      app._palmResult = body;
       app.chat.pending = { kind: 'palm', loading: false, html: app.palmHtml(body) };
       haptic('success');
     } catch (e) {
       if (!widAlive(key, view, pend)) return;
-      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ Не получилось прочитать фото</div><p class="palm-muted">${esc(friendlyError(e, 'Не получилось прочитать фото. Проверь кадр и попробуй ещё раз.'))}</p>${palmGuide()}<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">Попробовать снова</button></section>` };
+      app._palmResult = null;
+      app.chat.pending = { kind: 'palm', loading: false, html: `<section class="palm-result"><div class="w-title">✋ ${esc(pt('failTitle'))}</div><p class="palm-muted">${esc(friendlyError(e, pt('failCopy')))}</p>${palmGuide()}<button class="btn btn-ghost" data-act="tool-fn" data-fn="featurePalm">${esc(pt('retry'))}</button></section>` };
       haptic('error');
     }
     app.renderChat(document.getElementById('app-main'));

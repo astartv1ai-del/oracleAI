@@ -12,6 +12,12 @@ import math
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .astrology_engine import (
+    ENGINE,
+    ENGINE_ADAPTER_VERSION,
+    ChartRequest,
+    validate_chart_result,
+)
 from .chart_contract import ASPECT_ORBS, build_calculation_metadata
 
 log = logging.getLogger("oracle.astro")
@@ -226,35 +232,35 @@ def _has_valid_coordinates(lat: float | None, lon: float | None) -> bool:
 def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
                   lat: float | None, lon: float | None,
                   tz: str | None = None, *, time_known: bool | None = None) -> dict:
-    """Возвращает карту с честно указанной точностью входных данных.
+    """Calculate a chart through the improved Kerykeion engine boundary.
 
-    `mode=full` означает, что доступна Swiss Ephemeris. Поля `precision` и `note`
-    отдельно показывают, можно ли использовать дома/ASC/MC: для них требуются
-    подтверждённые время, координаты и таймзона. Планеты и аспекты между ними
-    остаются полезными при неполных данных, но не маскируются под точную карту.
+    The boundary normalizes input, derives the truth state and fingerprints the
+    request before the Kerykeion/Swiss Ephemeris backend is called. It also
+    caches only defensive copies, so callers cannot mutate future results.
     """
-    d = datetime.strptime(birth_date, "%Y-%m-%d").date()
-    parsed_time = _parse_birth_time(birth_time)
-    # Локальные часы можно переводить в UTC только при подтверждённой IANA
-    # timezone. Без неё точное время намеренно деградирует до date-only snapshot.
-    if tz and not _has_valid_timezone(tz):
-        raise ValueError("Часовой пояс указывается как корректный IANA identifier")
-    coordinates_known = _has_valid_coordinates(lat, lon)
-    time_confirmed = bool(parsed_time and (time_known is not False) and tz)
-    effective_time = parsed_time if time_confirmed else None
-    precision_reason = (
-        "exact" if time_confirmed and coordinates_known else
-        "time_without_location" if time_confirmed else
-        "date_only_missing_timezone" if parsed_time and not tz else
-        "date_only_unconfirmed" if parsed_time else "date_only")
+    request = ENGINE.normalize(
+        birth_date, birth_time, city, lat, lon, tz, time_known=time_known,
+    )
+
+    def calculate(normalized: ChartRequest) -> dict:
+        return _full_chart(
+            normalized.birth_date,
+            normalized.birth_time,
+            normalized.city,
+            normalized.lat,
+            normalized.lon,
+            normalized.tz,
+            coordinates_known=normalized.coordinates_known,
+            time_confirmed=normalized.time_confirmed,
+            precision_reason=normalized.precision_reason,
+            request_metadata=normalized.metadata(),
+        )
+
     try:
-        return _full_chart(d, effective_time, city, lat, lon, tz,
-                           coordinates_known=coordinates_known,
-                           time_confirmed=time_confirmed,
-                           precision_reason=precision_reason)
-    except Exception as e:  # noqa: BLE001
-        log.warning("полная карта недоступна (%s), считаю упрощённо", e)
-        sign, sym, element = sun_sign_precise(d)
+        return ENGINE.calculate(request, calculate, validator=validate_chart_result)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("полная карта недоступна (%s), считаю упрощённо", exc)
+        sign, sym, element = sun_sign_precise(request.birth_date)
         return {
             "mode": "lite",
             "precision": "sun_only",
@@ -271,12 +277,18 @@ def compute_chart(birth_date: str, birth_time: str | None, city: str | None,
                     "дома, ASC, MC и аспекты не определяются.",
             "calculation": build_calculation_metadata(
                 active_points=ACTIVE_POINTS,
-                input_data={"birth_date": birth_date,
-                            "birth_time": birth_time if time_confirmed else None,
-                            "city": city, "lat": lat, "lon": lon, "tz": tz,
-                            "time_known": time_confirmed,
-                            "precision_reason": ("date_only_missing_timezone" if parsed_time and not time_confirmed
-                                                 else "date_only" if not parsed_time else "calculation_fallback")},
+                input_data={
+                    "birth_date": request.birth_date.isoformat(),
+                    "birth_time": (f"{request.birth_time[0]:02d}:{request.birth_time[1]:02d}"
+                                   if request.birth_time else None),
+                    "city": request.city,
+                    "lat": request.lat,
+                    "lon": request.lon,
+                    "tz": request.tz,
+                    "time_known": request.time_confirmed,
+                    "precision_reason": request.precision_reason,
+                    **request.metadata(),
+                },
                 precision="sun_only", angular_data_available=False),
         }
 
@@ -320,7 +332,8 @@ def _aspects(subject) -> list[dict]:
 
 def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
                 *, coordinates_known: bool, time_confirmed: bool,
-                precision_reason: str = "date_only") -> dict:
+                precision_reason: str = "date_only",
+                request_metadata: dict | None = None) -> dict:
     from kerykeion import AstrologicalSubjectFactory  # type: ignore
 
     hour, minute = birth_time or (12, 0)
@@ -467,7 +480,9 @@ def _full_chart(d: date, birth_time: tuple[int, int] | None, city, lat, lon, tz,
                         "birth_time": (f"{hour:02d}:{minute:02d}" if birth_time and time_confirmed else None),
                         "city": city, "lat": lat, "lon": lon, "tz": tz,
                         "time_known": time_confirmed,
-                        "precision_reason": precision_reason},
+                        "precision_reason": precision_reason,
+                        "adapter_version": ENGINE_ADAPTER_VERSION,
+                        **(request_metadata or {})},
             precision=precision, angular_data_available=angular_data_available),
     }
 

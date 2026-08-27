@@ -598,6 +598,7 @@
         row(a.glyph || '◈', `${a.p1} — ${a.p2}`, `${a.aspect}${a.orb != null ? ' · ' + profileT('orb') + ' ' + a.orb + '°' : ''}`)).join('');
       document.getElementById('fc-body').innerHTML = `
         ${precisionNotice}
+        ${this.chartProvenanceHtml(c)}
         <div class="fc-hero chart-engine-image-shell" style="margin-bottom:6px;display:flex;justify-content:center;align-items:center;background:rgba(14,13,30,.7);border-radius:var(--r-m);padding:10px;box-shadow:var(--sh-card);">
           ${this.chartImageHtml(c, 'full-chart-image', 'full')}
         </div>
@@ -752,6 +753,7 @@
       this.me = Object.assign({}, this.me, { lang });
       syncDocumentLocale();
       this.closeModal();
+      if (typeof this.refreshPalmLocale === 'function') this.refreshPalmLocale();
       this.renderFrame();
       this.go(this.view || 'profile');
       this.toast(t('saved'));
