@@ -3,7 +3,7 @@
 **Дата:** 27 августа 2026 года  
 **Область проверки:** Mini App, RU/EN, shell, home/ritual, guide hub, chat, profile, profile tabs, Tarot entry state, modal/sheet, loading/empty/recovery patterns.  
 **Контрольные ширины:** 375px, 768px, 1440px и 1920px.  
-**Evidence:** [`artifacts/visual-qa/report.json`](../artifacts/visual-qa/report.json) и PNG-снимки в [`artifacts/visual-qa/`](../artifacts/visual-qa/).
+**Evidence:** `artifacts/visual-qa/report.json` и PNG-снимки в `artifacts/visual-qa/` — генерируются скриптом [`scripts/visual_qa_capture.py`](../scripts/visual_qa_capture.py) и в репозиторий не коммитятся (артефакты CI-окружения).
 
 ## Методика
 
