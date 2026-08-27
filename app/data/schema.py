@@ -77,6 +77,14 @@ CREATE TABLE IF NOT EXISTS messages (
     tokens      INTEGER,
     created_at  TEXT
 );
+CREATE TABLE IF NOT EXISTS chat_requests (
+    idempotency_key TEXT PRIMARY KEY,
+    tg_id           INTEGER NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'processing', -- processing|completed|failed
+    response_json   TEXT,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS memories (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     tg_id      INTEGER NOT NULL,

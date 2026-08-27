@@ -738,7 +738,7 @@ def test_admin_demo_and_payment_health_ui_contract():
     mini_actions = (root / "miniapp" / "js" / "15-actions.js").read_text(encoding="utf-8")
     mini_payments = (root / "miniapp" / "js" / "17-payments.js").read_text(encoding="utf-8")
     mini_misc = (root / "miniapp" / "js" / "12-misc.js").read_text(encoding="utf-8")
-    assert "/static/styles.css?v=100" in mini_index
+    assert "/static/styles.css?v=102" in mini_index
     assert "payment-history" in mini_actions and "account-privacy" in mini_actions
     assert "/api/shop/payment-history" in mini_payments
     assert "/api/account/export" in mini_misc

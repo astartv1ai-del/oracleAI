@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import logging
-import time
-from collections import defaultdict, deque
+
 
 from fastapi import Depends, Header, HTTPException, Query, Request
 
@@ -11,6 +10,7 @@ from ..config import settings
 from ..data.session import connect
 from ..repo import admin as admin_repo
 from ..repo import users as users_repo
+from ..services import rate_limit as rate_limit_service
 from .security import parse_init_data
 
 log = logging.getLogger("oracle.api")
@@ -35,27 +35,23 @@ async def close_db() -> None:
 
 
 # ─────────────────────────────── темп запросов ────────────────────────────────
-# Ограничитель в памяти процесса: он защищает от случайного цикла в клиенте и от
-# грубого перебора. Распределённый лимит (несколько инстансов) потребует Redis —
-# до этого масштаба одного VPS хватает с запасом.
-
-_hits: dict[tuple[int, str], deque] = defaultdict(deque)
+# The limiter service supports process-local development and Redis-backed
+# multi-process production. Identity is always derived from signed Telegram data
+# (or explicit dev mode), never from a user-controlled body field.
 
 LIMITS = {
-    "read": (120, 60),      # 120 запросов в минуту
+    "read": (120, 60),
     "write": (30, 60),
-    "llm": (12, 60),        # генерации дороги: 12 в минуту заведомо выше живого темпа
-    "admin": (60, 60),      # панель: админ один, грубый перебор / утечка ключа — отсечь
+    "llm": (12, 60),
+    "admin": (60, 60),
 }
 
 
 def rate_limit(bucket: str = "read"):
-    """Зависимость-ограничитель. Ключ — клиентка + корзина."""
+    """Distributed-safe dependency limiter with bounded retry metadata."""
     limit, window = LIMITS.get(bucket, LIMITS["read"])
 
     async def guard(request: Request):
-        # tg_id берём из подписанного заголовка, чтобы лимит был персональным,
-        # а не общим на весь сервер
         tg_id = 0
         data = parse_init_data(request.headers.get("x-init-data", ""))
         if data:
@@ -65,16 +61,18 @@ def rate_limit(bucket: str = "read"):
                 tg_id = int(request.query_params.get("dev_user") or 0)
             except ValueError:
                 tg_id = 0
-        key = (tg_id, bucket)
-        now = time.monotonic()
-        hits = _hits[key]
-        while hits and now - hits[0] > window:
-            hits.popleft()
-        if len(hits) >= limit:
-            raise HTTPException(429, "слишком часто — переведи дыхание 🌙")
-        hits.append(now)
-        if len(_hits) > 50_000:                 # страховка от роста словаря
-            _hits.clear()
+        decision = await rate_limit_service.allow(str(tg_id), bucket, limit, window)
+        if not decision.allowed:
+            log.warning(
+                "rate_limit_denied bucket=%s backend=%s retry_after=%s",
+                bucket, decision.backend, decision.retry_after,
+            )
+            raise HTTPException(
+                429,
+                detail={"code": "rate_limited", "backend": decision.backend,
+                        "message": "слишком часто — переведи дыхание 🌙"},
+                headers={"Retry-After": str(decision.retry_after)},
+            )
 
     return guard
 

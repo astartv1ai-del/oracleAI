@@ -2319,7 +2319,7 @@ html { scroll-behavior: smooth; }
 /* Vedic capability surface: compact, evidence-first, mobile-safe. */
 .vedic-surface{margin-top:14px;padding:14px;border:1px solid color-mix(in srgb,var(--ac,#8cc8ff) 28%,transparent);border-radius:18px;background:linear-gradient(145deg,rgba(24,31,54,.72),rgba(18,22,39,.54));}
 .vedic-surface__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
-.vedic-surface__head h3{margin:2px 0 0;font-size:16px;letter-spacing:-.02em;}
+.vedic-surface__head h2,.vedic-surface__head h3{margin:2px 0 0;font-size:16px;letter-spacing:-.02em;}
 .vedic-proof{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:rgba(127,180,232,.12);color:#b9dcff;font-size:10px;letter-spacing:.04em;text-transform:uppercase;}
 .vedic-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
 .vedic-card{min-width:0;min-height:92px;padding:11px 9px;border:1px solid rgba(173,202,239,.16);border-radius:14px;background:rgba(255,255,255,.045);color:inherit;text-align:left;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease;}

@@ -41,6 +41,23 @@ def test_skill_frontmatter_is_portable_and_unique():
         assert profile.handbook
 
 
+def test_lazy_skill_activation_is_available_for_every_file_agent():
+    cases = (
+        ("oracle", "matrix-reading"),
+        ("astro", "natal-chart-foundations"),
+        ("tarot", "three-card-spread"),
+        ("chiromant", "heart-line-depth"),
+    )
+    for code, name in cases:
+        context = skill_context(code, "покажи профильный разбор", limit=3)
+        assert "[SKILL_INDEX]" in context
+        assert "ACTIVE_SKILL:" not in context
+        assert name in context
+        activated = activate_skill(code, name)
+        assert "[ACTIVATED_SKILL]" in activated
+        assert f"ACTIVE_SKILL: {name}" in activated
+
+
 def test_russian_queries_select_relevant_specialist_skill():
     mira = profile_for_legacy("chiromant")
     urania = profile_for_legacy("astro")
@@ -70,7 +87,7 @@ def test_skill_context_is_bounded_and_legacy_registry_is_unchanged():
     assert "ANTI-BARNUM" in activated.upper() or "evidence" in activated.lower()
     assert codes() == ("oracle", "astro", "tarot", "chiromant")
     assert get("chiromant").skills == (
-        "activate_palm_skill",
+        "activate_skill",
         "palm_scanner",
         "palm_photo_guide",
         "palm_history",

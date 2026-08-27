@@ -250,3 +250,13 @@ select:focus-visible {
 }
 
 .soft-empty__action .btn { min-height: var(--touch-target); }
+
+/* Lighthouse QA mode freezes decorative motion so performance metrics are reproducible. */
+html[data-qa="1"] *,
+html[data-qa="1"] *::before,
+html[data-qa="1"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}

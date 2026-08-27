@@ -92,7 +92,9 @@ sequenceDiagram
     R->>P: save answer and publish recommendation/event
 ```
 
-Инструменты объявлены централизованно в `app/core/skills.py`: schema description, allow-list и executor разделены. `tools_for()` выдаёт только доменные инструменты выбранного агента, а `execute()` возвращает безопасный fallback при неизвестном или упавшем инструменте. Для Миры порядок такой: `palm_vision` capture precheck → optional MediaPipe hand geometry + ONNX heart/head/life evidence → дорогой vision call только если кадр не отвергнут → strict JSON normalization/safety scrub → сохранение только структурированного анализа без raw image.
+Инструменты объявлены централизованно в `app/core/skills.py`: schema description, allow-list и executor разделены. `tools_for()` выдаёт только инструменты выбранного агента, а `execute()` возвращает безопасный fallback при неизвестном или упавшем инструменте. Все четыре агента получают компактный `[SKILL_INDEX]`; `activate_skill` загружает полное тело только выбранного skill, причём runtime подставляет домен агента серверно.
+
+Для Миры порядок такой: `palm_vision` capture precheck → MediaPipe hand geometry/pose → ONNX evidence по life/head/heart → `palm_full_scope` OpenCV candidate search по полному каталогу линий, холмов, пальцев и знаков → vision call как финальный visual adjudicator → strict JSON normalization/safety scrub → LLM explanation только по подтверждённым наблюдениям → сохранение структурированного evidence без raw image, raw mask или raw edge map. Relationship/children/travel zones получают `requires_view=folded_edge`, если исходный кадр — открытая ладонь.
 
 ## Frontend modules
 

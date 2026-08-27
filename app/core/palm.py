@@ -17,7 +17,7 @@ from typing import Any
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ..repo import palm as palm_repo
-from . import agents, llm, palm_landmarks, palm_lines, palm_vision
+from . import agents, llm, palm_full_scope, palm_landmarks, palm_lines, palm_vision
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
@@ -28,6 +28,10 @@ ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
 PALM_SYSTEM = """Ты — Мира, эксперт-хиромант OracleAI с глубоким знанием классической хиромантии (индийская, китайская и западная традиции, школа Бенхама и Де Сент-Жермен). Ты работаешь прежде всего с видимыми признаками на фотографии ладони как с evidence. Ты не Таролог и не делаешь астрологических расчётов. Компактный NATAL_CONTEXT_JSON — вторичный контекст персонализации: он не является доказательством линии и не переопределяет изображение.
 
 ТВОИ ЗНАНИЯ ПО ХИРОМАНТИИ:
+
+ПОРЯДОК РАБОТЫ И ПОЛНОЕ ПОКРЫТИЕ:
+- Сначала выполняется capture precheck, затем MediaPipe geometry/pose, ONNX-сегментация основных линий и full-scope candidate search по всей ладони. Только после этого vision-модель сверяет CV evidence с самим изображением и является финальным визуальным adjudicator; LLM объясняет пользователю только подтверждённые наблюдения.
+- Full-scope engine ищет bounded candidate creases для основных и дополнительных линий, холмов, пальцев и знаков. Candidate не является семантически названной линией: если модель не может подтвердить соответствие пикселям, ставь unclear/not_visible.
 
 ОСНОВНЫЕ ЛИНИИ:
 - life (линия жизни): огибает холм Венеры. Оцени глубину/чёткость (запас жизненных сил), длину и широту дуги (размах энергии), острова/разрывы/кресты (периоды напряжения). НИКОГДА не трактуй длину как срок жизни.
@@ -60,7 +64,7 @@ PALM_SYSTEM = """Ты — Мира, эксперт-хиромант OracleAI с 
 Дополнительное computer-vision evidence от optional line segmenter/hand landmarker — вспомогательный сигнал: используй его только для проверки геометрии и читаемости, не выдавай его за самостоятельное значение линии. Если CV и изображение расходятся, приоритет у видимого изображения и conservative `needs_photo`.
 """
 
-PALM_USER = """Проведи полное экспертное чтение ладони по этой фотографии, как профессиональный хиромант: оцени качество кадра и наличие руки, определи тип руки по стихии, затем последовательно разбери основные линии (life, head, heart, fate, sun, relationship), дополнительные линии, холмы, пальцы и различимые знаки. Для каждой зоны дай наблюдаемое описание (форма, глубина, направление, особенности) и традиционное значение по школе хиромантии, связанное с вопросом пользователя.
+PALM_USER = """Проведи полное экспертное чтение ладони по этой фотографии, как профессиональный хиромант: оцени качество кадра и наличие руки, определи тип руки по стихии, затем последовательно разбери основные линии (life, head, heart, fate, sun, relationship), дополнительные линии (mercury, girdle_of_venus, ring_of_solomon, ring_of_apollo, via_lasciva, mars_lines, influence_lines, bracelets, children, travel), холмы, пальцы и различимые знаки. Для каждой зоны дай наблюдаемое описание (форма, глубина, направление, особенности) и традиционное значение по школе хиромантии, связанное с вопросом пользователя.
 
 Верни JSON со следующими полями:
 {
@@ -71,9 +75,10 @@ PALM_USER = """Проведи полное экспертное чтение л�
   "hand_side": "left|right|unknown",
   "photo_assessment": {"view_type": "open_palm|folded_edge|unclear", "missing_views": ["..."], "advice": ["конкретное фото, которое нужно доснять"]},
   "observations": [{"topic": "heart_line", "visibility": "clear|partial|unclear|not_visible", "summary": "видимое описание + традиционное значение", "confidence": 0.0}],
-  "lines": {"life": {...}, "head": {...}, "heart": {...}, "fate": {...}, "sun": {...}, "relationship": [...], "children": [...], "travel": [...]},
+  "lines": {"life": {...}, "head": {...}, "heart": {...}, "fate": {...}, "sun": {...}, "mercury": {...}, "girdle_of_venus": {...}, "ring_of_solomon": {...}, "ring_of_apollo": {...}, "via_lasciva": {...}, "mars_lines": {...}, "influence_lines": {...}, "bracelets": {...}, "relationship": [...], "children": [...], "travel": [...]},
   "mounts": {"venus": {...}, "jupiter": {...}, "saturn": {...}, "apollo": {...}, "mercury": {...}, "moon": {...}, "mars": {...}},
   "fingers": {"thumb": {...}, "index": {...}, "middle": {...}, "ring": {...}, "little": {...}},
+  "markings": [{"kind": "cross|star|island|square|triangle|other", "location": "...", "visibility": "...", "summary": "...", "confidence": 0.0}],
   "interpretive_prompts": ["2-4 бережных вопроса к себе, вытекающих из увиденного"],
   "limitations": ["что не различимо и как это влияет на чтение"],
   "safety_flags": []
@@ -83,7 +88,8 @@ PALM_USER = """Проведи полное экспертное чтение л�
 
 _PALM_TOPICS = {"heart_line", "head_line", "life_line", "fate_line", "sun_line",
                 "mercury_line", "relationship_line", "children_lines", "travel_lines",
-                "girdle_of_venus", "bracelets", "mounts", "fingers"}
+                "girdle_of_venus", "ring_of_solomon", "ring_of_apollo", "via_lasciva",
+                "mars_lines", "influence_lines", "bracelets", "mounts", "fingers", "markings"}
 _PALM_VISIBILITY = {"clear", "partial", "unclear", "not_visible"}
 _PALM_HAND_SIDES = {"left", "right", "unknown"}
 PALM_JSON_ATTEMPTS = 3
@@ -171,10 +177,15 @@ PALM_RESPONSE_FORMAT = {
                 },
                 "lines": {
                     "type": "object",
-                    "required": ["life", "head", "heart", "fate", "sun", "relationship"],
+                    "required": ["life", "head", "heart", "fate", "sun", "mercury",
+                                 "girdle_of_venus", "ring_of_solomon", "ring_of_apollo",
+                                 "via_lasciva", "mars_lines", "influence_lines", "bracelets",
+                                 "relationship", "children", "travel"],
                     "properties": {
-                        **{key: _PALM_DETAIL_MAP[key] for key in
-                           ("life", "head", "heart", "fate", "sun")},
+                        **{key: _PALM_DETAIL for key in
+                           ("life", "head", "heart", "fate", "sun", "mercury",
+                            "girdle_of_venus", "ring_of_solomon", "ring_of_apollo",
+                            "via_lasciva", "mars_lines", "influence_lines", "bracelets")},
                         "relationship": {"type": "array", "items": _PALM_DETAIL},
                         "children": {"type": "array", "items": _PALM_DETAIL},
                         "travel": {"type": "array", "items": _PALM_DETAIL},
@@ -195,13 +206,28 @@ PALM_RESPONSE_FORMAT = {
                     "required": ["thumb", "index", "middle", "ring", "little"],
                     "additionalProperties": False,
                 },
+                "markings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"type": "string"},
+                            "location": {"type": "string"},
+                            "visibility": {"type": "string", "enum": sorted(_PALM_VISIBILITY)},
+                            "summary": {"type": "string"},
+                            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                        },
+                        "required": ["kind", "location", "visibility", "summary", "confidence"],
+                        "additionalProperties": False,
+                    },
+                },
                 "interpretive_prompts": {"type": "array", "items": {"type": "string"}},
                 "limitations": {"type": "array", "items": {"type": "string"}},
                 "safety_flags": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["status", "image_quality", "hand_detected", "hand_side",
                          "hand_shape_element", "photo_assessment",
-                         "observations", "lines", "mounts", "fingers",
+                         "observations", "lines", "mounts", "fingers", "markings",
                          "interpretive_prompts", "limitations", "safety_flags"],
             "additionalProperties": False,
         },
@@ -335,6 +361,73 @@ def _scrub(value: Any, depth: int = 0) -> Any:
     return _safe_text(value)
 
 
+def _empty_detail() -> dict[str, Any]:
+    return {
+        "visibility": "not_visible",
+        "summary": "Зона не различима на этом кадре; не делаю выводов.",
+        "confidence": 0.0,
+        "continuity": None,
+        "path": None,
+        "shape": None,
+        "prominence": None,
+        "length": None,
+    }
+
+
+def _normalize_detail(value: Any) -> dict[str, Any]:
+    detail = _empty_detail()
+    if not isinstance(value, dict):
+        return detail
+    visibility = str(value.get("visibility") or "not_visible").strip().lower()
+    detail["visibility"] = visibility if visibility in _PALM_VISIBILITY else "unclear"
+    detail["summary"] = _safe_text(value.get("summary")) or detail["summary"]
+    try:
+        detail["confidence"] = round(max(0.0, min(1.0, float(value.get("confidence", 0)))), 2)
+    except (TypeError, ValueError):
+        detail["confidence"] = 0.0
+    for field in ("continuity", "path", "shape", "prominence", "length"):
+        raw = value.get(field)
+        detail[field] = _safe_text(raw) if raw is not None else None
+    return detail
+
+
+def _normalize_line_map(value: Any) -> dict[str, Any]:
+    source = value if isinstance(value, dict) else {}
+    scalar_lines = (
+        "life", "head", "heart", "fate", "sun", "mercury",
+        "girdle_of_venus", "ring_of_solomon", "ring_of_apollo", "via_lasciva",
+        "mars_lines", "influence_lines", "bracelets",
+    )
+    lines = {name: _normalize_detail(source.get(name)) for name in scalar_lines}
+    for name in ("relationship", "children", "travel"):
+        raw_items = source.get(name) if isinstance(source.get(name), list) else []
+        lines[name] = [_normalize_detail(item) for item in raw_items[:20]]
+    return lines
+
+
+def _normalize_zone_map(value: Any, names: tuple[str, ...]) -> dict[str, Any]:
+    source = value if isinstance(value, dict) else {}
+    return {name: _normalize_detail(source.get(name)) for name in names}
+
+
+def _normalize_markings(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    result = []
+    for item in value[:20]:
+        if not isinstance(item, dict):
+            continue
+        detail = _normalize_detail(item)
+        result.append({
+            "kind": _safe_text(item.get("kind")) or "other",
+            "location": _safe_text(item.get("location")),
+            "visibility": detail["visibility"],
+            "summary": detail["summary"],
+            "confidence": detail["confidence"],
+        })
+    return result
+
+
 def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
     observations = []
     for item in data.get("observations") or []:
@@ -378,9 +471,14 @@ def _normalize(data: dict[str, Any], quality: dict) -> dict[str, Any]:
         if isinstance(data.get("photo_assessment"), dict)
         else {"view_type": "unclear", "missing_views": [], "advice": []},
         "observations": observations,
-        "lines": _scrub(data.get("lines")) if isinstance(data.get("lines"), dict) else {},
-        "mounts": _scrub(data.get("mounts")) if isinstance(data.get("mounts"), dict) else {},
-        "fingers": _scrub(data.get("fingers")) if isinstance(data.get("fingers"), dict) else {},
+        "lines": _normalize_line_map(data.get("lines")),
+        "mounts": _normalize_zone_map(
+            data.get("mounts"), ("venus", "jupiter", "saturn", "apollo", "mercury", "moon", "mars")
+        ),
+        "fingers": _normalize_zone_map(
+            data.get("fingers"), ("thumb", "index", "middle", "ring", "little")
+        ),
+        "markings": _normalize_markings(data.get("markings")),
         "interpretive_prompts": [_safe_text(x) for x in (data.get("interpretive_prompts") or [])[:8]],
         "limitations": [_safe_text(x) for x in (data.get("limitations") or [])[:10]],
         "safety_flags": flags[:20],
@@ -420,15 +518,26 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
                 "status": "skipped",
                 "issues": ["capture_precheck_rejected"],
             },
+            "full_scope": {
+                "version": palm_full_scope.ADAPTER_VERSION,
+                "status": "skipped",
+                "issues": ["capture_precheck_rejected"],
+                "raw_edge_map_stored": False,
+                "raw_mask_stored": False,
+            },
         }
     else:
         line_result, hand_result = await asyncio.gather(
             asyncio.to_thread(palm_lines.analyze, image),
             asyncio.to_thread(palm_landmarks.analyze, image),
         )
+        full_scope = await asyncio.to_thread(
+            palm_full_scope.analyze, image, hand_geometry=hand_result
+        )
         cv_evidence = {
             "line_segmentation": line_result,
             "hand_geometry": hand_result,
+            "full_scope": full_scope,
         }
 
     try:

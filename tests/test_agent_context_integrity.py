@@ -55,14 +55,34 @@ def test_disabled_memory_prompt_contains_no_recalled_content():
 
 def test_specialist_tools_are_domain_scoped():
     assert {tool["name"] for tool in skills.tools_for(get("tarot").skills)} == {
-        "draw_tarot", "save_memory", "recall_memory"
+        "activate_skill", "draw_tarot", "save_memory", "recall_memory"
     }
     assert {tool["name"] for tool in skills.tools_for(get("astro").skills)} >= {
         "get_chart", "get_transits", "get_career_windows", "get_compatibility"
     }
     assert {tool["name"] for tool in skills.tools_for(get("chiromant").skills)} == {
-        "activate_palm_skill", "palm_scanner", "palm_photo_guide", "palm_history"
+        "activate_skill", "palm_scanner", "palm_photo_guide", "palm_history"
     }
+
+
+def test_generic_activation_executor_is_domain_scoped():
+    import asyncio
+
+    cases = (
+        ("oracle", "matrix-reading"),
+        ("astro", "natal-chart-foundations"),
+        ("tarot", "three-card-spread"),
+        ("chiromant", "heart-line-depth"),
+    )
+    for code, skill_name in cases:
+        result = asyncio.run(skills.execute(
+            None, {}, "activate_skill",
+            {"skill_name": skill_name, "_agent_code": code}))
+        assert f"ACTIVE_SKILL: {skill_name}" in result
+    blocked = asyncio.run(skills.execute(
+        None, {}, "activate_skill",
+        {"skill_name": "three-card-spread", "_agent_code": "chiromant"}))
+    assert "unknown skill" in blocked
 
 
 def test_prompt_block_and_conflicts_keep_data_untrusted_and_conservative():

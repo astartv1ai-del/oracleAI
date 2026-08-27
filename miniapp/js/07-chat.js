@@ -101,13 +101,16 @@
 
   // отправка в активную сессию (если есть) — иначе первый вопрос создаёт тред
 
-  app.chatPost = async function(text) {
+  app.chatPost = async function(text, options = {}) {
     const a = this.chat.spec;
+    const headers = options.idempotencyKey
+      ? { 'X-Idempotency-Key': options.idempotencyKey } : {};
+    const request = { method: 'POST', body: JSON.stringify({ text }), headers };
+    if (options.signal) request.signal = options.signal;
     if (this.chat.tid) {
-      return await api(`/api/chat/${a.code}/sessions/${this.chat.tid}`,
-        { method: 'POST', body: JSON.stringify({ text }) });
+      return await api(`/api/chat/${a.code}/sessions/${this.chat.tid}`, request);
     }
-    const r = await api(`/api/chat/${a.code}`, { method: 'POST', body: JSON.stringify({ text }) });
+    const r = await api(`/api/chat/${a.code}`, request);
     if (r.thread_id) this.chat.tid = r.thread_id;
     return r;
   };
@@ -280,9 +283,9 @@
           <button class="back" data-act="back" aria-label="Вернуться к проводникам" title="К проводникам">‹</button>
           <div class="agent-avatar" style="${this.agentThemeStyle(a, a.code)}">${agentSprite(a, cheer)}</div>
           <div style="flex:1;min-width:0">
-            <div class="cname">${esc(a.name || 'Лилит')}</div>
+            <h1 class="cname">${esc(a.name || 'Лилит')}</h1>
             <div class="tsub">${esc(a.title || a.role || 'Личный Оракул')}</div>
-            <div class="chat-proof-strip" aria-label="${homeT('profileQuality')}">
+            <div class="chat-proof-strip" role="group" aria-label="${homeT('profileQuality')}">
               <span>✦ ${homeT('evidenceFirst')}</span>${(a.capabilities && a.capabilities.length) ? `<span>· ${homeFormat('toolCount', { count: a.capabilities.length })}</span>` : ''}
             </div>
           </div>
@@ -332,10 +335,10 @@
 
           <div class="composer-top">
             <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="Напиши ${esc(a.name || 'Лилит')} — как есть…" autocomplete="off" spellcheck="true" aria-label="Сообщение для ${esc(a.name || 'Лилит')}">${esc(this.chat.draft || '')}</textarea>
-            <button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение"${busy ? ' disabled aria-disabled="true"' : ''}>${busy ? '…' : '➤'}</button>
+            ${busy ? '<button class="send-btn" id="send-btn" data-act="cancel-chat" aria-label="Остановить запрос">×</button>' : '<button class="send-btn" id="send-btn" data-act="send" aria-label="Отправить сообщение">➤</button>'}
           </div>
           ${suggest.length ? `
-          <div class="suggest-chips" aria-label="Идеи для своего вопроса">
+          <div class="suggest-chips" role="group" aria-label="Идеи для своего вопроса">
             ${suggest.map(s => `<button type="button" class="chip tpl" data-act="fill" data-val="${esc(s)}">${esc(s)}</button>`).join('')}
           </div>` : ''}
         </div>
@@ -613,6 +616,11 @@
 
   /* ── отправка вопроса агенту ── */
 
+  app.cancelChatRequest = function() {
+    const request = this.chat.request;
+    if (request && request.controller) request.controller.abort();
+  };
+
   app.doSend = async function(text) {
     const a = this.chat.spec;
     const val = (text || (document.getElementById('chat-input') || {}).value || '').trim();
@@ -624,9 +632,12 @@
     this.chat.draft = '';
     this.chat.messages.push({ role: 'user', text: val });
     this.chat.busy = true;
+    const requestKey = newRequestKey();
+    const controller = new AbortController();
+    this.chat.request = { key: requestKey, controller, text: val };
     this.renderChat(document.getElementById('app-main'));
     try {
-      const r = await this.chatPost(val);
+      const r = await this.chatPost(val, { idempotencyKey: requestKey, signal: controller.signal });
       haptic('success');
       vb([10, 40, 14]);
       if (r.routing && r.routing.auto_route && r.agent && r.agent !== a.code) {
@@ -636,9 +647,17 @@
       }
       this.chat.messages.push({ role: 'assistant', text: r.answer, routing: r.routing || null, proof: r.proof || null });
     } catch (e) {
-      this.chat.messages.push({ role: 'assistant', widget: this.chatRecoveryHtml('reply') });
+      const cancelled = e && e.name === 'AbortError';
+      if (cancelled) {
+        this.chat.messages.pop();
+        this.chat.draft = val;
+      } else {
+        this.chat.messages.push({ role: 'assistant', widget: this.chatRecoveryHtml('reply') });
+        this.chat.draft = val;
+      }
     }
     this.chat.busy = false;
+    this.chat.request = null;
     this.renderChat(document.getElementById('app-main'));
     // деликатная подсветка только что пришедшего ответа
     const lastMsg = document.querySelector('.chat-messages .msg:last-child');

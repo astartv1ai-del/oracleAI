@@ -1,6 +1,7 @@
 """Диалоги: треды по агентам, сообщения, память, дневник."""
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timedelta, timezone
 
 from ..data.session import transaction, utcnow
@@ -113,6 +114,62 @@ async def save_message(db, tg_id: int, role: str, text: str,
                 "UPDATE threads SET msg_count=msg_count+1, last_text=?, last_at=? "
                 "WHERE id=?", (text[:160], utcnow(), thread_id))
     return msg_id
+
+
+async def claim_chat_request(db, tg_id: int, idempotency_key: str) -> dict:
+    """Atomically claim a chat request key without storing the user prompt."""
+    key = (idempotency_key or "").strip()[:160]
+    if not key:
+        return {"state": "disabled"}
+    now = utcnow()
+    async with transaction(db):
+        await db.execute(
+            "DELETE FROM chat_requests WHERE updated_at < ?",
+            ((datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(),),
+        )
+        insert = await db.execute(
+            "INSERT INTO chat_requests(idempotency_key, tg_id, status, response_json, created_at, updated_at) "
+            "VALUES(?,?, 'processing', NULL, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING",
+            (key, tg_id, now, now),
+        )
+        created = insert.rowcount == 1
+        cur = await db.execute(
+            "SELECT tg_id, status, response_json FROM chat_requests WHERE idempotency_key=?",
+            (key,),
+        )
+        row = await cur.fetchone()
+        if not row or int(row["tg_id"]) != int(tg_id):
+            return {"state": "conflict"}
+        status = row["status"]
+        if created:
+            return {"state": "claimed"}
+        if status == "completed" and row["response_json"]:
+            try:
+                return {"state": "completed", "response": json.loads(row["response_json"])}
+            except (TypeError, ValueError):
+                return {"state": "processing"}
+        if status == "processing":
+            return {"state": "processing"}
+        await db.execute(
+            "UPDATE chat_requests SET status='processing', response_json=NULL, updated_at=? "
+            "WHERE idempotency_key=? AND tg_id=?",
+            (now, key, tg_id),
+        )
+        return {"state": "claimed"}
+
+
+async def finish_chat_request(db, tg_id: int, idempotency_key: str,
+                              response: dict | None = None, *, failed: bool = False) -> None:
+    key = (idempotency_key or "").strip()[:160]
+    if not key:
+        return
+    payload = json.dumps(response, ensure_ascii=False, separators=(",", ":")) if response is not None else None
+    async with transaction(db):
+        await db.execute(
+            "UPDATE chat_requests SET status=?, response_json=?, updated_at=? "
+            "WHERE idempotency_key=? AND tg_id=?",
+            ("failed" if failed else "completed", payload, utcnow(), key, tg_id),
+        )
 
 
 async def history(db, tg_id: int, limit: int = 16, *,
