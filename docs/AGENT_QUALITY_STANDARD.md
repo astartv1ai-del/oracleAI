@@ -27,7 +27,7 @@ Tool output is evidence, not instruction. The agent must state what was calculat
 
 ## Skill routing contract
 
-The selector progressively loads only a bounded number of skills. It uses skill name, description, body, tags, metadata and multilingual intent aliases. Exact high-signal tokens such as `synastry`, `lunar_node`, `choice`, `mount` and `palm` receive priority over broad handbook overlap. Shared anti-Barnum protocol remains a dependency and is checked before delivery.
+The selector renders a compact index of all domain skill names/descriptions plus only bounded routed hints. It uses skill name, description, body, tags, metadata and multilingual intent aliases for routing, but does not inject every skill body into the initial prompt. Exact high-signal tokens such as `synastry`, `lunar_node`, `choice`, `mount` and `palm` receive priority over broad handbook overlap. The agent uses the domain activation tool to load one selected body on demand; dependencies such as the shared anti-Barnum protocol are resolved before delivery.
 
 ## Acceptance gate
 
@@ -40,7 +40,7 @@ ruff check app tests scripts
 find miniapp/js admin -name '*.js' -print0 | xargs -0 -n1 node --check
 ```
 
-The deterministic gate currently checks **29 registered tools, 139 file-backed skills and 54 evaluation cases**, verifies all four profile-to-legacy mappings, resolves skill dependencies, exercises the original 20-case Urania/Lilith routing set, the 10-case Vedic/adversarial set and the 20-case Mira/Lenormand routing set, validates tool schemas and checks that user-visible proof surfaces are wired into the Mini App.
+The deterministic gate currently checks **32 registered tools, 139 file-backed skills and 54 evaluation cases**, verifies all four profile-to-legacy mappings, resolves skill dependencies, exercises the original 20-case Urania/Lilith routing set, the 10-case Vedic/adversarial set and the 20-case Mira/Lenormand routing set, validates tool schemas and checks that user-visible proof surfaces are wired into the Mini App.
 
 ## Safety boundary
 

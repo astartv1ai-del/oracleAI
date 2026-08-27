@@ -494,6 +494,16 @@ PALM_TOPIC_LABELS = {
     "mounts": "холмы", "fingers": "пальцы",
 }
 
+async def _run_activate_palm_skill(db, user, args) -> str:
+    """Load one Mira skill body only after the model explicitly selects it."""
+    from .agents.file_loader import activate_skill
+
+    name = str((args or {}).get("skill_name") or "").strip().lower()
+    if not name:
+        return "укажи skill_name из [SKILL_INDEX]"
+    return activate_skill("chiromant", name)
+
+
 async def _run_palm_scanner(db, user, args) -> str:
     reading_id = 0
     try:
@@ -1206,6 +1216,19 @@ SKILLS: dict[str, dict] = {
             "name": "get_chinese_zodiac",
             "description": "Рассчитать китайское животное и элемент с учётом китайского Нового года.",
             "input_schema": {"type": "object", "properties": {}},
+        },
+    },
+    "activate_palm_skill": {
+        "run": _run_activate_palm_skill,
+        "schema": {
+            "name": "activate_palm_skill",
+            "description": ("Загрузить полное тело одного specialist skill Миры по его точному имени "
+                            "из [SKILL_INDEX]. Используй только когда текущий вопрос требует "
+                            "конкретного workflow; не вызывай для каждого сообщения и не подставляй "
+                            "имя наугад."),
+            "input_schema": {"type": "object", "properties": {
+                "skill_name": {"type": "string", "description": "Точное имя skill из [SKILL_INDEX]"}},
+                             "required": ["skill_name"]},
         },
     },
     "palm_scanner": {

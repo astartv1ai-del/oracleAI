@@ -28,7 +28,7 @@
 | `oracle` | `app/agents/lilith/SYSTEM.md` | Лилит, общий рефлексивный диалог, Матрица, практики, diary/memory | `get_chart`, `get_matrix`, `get_placement`, `get_all_placements`, `get_life_path`, `get_chinese_zodiac`, `suggest_practice`, `recall_diary`, `list_partners`, `save_memory`, `recall_memory` | Не раскладывает Tarot, не считает transit/compatibility/career windows самостоятельно; направляет к Урании или Ленорман |
 | `astro` | `app/agents/urania/SYSTEM.md` | Урания, natal/transits/synastry/dates/career | Western и Vedic chart/transit helpers из `agent.yaml`, `get_compatibility`, `list_partners`, memory tools | Любое утверждение о карте/транзите только после канонического tool; unknown-time блокирует houses/ASC/MC |
 | `tarot` | `app/agents/lenormand/SYSTEM.md` | Мадам Ленорман, RWS Tarot | `draw_tarot`, `save_memory`, `recall_memory` | Сначала draw; только выпавшие карты, position-aware сюжет, reversal не равен катастрофе |
-| `chiromant` | `app/agents/mira/SYSTEM.md` | Мира, evidence-first хиромантия по фото | `palm_scanner`, `palm_photo_guide`, `palm_history` | Сначала palm evidence; natal JSON вторичен; нет медицинских, фаталистических, возрастных, финансовых, профессиональных и точных timing-claims |
+| `chiromant` | `app/agents/mira/SYSTEM.md` | Мира, evidence-first хиромантия по фото | `activate_palm_skill`, `palm_scanner`, `palm_photo_guide`, `palm_history` | Сначала palm evidence; natal JSON вторичен; нет медицинских, фаталистических, возрастных, финансовых, профессиональных и точных timing-claims |
 
 ### 2.1. Prompt block Лилит
 
@@ -59,6 +59,12 @@
 | `save_memory` / `recall_memory` / `recall_diary` | Сохранить durable fact по opt-in / поиск фактов / чтение diary и streak |
 
 Ошибки tools не пробрасывают provider traceback пользователю. При пустом или ошибочном результате модель получает ограничение и должна задать один точный вопрос либо перейти к offline fallback. Инструменты памяти дополнительно блокируются сервером при `memory_enabled=0`.
+
+### Lazy skill protocol
+
+У Миры обнаружено **34 file-backed specialist skills**, включая image-quality, capture rectification, hand shape, all major lines, mounts, fingers, markings, comparison, technique triangulation, evidence confidence, safety и anti-barnum. Все они остаются доступны через `agent.yaml`, но их полные тела не попадают в каждый prompt. `skill_context()` рендерит компактный `[SKILL_INDEX]` с короткими description/version/tools/dependencies и отдельные `ROUTED_SKILL_HINTS` для текущего вопроса; handbook сокращён до synopsis. Полное тело загружается только явным function call `activate_palm_skill({skill_name})`, после чего dependency graph разрешается детерминированно, например `heart-line-depth` → `anti-barnum-protocol`.
+
+Таким образом, у LLM одновременно есть discoverability всех Mira skills и bounded context. Это не расширяет domain tool allow-list: `palm_scanner`, `palm_photo_guide` и `palm_history` остаются единственными доменными инструментами анализа, а `activate_palm_skill` только возвращает соответствующий workflow-текст. Файлы, references и tool output считаются данными, а не инструкциями; safety tail имеет более высокий приоритет.
 
 ## 4. Few-shot и cost routing
 

@@ -129,7 +129,18 @@ async def test_real_jpeg_upload_runs_palm_pipeline_and_agent_tools(client, db, u
 
     chiromant = get("chiromant")
     tool_names = {tool["name"] for tool in skills.tools_for(chiromant.skills)}
-    assert tool_names == {"palm_scanner", "palm_photo_guide", "palm_history"}
+    assert tool_names == {"activate_palm_skill", "palm_scanner", "palm_photo_guide", "palm_history"}
+    activated = await skills.execute(
+        db, user, "activate_palm_skill", {"skill_name": "relationship-lines"})
+    assert "[ACTIVATED_SKILL]" in activated
+    assert "ACTIVE_SKILL: relationship-lines" in activated
+    guarded = await skills.execute(
+        db, user, "activate_palm_skill", {"skill_name": "heart-line-depth"})
+    assert "ACTIVE_SKILL: anti-barnum-protocol" in guarded
+    assert "ACTIVE_SKILL: heart-line-depth" in guarded
+    unknown = await skills.execute(
+        db, user, "activate_palm_skill", {"skill_name": "not-a-real-skill"})
+    assert "unknown skill" in unknown
     evidence = await skills.execute(
         db, user, "palm_scanner", {"reading_id": reading_id})
     assert "heart_line" in evidence
