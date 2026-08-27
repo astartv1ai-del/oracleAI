@@ -38,6 +38,12 @@
 
 Это **не accuracy study**: для fixtures нет human-annotated ground truth. Результат подтверждает только запускаемость, bounded output and conservative gating. Перед public launch нужен consented dataset 15–20+ images with ground-truth labels, left/right and folded-edge metadata.
 
+## Mira skill and tool-routing verification
+
+Мира обнаруживает **34 file-backed skills**. В initial system prompt не попадают полные тела всех skills: `skill_context()` выдаёт компактный `[SKILL_INDEX]`, короткие description/version/tool/dependency cards, routed hints и сокращённый handbook synopsis. Полное тело появляется только после явного tool call `activate_palm_skill` с именем из индекса. Dependency resolution сохраняет обязательные зависимости, например `heart-line-depth` активирует `anti-barnum-protocol` перед собственным workflow.
+
+Целевой regression subset после подключения lazy activation: **37 passed**. Проверены file-profile discovery, routing top-3, компактность prompt, отсутствие `ACTIVE_SKILL` bodies в initial prompt, реальный executor activation, Mira allow-list из `activate_palm_skill`, `palm_scanner`, `palm_photo_guide`, `palm_history`, strict palm integration и placement/safety cases. Initial Mira skill index был 8,426 символов на вопросе «фото ладони и линия сердца», что ниже прежней полной body-injection модели; `activate_palm_skill` возвращает только запрошенный skill и его зависимости.
+
 ## Known limitations and release gates
 
 Мира не получает raw mask и не делает palmistry claims из segmentation confidence. ONNX covers heart/head/life only; relationship, children and travel lines require folded-edge capture and remain vision evidence only. MediaPipe detects geometry but does not interpret palmistry. No end-to-end third-party palmistry engine was accepted as a production dependency.

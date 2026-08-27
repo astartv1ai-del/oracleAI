@@ -16,7 +16,7 @@ app/agents/<agent>/
 └── evals/cases.yaml           # normal and adversarial cases
 ```
 
-The loader validates every package, reads `version`, `depends_on`, `requires_tools` and `tags`, detects missing/cyclic dependencies and checks active skills against the agent's allow-listed tools. The runtime always activates `anti-barnum-protocol`, adds the most relevant domain skills, and includes a bounded domain playbook. Skills are inserted before the immutable safety tail.
+The loader validates every package, reads `version`, `depends_on`, `requires_tools` and `tags`, detects missing/cyclic dependencies and checks skills against the agent's allow-listed tools. The runtime renders a compact `[SKILL_INDEX]` with short cards for the complete domain registry, bounded routed hints and a playbook synopsis. Full skill bodies are not inserted eagerly: the agent calls the domain-specific activation tool only when the current question requires that workflow; dependencies such as `anti-barnum-protocol` are then resolved in deterministic order before the activated body is returned. Activated skill text remains below the immutable safety boundary.
 
 ## Fast knowledge improvement
 
