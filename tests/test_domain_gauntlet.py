@@ -300,3 +300,22 @@ def test_improved_engine_cache_evicts_oldest_request_deterministically():
     engine.calculate(second, calculator)
     engine.calculate(first, calculator)
     assert calls == [first.fingerprint, second.fingerprint, first.fingerprint]
+
+
+
+def test_public_calculation_contract_discloses_backend_provenance():
+    from app.core.chart_contract import public_calculation_contract
+
+    chart = astro.compute_chart(
+        "1990-06-21", "14:30", "Kazan", 55.79, 49.12, "Europe/Moscow", time_known=True,
+    )
+    provenance = public_calculation_contract(chart)["engine_provenance"]
+
+    assert provenance == {
+        "product_engine": "OracleAI Engine",
+        "adapter_version": "oracleai-kerykeion-engine-v2",
+        "backend": "Kerykeion",
+        "backend_version": "5.12.9",
+        "ephemeris": "Swiss Ephemeris",
+        "license_notice": "AGPL-3.0/commercial licensing obligations apply to the selected distribution model.",
+    }

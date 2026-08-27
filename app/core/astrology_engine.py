@@ -18,7 +18,9 @@ from datetime import date, datetime
 from typing import Any, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-ENGINE_ADAPTER_VERSION = "oracleai-kerykeion-engine-v2"
+from .chart_contract import ORACLE_ENGINE_ADAPTER_VERSION
+
+ENGINE_ADAPTER_VERSION = ORACLE_ENGINE_ADAPTER_VERSION
 _TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 
 

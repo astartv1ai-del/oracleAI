@@ -1040,3 +1040,19 @@ async def test_account_delete_cannot_be_triggered_for_another_owner(client, db, 
     assert response.status_code == 200
     assert (await users.get(db, user["tg_id"]))["status"] != "deleted"
     assert (await users.get(db, other["tg_id"]))["status"] == "deleted"
+
+
+async def test_chart_discloses_oracleai_engine_backend_provenance(client, user):
+    response = await client.get("/api/chart", params=as_user(user))
+    assert response.status_code == 200
+    body = response.json()
+    expected = {
+        "product_engine": "OracleAI Engine",
+        "adapter_version": "oracleai-kerykeion-engine-v2",
+        "backend": "Kerykeion",
+        "backend_version": "5.12.9",
+        "ephemeris": "Swiss Ephemeris",
+        "license_notice": "AGPL-3.0/commercial licensing obligations apply to the selected distribution model.",
+    }
+    assert body["engine_provenance"] == expected
+    assert body["calculation"]["engine_provenance"] == expected
