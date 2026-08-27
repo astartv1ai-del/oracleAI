@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -81,11 +83,32 @@ jobs:
             --output artifacts/palm-accuracy-matrix.json
 
       - name: Palm golden corpus schema and critic readiness
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           mkdir -p artifacts
+          python scripts/validate_palm_reviewer_registry.py \
+            --registry data/palm_golden/reviewer_registry.template.json \
+            --require-domain
           python scripts/validate_palm_corpus.py \
             --manifest data/palm_golden/manifest.template.jsonl \
             --schema-only
+          if [ -f data/palm_golden/manifest.jsonl ]; then
+            python scripts/validate_palm_reviewer_registry.py \
+              --registry data/palm_golden/reviewer_registry.json \
+              --require-domain
+            python scripts/check_palm_corpus_diff.py \
+              --manifest data/palm_golden/manifest.jsonl \
+              --reviewers data/palm_golden/reviewer_registry.json \
+              --base-ref "$BASE_REF" \
+              > artifacts/palm-corpus-ci.json
+            python scripts/validate_palm_corpus.py \
+              --manifest data/palm_golden/manifest.jsonl \
+              --reviewers data/palm_golden/reviewer_registry.json \
+              --require-adjudicated
+          else
+            printf '%s\n' '{"status":"SKIP","reason":"no tracked protected manifest; templates remain schema-only","changed_records":[]}' > artifacts/palm-corpus-ci.json
+          fi
           python scripts/palm_independent_critic.py \
             > artifacts/palm-independent-critic.json
 
@@ -123,6 +146,7 @@ jobs:
             artifacts/llm-eval-report.json
             artifacts/palm-accuracy-matrix.json
             artifacts/palm-independent-critic.json
+            artifacts/palm-corpus-ci.json
           if-no-files-found: ignore
 
   frontend-quality:

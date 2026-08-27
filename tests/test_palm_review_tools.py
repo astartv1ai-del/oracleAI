@@ -118,3 +118,84 @@ def test_human_review_cli_break_and_retest(tmp_path):
     blocked = subprocess.run(command, check=False, capture_output=True, text=True)
     assert blocked.returncode == 2
     assert "critical false-observed" in json.loads(output_path.read_text(encoding="utf-8"))["block_reasons"][0]
+
+
+def test_reviewer_registry_requires_attested_independent_roles():
+    registry_validator = _load_script("validate_palm_reviewer_registry.py")
+    registry = json.loads((ROOT / "data/palm_golden/reviewer_registry.template.json").read_text(encoding="utf-8"))
+    assert registry_validator.validate(registry, require_domain=True) == []
+    registry["reviewers"][0]["independence"] = "not_eligible"
+    errors = registry_validator.validate(registry, require_domain=True)
+    assert any("active reviewer cannot be not_eligible" in error for error in errors)
+
+
+def _reviewer_registry():
+    def reviewer(reviewer_id, roles):
+        return {
+            "reviewer_id": reviewer_id,
+            "roles": roles,
+            "expertise_domains": ["visual evidence review"],
+            "qualification_reference": "protected-qualification-record",
+            "active": True,
+            "independence": "independent",
+            "conflict_of_interest": "none",
+            "attestation": {
+                "policy_version": "palm-human-review-v1",
+                "accepted_at": "2026-08-27",
+                "signed": True,
+                "blinded_review": True,
+                "training_reference": "protected-training-record",
+            },
+        }
+    return {"registry_version": "palm-reviewers-v1", "reviewers": [
+        reviewer("human-a", ["annotator"]),
+        reviewer("human-b", ["annotator"]),
+        reviewer("domain-c", ["domain_reviewer", "safety_reviewer"]),
+    ]}
+
+
+def test_reviewer_registry_rejects_conflict_and_role_shortcuts():
+    registry_validator = _load_script("validate_palm_reviewer_registry.py")
+    registry = _reviewer_registry()
+    registry["reviewers"][0]["attestation"].pop("blinded_review")
+    registry["reviewers"][1]["conflict_of_interest"] = "disclosed"
+    registry["reviewers"][2]["roles"].append("annotator")
+    errors = registry_validator.validate(registry, require_domain=True)
+    assert any("blinded_review" in error for error in errors)
+    assert any("conflict_of_interest=none" in error for error in errors)
+    assert any("distinct from annotator" in error for error in errors)
+
+
+def test_corpus_registry_linkage_and_require_adjudicated():
+    validator = _load_script("validate_palm_corpus.py")
+    registry = _reviewer_registry()
+    reviewer_map = {item["reviewer_id"]: item for item in registry["reviewers"]}
+    record = _record()
+    record["regions"][0]["annotator_refs"] = ["human-a", "human-b"]
+    record["adjudication"]["annotators"] = ["human-a", "human-b"]
+    record["adjudication"]["domain_reviewer"] = "domain-c"
+    assert validator._validate_record(record, 1, None, True, reviewer_map, True) == []
+    record["adjudication"]["status"] = "pending"
+    errors = validator._validate_record(record, 1, None, True, reviewer_map, True)
+    assert any("adjudicated record required" in error for error in errors)
+
+
+def test_corpus_diff_gate_blocks_pending_and_accepts_adjudicated(tmp_path):
+    record = _record()
+    record["regions"][0]["annotator_refs"] = ["human-a", "human-b"]
+    record["adjudication"]["annotators"] = ["human-a", "human-b"]
+    record["adjudication"]["domain_reviewer"] = "domain-c"
+    manifest_path = tmp_path / "manifest.jsonl"
+    registry_path = tmp_path / "reviewers.json"
+    registry_path.write_text(json.dumps(_reviewer_registry()), encoding="utf-8")
+    command = [sys.executable, str(ROOT / "scripts/check_palm_corpus_diff.py"), "--manifest", str(manifest_path), "--reviewers", str(registry_path)]
+    record["adjudication"]["status"] = "pending"
+    manifest_path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    blocked = subprocess.run(command, check=False, capture_output=True, text=True)
+    assert blocked.returncode == 1
+    assert "adjudicated record required" in blocked.stdout
+    record["adjudication"]["status"] = "adjudicated"
+    manifest_path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    passed = subprocess.run(command, check=False, capture_output=True, text=True)
+    assert passed.returncode == 0
+    assert json.loads(passed.stdout)["status"] == "PASS"

@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from validate_palm_reviewer_registry import validate as validate_reviewer_registry
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -32,6 +34,7 @@ def _load_review_report(path: Path | None) -> dict[str, Any] | None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument("--reviewers", type=Path, default=None)
     parser.add_argument("--review-report", type=Path, default=None)
     args = parser.parse_args()
     failures: list[str] = []
@@ -84,9 +87,12 @@ def main() -> int:
         "predictions_template": ROOT / "data/palm_golden/predictions.template.jsonl",
         "corpus_validator": ROOT / "scripts/validate_palm_corpus.py",
         "review_runner": ROOT / "scripts/run_palm_human_review.py",
+        "reviewer_registry_schema": ROOT / "data/palm_golden/reviewer_registry.schema.json",
+        "reviewer_registry_validator": ROOT / "scripts/validate_palm_reviewer_registry.py",
     }
     review_block_reasons = [f"missing review asset: {name}" for name, path in review_files.items() if not path.is_file()]
     manifest_path = args.manifest or (ROOT / "data/palm_golden/manifest.jsonl")
+    reviewer_path = args.reviewers or (ROOT / "data/palm_golden/reviewer_registry.json")
     if not manifest_path.is_file():
         review_block_reasons.append(f"adjudicated manifest not supplied: {manifest_path}")
     else:
@@ -96,6 +102,14 @@ def main() -> int:
             records = []
         if not records:
             review_block_reasons.append("golden manifest is empty")
+        if not reviewer_path.is_file():
+            review_block_reasons.append(f"reviewer registry not supplied: {reviewer_path}")
+        else:
+            try:
+                reviewer_registry = json.loads(reviewer_path.read_text(encoding="utf-8"))
+                review_block_reasons.extend(f"reviewer registry: {error}" for error in validate_reviewer_registry(reviewer_registry, require_domain=True))
+            except (OSError, json.JSONDecodeError) as exc:
+                review_block_reasons.append(f"reviewer registry is unreadable: {exc}")
     review_report = _load_review_report(args.review_report)
     if args.review_report is None:
         review_block_reasons.append("no human-review report supplied")
@@ -116,6 +130,7 @@ def main() -> int:
         ],
         "review_assets": {name: path.is_file() for name, path in review_files.items()},
         "review_manifest": {"path": str(manifest_path), "present": manifest_path.is_file()},
+        "reviewer_registry": {"path": str(reviewer_path), "present": reviewer_path.is_file()},
         "review_report": {"path": str(args.review_report) if args.review_report else None, "present": review_report is not None},
         "ship_verdict": "BLOCKED" if failures else ("SEMANTIC SIGNOFF PASS" if not review_block_reasons else "SHIP WITH ACCURACY GATE"),
         "reason": "A passing contract critic proves guardrails, not semantic palm-reading accuracy.",
