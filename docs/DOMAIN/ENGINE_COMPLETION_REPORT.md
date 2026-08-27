@@ -6,7 +6,7 @@
 
 ## Результат
 
-Реализован production-oriented calculation boundary. Входные данные проходят canonical normalization; timezone/DST, coordinates, precision и uncertainty представлены явно; calculation-affecting configuration и runtime versions участвуют в fingerprint; backend results валидируются до cache/API/LLM/PDF; product contracts имеют отдельные invariants; frontend и PDF используют тот же evidence envelope.
+Реализован production-oriented calculation boundary. Входные данные проходят canonical normalization; timezone/DST, coordinates, precision и uncertainty представлены явно; calculation-affecting configuration и runtime versions участвуют в fingerprint; backend results валидируются до cache/API/LLM/PDF; product contracts и specialized placements имеют отдельные invariants; frontend и PDF используют тот же evidence envelope.
 
 Это не является заявлением о том, что OracleAI численно точнее Swiss Ephemeris. Swiss Ephemeris остаётся disclosed numerical backend. Доказуемое улучшение OracleAI находится в adapter semantics: отсутствие silent defaults, воспроизводимость, cache safety, fail-closed output validation, product consistency и provenance/licensing transparency.
 
@@ -23,6 +23,7 @@
 | Output integrity | Проверка finite/range values, planets, houses, angles, nodes, aspects, precision agreement and cache hits. | Malformed backend and cache validator tests. |
 | Product validators | Synastry, transit, composite and returns validators проверяют schema, roles, precision, exact longitudes, shortest midpoint, timestamps and return ordering. | Product adversarial tests and API product suite. |
 | Evidence parity | Product contracts and PDF build preserve source/config fingerprints; API keeps legacy `engine` plus explicit provenance. | API/PDF/agent suites. |
+| Specialized placements | Moon, Venus, rising, nodes, asteroids and other Western placement calculators now call canonical `astro.compute_chart`; the legacy placement response shape is preserved while calculation evidence is propagated. | Placement suite plus fingerprint regression test. |
 | Mini App | RU/EN provenance disclosure, v105 cache bust, static guard for unresolved `{sign}`, hashed build and localized license copy. | Browser click smoke and frontend checks. |
 | Documentation | Full step-by-step plan and updated roadmap with licensing/external-evidence boundaries. | Markdown reviewed; citations retained. |
 
@@ -70,3 +71,7 @@ A truly independent astronomical comparison still requires an independently sour
 [7]: https://www.astro.com/swisseph/swephinfo_e.htm — Swiss Ephemeris information and licensing reference.
 [8]: https://data.iana.org/time-zones/tz-link.html — IANA Time Zone Database resources.
 [9]: https://ssd.jpl.nasa.gov/horizons/ — NASA/JPL Horizons reference service.
+
+## Post-rollout improvement iteration
+
+A focused audit found that specialized Western placement calculators still had a separate direct Kerykeion construction path. This was corrected: placement calculators now call canonical `astro.compute_chart`, inherit its normalization/DST/validation behavior, and expose the same calculation request/configuration fingerprints and `engine_provenance`. The legacy placement response fields remain compatible, including `source`, `engine`, precision labels, exact degrees and point codes. The unused direct-backend helper constants were removed, and placement regression tests cover deterministic values, true-node aliases, unknown-time safety and canonical evidence propagation.

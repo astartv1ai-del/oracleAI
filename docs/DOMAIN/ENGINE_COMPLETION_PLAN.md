@@ -28,7 +28,7 @@
 
 ### Шаг 1. Inventory и contract freeze
 
-Нужно зафиксировать единственный canonical path `raw request → normalize → ChartRequest → backend → validator → contract`. Проверить всех callers (`astro`, API routers, agents/skills, PDF, saved readings, products), запретить прямые вызовы Kerykeion в обход boundary и сохранить legacy `engine` только для совместимости. Ввести contract test, который проверяет наличие `calculation`, `engine_provenance`, `precision`, `angular_data_available` и adapter fingerprint.
+Нужно зафиксировать единственный canonical path `raw request → normalize → ChartRequest → backend → validator → contract`. Проверить всех callers (`astro`, API routers, agents/skills, PDF, saved readings, products и specialized placements), запретить прямые расчётные вызовы Kerykeion в обход boundary и сохранить legacy `engine` только для совместимости. Рендерер может вызывать Kerykeion только для визуализации уже проверенного chart snapshot, но не должен становиться вторым источником геометрии. Ввести contract test, который проверяет наличие `calculation`, `engine_provenance`, `precision`, `angular_data_available` и adapter fingerprint.
 
 **Готово, когда:** grep/static boundary check не находит обходов; каждый публичный chart response имеет stable calculation envelope.
 
@@ -102,7 +102,7 @@ Calculation cache должен возвращать defensive copies, иметь
 
 ## 3. Текущая реализация и текущая итерация
 
-До этой итерации уже реализованы frontend provenance, RU/EN localization, canonical normalization первой версии, DST gap/fold safe downgrade, базовый output validator, golden corpus и domain QA. В этой итерации будут доведены configuration fingerprint, coordinate provenance/uncertainty envelope, product validators, cross-surface contract tests, adversarial/property coverage, differential fixture metadata и release report.
+До этой итерации уже реализованы frontend provenance, RU/EN localization, canonical normalization первой версии, DST gap/fold safe downgrade, базовый output validator, golden corpus и domain QA. В основной rollout-итерации были доведены configuration fingerprint, coordinate provenance/uncertainty envelope, product validators, cross-surface contract tests, adversarial coverage, browser evidence и release report. В post-rollout improvement iteration specialized placement calculators переведены на тот же canonical OracleAI Engine path; их legacy response shape сохранён, а calculation fingerprint/provenance теперь не теряются.
 
 ## 4. Честные ограничения
 
