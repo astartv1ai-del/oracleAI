@@ -439,7 +439,9 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "5943b6e3382c4c46"
+            "request_fingerprint": "d875a5960f114f64",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -884,7 +886,9 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "1239fd1f568aea4c"
+            "request_fingerprint": "15dcd0787fe82186",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -1329,7 +1333,9 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "bbf7e7ce52e4b7c6"
+            "request_fingerprint": "1cbfaa3702fb855b",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -1774,7 +1780,9 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "c9aeaba940215f61"
+            "request_fingerprint": "d00613e00f1a8b0d",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -2219,7 +2227,9 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "a5b43efc2636b266"
+            "request_fingerprint": "0853faf04d60ecd6",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -2664,7 +2674,9 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "32409c9283c1782f"
+            "request_fingerprint": "f05588d10ee59a49",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -3109,7 +3121,9 @@
             "time_known": true,
             "precision_reason": "exact",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "9d276c8e01dba7e3"
+            "request_fingerprint": "c70beb8dbb85b633",
+            "location_reason": "valid",
+            "local_time_status": "normal"
           },
           "precision": "exact",
           "angular_data_available": true,
@@ -3405,7 +3419,9 @@
             "time_known": false,
             "precision_reason": "date_only",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "553c949923472c31"
+            "request_fingerprint": "ab29c7db47c1ed27",
+            "location_reason": "valid",
+            "local_time_status": "not_applicable"
           },
           "precision": "date_only",
           "angular_data_available": false,
@@ -3709,7 +3725,9 @@
             "time_known": false,
             "precision_reason": "date_only_missing_timezone",
             "adapter_version": "oracleai-kerykeion-engine-v2",
-            "request_fingerprint": "0d56f674b55ae7fa"
+            "request_fingerprint": "ad4adf97971963f0",
+            "location_reason": "valid",
+            "local_time_status": "no_timezone"
           },
           "precision": "date_only",
           "angular_data_available": false,

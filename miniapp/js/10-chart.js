@@ -128,7 +128,7 @@
       [profileT('provenanceBackend'), value('backend')],
       [profileT('provenanceVersion'), value('adapter_version')],
       [profileT('provenanceEphemeris'), value('ephemeris')],
-      [profileT('provenanceLicense'), value('license_notice', 220)],
+      [profileT('provenanceLicense'), value('license_notice') ? profileT('provenanceLicenseCopy') : ''],
     ];
     const hasValues = rows.some(([, item]) => item);
     const body = hasValues
