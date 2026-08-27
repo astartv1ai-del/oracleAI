@@ -245,3 +245,32 @@ async def test_legacy_sqlite_connect_creates_product_cost_table(tmp_path):
     )
     assert (await cur.fetchone())[0] == "idx_product_cost_day_sku"
     await second.close()
+
+
+async def test_product_cost_gross_booking_is_attributed_by_sku_and_channel(db):
+    from app.data.session import utcnow
+
+    now = utcnow()
+    await db.execute(
+        "INSERT INTO orders(tg_id, kind, sku, amount_stars, status, surface, paid_at, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        (1001, "product", "report:natal", 100, "paid", "bot", now, now),
+    )
+    await db.execute(
+        "INSERT INTO orders(tg_id, kind, sku, amount_stars, status, surface, paid_at, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        (1002, "product", "report:natal", 50, "paid", "miniapp", now, now),
+    )
+    await db.commit()
+    for channel in ("bot", "miniapp"):
+        await analytics_repo.record_product_cost_event(
+            db, event_kind="delivery", sku="report:natal", channel=channel,
+            result_category="report", status="delivered",
+        )
+    kpis = await analytics_repo.product_cost_kpis(db, days=30)
+    by_channel = {
+        row["channel"]: row["gross_booking_stars"]
+        for row in kpis["by_product"]
+        if row["sku"] == "report:natal"
+    }
+    assert by_channel == {"bot": 100, "miniapp": 50}

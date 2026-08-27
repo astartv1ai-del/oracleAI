@@ -483,12 +483,18 @@ async def product_cost_kpis(db, days: int = 30) -> dict:
         "ORDER BY variable_cost_usd DESC, event_count DESC", (since,))
     rows = [dict(row) for row in await cur.fetchall()]
     paid_cur = await db.execute(
-        "SELECT COALESCE(sku, kind) sku, COALESCE(SUM(amount_stars),0) gross_stars "
-        "FROM orders WHERE status='paid' AND paid_at>=? GROUP BY COALESCE(sku, kind)",
+        "SELECT COALESCE(sku, kind) sku, COALESCE(surface, 'system') channel, "
+        "COALESCE(SUM(amount_stars),0) gross_stars FROM orders "
+        "WHERE status='paid' AND paid_at>=? "
+        "GROUP BY COALESCE(sku, kind), COALESCE(surface, 'system')",
         (since,))
-    paid_by_sku = {row[0]: int(row[1] or 0) for row in await paid_cur.fetchall()}
+    paid_by_product_channel = {
+        (row[0], row[1]): int(row[2] or 0)
+        for row in await paid_cur.fetchall()
+    }
     for row in rows:
-        row["gross_booking_stars"] = paid_by_sku.get(row["sku"], 0)
+        row["gross_booking_stars"] = paid_by_product_channel.get(
+            (row["sku"], row["channel"]), 0)
         row["variable_cost_usd"] = round(float(row["variable_cost_usd"] or 0), 6)
         row["cost_coverage_pct"] = round(
             int(row["costed_events"] or 0) * 100 / int(row["event_count"] or 1), 1)
