@@ -1,5 +1,17 @@
 # Дизайн-система OracleAI
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | Current Mini App visual and interaction contract. |
+| **Source of truth** | `miniapp/css/`, `miniapp/js/`, `miniapp/index.html`. |
+| **Scope** | Tokens, layout, components, motion, localization and accessibility states. |
+| **Do not change** | Do not bypass the token cascade, delegated actions or reduced-motion contract. |
+| **Key files** | `miniapp/css/00-tokens.css`, `miniapp/js/15-actions.js`, `scripts/check_design_contract.py`. |
+| **Validation** | `python3 -m scripts.check_design_contract`. |
+
+
 **Статус:** актуализировано после финального Visual QA, 27 августа 2026 года.
 **Область:** Telegram Mini App, русская и английская локализации, экраны «Сегодня», «Диалоги», «Моё», чат проводника, Таро, натальная карта, совместимость, память, модальные окна и состояния загрузки/ошибки.
 

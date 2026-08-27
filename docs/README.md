@@ -1,72 +1,95 @@
-# Документация OracleAI
+# OracleAI — documentation map
 
-Этот каталог — единственный актуальный комплект документации OracleAI. Он описывает **существующее поведение кода и продукта**, а не список идей или историю промежуточной разработки. При изменении поведения приложения соответствующий документ обновляется в том же pull request.
+## Document orientation
 
-## Навигация
+| Field | Definition |
+|---|---|
+| **Purpose** | Provide one navigable map of current product, engineering, operations, domain and release documentation. |
+| **Source of truth** | This map points to the canonical document for each subsystem; implementation truth remains in the referenced code and tests. |
+| **Scope** | Current contracts, operating procedures, feature/domain references, dated evidence and historical archive. |
+| **Do not change** | Do not create a second backlog, audit, status or architecture source of truth. Do not promote evidence or research notes into current behavior without code validation. |
+| **Key files** | `README.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/AI_SYSTEM.md`, `docs/RELEASE/CURRENT_STATUS.md`. |
+| **Validation** | Follow [`CONTRIBUTING.md`](CONTRIBUTING.md), run the commands in [`TESTING.md`](TESTING.md), and check links before release. |
 
-| Документ | Для кого | Когда использовать |
+## Start here
+
+| Topic | Canonical document | When to read it | Related code |
+|---|---|---|---|
+| Product | [`PRODUCT.md`](PRODUCT.md) | Understand the audience, promise, boundaries and enabled surfaces. | `miniapp/`, `app/bot/`, `app/api/routers/` |
+| Architecture | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Change data flow, modules, storage, agents or client loading order. | `app/`, `miniapp/`, `infra/` |
+| AI system | [`AI_SYSTEM.md`](AI_SYSTEM.md) | Change agents, skills, tools, context, memory, safety or provider behavior. | `app/core/agents/`, `app/core/skills.py`, `app/core/llm.py` |
+| Design | [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Change screens, tokens, components, motion, localization or accessibility. | `miniapp/css/`, `miniapp/js/`, `miniapp/index.html` |
+| API | [`API.md`](API.md) | Add or change an HTTP route, request, response, auth or error contract. | `app/api/`, `app/services/` |
+| Security | [`SECURITY.md`](SECURITY.md) | Change identity, owner scope, consent, privacy, uploads, payments or safety. | `app/api/deps.py`, `app/api/security.py`, `app/core/safety.py` |
+| Deployment | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Build, configure, migrate, deploy or roll back the stack. | `Makefile`, `infra/`, `.env*.example` |
+| Operations | [`OPERATIONS.md`](OPERATIONS.md) | Operate services, workers, backups, recovery or incidents. | `infra/docker-compose.yml`, `scripts/`, `app/tasks/` |
+| Testing | [`TESTING.md`](TESTING.md) | Select checks for a change and interpret local versus external evidence. | `tests/`, `scripts/`, `.github/workflows/ci.yml` |
+| Contributing | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Prepare a branch, review a diff and complete a pull request. | `.github/`, `Makefile` |
+
+## Domain and feature contracts
+
+| Area | Canonical document | Related code |
 |---|---|---|
-| [PRODUCT.md](PRODUCT.md) | Product, support, маркетинг | Чтобы понять аудиторию, границы обещания и пользовательские сценарии. |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Разработка, техлид, QA | Чтобы менять код, API, модели данных или интеграции. |
-| [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Дизайн, frontend, QA | Чтобы добавлять экраны, компоненты и motion без визуального дрейфа. |
-| [API.md](API.md) | Frontend, backend, интеграции | Чтобы вызывать или изменять HTTP-контракты. |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | DevOps, владелец продукта | Чтобы подготовить окружение, выпустить релиз и откатить его. |
-| [OBSERVABILITY.md](OBSERVABILITY.md) | DevOps, operations | Чтобы смотреть контейнеры, логи, metrics, alerts и Grafana dashboard. |
-| [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
-| [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
-| [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
-| [LLM_AGENT_TECHNICAL_AUDIT.md](LLM_AGENT_TECHNICAL_AUDIT.md) | AI, backend, QA, privacy | Полная карта agent prompts, memory/context integrity, tools/skills, conflict handling и palm vision pipeline. |
-| [AI_ONBOARDING_GAUNTLET.md](AI_ONBOARDING_GAUNTLET.md) | Все владельцы релиза | Машиночитаемый evidence ledger для AI, onboarding, Telegram, admin и visual surfaces. |
-| [AI_SYSTEM_FINAL_REVIEW.md](AI_SYSTEM_FINAL_REVIEW.md) | Release, QA, security | Финальный локальный review с тестами, verdict и конкретными внешними blockers. |
-| [PALM_ENGINE_RESEARCH.md](PALM_ENGINE_RESEARCH.md) | AI, CV, legal, product | Исследование palm-line engines, лицензий, model contracts и безопасного integration boundary. |
-| [LAUNCH_GOVERNANCE.md](LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
-| [PRODUCTION_READINESS_AND_LAUNCH_PLAN.md](PRODUCTION_READINESS_AND_LAUNCH_PLAN.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |
-| [P0_PRODUCTION_EXECUTION_PLAN.md](P0_PRODUCTION_EXECUTION_PLAN.md) | Release, security, payments, AI quality, operations | Чтобы закрыть P0-001—P0-004 по процедурам, evidence, go/no-go и rollback. |
-| [COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) | Product, astrology, backend, QA | Чтобы реализовать будущие composite и planetary returns без неявных precision-правил. |
-| [DESIGN_COMPONENT_INVENTORY.md](DESIGN_COMPONENT_INVENTORY.md) | Design, frontend, QA | Чтобы сохранять состояния компонентов, accessibility и visual regression matrix. |
-| [SCALE_AND_MIGRATION.md](SCALE_AND_MIGRATION.md) | Operations, database, performance | Чтобы измерять SQLite/WAL triggers и репетировать migration без production риска. |
-| [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md) | Frontend, backend, agent, QA | Чтобы вызывать текущие natal, synastry и transit contracts одинаково. |
-| [CHART_TYPE_CAPABILITIES.md](CHART_TYPE_CAPABILITIES.md) | Product, astrology, release owner | Чтобы отличать enabled product paths от upstream capabilities. |
-| [MONETIZATION_BASELINE.md](MONETIZATION_BASELINE.md) | Product, billing, finance | Чтобы сверить текущие планы, SKU, платёжные пути и открытые gaps без PII. |
-| [MONETIZATION_UNIT_ECONOMICS.md](MONETIZATION_UNIT_ECONOMICS.md) | Product, finance, operations | Чтобы считать net revenue, variable COGS, contribution, ARPPU, CAC и break-even по сценариям. |
-| [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
-| [MONETIZATION_EXTERNAL_SOURCES.md](MONETIZATION_EXTERNAL_SOURCES.md) | Finance, legal, billing | Чтобы проверять официальные platform/payment sources и не подменять settlement data сниппетами. |
-| [ASTRONOMY_REFERENCE_QA.md](ASTRONOMY_REFERENCE_QA.md) | Domain, astrology, QA | Чтобы воспроизвести cross-implementation проверки критических timezone, precision и boundary cases. |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
-| [DOMAIN_METHODS.md](DOMAIN_METHODS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
-| [PDF_SYSTEM.md](PDF_SYSTEM.md), [PDF_TEMPLATE_CATALOG.md](PDF_TEMPLATE_CATALOG.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, product-specific template gates, visual regression и проверочные слои. |
-| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](TASKS.md), [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md), [BASELINE.md](BASELINE.md), [NEXT_STEPS.md](NEXT_STEPS.md), [ORACLEAI_CONTINUATION_REPORT.md](ORACLEAI_CONTINUATION_REPORT.md) | Все владельцы | Surface matrix, backlog, evidence, next steps, baseline и итоговый implementation report. |
-| [UNIFIED_HISTORY.md](UNIFIED_HISTORY.md) | Frontend, backend, privacy, QA | Cross-tool archive read model, deep links, deletion ownership and palm boundary. |
-| [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md), `product_cost_events` | Product, finance, privacy, operations | Privacy-safe product cost, delivery, refund and support dimensions without user content. |
-| [MEMORY_EVALUATION.md](MEMORY_EVALUATION.md) | AI, privacy, QA | Synthetic relevance, pause, isolation, contradiction and prompt-injection evaluation. |
-| [LOCALIZATION_GLOSSARY.md](LOCALIZATION_GLOSSARY.md) | Product, frontend, content, QA | RU/EN technical labels, truth states, Tarot terms and pluralization rules. |
-| [API_RESILIENCE_MATRIX.md](API_RESILIENCE_MATRIX.md) | Backend, frontend, QA | Negative-path, rate-limit, backend-error and owner-scope checks. |
-| [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md) | Performance, operations, QA | Local p50/p95 directional measurements and live LLM latency blocker. |
-| [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) | Operations, database, security | Disposable integrity, restore, snapshot and isolation drill. |
-| [P004_INFRASTRUCTURE_AUDIT.md](P004_INFRASTRUCTURE_AUDIT.md) | SRE, operations, security, release | P0-004 infrastructure readiness, implemented safeguards, local evidence and external staging gates. |
-| [`models/THIRD_PARTY_NOTICES.md`](../models/THIRD_PARTY_NOTICES.md) | Legal, release, ML | Provenance, MIT notice, checksums and limitations for the vendored palm-line models. |
-| [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
-| [CHANGELOG.md](CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
+| Domain index | [`DOMAIN/README.md`](DOMAIN/README.md) | `app/core/` |
+| Shared calculation/evidence policy | [`DOMAIN/CONTRACTS.md`](DOMAIN/CONTRACTS.md) | `app/core/astro.py`, `chart_contract.py`, `tarot.py`, `palm.py` |
+| Astrology and chart products | [`DOMAIN/ASTROLOGY.md`](DOMAIN/ASTROLOGY.md) and [`CHART_PRODUCT_CONTRACTS.md`](CHART_PRODUCT_CONTRACTS.md) | `app/core/astro.py`, `vedic.py`, `chart_products.py` |
+| Tarot and card reflection | [`DOMAIN/TAROT.md`](DOMAIN/TAROT.md) | `app/core/tarot.py`, `app/api/routers/tarot.py` |
+| Palm and visual evidence | [`DOMAIN/PALM.md`](DOMAIN/PALM.md) | `app/core/palm*.py`, `app/api/routers/placements.py` |
+| Memory | [`FEATURES/MEMORY.md`](FEATURES/MEMORY.md) | `app/core/memory.py`, profile routes, repositories |
+| Unified history | [`FEATURES/HISTORY.md`](FEATURES/HISTORY.md) | `app/api/routers/history.py`, `app/repo/readings.py` |
+| Billing and monetization | [`FEATURES/BILLING.md`](FEATURES/BILLING.md) | `app/services/billing.py`, shop/webhook routes |
 
-## Docker-first запуск
+## Release and evidence
 
-Для полного стека нужен Docker Engine с Compose v2. Из корня репозитория выполните:
+| Type | Canonical document | Purpose |
+|---|---|---|
+| Current status | [`RELEASE/CURRENT_STATUS.md`](RELEASE/CURRENT_STATUS.md) | The only current go/no-go statement, separated by LOCAL, STAGING, PRODUCTION and EXTERNAL. |
+| Current backlog | [`RELEASE/TASKS.md`](RELEASE/TASKS.md) | The only authoritative list of unresolved work, acceptance criteria, evidence and blockers. |
+| Production readiness | [`RELEASE/PRODUCTION_READINESS.md`](RELEASE/PRODUCTION_READINESS.md) | Release process and readiness gates. |
+| Launch governance | [`RELEASE/LAUNCH_GOVERNANCE.md`](RELEASE/LAUNCH_GOVERNANCE.md) | Owners, gates, SLO placeholders and go/no-go rules. |
+| P0 execution | [`RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md`](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) | Owner-led procedures for the four public-launch blockers. |
+| P0-004 infrastructure audit | [`P004_INFRASTRUCTURE_AUDIT.md`](P004_INFRASTRUCTURE_AUDIT.md) | Backup/restore implementation status, local evidence and external staging gates. |
+| Changelog | [`RELEASE/CHANGELOG.md`](RELEASE/CHANGELOG.md) | User- and engineering-visible release history. |
+| Documentation final review | [`RELEASE/DOCUMENTATION_FINAL_REVIEW.md`](RELEASE/DOCUMENTATION_FINAL_REVIEW.md) | Audit result, before/after shape, validation and remaining concerns. |
+| Dated evidence | [`EVIDENCE/`](EVIDENCE/) | Historical audits, QA baselines, traceability and benchmark records. Evidence is not current truth unless explicitly revalidated. |
+| Archive | [`ARCHIVE/`](ARCHIVE/) | Superseded plans and design proposals retained for context, each labeled historical. |
+
+## Supporting references
+
+These documents provide focused implementation, research or operational context without competing with the canonical contracts above.
+
+| Area | Reference |
+|---|---|
+| Observability | [`OBSERVABILITY.md`](OBSERVABILITY.md) |
+| AI evaluation and agent audit | [`LLM_EVALUATION.md`](LLM_EVALUATION.md), [`LLM_AGENT_TECHNICAL_AUDIT.md`](LLM_AGENT_TECHNICAL_AUDIT.md), [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md), [`AGENT_QUALITY_STANDARD.md`](AGENT_QUALITY_STANDARD.md) |
+| AI onboarding and skills | [`AI_ONBOARDING_GAUNTLET.md`](AI_ONBOARDING_GAUNTLET.md), [`AGENTS.md`](AGENTS.md), [`AGENT_SKILL_LIBRARY.md`](AGENT_SKILL_LIBRARY.md) |
+| Chart and product boundaries | [`CHART_ENGINE_DECISION.md`](CHART_ENGINE_DECISION.md), [`CHART_ENGINE_LICENSING.md`](CHART_ENGINE_LICENSING.md), [`CHART_TYPE_CAPABILITIES.md`](CHART_TYPE_CAPABILITIES.md), [`COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md`](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) |
+| Astronomy and visual domain research | [`ASTRONOMY_REFERENCE_QA.md`](ASTRONOMY_REFERENCE_QA.md), [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md), [`CHIROMANT_AVATAR_BRIEF.md`](CHIROMANT_AVATAR_BRIEF.md) |
+| API, memory and localization | [`API_RESILIENCE_MATRIX.md`](API_RESILIENCE_MATRIX.md), [`MEMORY_EVALUATION.md`](MEMORY_EVALUATION.md), [`LOCALIZATION_GLOSSARY.md`](LOCALIZATION_GLOSSARY.md) |
+| Analytics and payments | [`ANALYTICS_EVENT_DICTIONARY.md`](ANALYTICS_EVENT_DICTIONARY.md), [`PAYMENTS_UX_AND_INTEGRATION.md`](PAYMENTS_UX_AND_INTEGRATION.md), [`PAYMENT_MONITORING.md`](PAYMENT_MONITORING.md) |
+| PDF, backup and visual QA | [`PDF_SYSTEM.md`](PDF_SYSTEM.md), [`PDF_TEMPLATE_CATALOG.md`](PDF_TEMPLATE_CATALOG.md), [`BACKUP_RESTORE_DRILL.md`](BACKUP_RESTORE_DRILL.md), [`P004_INFRASTRUCTURE_AUDIT.md`](P004_INFRASTRUCTURE_AUDIT.md), [`VISUAL_QA.md`](VISUAL_QA.md) |
+| Scale and competition | [`SCALE_AND_MIGRATION.md`](SCALE_AND_MIGRATION.md), [`COMPETITOR_MATRIX.md`](COMPETITOR_MATRIX.md) |
+| Legal and model provenance | [`LEGAL_REVIEW.md`](LEGAL_REVIEW.md), [`models/THIRD_PARTY_NOTICES.md`](../models/THIRD_PARTY_NOTICES.md) |
+
+## Docker-first launch
+
+For the full stack, use Docker Engine with Compose v2 from the repository root:
 
 ```bash
 cp .env.example .env
-# Заполните BOT_TOKEN/ADMIN_ID и ключ хотя бы одного LLM-провайдера при необходимости.
+# Fill BOT_TOKEN/ADMIN_ID and an LLM provider key when required.
 make up
 make ps
 make selfcheck
 ```
 
-Compose поднимает PostgreSQL + pgvector, Redis, одноразовую миграцию, API, Telegram-бота, Celery worker/Beat и Caddy. Общий application image также содержит Mini App, admin, landing, astrology engine, palm ONNX/MediaPipe assets и LLM runtime. Порты dev по умолчанию: `8080` (HTTP) и `8443` (HTTPS). Observability-контур включает Grafana, Loki, Prometheus, Alloy, cAdvisor и node-exporter; Grafana по умолчанию доступна только на `127.0.0.1:3000`. Подробности — в [OBSERVABILITY.md](OBSERVABILITY.md) и [DEPLOYMENT.md](DEPLOYMENT.md). Операционные команды собраны в корневом `Makefile`.
+Compose starts PostgreSQL + pgvector, Redis, migrations, API, Telegram bot, Celery worker/Beat and Caddy. The application image also contains the Mini App, admin, landing, astrology engine, palm assets and LLM runtime. Development ports are `8080` (HTTP) and `8443` (HTTPS). The observability contour includes Grafana, Loki, Prometheus, Alloy, cAdvisor and node-exporter; Grafana is bound to `127.0.0.1:3000` by default. See [`OBSERVABILITY.md`](OBSERVABILITY.md) and [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-Для optional локального OpenAI-compatible LLM сначала задайте `CUSTOM_LLM_BASE_URL=http://ollama:11434/v1`, `CUSTOM_LLM_MODEL` и `CUSTOM_LLM_MODEL_LITE`, затем выполните `make up-local-llm`.
+For the optional local OpenAI-compatible LLM, set `CUSTOM_LLM_BASE_URL=http://ollama:11434/v1`, `CUSTOM_LLM_MODEL` and `CUSTOM_LLM_MODEL_LITE`, then run `make up-local-llm`.
 
-## Локальная среда
+## Local development
 
-Для ручного запуска без Docker нужен Python 3.11+ и доступ к Telegram-боту только при проверке настоящей авторизации. Установка зависимостей и создание `.env` выполняются один раз.
+For a manual run without Docker, use Python 3.11+ and keep real Telegram authorization checks limited to a controlled environment. Install dependencies and create `.env` once:
 
 ```bash
 cd /path/to/oracleAI
@@ -76,42 +99,35 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Для быстрого просмотра интерфейса допустим локальный development-режим. Он открывает доступ через параметр `dev_user`; запускать его на публичном адресе нельзя.[1]
+A local development mode is available for interface inspection. It accepts `dev_user` and must never be exposed on a public address.
 
 ```bash
 APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 # http://127.0.0.1:8080/?dev_user=10001
 ```
 
-В production следует использовать `DEV_MODE=0`, реальную HTTPS-базу в `WEBAPP_URL` и подпись `initData` от Telegram. Полный процесс приведён в [DEPLOYMENT.md](DEPLOYMENT.md).
+Production uses `DEV_MODE=0`, a real HTTPS `WEBAPP_URL` and server validation of Telegram `initData`. The complete process is in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-## Рабочий цикл
+## Working cycle
 
-| Этап | Минимальное действие | Артефакт проверки |
+| Stage | Minimum action | Verification artifact |
 |---|---|---|
-| Изменение продукта | Сверить сценарий с PRODUCT и DESIGN_SYSTEM. | Обновлённые тексты, состояния и аналитическое событие при необходимости. |
-| Изменение данных | Обновить `schema.py` и миграции для существующих БД. | Новый запуск и регрессионный тест. |
-| Изменение API | Изменить роутер и клиентский вызов. | Сверка с API.md и негативные сценарии. |
-| Изменение UI | Использовать токены, каскад CSS и делегирование событий. | Проверка на мобильном viewport и `prefers-reduced-motion`. |
-| Перед релизом | Прогнать синтаксис, тесты, selfcheck и review diff. | Запись в CHANGELOG и зелёный CI/локальный QA. |
+| Product change | Reconcile the scenario with PRODUCT and DESIGN_SYSTEM. | Updated copy, states and analytics event when needed. |
+| Data change | Update `schema.py` and migrations for existing databases. | New migration run and regression test. |
+| API change | Update the router and client call. | API.md review and negative-path tests. |
+| UI change | Use tokens, CSS cascade and delegated events. | Mobile viewport and `prefers-reduced-motion` check. |
+| Before release | Run syntax, tests, selfcheck and diff review. | Changelog entry and green CI/local QA. |
 
-## Источники правды
+## Operating rules
 
-| Вопрос | Авторитетный источник |
-|---|---|
-| Таблицы и индексы | [`app/data/schema.py`](../app/data/schema.py) |
-| Единый архив | [`app/api/routers/history.py`](../app/api/routers/history.py), [`UNIFIED_HISTORY.md`](UNIFIED_HISTORY.md) |
-| Изменение существующих таблиц | [`app/data/migrations.py`](../app/data/migrations.py) |
-| Маршруты и статическая раздача | [`app/api/main.py`](../app/api/main.py), [`app/api/routers/`](../app/api/routers/) |
-| Runtime-конфигурация | [`app/config.py`](../app/config.py), [`.env.example`](../.env.example) |
-| Клиентские модули | [`miniapp/js/`](../miniapp/js/), [`miniapp/css/`](../miniapp/css/) |
-| Проверки | [`tests/`](../tests/), [`pytest.ini`](../pytest.ini), [`scripts/selfcheck.py`](../scripts/selfcheck.py) |
+Current behavior must be established from code, tests and configuration first. A document change that alters a contract must update the corresponding canonical page in the same pull request. A local or synthetic check must name its environment and limitation; it cannot close a staging, production, legal, payment or provider gate.
 
-## Версионирование документации
-
-Новая версия продукта отражается в [CHANGELOG.md](CHANGELOG.md). В репозитории хранятся только текущие контракты, решения, инструкции и policy-документы. Временные аудиты, выгрузки, персональные данные, скриншоты с идентификаторами Telegram, terminal dumps и секреты хранятся вне source tree. Исследовательские материалы попадают в репозиторий только после отдельного утверждения и превращения в действующее решение.
+Before opening a pull request, validate relative links, stale path references, documented commands and generated artifacts. Keep raw screenshots, logs, local databases, generated reports and secrets outside the tracked source tree unless a reproducible fixture or legal notice requires them.
 
 ## References
 
-[1]: [app/api/main.py](../app/api/main.py) — проверка режима разработки в lifecycle FastAPI.
-[2]: [OBSERVABILITY.md](OBSERVABILITY.md) — monitoring/logging runbook и Grafana access.
+[1]: [Repository README](../README.md) — repository-level quick start and boundary.
+[2]: [Current status](RELEASE/CURRENT_STATUS.md) — current release verdict.
+[3]: [Current tasks](RELEASE/TASKS.md) — current backlog.
+[4]: [Repository inventory](REPOSITORY_INVENTORY.md) — file-by-file inventory.
+[5]: [Documentation link checker](../scripts/check_documentation_links.py) — repository-relative Markdown checker.

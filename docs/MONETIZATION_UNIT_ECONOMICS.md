@@ -76,7 +76,7 @@ The model distinguishes gross booking, net revenue and contribution. Stars are n
 
 ## References
 
-[1]: [OracleAI monetization baseline](MONETIZATION_BASELINE.md) — current catalog, payment paths and known gaps.
+[1]: [OracleAI monetization baseline](FEATURES/BILLING.md) — current catalog, payment paths and known gaps.
 [2]: [OracleAI privacy-safe event dictionary](ANALYTICS_EVENT_DICTIONARY.md) — permitted analytics fields and retention boundaries.
 [3]: [OracleAI scale and migration contract](SCALE_AND_MIGRATION.md) — operational triggers and cost-related measurement discipline.
 [4]: [Telegram Stars developer documentation](https://core.telegram.org/bots/payments-stars) — platform payment flow; verify applicable current terms and settlement rules before launch.

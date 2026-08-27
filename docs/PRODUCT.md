@@ -1,5 +1,17 @@
 # Продукт OracleAI
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | Product promise and enabled surface. |
+| **Source of truth** | `app/api/`, `app/bot/`, `miniapp/`. |
+| **Scope** | Product audience, promise, boundaries and enabled journeys. |
+| **Do not change** | Do not describe future, research or upstream capability as enabled product. |
+| **Key files** | `docs/PRODUCT.md`, `docs/FULL_PRODUCT_SURFACE.md`, `miniapp/index.html`. |
+| **Validation** | `pytest -q tests/test_api.py tests/test_core.py`. |
+
+
 ## Назначение
 
 OracleAI помогает пользовательнице **заметить своё состояние, сформулировать вопрос и выбрать один бережный следующий шаг**. Это не сервис предсказаний с категоричными обещаниями и не замена специалиста. Астрология, карты и диалог используются как язык саморефлексии, а дневник и микро-практики помогают вернуться к личному наблюдению.

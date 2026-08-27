@@ -1,4 +1,4 @@
-"""Fail when historical audit dumps or broken local documentation links return."""
+"""Fail when forbidden artifacts or broken local documentation links return."""
 from __future__ import annotations
 
 import re
@@ -24,14 +24,14 @@ FORBIDDEN_PATHS = (
     "docs/PROJECT_MAP.md",
 )
 CURATED_AUDIT_FILES = {
-    "docs/audit/sqlite_scaling_10x_2026-08-26.md",
-    "docs/audit/staging_chat_indexes_2026-08-26.md",
+    "docs/EVIDENCE/AUDIT/sqlite_scaling_10x_2026-08-26.md",
+    "docs/EVIDENCE/AUDIT/staging_chat_indexes_2026-08-26.md",
 }
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)#]+)(?:#[^)]*)?\)")
 
 
 def markdown_files() -> list[Path]:
-    return [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]
+    return [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
 
 
 def main() -> int:
@@ -40,7 +40,7 @@ def main() -> int:
         if (ROOT / relative).exists():
             failures.append(f"forbidden path exists: {relative}")
 
-    audit_dir = ROOT / "docs/audit"
+    audit_dir = ROOT / "docs/EVIDENCE/AUDIT"
     if audit_dir.exists():
         for path in audit_dir.rglob("*"):
             relative = path.relative_to(ROOT).as_posix()

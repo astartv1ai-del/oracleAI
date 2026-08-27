@@ -59,6 +59,35 @@ def test_frontend_cache_version_covers_new_modules() -> None:
         assert f"css/{filename}?v={value}" in styles
 
 
+def test_visual_capture_uses_distinct_server_side_locale_users() -> None:
+    capture = (ROOT / "scripts" / "capture_visual_baseline.py").read_text(encoding="utf-8")
+    seed = (ROOT / "scripts" / "seed_visual_user.py").read_text(encoding="utf-8")
+    assert 'LOCALE_USERS = {"ru": 10001, "en": 10002}' in capture
+    assert "BASE_URL_TEMPLATE.format(dev_user=LOCALE_USERS[locale_key])" in capture
+    assert "(10001, \"ru\"), (10002, \"en\")" in seed
+    assert 'localeContract' in capture
+    assert 'paymentPlanCount' in capture and 'paymentProductCount' in capture
+    assert "'.nav-btn[data-goto=\"{view_name}\"]'" in capture
+
+
+def test_chat_surface_has_explicit_ru_en_copy_contract() -> None:
+    chat = (ROOT / "miniapp" / "js" / "07-chat.js").read_text(encoding="utf-8")
+    assert "const CHAT_I18N =" in chat
+    assert "const CHAT_AGENT_EN =" in chat
+    assert "Write to " in chat and "Напиши " in chat
+    assert "What matters most to notice in this situation?" in chat
+    assert "DIALOGUE TOOLS" in chat and "ИНСТРУМЕНТЫ ДИАЛОГА" in chat
+
+
+def test_payment_surface_has_explicit_ru_en_copy_contract() -> None:
+    payments = (ROOT / "miniapp" / "js" / "17-payments.js").read_text(encoding="utf-8")
+    assert "const PAYMENT_I18N =" in payments
+    assert "const PAYMENT_CATALOG =" in payments
+    assert "payLang" in payments and "catalogText" in payments
+    assert "Your Crystals" in payments and "Твои Кристаллы" in payments
+    assert "Open Stars checkout" in payments and "Открыть оплату Stars" in payments
+
+
 def test_refactored_backend_boundaries_exist() -> None:
     expected = [
         ROOT / "app" / "api" / "common" / "errors.py",

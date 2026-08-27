@@ -75,7 +75,7 @@ The sandbox does not have Docker, a PostgreSQL server, an S3-compatible bucket, 
 
 ## References
 
-[1]: [P0 production execution plan](P0_PRODUCTION_EXECUTION_PLAN.md) — gate order, acceptance, evidence and rollback.
+[1]: [P0 production execution plan](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) — gate order, acceptance, evidence and rollback.
 [2]: [Deployment runbook](DEPLOYMENT.md) — Compose topology, backup profile and restore operations.
 [3]: [Backup/restore drill](BACKUP_RESTORE_DRILL.md) — disposable local evidence and explicit production limitations.
 [4]: [PostgreSQL `pg_dump` docs](https://www.postgresql.org/docs/current/app-pgdump.html) — archive formats and restore relationship.

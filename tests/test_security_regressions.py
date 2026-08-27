@@ -62,6 +62,18 @@ async def test_diary_tool_is_blocked_when_memory_off(db, user):
     assert "выключена" in result
 
 
+def test_production_config_rejects_dev_mode_in_production(monkeypatch):
+    from app.api.main import _validate_production_config
+
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setattr(settings, "dev_mode", True)
+    monkeypatch.setattr(settings, "bot_token", "test-token")
+    monkeypatch.setattr(settings, "admin_id", 1001)
+    monkeypatch.setattr(settings, "webapp_url", "https://oracle.example")
+    with pytest.raises(RuntimeError, match="DEV_MODE"):
+        _validate_production_config()
+
+
 def test_production_config_fails_closed(monkeypatch):
     from app.api.main import _validate_production_config
 

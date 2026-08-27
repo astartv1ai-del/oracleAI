@@ -1,5 +1,17 @@
 # Деплой и эксплуатация OracleAI
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | Deployment and release procedure. |
+| **Source of truth** | `infra/`, `Makefile`, `.env*.example`, `scripts/`. |
+| **Scope** | Docker Compose, environment, migrations, health, observability, backup and rollback. |
+| **Do not change** | Do not use dev authentication or real credentials in Git. |
+| **Key files** | `infra/docker-compose.yml`, `infra/Dockerfile`, `Makefile`, `scripts/release_gate.py`. |
+| **Validation** | `python3 -m scripts.selfcheck && python3 -m scripts.release_gate`. |
+
+
 ## Модель production-развёртывания
 
 Production-like стек собирается Docker Compose из `postgres`, `redis`, `migrate`, `api`, `bot`, `worker`, `beat` и `caddy`. Один общий application image содержит API, Telegram-бота, LLM-agent runtime, астрологический движок, ONNX/MediaPipe palm engines, Mini App, admin и landing. `worker` и `beat` используют тот же image и подключаются к Redis/PostgreSQL.[1]

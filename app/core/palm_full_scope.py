@@ -100,7 +100,24 @@ def _candidate_region(x: float, y: float) -> str:
     return "central_palm"
 
 
-def _candidate_segments(cv2, np, gray, edges, hand_mask) -> list[dict[str, Any]]:
+def _pinky_edge_mask(cv2, np, width: int, height: int, hand_geometry: dict[str, Any] | None, hand_mask):
+    hands = (hand_geometry or {}).get("hands") or []
+    points = hands[0].get("landmarks") or [] if hands else []
+    if len(points) < 21 or hand_mask is None:
+        return None
+    pinky_x = float(points[17].get("x", 0.5))
+    pinky_tip_x = float(points[20].get("x", pinky_x))
+    index_x = float(points[5].get("x", 0.5))
+    center = (pinky_x + pinky_tip_x) / 2.0
+    band = max(0.12, min(0.30, abs(pinky_x - index_x) * 0.9))
+    mask = np.zeros((height, width), dtype=np.uint8)
+    left = max(0, int((center - band) * width))
+    right = min(width, int((center + band) * width))
+    cv2.rectangle(mask, (left, 0), (right, height - 1), 255, thickness=-1)
+    return cv2.bitwise_and(hand_mask, mask)
+
+
+def _candidate_segments(cv2, np, gray, edges, hand_mask, region_hint: str | None = None) -> list[dict[str, Any]]:
     if hand_mask is not None:
         scoped = cv2.bitwise_and(edges, edges, mask=hand_mask)
     else:
@@ -131,7 +148,7 @@ def _candidate_segments(cv2, np, gray, edges, hand_mask) -> list[dict[str, Any]]
         x2_norm, y2_norm = x2 / width, y2 / height
         candidates.append({
             "segment_id": f"seg_{len(candidates):03d}",
-            "region": _candidate_region((x1_norm + x2_norm) / 2.0, (y1_norm + y2_norm) / 2.0),
+            "region": region_hint or _candidate_region((x1_norm + x2_norm) / 2.0, (y1_norm + y2_norm) / 2.0),
             "x1": round(x1_norm, 4), "y1": round(y1_norm, 4),
             "x2": round(x2_norm, 4), "y2": round(y2_norm, 4),
             "length_px": round(length, 1),
@@ -156,31 +173,73 @@ def _candidate_segments(cv2, np, gray, edges, hand_mask) -> list[dict[str, Any]]
     return unique
 
 
-def _zone_evidence(view_type: str, candidate_count: int, hand_geometry: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+def _merge_candidates(*groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    combined = [item for group in groups for item in group]
+    combined.sort(key=lambda item: (item.get("length_px", 0), item.get("local_contrast", 0)), reverse=True)
+    unique: list[dict[str, Any]] = []
+    for item in combined:
+        if any(
+            abs(item["x1"] - old["x1"]) < 0.025
+            and abs(item["y1"] - old["y1"]) < 0.025
+            and abs(item["x2"] - old["x2"]) < 0.025
+            and abs(item["y2"] - old["y2"]) < 0.025
+            for old in unique
+        ):
+            continue
+        item = dict(item)
+        item["segment_id"] = f"seg_{len(unique):03d}"
+        unique.append(item)
+        if len(unique) >= MAX_CANDIDATES:
+            break
+    return unique
+
+
+def _zone_candidate_ids(zone: str, candidates: list[dict[str, Any]]) -> list[str]:
+    """Return only candidates in a coarse anatomical region for this zone."""
+    ids = []
+    for item in candidates:
+        region = item.get("region", "")
+        y = (float(item.get("y1", 0.0)) + float(item.get("y2", 0.0))) / 2.0
+        edge = region in {"left_palm_edge", "right_palm_edge", "pinky_edge"}
+        if zone in {"relationship_lines", "children_lines"}:
+            supported = edge and y < 0.72
+        elif zone == "travel_lines":
+            supported = edge and y >= 0.42
+        elif zone == "bracelets":
+            supported = region == "lower_palm_or_wrist"
+        elif zone in {"mounts", "fingers", "girdle_of_venus", "ring_of_solomon", "ring_of_apollo"}:
+            supported = region == "upper_palm_or_finger_base"
+        elif zone in {"life_line", "mars_lines", "via_lasciva"}:
+            supported = region in {"left_palm_edge", "right_palm_edge", "central_palm"}
+        else:
+            supported = region == "central_palm"
+        if supported and item.get("segment_id"):
+            ids.append(str(item["segment_id"]))
+    return ids[:12]
+
+
+def _zone_evidence(view_type: str, candidates: list[dict[str, Any]], hand_geometry: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     has_hand = bool((hand_geometry or {}).get("hand_count"))
     evidence: dict[str, dict[str, Any]] = {}
     for zone in ZONE_CATALOG:
+        support_ids = _zone_candidate_ids(zone, candidates)
+        base = {
+            "candidate_count": len(support_ids),
+            "supporting_candidate_ids": support_ids,
+            "semantic_labeling": "vision_llm",
+        }
         if zone in FOLDED_EDGE_ONLY and view_type == "open_palm":
-            evidence[zone] = {
-                "status": "not_visible", "engine": "capture_geometry",
-                "requires_view": "folded_edge", "semantic_labeling": "vision_llm",
-            }
+            evidence[zone] = {**base, "status": "not_visible", "engine": "capture_geometry",
+                              "requires_view": "folded_edge"}
         elif zone in FOLDED_EDGE_ONLY and view_type != "folded_edge":
-            evidence[zone] = {
-                "status": "requires_view", "engine": "capture_geometry",
-                "requires_view": "folded_edge", "semantic_labeling": "vision_llm",
-            }
+            evidence[zone] = {**base, "status": "requires_view", "engine": "capture_geometry",
+                              "requires_view": "folded_edge"}
         elif zone in {"mounts", "fingers"} and not has_hand:
-            evidence[zone] = {
-                "status": "unclear", "engine": "mediapipe_geometry_missing",
-                "semantic_labeling": "vision_llm",
-            }
+            evidence[zone] = {**base, "status": "unclear", "engine": "mediapipe_geometry_missing"}
         else:
-            evidence[zone] = {
-                "status": "candidate_search" if candidate_count else "unclear",
-                "engine": "opencv_candidate_search",
-                "semantic_labeling": "vision_llm",
-            }
+            evidence[zone] = {**base,
+                              "status": "candidate_search" if support_ids else "no_candidates",
+                              "engine": "opencv_candidate_search"}
     return evidence
 
 
@@ -221,6 +280,13 @@ def analyze(image_bytes: bytes, *, hand_geometry: dict[str, Any] | None = None) 
         resized_geometry = hand_geometry
         mask = _hand_mask(cv2, np, gray.shape[1], gray.shape[0], resized_geometry)
         candidates = _candidate_segments(cv2, np, gray, fused_edges, mask)
+        if view_type := _view_type(hand_geometry):
+            if view_type == "folded_edge":
+                edge_mask = _pinky_edge_mask(cv2, np, gray.shape[1], gray.shape[0], hand_geometry, mask)
+                edge_candidates = _candidate_segments(
+                    cv2, np, gray, fused_edges, edge_mask, region_hint="pinky_edge"
+                ) if edge_mask is not None else []
+                candidates = _merge_candidates(candidates, edge_candidates)
         edge_density = float(np.count_nonzero(fused_edges)) / float(fused_edges.size or 1)
         ridge_energy = float(np.mean(ridge)) / 255.0
         view_type = _view_type(hand_geometry)
@@ -236,7 +302,7 @@ def analyze(image_bytes: bytes, *, hand_geometry: dict[str, Any] | None = None) 
             "edge_passes": ["clahe_canny", "blackhat_ridge_canny"],
             "candidate_count": len(candidates),
             "candidate_segments": candidates,
-            "zone_evidence": _zone_evidence(view_type, len(candidates), hand_geometry),
+            "zone_evidence": _zone_evidence(view_type, candidates, hand_geometry),
             "line_catalog": list(LINE_CATALOG),
             "raw_edge_map_stored": False,
             "raw_mask_stored": False,

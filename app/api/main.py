@@ -56,9 +56,11 @@ WEB_DIR = ROOT / "web"                 # публичный лендинг и SE
 
 def _validate_production_config() -> None:
     """Fail closed before serving an unauthenticated or misdirected app."""
-    if settings.dev_mode or os.getenv("APP_ENV", "").lower() in {"dev", "test"}:
+    if os.getenv("APP_ENV", "").lower() in {"dev", "test"}:
         return
     missing = []
+    if settings.dev_mode:
+        missing.append("DEV_MODE должен быть выключен")
     if not settings.bot_token:
         missing.append("BOT_TOKEN")
     if not settings.admin_id:

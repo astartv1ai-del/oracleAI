@@ -56,6 +56,25 @@ async def test_horoscope_builds_once_under_concurrency(db, monkeypatch):
     assert all(r == "Гороскоп на сегодня" for r in results)
 
 
+@pytest.mark.parametrize(
+    ("sign", "expected"),
+    [
+        ("Овен", "Овна"), ("Телец", "Тельца"), ("Близнецы", "Близнецов"),
+        ("Рак", "Рака"), ("Лев", "Льва"), ("Дева", "Девы"),
+        ("Весы", "Весов"), ("Скорпион", "Скорпиона"),
+        ("Стрелец", "Стрельца"), ("Козерог", "Козерога"),
+        ("Водолей", "Водолея"), ("Рыбы", "Рыб"),
+    ],
+)
+def test_offline_daily_forecast_uses_correct_ru_sign_case(sign, expected):
+    from app.core import agent as agent_core, astro
+
+    user = {"name": "", "tg_id": 91000, "tz": "UTC", "lang": "ru"}
+    chart = {"sun": {"sign": sign}}
+    text = agent_core._forecast_offline(user, chart, astro.today_sky())
+    assert f"Сегодня для {expected} —" in text
+
+
 async def test_daily_forecast_builds_once_under_concurrency(db, user, monkeypatch):
     """Mini App и бот в одно утро: пять параллельных запросов — одна генерация
     (G17, атомарная проверка кеша в daily_forecast_cached)."""

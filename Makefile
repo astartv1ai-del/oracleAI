@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: init up down restart ps logs observability build migrate selfcheck shell worker-scale local-llm backup restore backup-drill p004-audit config
+.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore backup-drill p004-audit config
 
 init:
 	@test -f .env || cp .env.example .env
@@ -39,6 +39,9 @@ migrate:
 
 selfcheck:
 	$(COMPOSE) exec api python -m scripts.selfcheck
+
+docs-check:
+	python3 scripts/check_documentation_links.py
 
 shell:
 	$(COMPOSE) exec api /bin/bash

@@ -1,5 +1,17 @@
 # OracleAI — архитектура
 
+## Document orientation
+
+| Field | Definition |
+|---|---|
+| **Purpose** | Current runtime and data-flow architecture. |
+| **Source of truth** | `app/`, `miniapp/`, `infra/` and `tests/`. |
+| **Scope** | Bot, Mini App, API, core, repositories, storage, agents and operations. |
+| **Do not change** | Do not move authorization, calculations or safety rules into the client or prompts. |
+| **Key files** | `app/api/main.py`, `app/core/`, `app/data/`, `app/repo/`, `infra/`. |
+| **Validation** | `python3 -m compileall -q app scripts tests`. |
+
+
 OracleAI — единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют общие сервисы, SQLite/WAL, safety boundaries, calculation contracts и provider fallback.
 
 ## Топология
