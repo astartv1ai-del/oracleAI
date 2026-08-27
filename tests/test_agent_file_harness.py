@@ -54,7 +54,7 @@ def test_lazy_skill_activation_is_available_for_every_file_agent():
         assert "ACTIVE_SKILL:" not in context
         assert name in context
         activated = activate_skill(code, name)
-        assert f"[ACTIVATED_SKILL]" in activated
+        assert "[ACTIVATED_SKILL]" in activated
         assert f"ACTIVE_SKILL: {name}" in activated
 
 

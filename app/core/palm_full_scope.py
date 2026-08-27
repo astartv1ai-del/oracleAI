@@ -13,8 +13,6 @@ from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from . import palm_landmarks
-
 ADAPTER_VERSION = "palm-full-scope-cv-v1"
 MAX_SIDE = 1280
 MAX_CANDIDATES = 64
@@ -37,7 +35,8 @@ def _empty(status: str, issues: list[str]) -> dict[str, Any]:
         "engine": "opencv_candidate_search",
         "candidate_count": 0,
         "candidate_segments": [],
-        "zone_evidence": {},
+        "line_catalog": list(LINE_CATALOG),
+        "zone_evidence": _zone_evidence("unclear", 0, None),
         "issues": issues[:8],
         "raw_edge_map_stored": False,
         "raw_mask_stored": False,
