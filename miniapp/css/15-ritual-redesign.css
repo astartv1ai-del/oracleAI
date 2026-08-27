@@ -983,7 +983,7 @@ html, body { background: #070713; }
   filter: saturate(1.03) contrast(1.03);
   background:
     linear-gradient(180deg, rgba(7,7,18,.18) 0%, rgba(7,7,18,.28) 42%, rgba(7,7,18,.76) 100%),
-    url("/static/img/bg-cosmos.jpg?v=103") 50% 18% / cover no-repeat,
+    url("/static/img/bg-cosmos.jpg?v=105") 50% 18% / cover no-repeat,
     radial-gradient(120% 70% at 50% -10%, #1c1a3a 0%, transparent 55%),
     radial-gradient(90% 60% at 85% 110%, #2a1440 0%, transparent 60%),
     linear-gradient(180deg, #0a0916 0%, #07070f 100%);

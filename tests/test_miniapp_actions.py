@@ -82,13 +82,15 @@ def test_miniapp_stylesheet_imports_match_asset_version() -> None:
     assert f'?v={int(value) - 1}' not in styles
 
 
-def test_home_fallback_is_localized() -> None:
+def test_home_welcome_card_is_bilingual_and_moon_free() -> None:
     home = (JS_DIR / "06-home.js").read_text(encoding="utf-8")
     utils = (JS_DIR / "01-utils.js").read_text(encoding="utf-8")
-    assert "homeT('heroFallbackTitle')" in home
-    assert "homeT('heroFallbackCopy')" in home
-    assert "heroFallbackTitle: 'You do not need to find the perfect answer today.'" in utils
-    assert "heroFallbackCopy: 'Choose one gentle step for yourself.'" in utils
+    assert "class=\"welcome-card\"" in home
+    assert "homeT('welcomeTitle')" in home
+    assert "homeT('welcomeCopy')" in home
+    assert "welcomeTitle: 'Start with what is already alive inside.'" in utils
+    assert "welcomeCopy: 'One question. One gentle step. The rest can wait.'" in utils
+    assert "hero-moon-orb" not in home
 
 
 def test_agent_quality_proof_is_visible_on_hub_and_chat() -> None:
