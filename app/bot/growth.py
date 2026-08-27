@@ -26,10 +26,12 @@ router = Router()
 
 
 async def _menu(db, tg_id: int):
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)))
+    user = await users.get(db, tg_id)
+    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+                     lang="en" if user and user["lang"] == "en" else "ru")
 
 
-# ─────────────────────────── практики и мантры ────────────────────────────────
+# ───────────────────────────── практики и шаги ─────────────────────────────────
 
 def _practice_card(item: dict) -> str:
     """Карточка практики: зачем, когда, что делать сегодня и как понять эффект."""
@@ -77,7 +79,7 @@ async def _show_practices(target: Message, db, tg_id: int,
     items = await practices_svc.list_for_user(db, user, category=category)
     categories = await practices_svc.categories()
     running = [p for p in items if p["started"] and not p["finished"]]
-    head = ["🕉 <b>Практики и мантры</b>", ""]
+    head = ["🕯 <b>Практики и маленькие шаги</b>", ""]
     if running:
         head.append("Ты сейчас проходишь:")
         head += [f"• {p['emoji']} {p['title']} — день {p['day_index']} "
@@ -85,9 +87,9 @@ async def _show_practices(target: Message, db, tg_id: int,
                                       if p["streak"] >= 2 else "")
                  for p in running]
         head.append("")
-    head.append("<i>Мантры, денежные и любовные практики, работа с энергией. "
-                "У каждой — программа по дням и знаки, по которым видно, "
-                "что она работает.</i>")
+    head.append("<i>Короткие упражнения для внимания, решения и заботы о себе. "
+                "У каждой — программа по дням, понятное действие и признаки, "
+                "по которым можно заметить свой эффект.</i>")
     await target.answer("\n".join(head),
                         reply_markup=practices_kb(items, categories,
                                                   active=category))

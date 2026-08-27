@@ -24,41 +24,82 @@ def _webapp_button(text: str, path: str = "") -> InlineKeyboardButton | None:
     return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=url))
 
 
-def main_menu(*, is_admin: bool = False) -> InlineKeyboardMarkup:
+def main_menu(*, is_admin: bool = False, lang: str = "ru") -> InlineKeyboardMarkup:
+    """Telegram-native home grammar: one primary action, then exploration and hub rows."""
+    en = lang == "en"
     rows: list[list[InlineKeyboardButton]] = []
-    app_btn = _webapp_button("✨ Открыть Оракула", "/")
+    app_btn = _webapp_button("✨ Open full Oracle" if en else "✨ Открыть полного Оракула", "/")
     if app_btn:
         rows.append([app_btn])
     rows += [
-        [InlineKeyboardButton(text="💬 Спросить Оракула", callback_data="ask")],
-        [
-            InlineKeyboardButton(text="🎴 Расклад Таро", callback_data="tarot"),
-            InlineKeyboardButton(text="🌌 Моя карта", callback_data="chart"),
-        ],
-        [InlineKeyboardButton(text="✋ Мира · Проводник ладони", callback_data="palm")],
-        [
-            InlineKeyboardButton(text="🔢 Матрица Судьбы", callback_data="matrix"),
-            InlineKeyboardButton(text="📖 Дневник", callback_data="diary"),
-        ],
-        [
-            InlineKeyboardButton(text="🌅 Прогноз дня", callback_data="today"),
-            InlineKeyboardButton(text="💞 Совместимость", callback_data="compat"),
-        ],
-        [
-            InlineKeyboardButton(text="🕉 Практики", callback_data="practices"),
-            InlineKeyboardButton(text="🧭 Карьера", callback_data="career"),
-        ],
-        [
-            InlineKeyboardButton(text="👤 Профиль", callback_data="profile"),
-            InlineKeyboardButton(text="💎 Лавка", callback_data="shop"),
-        ],
+        [InlineKeyboardButton(text="✨ Ask Oracle" if en else "✨ Спросить Оракула", callback_data="ask")],
+        [InlineKeyboardButton(text="🌌 My chart" if en else "🌌 Моя карта", callback_data="chart"),
+         InlineKeyboardButton(text="🎴 Tarot" if en else "🎴 Таро", callback_data="tarot")],
+        [InlineKeyboardButton(text="✋ Mira" if en else "✋ Мира", callback_data="palm"),
+         InlineKeyboardButton(text="📖 My research" if en else "📖 Мои исследования", callback_data="history")],
+        [InlineKeyboardButton(text="🌙 Today" if en else "🌙 Сегодня", callback_data="today"),
+         InlineKeyboardButton(text="💎 Premium" if en else "💎 Premium", callback_data="shop")],
+        [InlineKeyboardButton(text="👤 Profile" if en else "👤 Профиль", callback_data="profile"),
+         InlineKeyboardButton(text="⚙️ Settings" if en else "⚙️ Настройки", callback_data="settings")],
+        [InlineKeyboardButton(text="? Help" if en else "? Помощь", callback_data="help")],
     ]
     if is_admin:
-        admin_btn = _webapp_button("📊 Панель управления", "/admin")
+        admin_btn = _webapp_button("📊 Admin panel" if en else "📊 Панель управления", "/admin")
         rows.append([admin_btn] if admin_btn
-                    else [InlineKeyboardButton(text="📊 Статистика",
+                    else [InlineKeyboardButton(text="📊 Statistics" if en else "📊 Статистика",
                                                callback_data="admin_stats")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def language_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🇷🇺 Русский", callback_data="language:ru"),
+         InlineKeyboardButton(text="🇬🇧 English", callback_data="language:en")],
+    ])
+
+
+def time_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Знаю точно" if lang != "en" else "I know it exactly", callback_data="time:exact")],
+        [InlineKeyboardButton(text="Знаю примерно" if lang != "en" else "I know roughly", callback_data="time:approximate")],
+        [InlineKeyboardButton(text="Не знаю" if lang != "en" else "I don’t know", callback_data="time:unknown")],
+        [InlineKeyboardButton(text="← Назад" if lang != "en" else "← Back", callback_data="onb:back")],
+    ])
+
+
+def confirmation_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✓ Всё верно" if lang != "en" else "✓ Looks right", callback_data="onb:confirm")],
+        [InlineKeyboardButton(text="✎ Изменить" if lang != "en" else "✎ Edit", callback_data="onb:edit")],
+    ])
+
+
+def technique_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✨ Астрологический разбор" if lang != "en" else "✨ Astrology reading", callback_data="technique:astrology")],
+        [InlineKeyboardButton(text="🎴 Натальная история Ленорман" if lang != "en" else "🎴 Lenormand natal story", callback_data="technique:lenormand")],
+        [InlineKeyboardButton(text="← Назад" if lang != "en" else "← Back", callback_data="onb:back")],
+    ])
+
+
+def onboarding_edit_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    labels = [("name", "Имя" if lang != "en" else "Name"), ("date", "Дата" if lang != "en" else "Date"),
+              ("time", "Время" if lang != "en" else "Time"), ("city", "Город" if lang != "en" else "City")]
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"✎ {label}", callback_data=f"onb:edit:{key}") for key, label in labels[:2]],
+        [InlineKeyboardButton(text=f"✎ {label}", callback_data=f"onb:edit:{key}") for key, label in labels[2:]],
+        [InlineKeyboardButton(text="← К данным" if lang != "en" else "← Back to details", callback_data="onb:confirm")],
+    ])
+
+
+def history_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌌 Astrology" if lang == "en" else "🌌 Астрология", callback_data="history:astro"),
+         InlineKeyboardButton(text="🎴 Tarot" if lang == "en" else "🎴 Таро", callback_data="history:tarot")],
+        [InlineKeyboardButton(text="📜 Reports" if lang == "en" else "📜 Разборы", callback_data="my_reports")],
+        [InlineKeyboardButton(text="💬 Conversations" if lang == "en" else "💬 Разговоры", callback_data="history:chat")],
+        [InlineKeyboardButton(text="← Menu" if lang == "en" else "← Меню", callback_data=CB_MENU)],
+    ])
 
 
 def age_gate_kb(lang: str = "ru") -> InlineKeyboardMarkup:
@@ -88,6 +129,21 @@ def personas_kb(personas: list[dict]) -> InlineKeyboardMarkup:
                               callback_data=f"persona:{p['code']}")]
         for p in personas
     ])
+
+
+def ask_starters_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    if lang == "en":
+        labels = [("What should I focus on today?", "starter:today"),
+                  ("What is happening in my relationship?", "starter:love"),
+                  ("Help me make a decision", "starter:decision")]
+    else:
+        labels = [("На чём мне сфокусироваться сегодня?", "starter:today"),
+                  ("Что происходит в моих отношениях?", "starter:love"),
+                  ("Помоги принять решение", "starter:decision")]
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=label, callback_data=callback)] for label, callback in labels
+    ] + [[InlineKeyboardButton(text="Change guide" if lang == "en" else "Выбрать проводника", callback_data="agents")],
+         [InlineKeyboardButton(text="Menu" if lang == "en" else "Меню", callback_data=CB_MENU)]])
 
 
 def agents_kb(agents: list[dict]) -> InlineKeyboardMarkup:
@@ -150,28 +206,34 @@ def limit_kb(cost: int, *, has_crystals: bool, lang: str = "ru") -> InlineKeyboa
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def shop_kb() -> InlineKeyboardMarkup:
+def shop_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    en = lang == "en"
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎴 Одиночные расклады", callback_data="shop_spreads")],
-        [InlineKeyboardButton(text="📜 Большие разборы", callback_data="shop_reports")],
-        [InlineKeyboardButton(text="💬 Дополнительные вопросы", callback_data="shop_questions")],
-        [InlineKeyboardButton(text="✦ Кристаллы", callback_data="shop_crystals")],
-        [InlineKeyboardButton(text="🎟 Ввести промокод", callback_data="promo")],
-        [InlineKeyboardButton(text="← Меню", callback_data=CB_MENU)],
+        [InlineKeyboardButton(text="👑 Plans" if en else "👑 Тарифы", callback_data="plans")],
+        [InlineKeyboardButton(text="🎴 Single readings" if en else "🎴 Одиночные расклады", callback_data="shop_spreads")],
+        [InlineKeyboardButton(text="📜 Deep readings" if en else "📜 Большие разборы", callback_data="shop_reports")],
+        [InlineKeyboardButton(text="💬 Extra questions" if en else "💬 Дополнительные вопросы", callback_data="shop_questions")],
+        [InlineKeyboardButton(text="✦ Crystals" if en else "✦ Кристаллы", callback_data="shop_crystals")],
+        [InlineKeyboardButton(text="🎁 My purchases" if en else "🎁 Мои покупки", callback_data="my_entitlements")],
+        [InlineKeyboardButton(text="🎟 Promo code" if en else "🎟 Ввести промокод", callback_data="promo")],
+        [InlineKeyboardButton(text="← Menu" if en else "← Меню", callback_data=CB_MENU)],
     ])
 
 
-def plans_kb(plans: list[dict], current: str) -> InlineKeyboardMarkup:
-    rows = []
+def plans_kb(plans: list[dict], current: str, *, period: str = "monthly", lang: str = "ru") -> InlineKeyboardMarkup:
+    en = lang == "en"
+    rows = [[InlineKeyboardButton(text=("✓ Monthly" if period == "monthly" and en else "Monthly" if en else "✓ Месяц" if period == "monthly" else "Месяц"), callback_data="plans:monthly"),
+             InlineKeyboardButton(text=("✓ Annual" if period == "annual" and en else "Annual" if en else "✓ Год" if period == "annual" else "Год"), callback_data="plans:annual")]]
     for plan in plans:
-        if not plan.get("price_stars"):
+        price = plan.get("annual_price_stars") if period == "annual" else plan.get("price_stars")
+        if not price:
             continue
         mark = " ✓" if plan["code"] == current else ""
         badge = f" · {plan['badge']}" if plan.get("badge") else ""
         rows.append([InlineKeyboardButton(
-            text=f"{plan['title']} — ⭐{plan['price_stars']}{badge}{mark}"[:60],
-            callback_data=f"buy_plan:{plan['code']}")])
-    rows.append([InlineKeyboardButton(text="← Лавка", callback_data="shop")])
+            text=f"{plan['title']} — ⭐{price}{badge}{mark}"[:60],
+            callback_data=f"buy_plan:{plan['code']}:{period}")])
+    rows.append([InlineKeyboardButton(text="← Shop" if en else "← Лавка", callback_data="shop")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -204,12 +266,24 @@ def products_kb(products: list[dict], *, back: str = "shop",
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def profile_kb(*, push_on: bool, sub_active: bool) -> InlineKeyboardMarkup:
+def settings_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    en = lang == "en"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌐 Language" if en else "🌐 Язык", callback_data="settings:language")],
+        [InlineKeyboardButton(text="🧠 Memory" if en else "🧠 Память", callback_data="settings:memory")],
+        [InlineKeyboardButton(text="🌅 Notifications" if en else "🌅 Уведомления", callback_data="profile")],
+        [InlineKeyboardButton(text="🔐 Privacy & data" if en else "🔐 Приватность и данные", callback_data="privacy")],
+        [InlineKeyboardButton(text="← Menu" if en else "← Меню", callback_data=CB_MENU)],
+    ])
+
+
+def profile_kb(*, push_on: bool, sub_active: bool, lang: str = "ru") -> InlineKeyboardMarkup:
     rows = []
     # «Продлить доступ» скрыт вместе с подписками (этап «только Кристаллы»).
+    en = lang == "en"
     rows += [
-        [InlineKeyboardButton(text="💎 Лавка", callback_data="shop")],
-        [InlineKeyboardButton(text="🌟 Пригласить близкого", callback_data="invite")],
+        [InlineKeyboardButton(text="💎 Premium" if en else "💎 Лавка", callback_data="shop"),
+        InlineKeyboardButton(text="🌟 Invite someone" if en else "🌟 Пригласить близкого", callback_data="invite")],
         [InlineKeyboardButton(
             text=f"🌅 Утренний прогноз: {'вкл ✅' if push_on else 'выкл ☑️'}",
             callback_data="toggle_push")],

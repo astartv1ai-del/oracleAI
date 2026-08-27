@@ -35,7 +35,7 @@ def _value(user: Mapping[str, object], key: str, default=None):
         return default
 
 
-def require_eligible_user(user: Mapping[str, object] | None, *, operation: str = "chat") -> None:
+def require_eligible_user(user: Mapping[str, object] | None, *, operation: str = "chat", require_age: bool = True) -> None:
     """Raise :class:`EligibilityDenied` unless a user may use *operation*.
 
     This is deliberately transport-agnostic: HTTP routers, bot handlers and
@@ -53,7 +53,7 @@ def require_eligible_user(user: Mapping[str, object] | None, *, operation: str =
             f"операция {operation} недоступна для неактивного аккаунта",
         )
 
-    if not bool(_value(user, "age_confirmed")):
+    if require_age and not bool(_value(user, "age_confirmed")):
         raise EligibilityDenied(
             "age_confirmation_required",
             "подтверди, что тебе уже исполнилось 16 лет",

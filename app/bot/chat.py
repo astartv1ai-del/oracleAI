@@ -18,7 +18,8 @@ from ..repo import admin as admin_repo
 from ..repo import billing, content, users
 from ..services import analytics, chat as chat_svc, limits
 from .formatting import tg_esc, tg_rich
-from .keyboards import agents_kb, back_menu, limit_kb, main_menu
+from .keyboards import agents_kb, ask_starters_kb, back_menu, limit_kb, main_menu
+from .ui import BotStage, action_keyboard, begin_status, semantic_chunks
 
 log = logging.getLogger("oracle.bot.chat")
 router = Router()
@@ -68,11 +69,13 @@ def split_message(text: str, limit: int = TG_LIMIT) -> list[str]:
 
 
 async def _menu(db, tg_id: int):
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)))
+    user = await users.get(db, tg_id)
+    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+                     lang="en" if user and user["lang"] == "en" else "ru")
 
 
 async def _send_long(message: Message, text: str, reply_markup=None) -> None:
-    chunks = split_message(tg_rich(text))
+    chunks = semantic_chunks(tg_rich(text))
     for i, chunk in enumerate(chunks):
         await message.answer(chunk,
                              reply_markup=reply_markup if i == len(chunks) - 1 else None)
@@ -109,19 +112,44 @@ async def ask_menu(cb: CallbackQuery, state: FSMContext, db):
     allowance = await limits.allowance(db, user, check_followup=False)
     await state.set_state(Ask.waiting)
     await state.update_data(agent=agents.DEFAULT_AGENT)
-
-    unit = "сегодня" if allowance.period == "day" else "на этой неделе"
-    left = (f"осталось вопросов {unit}: {allowance.left}" if allowance.limit
-            else "вопросы по подписке закончились")
-    extra = (f" · купленных: {allowance.extra_questions}"
-             if allowance.extra_questions else "")
+    lang = "en" if user and user["lang"] == "en" else "ru"
+    unit = "today" if lang == "en" and allowance.period == "day" else "this week" if lang == "en" else "сегодня" if allowance.period == "day" else "на этой неделе"
+    left = (f"{allowance.left} left {unit}" if lang == "en" and allowance.limit else f"осталось {allowance.left} {unit}" if allowance.limit else "Your included questions are used" if lang == "en" else "вопросы по доступу закончились")
     await cb.message.answer(
-        f"Я слушаю тебя... ✨ ({left}{extra})\n"
-        f"Напиши свой вопрос — о любви, деньгах, пути.\n\n"
-        f"<i>Можно выбрать проводника: 🎴 Таролога, 🌌 Астролога, "
-        f"✋ Миру — Проводника ладони, 🔢 Нумеролога или 📖 Хранителя дневника.</i>",
+        (f"✨ <b>I’m listening.</b> Ask me anything about love, work, or your next step.\n\n<i>{left}. I’ll choose the best guide automatically.</i>"
+         if lang == "en" else
+         f"✨ <b>Я слушаю.</b> Спроси о любви, работе или следующем шаге.\n\n<i>{left}. Я сама выберу нужного проводника.</i>"),
+        reply_markup=ask_starters_kb(lang))
+    await cb.answer()
+
+
+@router.callback_query(F.data == "agents")
+async def agents_menu(cb: CallbackQuery, db):
+    user = await users.get(db, cb.from_user.id)
+    await cb.message.answer(
+        "Выбери проводника — или вернись к Оракулу." if not user or user["lang"] != "en" else "Choose a guide — or return to Oracle.",
         reply_markup=agents_kb(await agents.agent_list(db, user)))
     await cb.answer()
+
+
+@router.callback_query(F.data.startswith("starter:"))
+async def starter_question(cb: CallbackQuery, state: FSMContext, db):
+    user = await users.get(db, cb.from_user.id)
+    lang = "en" if user and user["lang"] == "en" else "ru"
+    prompts = {
+        "today": "What should I focus on today?" if lang == "en" else "На чём мне сфокусироваться сегодня?",
+        "love": "What is happening in my relationship?" if lang == "en" else "Что происходит в моих отношениях?",
+        "decision": "Help me make a decision." if lang == "en" else "Помоги мне принять решение.",
+    }
+    key = cb.data.split(":", 1)[1]
+    text = prompts.get(key)
+    if not text or not user:
+        await cb.answer("Choose a prompt", show_alert=True)
+        return
+    await state.set_state(Ask.waiting)
+    await state.update_data(agent=agents.DEFAULT_AGENT)
+    await cb.answer()
+    await _answer(cb.message, db, user, text, agents.DEFAULT_AGENT)
 
 
 @router.callback_query(F.data.startswith("agent:"))
@@ -146,19 +174,26 @@ async def pick_agent(cb: CallbackQuery, state: FSMContext, db):
 
 async def _answer(message: Message, db, user, text: str, agent: str) -> None:
     await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
+    lang = "en" if user and user["lang"] == "en" else "ru"
+    status = await begin_status(message, user, BotStage.THINKING)
+    await status.set(BotStage.USING_TOOL, "Oracle is choosing the right evidence" if lang == "en" else "Оракул выбирает нужные данные")
     try:
         result = await chat_svc.ask(db, user, text, agent=agent, surface="bot")
     except chat_svc.ChatDenied as e:
+        await status.set(BotStage.RECOVERABLE_ERROR, "Access boundary" if lang == "en" else "Граница доступа")
         await _deny(message, db, e.verdict)
         return
     except ValueError:
-        await message.answer("Напиши вопрос словами, милая 🌙")
+        await status.set(BotStage.RECOVERABLE_ERROR, "Send a question in words" if lang == "en" else "Напиши вопрос словами")
+        await message.answer("Please send a question in words." if lang == "en" else "Напиши вопрос словами, милая 🌙", reply_markup=action_keyboard(lang_value=lang, followup=False))
         return
     except Exception as e:  # noqa: BLE001
         log.exception("вопрос не обработан: %s", e)
-        await message.answer("Звёзды сейчас молчат... задай вопрос ещё раз чуть позже 🌙")
+        await status.set(BotStage.RECOVERABLE_ERROR, "Try again or return to the menu" if lang == "en" else "Попробуй ещё раз или вернись в меню")
+        await message.answer("I could not complete this reading. Try again in a moment." if lang == "en" else "Я не смогла завершить разбор. Попробуй ещё раз через минуту.", reply_markup=action_keyboard(lang_value=lang, followup=True))
         return
-    await _send_long(message, result["answer"], reply_markup=back_menu())
+    await status.set(BotStage.SUCCESS)
+    await _send_long(message, result["answer"], reply_markup=action_keyboard(lang_value=lang, followup=True, share=False))
 
 
 @router.message(F.voice)

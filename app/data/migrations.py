@@ -46,6 +46,10 @@ COLUMNS: dict[str, dict[str, str]] = {
         "expiry_notified": "INTEGER DEFAULT 0",
         "last_seen": "TEXT",
         "deleted_at": "TEXT",
+        "birth_time_precision": "TEXT DEFAULT 'exact'",
+        "natal_technique": "TEXT DEFAULT 'astrology'",
+        "natal_technique_version": "TEXT DEFAULT 'v1'",
+        "onboarding_step": "TEXT",
     },
     "messages": {
         "thread_id": "INTEGER",

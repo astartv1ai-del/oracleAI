@@ -14,7 +14,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from ..core import agent as agent_core
-from ..core import astro, cards, memory, palm as palm_core
+from ..core import astro, cards, chart_rendering, memory, palm as palm_core
 from ..core.matrix import compute_matrix
 from ..repo import admin as admin_repo
 from ..repo import dialog, readings, users
@@ -23,6 +23,7 @@ from .chat import _deny, _send_long
 from .formatting import tg_esc, tg_rich
 from .keyboards import (back_menu, main_menu, reading_kb, spread_offer_kb,
                         spreads_kb)
+from .ui import BotStage, begin_status
 
 log = logging.getLogger("oracle.bot.features")
 router = Router()
@@ -43,7 +44,9 @@ class PalmUpload(StatesGroup):
 
 
 async def _menu(db, tg_id: int):
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)))
+    user = await users.get(db, tg_id)
+    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+                     lang="en" if user and user["lang"] == "en" else "ru")
 
 
 # ───────────────────────────── ПАЛМ-АГЕНТ МИРА ───────────────────────────────
@@ -73,20 +76,25 @@ async def palm_entry(cb: CallbackQuery, state: FSMContext, db):
 @router.message(PalmUpload.photo, F.photo)
 async def palm_photo(message: Message, state: FSMContext, db):
     user = await users.get(db, message.from_user.id)
+    status = await begin_status(message, user, BotStage.USING_TOOL,
+                                "Мира проверяет качество снимка…" if user["lang"] != "en" else "Mira is checking the photo quality…")
     buf = BytesIO()
     try:
         await message.bot.download(message.photo[-1].file_id, destination=buf)
         result = await palm_core.analyze_and_save(db, user, buf.getvalue(), surface="bot")
     except ValueError as exc:
+        await status.set(BotStage.RECOVERABLE_ERROR, "Проверь кадр и попробуй снова" if user["lang"] == "en" else "Проверь кадр и попробуй снова")
         await message.answer(
             f"✋ Не получилось подготовить снимок: {str(exc)}\n\n"
             "Попробуй фото одной ладони целиком при ровном свете.", reply_markup=back_menu())
         return
     except Exception as exc:  # noqa: BLE001
         log.warning("palm photo analysis failed: %s", exc)
-        await message.answer("✋ Мира пока не смогла завершить чтение. Попробуй ещё раз с более чётким снимком.",
+        await status.set(BotStage.RECOVERABLE_ERROR, "Try a clearer photo" if user["lang"] == "en" else "Попробуй более чёткий снимок")
+        await message.answer("✋ Mira could not finish this reading. Try one clear photo of the whole palm." if user["lang"] == "en" else "✋ Мира пока не смогла завершить чтение. Попробуй ещё раз с более чётким снимком.",
                              reply_markup=back_menu())
         return
+    await status.set(BotStage.SUCCESS)
     observations = result.get("observations") or []
     quality = int(round(float((result.get("image_quality") or {}).get("score") or 0) * 100))
     if result.get("status") == "needs_photo":
@@ -154,6 +162,22 @@ async def tarot_spread(cb: CallbackQuery, db):
     await revealed.edit_text(f"<b>{title}</b>\n\n" + _cards_lines(cards, positions))
 
     me = await cb.bot.get_me()
+    from ..core import cards as cards_renderer
+    if cards_renderer.available():
+        try:
+            image = await asyncio.to_thread(
+                cards_renderer.reading_card, title, cards, positions,
+                name=user["name"] or "", bot_username=me.username or "",
+                seed=drawn["reading_id"],
+            )
+            if image:
+                from aiogram.types import BufferedInputFile
+                await cb.message.answer_photo(
+                    BufferedInputFile(image, filename=f"oracle-reading-{drawn['reading_id']}.png"),
+                    caption="Your reading card" if user["lang"] == "en" else "Карточка твоего расклада",
+                )
+        except Exception as exc:  # noqa: BLE001
+            log.info("bot Tarot visual unavailable: %s", exc)
     link = referrals.link_for(me.username, user["tg_id"])
     share_text = (f"🔮 Мой AI-Оракул разложил «{title}»:\n" +
                   "\n".join(f"{c['emoji']} {c['name']}" for c in cards) +
@@ -163,7 +187,7 @@ async def tarot_spread(cb: CallbackQuery, db):
                  "&text=" + quote(share_text))
     await _send_long(cb.message, answer,
                      reply_markup=reading_kb(drawn["reading_id"], share_url,
-                                             with_card=cards.available()))
+                                             with_card=cards_renderer.available()))
 
 
 @router.callback_query(F.data.startswith("card:"))
@@ -297,8 +321,23 @@ async def chart_view(cb: CallbackQuery, db):
         lines.append(f"<i>{chart.get('note', '')}</i>")
     lines.append("\nСпроси меня о любой планете или аспекте — расскажу, "
                  "что он значит именно для тебя 💫")
-    await _send_long(cb.message, "\n".join(lines), reply_markup=back_menu())
     await cb.answer()
+    try:
+        image, _spec, _cached, _key = await asyncio.to_thread(
+            chart_rendering.render_chart_image,
+            chart,
+            birth_date=user["birth_date"], birth_time=user["birth_time"],
+            lat=user["birth_lat"], lon=user["birth_lon"], tz=user["tz"],
+            variant="compact", locale="en" if user["lang"] == "en" else "ru",
+        )
+        from aiogram.types import BufferedInputFile
+        await cb.message.answer_photo(
+            BufferedInputFile(image, filename="oracle-natal-chart.png"),
+            caption="Your natal chart" if user["lang"] == "en" else "Твоя натальная карта",
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.info("bot chart visual unavailable: %s", exc)
+    await _send_long(cb.message, "\n".join(lines), reply_markup=back_menu())
 
 
 # ─────────────────────── МАТРИЦА СУДЬБЫ ──────────────────────────────────────
@@ -443,6 +482,22 @@ async def compat_date(message: Message, state: FSMContext, db):
         f"{tg_esc(name or 'Партнёр')} — {data['partner']['sign']} ({data['partner']['element']})\n\n"
         f"{bar}  <b>{data['score']}/100</b>\n"
         f"<i>{data['verdict']}</i>")
+    if cards.available():
+        try:
+            me = await message.bot.get_me()
+            image = await asyncio.to_thread(
+                cards.compat_card, you=data["you"], partner=data["partner"],
+                total=data["score"], verdict=data["verdict"],
+                relation=name or "Партнёр", bot_username=me.username or "",
+            )
+            if image:
+                from aiogram.types import BufferedInputFile
+                await message.answer_photo(
+                    BufferedInputFile(image, filename="oracle-compatibility.png"),
+                    caption="Compatibility snapshot" if user["lang"] == "en" else "Карточка совместимости",
+                )
+        except Exception as exc:  # noqa: BLE001
+            log.info("compatibility visual unavailable: %s", exc)
 
     verdict = await limits.check(db, user)
     if not verdict.allowed:
@@ -562,5 +617,6 @@ async def admin_panel(message: Message, db):
     if not role:
         return
     from .keyboards import main_menu
-    kb = main_menu(is_admin=True)
+    user = await users.get(db, message.from_user.id)
+    kb = main_menu(is_admin=True, lang="en" if user and user["lang"] == "en" else "ru")
     await message.answer("📊 Открываю панель управления…", reply_markup=kb)

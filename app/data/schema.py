@@ -26,10 +26,14 @@ CREATE TABLE IF NOT EXISTS users (
     birth_date       TEXT,
     birth_time       TEXT,
     birth_time_known INTEGER DEFAULT 1,
+    birth_time_precision TEXT DEFAULT 'exact', -- exact|approximate|unknown
     birth_city       TEXT,
     birth_lat        REAL,
     birth_lon        REAL,
     chart_json       TEXT,
+    natal_technique  TEXT DEFAULT 'astrology', -- astrology|lenormand
+    natal_technique_version TEXT DEFAULT 'v1',
+    onboarding_step  TEXT DEFAULT NULL,
 
     sub_level        TEXT DEFAULT 'trial',   -- код тарифа из plans
     sub_until        TEXT,

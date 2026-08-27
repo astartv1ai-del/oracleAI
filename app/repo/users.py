@@ -16,8 +16,8 @@ DEFAULT_TZ = "Europe/Moscow"
 # поля, которая иначе молча улетела бы в SQL и уронила запрос на живом трафике.
 WRITABLE = {
     "name", "username", "lang", "gender", "persona", "oracle_name", "tz",
-    "birth_date", "birth_time", "birth_time_known", "birth_city",
-    "birth_lat", "birth_lon", "chart_json",
+    "birth_date", "birth_time", "birth_time_known", "birth_time_precision", "birth_city",
+    "birth_lat", "birth_lon", "chart_json", "natal_technique", "natal_technique_version", "onboarding_step",
     "sub_level", "sub_until", "crystals",
     "onboarded", "morning_push", "memory_enabled", "age_confirmed", "ref_by", "goal", "source", "status",
     "ltv_stars", "expiry_notified", "last_seen", "deleted_at",
@@ -201,7 +201,8 @@ async def anonymize(db, tg_id: int) -> None:
         await db.execute(
             "UPDATE users SET name='удалено', username=NULL, birth_date=NULL, "
             "birth_time=NULL, birth_city=NULL, birth_lat=NULL, birth_lon=NULL, "
-            "chart_json=NULL, goal=NULL, memory_enabled=0, age_confirmed=0, "
+            "chart_json=NULL, natal_technique='astrology', natal_technique_version='v1', "
+            "onboarding_step=NULL, birth_time_precision='unknown', goal=NULL, memory_enabled=0, age_confirmed=0, "
             "status='deleted', deleted_at=?, onboarded=0, morning_push=0 "
             "WHERE tg_id=?", (utcnow(), tg_id))
 
