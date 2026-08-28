@@ -57,6 +57,12 @@ restore:
 	@test -n "$(RESTORE_TARGET_DB)" || (echo "RESTORE_TARGET_DB must name an isolated database" && exit 2)
 	RESTORE_TARGET_DB="$(RESTORE_TARGET_DB)" ./infra/restore-postgres.sh "$(BACKUP)"
 
+# P0-004 drill, рефактор после удаления SQLite: исполнительский drill-скрипт ушёл
+# вместе с SQLite; статический контракт P0-004 проверяет всю backup/restore-инфру.
+backup-drill:
+	python3 scripts/check_p004_infrastructure.py
+	bash -n infra/backup-postgres.sh infra/restore-postgres.sh
+
 test:
 	$(COMPOSE) run --rm --entrypoint "" -e DEV_MODE=1 \
 		-e DATABASE_URL=postgresql+asyncpg://oracle:oracle@postgres:5432/oracle_test \
