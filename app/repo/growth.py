@@ -171,8 +171,8 @@ async def referral_stats(db, tg_id: int) -> dict:
 
 async def top_referrers(db, limit: int = 20) -> list[dict]:
     cur = await db.execute(
-        "SELECT r.referrer_id tg_id, u.name, u.username, COUNT(*) invited, "
-        "COALESCE(SUM(r.bonus),0) bonus FROM referrals r "
+        "SELECT r.referrer_id tg_id, MAX(u.name) name, MAX(u.username) username, "
+        "COUNT(*) invited, COALESCE(SUM(r.bonus),0) bonus FROM referrals r "
         "LEFT JOIN users u ON u.tg_id = r.referrer_id WHERE r.level=1 "
         "GROUP BY r.referrer_id ORDER BY invited DESC LIMIT ?", (limit,))
     return [dict(r) for r in await cur.fetchall()]

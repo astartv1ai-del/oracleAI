@@ -129,8 +129,8 @@ async def test_memory_listing_never_returns_embedding_payload(db, user):
 
     await db.execute(
         "INSERT INTO memories(tg_id, fact, kind, weight, embedding, embed_model, created_at) "
-        "VALUES(?,?,?,?,?,?,?)",
-        (user["tg_id"], "личный факт", "fact", 1, b"private-vector", "test-model", "2026-08-26T00:00:00+00:00"),
+        "VALUES(?,?,?,?,CAST(? AS vector),?,?)",
+        (user["tg_id"], "личный факт", "fact", 1, "[1,2,3]", "test-model", "2026-08-26T00:00:00+00:00"),
     )
     await db.commit()
 

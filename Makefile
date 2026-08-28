@@ -61,6 +61,12 @@ test:
 	$(COMPOSE) run --rm --entrypoint "" -e DEV_MODE=1 \
 		-e DATABASE_URL=postgresql+asyncpg://oracle:oracle@postgres:5432/oracle_test \
 		-v $(CURDIR)/tests:/opt/oracle/tests \
+		-v $(CURDIR)/data:/opt/oracle/data:ro \
+		-v $(CURDIR)/.env.production.example:/opt/oracle/.env.production.example:ro \
+		-v $(CURDIR)/.env.example:/opt/oracle/.env.example:ro \
+		-v $(CURDIR)/.github:/opt/oracle/.github:ro \
+		-v $(CURDIR)/.git:/opt/oracle/.git:ro \
+		-v $(CURDIR)/Makefile:/opt/oracle/Makefile:ro \
 		-v $(CURDIR)/scripts:/opt/oracle/scripts \
 		-v $(CURDIR)/load:/opt/oracle/load \
 		-v $(CURDIR)/requirements-dev.txt:/opt/oracle/requirements-dev.txt \

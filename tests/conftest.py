@@ -20,9 +20,12 @@ os.environ["LLM_PROVIDER"] = "off"
 # Tests use deterministic keyword memory; never inherit a sandbox embedding key.
 os.environ["EMBED_MODEL"] = ""
 os.environ.setdefault("BOT_TOKEN", "test:token")
-os.environ.setdefault("ADMIN_ID", "1")
-# Composer ровняет реальные DEV_MODE/ADMIN_ID из .env через env_file, и setdefault
-# их не перезапишет — dev-вход и админ-наборы тестов ловили 403. Включаем явно.
+# ADMIN_ID=1 безоговорочно: compose наливает реальный ADMIN_ID из .env через
+# env_file, и setdefault его не перезапишет — админ-тесты с dev_user=1 ловили 403.
+os.environ["ADMIN_ID"] = "1"
+# WEBAPP_URL из .env перебивал offline-fallback ссылки проекта в отчётах.
+os.environ["WEBAPP_URL"] = ""
+os.environ["PUBLIC_URL"] = ""
 os.environ["DEV_MODE"] = "1"
 # Legacy fixtures intentionally opt into the historical trial; production defaults off.
 os.environ["AUTO_TRIAL"] = "1"

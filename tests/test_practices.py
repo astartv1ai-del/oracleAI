@@ -6,11 +6,17 @@
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pytest
 
 from app.core import practices as catalog
 from app.repo import readings, users
 from app.services import practices as practices_svc
+
+
+def _ago(days: int) -> str:
+    return (date.today() - timedelta(days=days)).isoformat()
 
 
 # ─────────────────────────────── каталог ──────────────────────────────────────
@@ -105,8 +111,8 @@ async def test_streak_breaks_after_gap(db, user):
     # «последняя отметка была позавчера»: имитируем пропуск
     async with _tx(db):
         await db.execute(
-            "UPDATE practices SET last_done=date('now','-2 day') "
-            "WHERE tg_id=? AND code=?", (user["tg_id"], "energy_clean"))
+            "UPDATE practices SET last_done=? "
+            "WHERE tg_id=? AND code=?", (_ago(2), user["tg_id"], "energy_clean"))
 
     result = await practices_svc.mark_done(db, user, "energy_clean")
     assert result["streak"] == 1, "стрик пережил пропуск дня"
@@ -125,8 +131,8 @@ async def test_program_finishes_at_last_day(db, user):
             break
         async with _tx(db):
             await db.execute(
-                "UPDATE practices SET last_done=date('now','-1 day') "
-                "WHERE tg_id=? AND code=?", (user["tg_id"], code))
+                "UPDATE practices SET last_done=? "
+                "WHERE tg_id=? AND code=?", (_ago(1), user["tg_id"], code))
 
     assert result["finished"], "программа не закрылась на последнем дне"
     assert result["day_index"] == total
@@ -181,8 +187,8 @@ async def test_progress_card_after_finish(db, user):
             break
         async with _tx(db):
             await db.execute(
-                "UPDATE practices SET last_done=date('now','-1 day') "
-                "WHERE tg_id=? AND code=?", (user["tg_id"], code))
+                "UPDATE practices SET last_done=? "
+                "WHERE tg_id=? AND code=?", (_ago(1), user["tg_id"], code))
 
     items = await practices_svc.list_for_user(db, user)
     card = next(p for p in items if p["code"] == code)
