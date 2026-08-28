@@ -41,6 +41,19 @@ COMMANDS = [
     BotCommand(command="help", description="Как я работаю"),
 ]
 
+# BOT-008: Telegram умеет языковые скоупы команд — EN-клиентка видит
+# описания команд на английском, а не на русском.
+COMMANDS_EN = [
+    BotCommand(command="start", description="Start / back to menu"),
+    BotCommand(command="today", description="Today's forecast"),
+    BotCommand(command="horoscope", description="Today's horoscope"),
+    BotCommand(command="practice", description="Practices and mantras"),
+    BotCommand(command="moon", description="Moon week"),
+    BotCommand(command="promo", description="Enter a promo code"),
+    BotCommand(command="admin", description="Admin panel (team only)"),
+    BotCommand(command="help", description="How I work"),
+]
+
 
 class DbMiddleware(BaseMiddleware):
     """Прокидывает соединение с БД в хендлеры (аргумент db)."""
@@ -91,9 +104,16 @@ class ThrottleMiddleware(BaseMiddleware):
 
 
 async def on_error(event, exception=None, **kwargs):
-    """Глобальный обработчик: один сбойный апдейт не роняет поллинг."""
-    log.exception("ошибка обработки апдейта: %s",
-                  exception or getattr(event, "exception", "?"))
+    """Глобальный обработчик: один сбойный апдейт не роняет поллинг.
+
+    BOT-020: тихое «return True + log» прятало баги бота от Sentry — теперь
+    исключение уходит и в трекер тоже (no-op, когда Sentry выключен).
+    """
+    exc = exception or getattr(event, "exception", None)
+    log.exception("ошибка обработки апдейта: %s", exc or "?")
+    if exc is not None:
+        from ..core import sentry
+        sentry.capture_exception(exc)
     return True
 
 
@@ -195,6 +215,7 @@ async def main() -> None:
     await _remember_username(bot, db)
     try:
         await bot.set_my_commands(COMMANDS)
+        await bot.set_my_commands(COMMANDS_EN, language_code="en")
     except Exception as e:  # noqa: BLE001
         log.warning("не удалось задать меню команд: %s", e)
 

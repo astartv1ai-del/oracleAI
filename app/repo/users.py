@@ -320,6 +320,15 @@ async def segment_count(db, segment: str) -> int:
     return (await cur.fetchone())["c"]
 
 
+def _like_pattern(query: str) -> str:
+    """Экранирует спецсимволы LIKE (аудит DB-015): иначе «_» в запросе CRM
+    матчил любой символ, а «%» — любую подстроку."""
+    import re as _re
+    escaped = _re.sub(r"([%_\\])", lambda m: "\\" + m.group(1),
+                      query.lstrip("@"))
+    return f"%{escaped}%"
+
+
 async def search(db, query: str = "", segment: str = "all", *,
                  limit: int = 50, offset: int = 0,
                  order: str = "created_at") -> list[dict]:
@@ -328,11 +337,14 @@ async def search(db, query: str = "", segment: str = "all", *,
     sql = [f"SELECT * FROM users WHERE ({where})"]
     query = (query or "").strip()
     if query:
-        sql.append("AND (name LIKE ? OR username LIKE ? OR CAST(tg_id AS TEXT) LIKE ?)")
-        like = f"%{query.lstrip('@')}%"
+        sql.append("AND (name LIKE ? ESCAPE '\\' OR username LIKE ? ESCAPE '\\' "
+                   "OR CAST(tg_id AS TEXT) LIKE ? ESCAPE '\\')")
+        like = _like_pattern(query)
         params += [like, like, like]
     orders = {"created_at": "created_at DESC", "last_seen": "last_seen DESC",
-              "ltv": "ltv_stars DESC", "name": "name COLLATE NOCASE"}
+              # DB-003: COLLATE NOCASE — SQLite-изм, на PostgreSQL это runtime
+              # error; LOWER() даёт тот же case-insensitive порядок переносимо.
+              "ltv": "ltv_stars DESC", "name": "LOWER(name)"}
     sql.append(f"ORDER BY {orders.get(order, orders['created_at'])}")
     sql.append("LIMIT ? OFFSET ?")
     params += [limit, offset]
@@ -345,8 +357,9 @@ async def count(db, query: str = "", segment: str = "all") -> int:
     sql = [f"SELECT COUNT(*) c FROM users WHERE ({where})"]
     query = (query or "").strip()
     if query:
-        sql.append("AND (name LIKE ? OR username LIKE ? OR CAST(tg_id AS TEXT) LIKE ?)")
-        like = f"%{query.lstrip('@')}%"
+        sql.append("AND (name LIKE ? ESCAPE '\\' OR username LIKE ? ESCAPE '\\' "
+                   "OR CAST(tg_id AS TEXT) LIKE ? ESCAPE '\\')")
+        like = _like_pattern(query)
         params += [like, like, like]
     cur = await db.execute(" ".join(sql), params)
     return (await cur.fetchone())["c"]

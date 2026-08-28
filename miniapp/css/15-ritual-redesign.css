@@ -50,7 +50,15 @@ body { letter-spacing: 0.005em; }
 /* Global clarity & resilient focus state. */
 button, [data-act], .dock-item, .agent-card, .moon-today, .mc-day, .tool, .chip, .ask-chip { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, [data-act]:focus-visible, input:focus-visible, .dock-item:focus-visible {
-  outline: 2px solid var(--champagne-300); outline-offset: 3px;
+  outline: var(--focus-outline, 2px solid var(--champagne-300)); outline-offset: 3px;
+}
+/* FE-018: единый hover-отклик интерактивных контролов (только на устройствах
+   с настоящим hover — на тачскринах :hover залипает). */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover, .nav-btn:hover, .chip:hover, .ask-chip:hover, .tool:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--hover-border);
+  }
 }
 button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon-today { min-height: 44px; }
 

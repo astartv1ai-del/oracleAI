@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+from contextvars import ContextVar
 import logging
 import time
 from dataclasses import dataclass
@@ -37,6 +38,12 @@ from typing import Awaitable, Callable
 
 from ..config import settings
 from .observability import log_event
+
+#: Аудит AI-001: последний успешный провайдер/модель в рамках текущей задачи.
+#: Сервисный слой читает это для proof-конверта, чтобы жалобу на качество можно
+#: было связать с конкретным провайдером (fallback иначе был невидим клиенту).
+last_call: ContextVar[dict] = ContextVar("oracle_llm_last_call", default={})
+
 
 log = logging.getLogger("oracle.llm")
 
@@ -425,6 +432,7 @@ async def complete(system: str, user_text: str, tier: str = "lite",
                 "LLM provider completed",
                 provider=provider, purpose=purpose, latency_ms=latency_ms,
             )
+            last_call.set({"provider": provider, "model": model})
             return text
     raise RuntimeError("Все LLM-провайдеры недоступны: " + "; ".join(errors))
 
@@ -531,6 +539,7 @@ async def run_agent(system: str, messages: list[dict], tools: list[dict],
                 "LLM provider completed",
                 provider=provider, purpose=purpose, latency_ms=latency_ms,
             )
+            last_call.set({"provider": provider, "model": model})
             return text
     raise RuntimeError("Все LLM-провайдеры недоступны: " + "; ".join(errors))
 

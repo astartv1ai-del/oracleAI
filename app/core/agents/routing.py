@@ -46,6 +46,21 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").casefold()).strip()
 
 
+# Аудит AI-002: подстроки без учёта алфавита дают ложные совпадения — «planет»
+# (латиница + кириллица) матчил «planet». Однословные латинские термы теперь
+# матчатся только по ЧИСТО латинским токенам и только по префиксу токена:
+# «planets» → planet ✓, «planет» → ✗, «explanation» → ✗. Кириллические стеммы
+# («натал» → «натальную») остаются подстроками — морфология там намеренная.
+_LATIN_WORD_TERM = re.compile(r"^[a-z]+$")
+_LATIN_TOKEN = re.compile(r"[a-z]+")
+
+
+def _term_matches(term: str, normalized: str, latin_tokens: frozenset[str]) -> bool:
+    if _LATIN_WORD_TERM.match(term):
+        return any(tok.startswith(term) for tok in latin_tokens)
+    return term in normalized
+
+
 @dataclass(frozen=True)
 class RouteDecision:
     agent: str
@@ -74,11 +89,12 @@ class RouteDecision:
 def route_agent(text: str) -> RouteDecision:
     """Return an explainable agent decision without an LLM call."""
     normalized = _normalize(text)
+    latin_tokens = frozenset(_LATIN_TOKEN.findall(normalized))
     scores: dict[str, int] = {agent: 0 for agent in _TERMS}
     hits: dict[str, list[str]] = {agent: [] for agent in _TERMS}
     for agent, terms in _TERMS.items():
         for term, weight in sorted(terms.items(), key=lambda item: len(item[0]), reverse=True):
-            if term in normalized:
+            if _term_matches(term, normalized, latin_tokens):
                 scores[agent] += weight
                 hits[agent].append(term)
 

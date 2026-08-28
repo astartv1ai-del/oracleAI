@@ -33,6 +33,11 @@
   --color-info: #b9a6ff;
   --color-on-accent: #251d39;
   --focus-ring: 0 0 0 3px rgba(245, 212, 139, .24);
+  /* FE-018: hover/focus — токены уровня дизайн-системы, а не ad-hoc rgba
+     в каждом компоненте. Компоненты обязаны ссылаться на них. */
+  --hover-bg: rgba(245, 212, 139, .08);
+  --hover-border: rgba(245, 212, 139, .35);
+  --focus-outline: 2px solid var(--champagne-300);
 
   /* 4px spacing scale: every layout value should be one of these steps. */
   --space-1: 4px;

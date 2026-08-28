@@ -76,16 +76,17 @@ async def get_thread(db, thread_id: int, tg_id: int):
     return await cur.fetchone()
 
 
-async def list_threads(db, tg_id: int, limit: int | None = 30) -> list[dict]:
+async def list_threads(db, tg_id: int, limit: int | None = 30, *,
+                       offset: int = 0) -> list[dict]:
     query = (
         "SELECT * FROM threads WHERE tg_id=? AND archived=0 "
         "ORDER BY COALESCE(last_at, created_at) DESC"
     )
-    params: tuple[object, ...] = (tg_id,)
+    params: list[object] = [tg_id]
     if limit is not None:
-        query += " LIMIT ?"
-        params += (limit,)
-    cur = await db.execute(query, params)
+        query += " LIMIT ? OFFSET ?"
+        params += [limit, max(0, offset)]
+    cur = await db.execute(query, tuple(params))
     return [dict(r) for r in await cur.fetchall()]
 
 

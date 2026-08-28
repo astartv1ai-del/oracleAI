@@ -117,6 +117,13 @@
     'share-chart': () => call('shareChart'),
     'share-compat': (el, data) => call('shareCompat', data.pdate, data.pname, data.rel),
     'modal-close': () => call('closeModal'),
+    'confirm-yes': () => {
+      const cb = app._confirmCb;
+      app._confirmCb = null;
+      call('closeModal');
+      if (cb) cb();
+    },
+    'confirm-no': () => { app._confirmCb = null; call('closeModal'); },
     'account-delete': () => call('deleteAccount'),
     'account-privacy': () => call('openPrivacyCenter'),
     'account-export': () => call('exportAccount')

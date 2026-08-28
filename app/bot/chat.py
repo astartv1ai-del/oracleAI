@@ -183,7 +183,17 @@ async def _answer(message: Message, db, user, text: str, agent: str) -> None:
         await status.set(BotStage.RECOVERABLE_ERROR, "Access boundary" if lang == "en" else "Граница доступа")
         await _deny(message, db, e.verdict)
         return
-    except ValueError:
+    except ValueError as e:
+        if isinstance(e, chat_svc.QuestionTooLong):
+            # API-003: вопрос длиннее 1000 символов — говорим об этом явно,
+            # а не обрезаем молча.
+            await status.set(BotStage.RECOVERABLE_ERROR,
+                             "Question is too long" if lang == "en" else "Вопрос слишком длинный")
+            await message.answer(
+                "That question is longer than 1000 characters. Shorten it a little and send it again — I will keep the thread. 🌙" if lang == "en"
+                else "Вопрос получился длиннее 1000 знаков. Сократи его чуть-чуть и пришли снова — я сохраню нить разговора. 🌙",
+                reply_markup=action_keyboard(lang_value=lang, followup=False))
+            return
         await status.set(BotStage.RECOVERABLE_ERROR, "Send a question in words" if lang == "en" else "Напиши вопрос словами")
         await message.answer("Please send a question in words." if lang == "en" else "Напиши вопрос словами, милая 🌙", reply_markup=action_keyboard(lang_value=lang, followup=False))
         return
@@ -203,12 +213,18 @@ async def voice_msg(message: Message, state: FSMContext, db):
 
     from ..core import llm
 
+    _vuser = await users.get(db, message.from_user.id)
+    _ven = bool(_vuser and _vuser["lang"] == "en")
     if not await content.is_on(db, "voice_questions", message.from_user.id,
                                default=True):
-        await message.answer("Голосовые пока отключены — напиши текстом 🌙")
+        await message.answer("Voice questions are off for now — please type 🌙" if _ven
+                             else "Голосовые пока отключены — напиши текстом 🌙")
         return
     if message.voice.duration > 120:
-        await message.answer("Такое длинное послание звёзды не удержат... "
+        # BOT-014: отказ по длине — на языке интерфейса.
+        await message.answer("The stars cannot hold a message that long... "
+                             "please keep it under 2 minutes 🙏" if _ven else
+                             "Такое длинное послание звёзды не удержат... "
                              "запиши покороче, до 2 минут 🙏")
         return
     buf = BytesIO()
@@ -216,14 +232,17 @@ async def voice_msg(message: Message, state: FSMContext, db):
         await message.bot.download(message.voice.file_id, destination=buf)
     except Exception as e:  # noqa: BLE001
         log.warning("голосовое не скачалось: %s", e)
-        await message.answer("Не расслышала... напиши словами, милая 🌙")
+        await message.answer("I could not hear that... please type your question 🌙" if _ven
+                             else "Не расслышала... напиши словами, милая 🌙")
         return
     text = await llm.transcribe(
         buf.getvalue(), db=db, tg_id=message.from_user.id, surface="bot")
     if not text:
-        await message.answer("Я пока не слышу голоса — напиши свой вопрос текстом 🌙")
+        await message.answer("I cannot hear voices yet — please type your question 🌙" if _ven
+                             else "Я пока не слышу голоса — напиши свой вопрос текстом 🌙")
         return
-    await message.answer(f"🎙 <i>Я услышала: «{tg_esc(text[:200])}»</i>")
+    heard = "I heard" if _ven else "Я услышала"
+    await message.answer(f"🎙 <i>{heard}: «{tg_esc(text[:200])}»</i>")
     await _handle_text(message, state, db, text)
 
 
@@ -271,14 +290,19 @@ async def emergency(cb: CallbackQuery, state: FSMContext, db):
     останется за ней на неделю.
     """
     user = await users.get(db, cb.from_user.id)
+    _en = bool(user and user["lang"] == "en")
     cost = int(await content.get_setting(db, "limits.emergency_cost", 20) or 20)
     if (user["crystals"] or 0) < cost:
-        await cb.answer("Не хватает Кристаллов ✦", show_alert=True)
-        await cb.message.answer("💎 Пополни запас Кристаллов:",
+        # BOT-012: покупка аварийного вопроса — на языке интерфейса.
+        await cb.answer("Not enough Crystals ✦" if _en else "Не хватает Кристаллов ✦",
+                        show_alert=True)
+        await cb.message.answer("💎 Top up your Crystals:" if _en else
+                                "💎 Пополни запас Кристаллов:",
                                 reply_markup=limit_kb(cost, has_crystals=False))
         return
     if not await billing.spend_crystals(db, user["tg_id"], cost, "emergency_question"):
-        await cb.answer("Не хватает Кристаллов ✦", show_alert=True)
+        await cb.answer("Not enough Crystals ✦" if _en else "Не хватает Кристаллов ✦",
+                        show_alert=True)
         return
     await billing.grant_entitlement(db, user["tg_id"], "question", "*", qty=1,
                                     valid_days=7, source="crystals")
@@ -287,6 +311,8 @@ async def emergency(cb: CallbackQuery, state: FSMContext, db):
     await state.set_state(Ask.waiting)
     await state.update_data(agent=agents.DEFAULT_AGENT)
     await cb.message.answer(
+        f"🔮 <i>I parted the veil with ✦{cost}...</i>\n"
+        f"Ask your question — right now." if _en else
         f"🔮 <i>Я раздвинула завесу силой ✦{cost}...</i>\n"
         f"Задай свой вопрос — прямо сейчас.")
     await cb.answer()

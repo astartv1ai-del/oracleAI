@@ -836,3 +836,18 @@
 
   app.closeModal = function() { const el = document.getElementById('app-modal'); if (el) el.remove(); if (typeof app.syncBackButton === 'function') app.syncBackButton(); };
 
+  // FE-005/FE-007: деструктивные действия подтверждаются фирменным модалом,
+  // а не системным window.confirm — тот блокирует фокус в Telegram WebView
+  // и выглядит чужеродно. Колбэк живёт в app._confirmCb, кнопки — data-act.
+  app.confirmAction = function(title, copy, confirmLabel, onYes) {
+    this._confirmCb = typeof onYes === 'function' ? onYes : null;
+    const cancel = oracleLang() === 'en' ? 'Cancel' : 'Отмена';
+    this.showModal(`<h3>${esc(title)}</h3>
+      <button class="m-close" data-act="modal-close">✕</button>
+      <div style="font-size:13.5px;line-height:1.6;margin:6px 0 14px;color:var(--text-soft)">${esc(copy)}</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" type="button" data-act="confirm-no">${esc(cancel)}</button>
+        <button class="btn btn-primary" style="flex:1" type="button" data-act="confirm-yes">${esc(confirmLabel)}</button>
+      </div>`);
+  };
+

@@ -59,6 +59,10 @@ class ChatRequestInProgress(Exception):
     """The same idempotent request is already being processed."""
 
 
+class QuestionTooLong(ValueError):
+    """Вопрос длиннее контракта MAX_QUESTION_LEN (аудит API-003)."""
+
+
 async def _refund(db, user, verdict) -> None:
     """Возвращает списанное, если ответ так и не был получен."""
     if verdict.charge == limits.CRYSTALS:
@@ -76,12 +80,21 @@ async def _refund(db, user, verdict) -> None:
 
 
 def _proof_payload(spec, user, *, tools_used: list[str], mode: str) -> dict:
-    """Small non-sensitive proof envelope for the bot and Mini App."""
+    """Small non-sensitive proof envelope for the bot and Mini App.
+
+    Аудит AI-001: provider/model последнего LLM-вызова этой задачи попадают в
+    proof — иначе тихий fallback на резервного провайдера нельзя было связать
+    с жалобой на качество ответа.
+    """
+    from ..core import llm
+    call = llm.last_call.get() or {}
     return {
         "mode": mode,
         "tools_used": list(dict.fromkeys(tools_used)),
         "tools_available": list(spec.skills),
         "quality": spec.as_dict(user).get("quality", {}),
+        "provider": call.get("provider"),
+        "model": call.get("model"),
     }
 
 
@@ -96,7 +109,12 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     the fail-closed API policy; the Bot passes `surface="bot"` explicitly.
     """
     eligibility.require_eligible_user(user, operation="chat", require_age=surface != "bot")
-    question = (text or "").strip()[:MAX_QUESTION_LEN]
+    # Аудит API-003: тихая обрезка text[:1000] теряла хвост вопроса без слова
+    # клиентке. Теперь превышение контракта — явная ошибка, которую поверхность
+    # показывает пользователю (API режет pydantic-валидацией раньше, 422).
+    question = (text or "").strip()
+    if len(question) > MAX_QUESTION_LEN:
+        raise QuestionTooLong(MAX_QUESTION_LEN)
     if not question:
         raise ValueError("пустой вопрос")
     request_key = (idempotency_key or "").strip()[:160]

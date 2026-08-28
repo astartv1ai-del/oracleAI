@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
@@ -29,24 +28,9 @@ from .keyboards import (ask_starters_kb, back_menu, confirmation_kb,
 log = logging.getLogger("oracle.bot.onboarding")
 router = Router()
 
-DATE_RE = re.compile(r"^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$")
-TIME_RE = re.compile(r"^(\d{1,2})[:.](\d{2})$")
-UNKNOWN_TIME = {"не знаю", "неизвестно", "нет", "unknown", "dont know", "i don't know", "i dont know"}
-
-WELCOME_FALLBACK = (
-    "🌌 <b>Звёзды ждали тебя.</b>\n\n"
-    "Я — твой личный Оракул: астрология, Таро и Матрица Судьбы, "
-    "которые знают именно <i>тебя</i>.\n\n"
-    "Чтобы построить твою натальную карту, мне нужно совсем немного. "
-    "Как мне тебя называть? ✨"
-)
-WELCOME_FALLBACK_EN = (
-    "🌌 <b>The stars have been waiting for you.</b>\n\n"
-    "I am your personal Oracle: astrology, Tarot, and the Destiny Matrix, "
-    "made to help you understand <i>yourself</i>.\n\n"
-    "To create your birth chart, I only need a few details. "
-    "What should I call you? ✨"
-)
+# BOT-005: мёртвые DATE_RE/TIME_RE/UNKNOWN_TIME/WELCOME_FALLBACK* удалены —
+# парсинг давно живёт в onboarding_parsers.py (естественные RU/EN-даты), а
+# welcome-копия — в content registry; дубли здесь только дрейфовали.
 
 
 def _lang(user) -> str:
@@ -77,9 +61,9 @@ def _g(user, feminine: str, masculine: str, neutral: str) -> str:
 
 
 class Onb(StatesGroup):
-    # `age` remains only as a legacy callback compatibility state; it is no longer
-    # rendered or required by the product flow.
-    age = State()
+    # BOT-004: legacy-состояние `age` удалено — поток его не использовал, а
+    # висящее состояние путало чтение FSM. Старые инлайн-кнопки age:confirm
+    # обрабатывает отдельный legacy-хендлер (см. ниже), состояние ему не нужно.
     language = State()
     name = State()
     gender = State()
@@ -618,44 +602,64 @@ async def onb_oracle_name(message: Message, state: FSMContext, db):
 
 # ─────────────────────────────── промокод ─────────────────────────────────────
 
-def _promo_text(granted: dict) -> str:
-    """Что именно получил пользователь — говорим конкретно, а не «код принят»."""
+def _promo_text(granted: dict, lang: str = "ru") -> str:
+    """Что именно получил пользователь — говорим конкретно, а не «код принят».
+    BOT-018: копия на языке интерфейса."""
+    en = lang == "en"
     item = granted.get("granted") or {}
     kind = item.get("kind")
     if kind == "plan":
+        if en:
+            return (f"🎟 <b>Golden ticket accepted!</b>\n"
+                    f"You have unlocked {item.get('days', 0)} days of "
+                    f"«{item.get('title', 'VIP')}» access. ✨")
         return (f"🎟 <b>Золотой билет принят!</b>\n"
                 f"Тебе открыто {item.get('days', 0)} дней доступа "
                 f"«{item.get('title', 'VIP')}». ✨")
     if kind == "crystals":
-        return f"🎟 Принято! +✦{item.get('amount', 0)} Кристаллов ✨"
+        return (f"🎟 Done! +✦{item.get('amount', 0)} Crystals ✨" if en else
+                f"🎟 Принято! +✦{item.get('amount', 0)} Кристаллов ✨")
     if kind in ("spread", "report", "question"):
-        return f"🎟 Принято! Открыто: {item.get('title', 'подарок')} ✨"
-    return "🎟 Код принят ✨"
+        return (f"🎟 Done! Unlocked: {item.get('title', 'gift')} ✨" if en else
+                f"🎟 Принято! Открыто: {item.get('title', 'подарок')} ✨")
+    return "🎟 Code accepted ✨" if en else "🎟 Код принят ✨"
+
+
+def _promo_prompt(lang: str) -> str:
+    return ("Enter your promo code — the golden ticket: 🎟" if lang == "en"
+            else "Введи промокод — золотой билет: 🎟")
 
 
 @router.message(Command("promo"))
-async def promo_cmd(message: Message, state: FSMContext):
+async def promo_cmd(message: Message, state: FSMContext, db):
+    user = await users.get(db, message.from_user.id)
     await state.set_state(Promo.waiting)
-    await message.answer("Введи промокод — золотой билет: 🎟")
+    await message.answer(_promo_prompt(_lang(user) if user else "ru"))
 
 
 @router.callback_query(F.data == "promo")
-async def promo_cb(cb: CallbackQuery, state: FSMContext):
+async def promo_cb(cb: CallbackQuery, state: FSMContext, db):
+    user = await users.get(db, cb.from_user.id)
     await state.set_state(Promo.waiting)
-    await cb.message.answer("Введи промокод — золотой билет: 🎟")
+    await cb.message.answer(_promo_prompt(_lang(user) if user else "ru"))
     await cb.answer()
 
 
 @router.message(Promo.waiting, F.text)
 async def promo_enter(message: Message, state: FSMContext, db):
     await state.clear()
+    user = await users.get(db, message.from_user.id)
+    lang = _lang(user) if user else "ru"
     granted = await billing.redeem_promo(db, message.from_user.id,
                                          message.text.strip())
     menu = await _menu(db, message.from_user.id)
     if granted:
-        await message.answer(_promo_text(granted), reply_markup=menu)
+        await message.answer(_promo_text(granted, lang), reply_markup=menu)
     else:
+        # BOT-011: отказ тоже на языке интерфейса.
         await message.answer(
+            "This code does not respond... Check the spelling — it may already "
+            "be redeemed or expired 🌙" if lang == "en" else
             "Этот код не отзывается... Проверь написание — возможно, он уже "
             "активирован или истёк 🌙", reply_markup=menu)
 
@@ -706,7 +710,14 @@ async def help_cmd(message: Message, db):
 async def delete_me(message: Message, state: FSMContext, db):
     """Право на удаление данных — обязательное для сервиса с датами рождения."""
     await state.clear()
+    user = await users.get(db, message.from_user.id)
+    en = _lang(user) == "en" if user else False
+    # BOT-007: слово подтверждения — на языке интерфейса, иначе EN-пользователь
+    # физически не мог набрать «УДАЛИТЬ».
     await message.answer(
+        "If you want me to forget you — I will: your birth date, chart, diary, "
+        "memory and our chats.\n\nType <b>DELETE</b> in capital letters to confirm."
+        if en else
         "Если ты хочешь, чтобы я забыла тебя — я забуду: сотру дату рождения, "
         "карту, дневник, память и переписку.\n\n"
         "Напиши <b>УДАЛИТЬ</b> заглавными буквами, чтобы подтвердить.")
@@ -716,12 +727,18 @@ async def delete_me(message: Message, state: FSMContext, db):
 @router.message(DeleteMe.confirm, F.text)
 async def delete_me_confirm(message: Message, state: FSMContext, db):
     await state.clear()
-    if message.text.strip().upper() != "УДАЛИТЬ":
-        await message.answer("Отменила. Я остаюсь с тобой 🌙",
-                             reply_markup=await _menu(db, message.from_user.id))
+    user = await users.get(db, message.from_user.id)
+    en = _lang(user) == "en" if user else False
+    if message.text.strip().upper() not in {"УДАЛИТЬ", "DELETE"}:
+        await message.answer(
+            "Cancelled. I am staying with you 🌙" if en else
+            "Отменила. Я остаюсь с тобой 🌙",
+            reply_markup=await _menu(db, message.from_user.id))
         return
     await users.anonymize(db, message.from_user.id)
     await analytics.track(db, "self_delete", message.from_user.id)
     await message.answer(
+        "Done. I erased everything I knew about you.\n"
+        "If you ever want to start over — just send /start 🕯" if en else
         "Готово. Я стёрла всё, что о тебе знала.\n"
         "Если однажды захочешь начать заново — просто напиши /start 🕯")

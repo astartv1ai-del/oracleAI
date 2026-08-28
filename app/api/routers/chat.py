@@ -1,7 +1,7 @@
 """Чаты с агентами: список, история, вопрос."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from ...core import agents
 from ...repo import dialog
 from ...services import chat as chat_svc
@@ -78,11 +78,16 @@ async def clear_thread(agent: str, user=Depends(confirmed_age_user), db=Depends(
 
 
 @router.get("/chat/{agent}/sessions")
-async def list_sessions(agent: str, user=Depends(confirmed_age_user), db=Depends(get_db)):
-    """Все активные чаты агента — новые впереди, без искусственного лимита."""
+async def list_sessions(agent: str, user=Depends(confirmed_age_user), db=Depends(get_db),
+                        offset: int = Query(default=0, ge=0)):
+    """Активные чаты агента — новые впереди, страницами по 100 (аудит API-014):
+    у активного пользователя с сотнями чатов полный список грузился на каждый
+    рендер. `offset` листает дальше первой страницы.
+    """
     if agent not in agents.codes():
         raise HTTPException(404, "нет такого собеседника")
-    rows = [dict(r) for r in await dialog.list_threads(db, user["tg_id"], limit=None)
+    rows = [dict(r) for r in await dialog.list_threads(db, user["tg_id"], limit=100,
+                                                       offset=offset)
             if r["agent"] == agent]
     return rows
 

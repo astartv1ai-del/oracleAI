@@ -5,12 +5,14 @@ const CHAT_I18N = {
     myChatsAria: 'Открыть мои чаты', conversations: 'Твои разговоры', sessionCopy: 'каждый чат хранит свой контекст', deleteChat: 'Удалить этот чат', deleteChatTitle: 'Удалить чат', deleteAllChats: 'Удалить все чаты', deleteAllChatsCopy: 'Память и сохранённые факты останутся', deleteAllChatsConfirm: 'Удалить все чаты? Сообщения будут убраны из списка, но память сохранится.', chatsCleared: 'Все чаты удалены из списка. Память сохранена.',
     firstConversation: 'Первый разговор создастся, когда ты отправишь сообщение.', continueDialog: 'Здесь можно продолжить диалог.', chooseGuide: 'Выбор проводника', presence: 'рядом', addPalm: 'Добавить фото ладони', palmPhoto: 'Фото ладони', tools: 'Инструменты',
     messageFor: 'Сообщение для', stop: 'Остановить запрос', send: 'Отправить сообщение', ideas: 'Идеи для своего вопроса', toolAria: 'Инструменты текущего проводника', toolsEyebrow: 'ИНСТРУМЕНТЫ ДИАЛОГА', toolsTitle: 'С чем поработаем?', toolsIntro: 'Выбери один точный шаг — результат появится прямо в этом разговоре.', closeTools: 'Закрыть инструменты', withGuide: 'С', inDialog: 'в этом диалоге',
+    deleteAllChatsTitle: 'Удалить все чаты', deleteAllChatsConfirmBtn: 'Удалить все', newChatTitle: 'Новый чат', newChatConfirm: 'Начать новый чат с чистого листа? Текущий диалог будет удалён из списка.', newChatConfirmBtn: 'Начать заново',
   },
   en: {
     back: 'Back to guides', toGuides: 'Back to guides', space: 'Workspace', myChats: 'MY CHATS', chats: 'chats', newChat: 'New chat', startChat: 'Start a new chat',
     myChatsAria: 'Open my chats', conversations: 'Your conversations', sessionCopy: 'each chat keeps its own context', deleteChat: 'Delete this chat', deleteChatTitle: 'Delete chat', deleteAllChats: 'Delete all chats', deleteAllChatsCopy: 'Memory and saved facts stay safe', deleteAllChatsConfirm: 'Delete all chats? Messages will leave the list, but your memory will stay.', chatsCleared: 'All chats removed from the list. Memory preserved.',
     firstConversation: 'Your first conversation will appear when you send a message.', continueDialog: 'Continue the conversation here.', chooseGuide: 'Choose a guide', presence: 'here', addPalm: 'Add a palm photo', palmPhoto: 'Palm photo', tools: 'Tools',
     messageFor: 'Message for', stop: 'Stop request', send: 'Send message', ideas: 'Ideas for your question', toolAria: 'Tools for this guide', toolsEyebrow: 'DIALOGUE TOOLS', toolsTitle: 'What would you like to explore?', toolsIntro: 'Choose one focused step — the result will appear in this conversation.', closeTools: 'Close tools', withGuide: 'With', inDialog: 'in this conversation',
+    deleteAllChatsTitle: 'Delete all chats', deleteAllChatsConfirmBtn: 'Delete all', newChatTitle: 'New chat', newChatConfirm: 'Start a new chat with a clean slate? The current conversation will be removed from the list.', newChatConfirmBtn: 'Start fresh',
   },
 };
 const CHAT_AGENT_EN = {
@@ -283,16 +285,19 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
   };
 
 
-  app.deleteAllSessions = async function() {
-    if (!window.confirm(chatT('deleteAllChatsConfirm'))) return;
-    await api(`/api/chat/${this.chat.key}/sessions`, { method: 'DELETE' });
-    this.chat.tid = null;
-    this.chat.messages = this.chat.spec && this.chat.spec.greeting
-      ? [{ role: 'assistant', text: this.chat.spec.greeting }] : [];
-    this.chat.pending = null;
-    await this.refreshSessions();
-    this.toast(chatT('chatsCleared'));
-    this.renderChat(document.getElementById('app-main'));
+  app.deleteAllSessions = function() {
+    // FE-005: подтверждение — фирменный модал, не системный confirm().
+    this.confirmAction(chatT('deleteAllChatsTitle'), chatT('deleteAllChatsConfirm'),
+      chatT('deleteAllChatsConfirmBtn'), async () => {
+        await api(`/api/chat/${this.chat.key}/sessions`, { method: 'DELETE' });
+        this.chat.tid = null;
+        this.chat.messages = this.chat.spec && this.chat.spec.greeting
+          ? [{ role: 'assistant', text: this.chat.spec.greeting }] : [];
+        this.chat.pending = null;
+        await this.refreshSessions();
+        this.toast(chatT('chatsCleared'));
+        this.renderChat(document.getElementById('app-main'));
+      });
   };
 
 
@@ -677,19 +682,22 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
     this.setToolbox(el ? !el.classList.contains('open') : false);
   };
 
-  app.clearThread = async function() {
+  app.clearThread = function() {
     const key = this.chat.key;
-    if (!confirm('Начать новый чат с чистого листа?')) return;
-    if (this.chat.tid) {
-      try { await api(`/api/chat/${key}/sessions/${this.chat.tid}`, { method: 'DELETE' }); } catch (e) {}
-      await this.refreshSessions();
-      await this.newSession();
-      return;
-    }
-    try { await api('/api/chat/' + key, { method: 'DELETE' }); } catch (e) {}
-    this.chat.messages = [];
-    this.chat.pending = null;
-    this.renderChat(document.getElementById('app-main'));
+    // FE-007: тот же фирменный модал подтверждения, что и у deleteAllSessions.
+    this.confirmAction(chatT('newChatTitle'), chatT('newChatConfirm'),
+      chatT('newChatConfirmBtn'), async () => {
+        if (this.chat.tid) {
+          try { await api(`/api/chat/${key}/sessions/${this.chat.tid}`, { method: 'DELETE' }); } catch (e) {}
+          await this.refreshSessions();
+          await this.newSession();
+          return;
+        }
+        try { await api('/api/chat/' + key, { method: 'DELETE' }); } catch (e) {}
+        this.chat.messages = [];
+        this.chat.pending = null;
+        this.renderChat(document.getElementById('app-main'));
+      });
   };
 
   /* ── отправка вопроса агенту ── */

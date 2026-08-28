@@ -23,6 +23,7 @@
       result: 'Что видно на ладони', needs: 'Нужен более ясный кадр', qualityLabel: 'Качество кадра', boundaries: 'Границы чтения', prompts: 'Вопросы к себе', more: 'Подробнее с Мирой', newPhoto: 'Новое фото', retry: 'Переснять фото', change: 'Изменить', usable: 'свет/резкость пригодны', checkFrame: 'нужна проверка кадра', precheck: 'детерминированная проверка изображения', viewUnknown: 'ракурс не указан', details: 'Показать карту зон и техник',
       typeError: 'Выбери JPEG, PNG или WebP. Другие форматы не отправляются.', sizeError: 'Выбери изображение до 8 МБ.', failTitle: 'Не получилось прочитать фото', failCopy: 'Проверь кадр и попробуй ещё раз.',
       privacyLabel: 'Приватность изображения', detected: 'ладонь распознана', notDetected: 'ладонь не подтверждена', observed: 'наблюдается', inferred: 'осторожная интерпретация', unknown: 'не подтверждено', notSupported: 'не поддерживается', openPalm: 'раскрытая ладонь', foldedEdge: 'согнутый край',
+      photoAdvice: 'Какой кадр дослать',
     },
     en: {
       title: 'Palm reading', subtitle: 'I will describe only visible zones in the photo and connect them to questions that matter to you.',
@@ -33,6 +34,7 @@
       result: 'What is visible on your palm', needs: 'A clearer photo is needed', qualityLabel: 'Image quality', boundaries: 'Reading boundaries', prompts: 'Questions for reflection', more: 'Ask Mira for more', newPhoto: 'New photo', retry: 'Retake photo', change: 'Change', usable: 'light/sharpness are usable', checkFrame: 'frame needs checking', precheck: 'deterministic image check', viewUnknown: 'view not specified', details: 'Show zone and technique map',
       typeError: 'Choose JPEG, PNG or WebP. Other formats are not sent.', sizeError: 'Choose an image up to 8 MB.', failTitle: 'The photo could not be read', failCopy: 'Check the frame and try again.',
       privacyLabel: 'Image privacy', detected: 'palm detected', notDetected: 'palm not confirmed', observed: 'observed', inferred: 'qualified inference', unknown: 'not confirmed', notSupported: 'not supported', openPalm: 'open palm', foldedEdge: 'folded edge',
+      photoAdvice: 'Which photo to send next',
     },
   };
   const pt = key => (PALM_I18N[oracleLang()] || PALM_I18N.ru)[key] || PALM_I18N.ru[key] || key;
@@ -123,6 +125,9 @@
     }).join('');
   }
 
+  // DOM-002: при status=needs_photo рендерим конкретную инструкцию, какой
+  // ракурс дослать (линии отношений/детей видны только на согнутой ладони) —
+  // обещание промпта больше не висит без UX-пути.
   app.palmHtml = function (result) {
     this._palmResult = result;
     const q = result.image_quality || {};
@@ -139,6 +144,7 @@
       <div class="palm-evidence-strip"><span>◉ ${esc(detected)}</span><span>⌁ ${esc(viewTypeLabel(pa.view_type))}</span><span>✦ ${esc(preCopy)}</span></div>
       ${textFromResult(result)}
       ${detailRows(result) ? `<details class="palm-details"><summary>${esc(pt('details'))} <span>⌄</span></summary><div class="palm-detail-list">${detailRows(result)}</div></details>` : ''}
+      ${needs && Array.isArray(pa.advice) && pa.advice.length ? `<div class="palm-limitations"><b>${esc(pt('photoAdvice'))}</b><p>${pa.advice.map(esc).join('<br>')}</p></div>` : ''}
       ${limitations.length ? `<div class="palm-limitations"><b>${esc(pt('boundaries'))}</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}
       ${prompts.length ? `<div class="palm-prompts"><b>${esc(pt('prompts'))}</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
       <p class="palm-disclaimer">${esc(pt('disclaimer'))}</p>

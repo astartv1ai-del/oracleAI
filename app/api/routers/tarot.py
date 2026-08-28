@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
@@ -93,7 +95,8 @@ async def stats(user=Depends(confirmed_age_user), db=Depends(get_db)):
 
 
 class OutcomeIn(BaseModel):
-    outcome: str          # came_true | partly | no
+    # Аудит API-012: исход — закрытое множество, а не произвольная строка.
+    outcome: Literal["came_true", "partly", "no"]
 
 
 @router.post("/outcome/{reading_id}", dependencies=[Depends(rate_limit("write"))])

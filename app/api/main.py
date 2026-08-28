@@ -40,13 +40,25 @@ log = logging.getLogger("oracle.api")
 HTTP_REQUESTS = Counter(
     "oracleai_http_requests_total",
     "Total HTTP requests handled by the API.",
-    ("method", "status"),
+    ("method", "status", "route"),
 )
 HTTP_LATENCY = Histogram(
     "oracleai_http_request_duration_seconds",
     "HTTP request duration in seconds.",
-    ("method",),
+    ("method", "route"),
 )
+
+
+def _route_label(request: Request) -> str:
+    """Нормализованный шаблон маршрута для метрик (аудит API-006).
+
+    Без лейбла маршрута нельзя было алертить «chat p95 > 8 s» — только общий
+    API. Шаблон (`/api/tarot/history/{reading_id}`) ограничивает кардинальность;
+    статика и несовпавшие пути схлопываются в «other».
+    """
+    route = request.scope.get("route")
+    path = getattr(route, "path", "") if route is not None else ""
+    return path if path.startswith("/api/") else "other"
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 MINIAPP_DIR = ROOT / "miniapp"
@@ -160,8 +172,10 @@ async def access_log(request: Request, call_next):
                 {"detail": _server_error_copy(request)},
                 status_code=500)
         took = (time.monotonic() - started) * 1000
-        HTTP_REQUESTS.labels(request.method, str(response.status_code)).inc()
-        HTTP_LATENCY.labels(request.method).observe(took / 1000)
+        route_label = _route_label(request)
+        HTTP_REQUESTS.labels(request.method, str(response.status_code),
+                             route_label).inc()
+        HTTP_LATENCY.labels(request.method, route_label).observe(took / 1000)
         if took > 2000 or response.status_code >= 500:
             level = logging.ERROR if response.status_code >= 500 else logging.WARNING
             log_event(
@@ -199,8 +213,18 @@ async def access_log(request: Request, call_next):
 
 
 @app.get("/metrics", include_in_schema=False)
-def metrics() -> Response:
-    """Prometheus metrics; Caddy denies this path on the public edge."""
+def metrics(request: Request) -> Response:
+    """Prometheus metrics; Caddy denies this path on the public edge.
+
+    SEC-015: edge-only защита ломается одной ошибкой прокси — при заданном
+    METRICS_TOKEN приложение само требует Authorization: Bearer.
+    """
+    if settings.metrics_token:
+        import hmac as _hmac
+        provided = request.headers.get("authorization", "")
+        expected = f"Bearer {settings.metrics_token}"
+        if not _hmac.compare_digest(provided, expected):
+            return Response(status_code=401)
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

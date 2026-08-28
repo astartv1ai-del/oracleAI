@@ -62,6 +62,9 @@ class Settings:
 
     # ── мониторинг (G31): пусто = Sentry выключен ──
     sentry_dsn: str = os.getenv("SENTRY_DSN", "")
+    # SEC-015: когда задан, /metrics требует Authorization: Bearer <token> уже
+    # на уровне приложения, а не только на edge (Caddy). Пусто = как раньше.
+    metrics_token: str = os.getenv("METRICS_TOKEN", "")
 
     # ── age-gate (аудит SEC-010): соль для хеша подтверждения возраста.
     # Сырой год рождения не храним — только keyed-хеш как доказательство аттестации.

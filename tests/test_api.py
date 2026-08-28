@@ -422,7 +422,8 @@ async def test_outcome_validation(client, user):
     assert ok.status_code == 200
     bad = await client.post(f"/api/tarot/outcome/{reading_id}", params=as_user(user),
                             json={"outcome": "мусор"})
-    assert bad.status_code == 400
+    # API-012: исход — Literal-enum, произвольная строка отклоняется pydantic (422)
+    assert bad.status_code == 422
 
 
 # ──────────────────────────────── чаты ────────────────────────────────────────

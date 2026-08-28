@@ -159,3 +159,72 @@ def test_palm_prompts_follow_user_language():
     assert "needs_photo" in user_en
     # fallback: неизвестный язык → RU
     assert palm_prompts("de") == (PALM_SYSTEM, PALM_USER)
+
+
+# ─────────────────────── вторая волна (Wave 1 остаток + 2/3) ──────────────────
+
+async def test_tarot_outcome_is_closed_enum(client, user):
+    """API-012: произвольная строка в исходе расклада отклоняется валидацией."""
+    res = await client.post("/api/tarot/outcome/1",
+                            params={"dev_user": user["tg_id"]},
+                            json={"outcome": "definitely_maybe"})
+    assert res.status_code == 422
+
+
+async def test_chat_sessions_are_capped_and_paginated(client, db, user):
+    """API-014: список сессий отдаётся страницами, offset работает."""
+    from app.repo import dialog
+    for _ in range(3):
+        await dialog.create_thread(db, user["tg_id"], "oracle", title="t")
+    first = await client.get("/api/chat/oracle/sessions",
+                             params={"dev_user": user["tg_id"]})
+    assert first.status_code == 200
+    assert len(first.json()) >= 3
+    second = await client.get("/api/chat/oracle/sessions",
+                              params={"dev_user": user["tg_id"], "offset": 2})
+    assert second.status_code == 200
+    assert len(second.json()) == len(first.json()) - 2
+
+
+async def test_metrics_token_guard(monkeypatch, client):
+    """SEC-015: при заданном METRICS_TOKEN /metrics требует Bearer на app-уровне."""
+    from app.config import settings
+    monkeypatch.setattr(settings, "metrics_token", "metrics-secret")
+    denied = await client.get("/metrics")
+    assert denied.status_code == 401
+    allowed = await client.get(
+        "/metrics", headers={"Authorization": "Bearer metrics-secret"})
+    assert allowed.status_code == 200
+
+
+async def test_crm_search_escapes_like_wildcards(db):
+    """DB-015: «_» в запросе CRM — литерал, а не wildcard."""
+    await users.ensure(db, 2001, "an_na")
+    await users.ensure(db, 2002, "anna")
+    rows = await users.search(db, "an_na")
+    names = {r["name"] for r in rows}
+    assert "an_na" in names
+    assert "anna" not in names
+
+
+async def test_crm_search_name_order_runs_on_postgres(db):
+    """DB-003: order=name не должен падать на PostgreSQL (COLLATE NOCASE убран)."""
+    await users.ensure(db, 2003, "Борис")
+    rows = await users.search(db, "", order="name")
+    assert any(r["tg_id"] == 2003 for r in rows)
+
+
+async def test_question_too_long_is_explicit_error():
+    """API-003: превышение контракта — ошибка, а не тихая обрезка."""
+    from app.services import chat as chat_svc
+    fake_user = {"tg_id": 1, "status": "active", "age_confirmed": 1,
+                 "deleted_at": None, "lang": "ru"}
+    with pytest.raises(chat_svc.QuestionTooLong):
+        await chat_svc.ask(None, fake_user, "x" * 1001, surface="bot")
+
+
+def test_bot_commands_have_english_scope():
+    """BOT-008: у команд бота есть EN-скоуп для setMyCommands."""
+    from app.bot.main import COMMANDS, COMMANDS_EN
+    assert [c.command for c in COMMANDS] == [c.command for c in COMMANDS_EN]
+    assert any(c.description == "How I work" for c in COMMANDS_EN)
