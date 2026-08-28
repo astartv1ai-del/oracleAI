@@ -17,8 +17,8 @@ from app.data.session import connect  # noqa: E402
 from app.repo import dialog, readings, users  # noqa: E402
 
 
-async def seed(path: str) -> None:
-    db = await connect(path, seed=False)
+async def seed() -> None:
+    db = await connect(seed=False)
     try:
         chart = await astro.compute_chart_async(
             "1990-06-21", "14:30", "Казань", 55.79, 49.12,
@@ -48,7 +48,6 @@ async def seed(path: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", required=True)
-    args = parser.parse_args()
-    asyncio.run(seed(args.db))
-    print(f"seeded synthetic visual users 10001 (ru), 10002 (en) in {args.db}")
+    parser.parse_args()
+    asyncio.run(seed())
+    print("seeded synthetic visual users 10001 (ru), 10002 (en) in DATABASE_URL")

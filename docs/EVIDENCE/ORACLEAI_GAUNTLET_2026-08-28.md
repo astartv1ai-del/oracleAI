@@ -13,26 +13,26 @@
 | Область | Изменение | Проверка |
 |---|---|---|
 | Жизненный цикл аккаунта | Удалённая учётная запись теперь отклоняется на обычных authenticated surfaces с HTTP `410` и не может повторно включить age, memory, push или изменить профиль. Подтверждённое повторное удаление сохраняет идемпотентность. | API-регрессии в `tests/test_api.py`; обновлены `docs/API.md` и `docs/SECURITY.md`. |
-| Миграции данных | При ошибке именованной data migration выполняется `rollback()` до продолжения старта. Частичный DML больше не может попасть в последующий несвязанный `commit()`. | Новый тест `test_failed_data_migration_rolls_back_partial_writes` в `tests/test_migrations.py`. |
+| PostgreSQL/Alembic data plane | После синхронизации с актуальным upstream runtime использует PostgreSQL 16+ и pgvector; устаревший SQLite migration path удалён, а full suite прогнан на изолированной PostgreSQL базе. | `app/data/pg_schema.py`, `alembic/versions/`, `tests/conftest.py`; full PostgreSQL-backed suite — pass. |
 | Visual QA fixture | Синтетический пользователь visual QA получает явный `sub_until` на 30 дней. Это устраняет ложный `402 Payment Required` в платном домашнем сценарии. | `scripts/seed_visual_user.py`; прямой API smoke для `/api/today` вернул `200`. |
-| Selfcheck | VIP limit smoke больше не зависит от переменного `AUTO_TRIAL`: fixture явно получает будущую дату окончания подписки. | `scripts/selfcheck.py`; повторный selfcheck завершился без ошибок, с двумя ожидаемыми предупреждениями об offline/live-конфигурации. |
+| Selfcheck | Limits, payment idempotency, schema/seed, PDF, practices, horoscope и webhook checks прошли на PostgreSQL-backed runtime; live LLM и incomplete dev config остались ожидаемыми skips. | `scripts/selfcheck.py`; завершился `✨ Всё работает`, 2 ожидаемых предупреждения. |
 | Lint | В intentional `sys.path` bootstrap добавлен точечный `# noqa: E402`, чтобы документированный startup checker проходил Ruff. | `ruff check app scripts tests` — pass. |
-| Production deployment defaults | Compose больше не подставляет `dev`, `oracle`, `change-me` или иные известные значения для критичных настроек. Обязательны `APP_ENV`, PostgreSQL `DATABASE_URL`, `POSTGRES_PASSWORD` и `GRAFANA_ADMIN_PASSWORD`; release gate также отклоняет небезопасные шаблоны. | Новый `test_compose_requires_non_default_credentials`; `check_p004_infrastructure.py` расширен до 40 проверок; `tests/test_release_gate.py` обновлён. Docker CLI в sandbox отсутствует, поэтому проверка `docker compose config` выполнена статическим контрактом, а не запуском Docker. |
+| Production deployment defaults | Compose больше не подставляет `dev`, `oracle`, `change-me` или иные известные значения для критичных настроек. Обязательны `APP_ENV`, PostgreSQL `DATABASE_URL`, `POSTGRES_PASSWORD` и `GRAFANA_ADMIN_PASSWORD`; release gate также отклоняет небезопасные шаблоны. | Новый `test_compose_requires_non_default_credentials`; `check_p004_infrastructure.py` расширен до 39 проверок; `tests/test_release_gate.py` обновлён. Docker CLI в sandbox отсутствует, поэтому проверка `docker compose config` выполнена статическим контрактом, а не запуском Docker. |
 
 ## Проверенная матрица
 
 | Контур | Результат | Доказательство |
 |---|---:|---|
-| Полный Python suite | **PASS** | `python3 -m pytest -q -p no:cacheprovider` дошёл до `100%`; один тест пропущен по объявленному условию окружения. |
-| Backend/API/database/billing | **PASS** | Таргетированные API, resilience, migrations, data, billing, payment monitor, P1/P2 tests прошли. |
+| Полный Python suite | **PASS** | `DATABASE_URL=postgresql+asyncpg://... python3 -m pytest -q -p no:cacheprovider` дошёл до `100%`; один тест пропущен по объявленному условию окружения. |
+| Backend/API/database/billing | **PASS** | Таргетированные API, resilience, PostgreSQL data/Alembic, billing, payment monitor, P1/P2 tests прошли. |
 | Security/adversarial | **PASS** | Security regressions, safety guardrails, API resilience, limits, flood, provider compatibility, engine paths и architecture boundaries прошли. |
 | AI, memory, domain, palm/CV | **PASS WITH ACCURACY GATE** | Контрактные и интеграционные проверки прошли. Semantic palm accuracy не подписана: нет adjudicated golden manifest и human-review report. |
 | Frontend static contracts | **PASS** | Build, JS syntax, provenance, static asset references, cache busting, design contract и visual contrast прошли. |
 | Axe accessibility | **PASS** | 10 состояний Mini App, 0 axe violations. |
 | Lighthouse | **PARTIAL** | Accessibility `100` и SEO `100` наблюдались на audited states. Best-practices score нельзя считать окончательно сертифицированным: в комбинированном запуске axe + Lighthouse общий rate-limit bucket дал один `429`; матрицы нужно запускать на независимых свежих процессах. |
 | Bot, Telegram UX, billing, jobs, notifications, observability | **PASS** | Тесты FSM, Mini App actions, notifications, broadcast, log stream, analytics, payment monitor и growth прошли. |
-| Backup/restore | **PASS WITH EXTERNAL LIMITATIONS** | Disposable local drill подтвердил integrity и owner isolation. Production key custody, off-site permissions и rollback rehearsal не выполнялись. |
-| Release gates | **PASS** | `release_gate.py`, `check_p2_quality.py`, `check_p004_infrastructure.py` (40 checks), documentation links, compileall, Ruff и diff hygiene прошли. |
+| Backup/restore | **PASS WITH EXTERNAL LIMITATIONS** | Static PostgreSQL backup contract и encrypted restore helper прошли; production key custody, off-site permissions, real restore и rollback rehearsal не выполнялись. |
+| Release gates | **PASS** | `release_gate.py`, `check_p2_quality.py`, `check_p004_infrastructure.py` (39 checks), documentation links, compileall, Ruff и diff hygiene прошли. |
 | Dependency hygiene | **PASS** | `npm audit --omit=dev --audit-level=high` сообщил `0 vulnerabilities`; JS syntax и Python compilation прошли. |
 
 ## Производительность
@@ -67,12 +67,13 @@
 
 ```bash
 export APP_ENV=dev DEV_MODE=1 LLM_PROVIDER=off SELF_CHECK_LIVE=0 EMBED_MODEL=''
+export DATABASE_URL='postgresql+asyncpg://oracle_test:oracle_test@127.0.0.1:5432/oracle_test' PGVECTOR_ENABLED=1
 npm run build:frontend
 python3 scripts/selfcheck.py
 python3 scripts/release_gate.py
 python3 scripts/check_p2_quality.py
 python3 scripts/check_p004_infrastructure.py
-python3 scripts/check_backup_restore_drill.py
+make p004-audit
 python3 -m pytest -q -p no:cacheprovider
 ruff check app scripts tests
 python3 scripts/check_documentation_links.py
@@ -81,11 +82,11 @@ python3 scripts/check_documentation_links.py
 Для accessibility matrix требуется отдельный свежий сервер и disposable DB; axe и Lighthouse не следует смешивать в одном rate-limit bucket. Синтетический visual user создаётся так:
 
 ```bash
-python3 scripts/seed_visual_user.py --db /tmp/oracleai-qa.db
+python3 scripts/seed_visual_user.py
 ```
 
 Итоговый machine-readable результат находится в [`ORACLEAI_GAUNTLET_RESULT_2026-08-28.json`](ORACLEAI_GAUNTLET_RESULT_2026-08-28.json). Канонические контракты — [`API.md`](../API.md) и [`SECURITY.md`](../SECURITY.md); текущий release status — [`RELEASE/CURRENT_STATUS.md`](../RELEASE/CURRENT_STATUS.md).
 
 ## Рабочее дерево
 
-После второго независимого прохода изменено 16 исходных, конфигурационных, тестовых и документирующих файлов; два итоговых evidence-файла также входят в рабочее дерево. Отчёт и machine-readable summary подготовлены для включения в комит; commit/push выполняются следующим шагом этого задания.
+После второго независимого прохода и синхронизации с актуальным upstream итоговый merge включает production hardening, PostgreSQL/Alembic documentation cleanup, regression fixes и evidence-файлы. Commit/push выполняются после финальной проверки merge-дерева.

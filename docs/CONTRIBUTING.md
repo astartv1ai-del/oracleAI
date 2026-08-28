@@ -64,8 +64,8 @@ flowchart LR
 * Не импортируйте один API-router из другого. Общий HTTP-код размещается в `app/api/common/`, DTO — в `app/api/contracts/`, workflow из нескольких операций — в `app/services/`.
 * Любой пользовательский ресурс проверяет ownership на сервере. Нельзя доверять `tg_id`, plan, price или permission из тела браузерного запроса.
 * Любая mutation получает соответствующий `rate_limit`; LLM-путь использует категорию `llm`.
-* При новой колонке обновляйте DDL **и** миграцию для существующей SQLite БД. `CREATE TABLE IF NOT EXISTS` не изменяет старую таблицу.[1]
-* Результаты SQLite имеют тип `sqlite3.Row`; используйте `row["field"]`, не `row.get("field")`.
+* При изменении схемы обновляйте PostgreSQL DDL **и** добавляйте последовательную Alembic migration; изменение не считается готовым без регрессионного теста на PostgreSQL.
+* Результаты async PostgreSQL имеют тип `asyncpg.Record`; используйте `row["field"]` или индекс, не `row.get("field")`.
 * Не добавляйте контекст дневника/памяти в агентный путь без server-side проверки `memory_enabled`.
 * Новое административное действие нуждается в ограничении роли и audit trail.
 
@@ -102,7 +102,7 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 | Изменение | Обязательная дополнительная проверка |
 |---|---|
 | API / профиль | Позитивный и негативный запрос, ownership, 400/409/429-состояние. |
-| Миграция | Чистая БД и копия старой БД/регрессионный тест. |
+| Миграция | Чистая PostgreSQL БД, Alembic upgrade и регрессионный тест на изолированной PostgreSQL базе. |
 | Память / дневник / чат | `memory_enabled=false` исключает чтение, запись и агентный контекст. |
 | Age-gate | Чистый профиль, подтверждение, отказ/закрытие и persistence после reload. |
 | UI / motion | 360–430 px, RU/EN, keyboard, reduced motion, disabled/loading/error. |
@@ -145,5 +145,5 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 
 ## References
 
-[1]: [app/data/schema.py](../app/data/schema.py) и [app/data/migrations.py](../app/data/migrations.py) — порядок создания таблиц, колонок и индексов.
+[1]: [app/data/pg_schema.py](../app/data/pg_schema.py) и [alembic/versions/](../alembic/versions/) — PostgreSQL schema, индексы и упорядоченные миграции.
 [2]: [app/api/main.py](../app/api/main.py) и [miniapp/js/13-events.js](../miniapp/js/13-events.js) — CSP и делегирование событий.

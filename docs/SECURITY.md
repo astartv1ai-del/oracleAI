@@ -93,7 +93,7 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 | Проверка webhook | Проверять подпись Paddle по raw body до изменения заказа/entitlement. |
 | Server-side binding | `transaction.completed` должен ссылаться на существующий pending-заказ; тариф и получатель не берутся из браузерного URL. |
 | Idempotency | Сначала атомарно закрывать pending-заказ, затем фиксировать событие; retry после сбоя должен быть безопасен. |
-| Минимизация | Не хранить в SQLite данные карты, CVV или иные ненужные реквизиты. |
+| Минимизация | Не хранить в PostgreSQL данные карты, CVV или иные ненужные реквизиты. |
 | Audit | Значимые административные и коммерческие действия должны быть проверяемы. |
 | Refund | Выполнять только по утверждённому процессу и с записью статуса. |
 
@@ -101,7 +101,7 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 
 * `.env`, production-токены, ключи LLM, webhook secrets и Sentry DSN не коммитятся, не отправляются в чат и не попадают в screenshot.
 * Production-доступ выдаётся персонально, по минимально необходимым правам и отзывается при смене роли.
-* Бэкапы SQLite считаются чувствительными: production backup service fail-closed требует отдельный host key, шифрует snapshot через PBKDF2/соль, создаёт checksum, соблюдает retention и регулярно восстанавливается в изолированном контуре через `scripts/restore_db.sh`.
+* PostgreSQL-бэкапы считаются чувствительными: production backup service fail-closed требует отдельный host key, шифрует custom-format dump, создаёт checksum, соблюдает retention и восстанавливается в изолированном контуре через `infra/restore-postgres.sh`.
 * Structured JSONL логи содержат только whitelisted operational fields, request/release IDs и redaction; они не должны содержать целые тексты чатов, дневников, города рождения, токены, initData, Telegram IDs, invoice/charge identifiers или webhook payload. Сырые provider/Telegram exception messages не пишутся в operational log paths, где достаточно типа ошибки.
 * Retention housekeeping удаляет product events/LLM usage через 120 дней, safety incidents через 90 дней, webhook evidence через 180 дней и admin audit через 365 дней; сроки должны быть подтверждены оператором и юристом.
 
@@ -129,16 +129,16 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 - [ ] Telegram user/AI text escaped; upload body/pixel limits проверены.
 - [ ] Критические действия не доверяют данным браузера.
 - [ ] Webhook signature, `transaction.completed`, server-side order binding и idempotency проверены в sandbox.
-- [ ] Зашифрованный бэкап создан, checksum проверен и restore drill выполнен через `scripts/restore_db.sh`.
+- [ ] Зашифрованный бэкап создан, checksum проверен и restore drill выполнен через `infra/restore-postgres.sh`.
 - [ ] JSONL logs redacted; `ops_alerts.py` проверяет 5xx, webhook failures, LLM fallback rate и backup freshness.
 - [ ] Публичные Privacy Policy, Terms, 16+ wording и deletion/support flow доступны и прошли юридическую проверку.
 - [ ] Нет новых unsafe inline, утечек личного текста или недоступных CTA.
 
 ## References
 
-[1]: [app/data/schema.py](../app/data/schema.py), [app/api/routers/profile.py](../app/api/routers/profile.py) и [miniapp/js/05-app.js](../miniapp/js/05-app.js) — age-gate и профильное согласие.
+[1]: [app/data/pg_schema.py](../app/data/pg_schema.py), [app/api/routers/profile.py](../app/api/routers/profile.py) и [miniapp/js/05-app.js](../miniapp/js/05-app.js) — age-gate и профильное согласие.
 [2]: [app/api/routers/diary.py](../app/api/routers/diary.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — privacy guard по памяти.
 [3]: [app/api/main.py](../app/api/main.py) — ограничение dev-режима.
-[4]: [app/api/routers/admin.py](../app/api/routers/admin.py) и [app/data/schema.py](../app/data/schema.py) — административные маршруты и `admin_audit`.
+[4]: [app/api/routers/admin.py](../app/api/routers/admin.py) и [app/data/pg_schema.py](../app/data/pg_schema.py) — административные маршруты и `admin_audit`.
 [5]: [app/api/main.py](../app/api/main.py), [miniapp/js/13-events.js](../miniapp/js/13-events.js) — CSP и event delegation.
 [6]: [app/config.py](../app/config.py), [app/core/agents/base.py](../app/core/agents/base.py) — цепочка провайдеров и стандарт ответа.

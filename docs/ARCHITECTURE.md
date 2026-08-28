@@ -12,7 +12,7 @@
 | **Validation** | `python3 -m compileall -q app scripts tests`. |
 
 
-OracleAI — единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют общие сервисы, SQLite/WAL, safety boundaries, calculation contracts и provider fallback.
+OracleAI — единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют общие сервисы, PostgreSQL/pgvector, Redis/Celery, safety boundaries, calculation contracts и provider fallback.
 
 ## Топология
 
@@ -25,7 +25,7 @@ flowchart TB
     F --> S
     S --> A[Agents and deterministic calculations]
     S --> R[Repositories]
-    R --> D[(SQLite / WAL)]
+    R --> D[(PostgreSQL / pgvector)]
     A --> P[LLM provider chain]
     P --> O[Offline fallback]
     F --> ADM[Admin surface]
@@ -39,7 +39,7 @@ flowchart TB
 | Domain services | Chat, limits, practices, analytics, payments, referrals, scheduler | `app/services/` |
 | Core | Agents, deterministic astrology/card calculations, evidence, safety and LLM runtime | `app/core/` |
 | Repositories | SQL access, row mapping and unified cross-tool history projections | `app/repo/` |
-| Data | Schema, migrations, seed and sessions | `app/data/` |
+| Data | PostgreSQL schema, Alembic migrations, seed and sessions | `app/data/`, `alembic/` |
 | Operations | Docker Compose, Caddy, backup/restore and health checks | `infra/`, `scripts/` |
 
 ## Request flow
@@ -54,7 +54,7 @@ sequenceDiagram
     participant D as Auth/dependencies
     participant C as Core/service
     participant R as Repository
-    participant DB as SQLite
+    participant DB as PostgreSQL
 
     T->>M: initData and viewport
     M->>A: authenticated /api request
@@ -137,17 +137,17 @@ Frontend намеренно не использует bundler: `miniapp/index.ht
 | Solar returns | `returns_schema_version=1` and explicit target year | Sun only; full exact natal plus owner location required; no prediction claims |
 | Tarot | Saved drawn cards, position and orientation | No invented cards, timing or guarantees |
 | Palm | Vision observations with quality/confidence | No diagnosis or high-stakes claims |
-| Memory/diary | SQLite with consent and bounded context | Memory-off is enforced server-side |
+| Memory/diary | PostgreSQL with consent and bounded context | Memory-off is enforced server-side |
 
 ## Data and migrations
 
-SQLite stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. DDL is defined in `app/data/schema.py`; changes to existing tables use `app/data/migrations.py`. Code must access `sqlite3.Row` by key/index and not call `.get()`.
+PostgreSQL stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. The canonical DDL is defined in `app/data/pg_schema.py`; ordered changes use `alembic/versions/`. Repository code must access `asyncpg.Record` fields by key/index and not call `.get`.
 
-The legacy `messages.thread_id IS NULL` migration is idempotent: existing users are attached to an active default `oracle` thread, while orphan rows without a matching user are preserved. Composite indexes cover chat history by user/thread/agent and recency. Analytics, payment, event and memory-ranking indexes support the main milestone queries; `prune_analytics()` removes old events and LLM usage in batches. Connection startup runs `PRAGMA optimize`, and `SQLITE_BUSY_TIMEOUT_MS`, `SQLITE_WAL_AUTOCHECKPOINT` and `SQLITE_CACHE_SIZE_KB` are configurable through the environment.
+Alembic revisions are applied in order and the PostgreSQL test fixture runs them against an isolated database before each test. Composite indexes cover chat history by user/thread/agent and recency; analytics, payment, event and memory-ranking indexes support the main milestone queries. `prune_analytics()` removes old events and LLM usage in bounded batches, while PostgreSQL pool and statement boundaries are configured through the environment.
 
 ## Operations and trust boundaries
 
-Telegram `initData`, browser input, API payloads, LLM output and SQLite records are separate trust zones. Server-side validation, owner authorization, rate limits, escaping, privacy guards and safe error mapping are mandatory. `scripts/selfcheck.py`, `scripts/release_gate.py`, CI and the tests directory provide automated checks; generated output belongs outside the source tree.
+Telegram `initData`, browser input, API payloads, LLM output and PostgreSQL records are separate trust zones. Server-side validation, owner authorization, rate limits, escaping, privacy guards and safe error mapping are mandatory. `scripts/selfcheck.py`, `scripts/release_gate.py`, CI and the tests directory provide automated checks; generated output belongs outside the source tree.
 
 Public launch remains gated by external production evidence: deployment/image validation, real Telegram device QA, live provider quality, privacy/legal review, payment certification, backup/restore drill and licensing approval.
 
@@ -158,4 +158,4 @@ Public launch remains gated by external production evidence: deployment/image va
 [3]: [app/core/chart_contract.py](../app/core/chart_contract.py) — natal calculation contract.
 [4]: [app/core/chart_products.py](../app/core/chart_products.py) — synastry, transit, composite and returns product contracts.
 [5]: [app/core/interpretation.py](../app/core/interpretation.py) — evidence-first interpretation and guardrails.
-[6]: [app/data/schema.py](../app/data/schema.py) and [app/data/migrations.py](../app/data/migrations.py) — data schema and migrations.
+[6]: [app/data/pg_schema.py](../app/data/pg_schema.py) and [alembic/versions/](../alembic/versions/) — PostgreSQL schema and ordered migrations.

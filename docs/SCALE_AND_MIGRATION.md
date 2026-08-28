@@ -1,65 +1,70 @@
-# OracleAI — scale triggers and migration rehearsal
+# Scale and Migration
 
 ## Current decision
 
-OracleAI поддерживает два backend-пути: SQLite WAL для локальной разработки и обратимого rollback, PostgreSQL для production-использования с SQLAlchemy 2.0, asyncpg и Alembic. Переключение выполняется через `DATABASE_URL`; отсутствие этой переменной сохраняет SQLite fallback.
+OracleAI uses PostgreSQL 16+ with `pgvector` as its durable data plane. Alembic owns ordered schema changes, `app/data/session.py` owns the async connection boundary, and Redis/Celery handles asynchronous jobs in the production-like Compose topology. SQLite migration and fallback scripts are not part of the supported runtime.
 
-Переход не является безвозвратным: сначала создаётся read-only snapshot SQLite, затем он импортируется в изолированную PostgreSQL-базу через `scripts/migrate_sqlite_to_postgres.py`, после чего проверяются counts, health, API-контракты и rollback. `pgvector` подключается отдельным DBA/Alembic-шагом; fixed-dimension HNSW/IVFFlat индекс добавляется только после фиксации embedding-модели и размерности.
+The deployment contract is explicit: set `APP_ENV`, `DATABASE_URL`, `POSTGRES_PASSWORD` and `GRAFANA_ADMIN_PASSWORD` before starting Compose. The Compose file and production release gate fail closed when these values are missing or match known template credentials.
 
 ## Operational measurements
 
-Run the read-only report against an isolated backup or production replica, never against a path uploaded by a user:
+Run health and application checks against an isolated staging or production replica, never against a path uploaded by a user. The supported operational checks are:
 
 ```bash
-python3 scripts/db_health_report.py --db /srv/oracle/data/oracle.db
-python3 scripts/migration_manifest.py --db /srv/oracle/data/oracle.db > /tmp/schema-manifest.json
+python3 scripts/healthcheck.py
+python3 scripts/check_p004_infrastructure.py
+make p004-audit
 ```
 
-`db_health_report.py` returns only aggregate counts and storage/schema health. It never returns diary text, messages, memory facts, birth data, Telegram IDs, payment details or raw rows. Exit codes are suitable for cron/alerting: `2` integrity failure, `3` DB size threshold, `4` WAL threshold.
+The health and infrastructure checks must expose aggregate status only. They must not print diary text, messages, memory facts, birth data, Telegram IDs, payment details, credentials or raw rows.
 
 ## Scale trigger matrix
 
 | Signal | Observe now | Trigger | Response |
 |---|---|---|---|
-| DB file | bytes, page count, freelist | >2 GiB or backup duration outside RPO | run restore drill, compact/retention review, start migration rehearsal |
-| WAL file | bytes and checkpoint duration | >256 MiB for two checks or repeated growth | inspect long readers/write locks; checkpoint only in maintenance window |
-| SQLite write contention | lock errors, busy timeout, request p95 | recurring `database is locked` or p95 >400 ms on non-LLM reads | isolate background writes, make jobs idempotent, load-test before schema move |
-| Backup | duration, checksum, restore result | restore fails or RTO misses target | stop release, repair backup topology and repeat drill |
-| API load | p50/p95, 5xx, active connections | 50 RPS baseline no longer meets error budget | capacity test, worker/queue decision, provider concurrency tuning |
-| LLM | p50/p95, fallback rate, tool timeout | fallback or latency regression against scorecard | route to healthy provider, reduce context/tool budget, rollback prompt/model |
-| Morning jobs | job duration and overlap | interactive requests contend with forecast jobs | separate deterministic jobs from generation worker before scaling |
+| PostgreSQL | query latency, pool usage, locks, table/index growth | pool exhaustion, lock growth or read p95 above the error budget | inspect slow queries/indexes, tune pool and transaction scope, repeat load test |
+| pgvector | embedding dimension, recall latency, index size | semantic recall exceeds the product latency budget | confirm model dimension, add the approved vector index, benchmark recall/latency |
+| Redis/Celery | queue depth, task age, retries, worker utilization | queue age or retries exceed the SLO | scale workers, inspect idempotency and provider backoff, separate interactive and batch queues |
+| Backup | duration, checksum, local/off-site status, restore result | restore fails, artifact is stale or RTO misses target | stop release, repair backup topology and repeat the isolated restore drill |
+| API load | p50/p95, 5xx, active connections and rate-limit rejects | 50 RPS baseline no longer meets the error budget | capacity test, tune workers/queue, review provider concurrency |
+| LLM | p50/p95, fallback rate, tool timeout and cost | latency, fallback or cost regresses against the scorecard | route to a healthy provider, reduce context/tool budget, or roll back the model/prompt |
+| Morning jobs | task duration, overlap and retry rate | background work contends with interactive requests | separate deterministic jobs from generation workers and tune Celery concurrency |
 
-A threshold is not an automatic migration command. The owner records the observation window, workload, release, user impact and rollback options in the incident/release note.
+A threshold is not an automatic migration command. The owner records the observation window, workload, release, user impact and rollback options in an incident or release note.
 
 ## PostgreSQL rollout sequence
 
-1. Подготовить PostgreSQL 16+ и включить `vector` отдельным DBA-шагом.
-2. Запустить `DATABASE_URL=... alembic upgrade head` в target database.
-3. Создать и проверить SQLite backup; использовать только read-only snapshot.
-4. Выполнить `python -m scripts.migrate_sqlite_to_postgres --sqlite ... --database-url ...`.
-5. Проверить counts, `messages.thread_id IS NULL`, sequences, `pg_extension`, `alembic_version` и `/api/health`.
-6. Запустить API/бот с тем же `DATABASE_URL` на staging и выполнить offline/mock chat POST.
-7. При ошибке остановить запись, unset `DATABASE_URL` и вернуться к SQLite backup; не использовать destructive Alembic downgrade.
+1. Provision PostgreSQL 16+ and enable the `vector` extension through an approved DBA step.
+2. Create a disposable or staging database and run `DATABASE_URL=... alembic upgrade head`.
+3. Run `python3 scripts/check_p004_infrastructure.py` and `make p004-audit`.
+4. Start one `migrate` service, then API, bot, worker and Beat from the same release image.
+5. Verify `/api/health`, schema version, `pg_extension`, owner-scoped reads, queued jobs and redacted operational logs.
+6. Execute the staging backup and isolated restore procedure from `docs/BACKUP_RESTORE_DRILL.md`.
+7. Promote only after payment/webhook replay, real Telegram device QA, live provider evaluation, capacity evidence and owner sign-off.
+
+Do not use destructive Alembic downgrades as an emergency rollback. Stop writes, preserve the failed release evidence, restore the approved backup into an isolated target, and follow the documented release rollback procedure.
 
 ## Migration rehearsal sequence
 
-1. Freeze the schema contract with `migration_manifest.py` and record `user_version`, object list and SHA-256.
-2. Create a backup with `scripts/backup_db.sh`, verify checksum, and restore into an isolated SQLite file with `scripts/restore_db.sh`.
-3. Run `PRAGMA integrity_check`, the existing migration suite and aggregate row-count checks on source and restored copies.
-4. Build a disposable PostgreSQL schema from the same contract; map SQLite booleans, timestamps, JSON text and integer IDs explicitly.
-5. Load a synthetic or approved anonymized fixture only. Compare table counts and deterministic checksums of non-sensitive reference tables; never export production personal text by default.
-6. Exercise dual-read in staging with a feature flag, compare response contracts and latency, and keep SQLite as the authoritative rollback source.
-7. Rehearse rollback: disable dual-read, return to SQLite, drain new writes safely and document the maximum acceptable loss window.
-8. Promote only after a production-like load test, backup/restore drill, payment/webhook replay checks, privacy review and owner sign-off.
+1. Review the new schema and migration plan; confirm that every changed table, index and constraint has an Alembic revision.
+2. Apply `alembic upgrade head` to an empty PostgreSQL database and verify the expected schema.
+3. Apply the same revisions to a disposable copy of the staging snapshot and compare aggregate row counts and non-sensitive reference checksums.
+4. Exercise API, bot and queued-job paths against the migrated database, including owner isolation, deletion, consent, billing idempotency and retry behavior.
+5. Create an encrypted custom-format backup, verify its checksum and restore into an isolated target database.
+6. Measure migration time, restore time, lock behavior and query latency under a representative synthetic load.
+7. If a gate fails, stop writes, preserve logs and metrics, and roll back to the prior release using the approved backup/runbook rather than a destructive schema downgrade.
+8. Promote only after production-like restore, payment/webhook replay, privacy review and owner sign-off.
 
-## Load test entry points
+## Load-test entry points
 
-The existing Locust workload in `load/locustfile.py` represents 1,000 seeded readers and approximately 50 RPS. It uses `DEV_MODE=1` and synthetic `dev_user` IDs only. Do not run it against production or with real Telegram sessions.
+The repository provides a Locust API workload and a synthetic bot-flow simulator. Both use synthetic IDs and must never run against production or real Telegram sessions.
 
 ```bash
 python3 scripts/seed_load.py --count 5000
-DEV_MODE=1 python -m uvicorn app.api.main:app --port 8000
+DEV_MODE=1 python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 locust -f load/locustfile.py --host http://127.0.0.1:8000 -u 1000 -r 25 --run-time 2m
+python3 load/simulate.py
+python3 load/simulate.py --full
 ```
 
-The report must include release, DB/WAL sizes before and after, p50/p95/p99 per endpoint, 5xx, lock errors, backup duration and LLM calls. LLM generation is a separate workload; do not infer AI capacity from read-only API traffic.
+The report must include release, PostgreSQL pool usage, p50/p95/p99 per endpoint, 5xx, rate-limit rejects, queue depth, backup duration and LLM calls. LLM generation is a separate workload; do not infer AI capacity from read-only API traffic.

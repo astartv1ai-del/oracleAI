@@ -3,41 +3,18 @@ from __future__ import annotations
 
 import asyncio
 
-import aiosqlite
 import pytest
 
-from app.data import migrations
-from app.data.schema import SCHEMA
-from app.data.session import connect, healthcheck, transaction
+from app.data.session import healthcheck, transaction
 from app.repo import content, dialog, users
-
-# Схема прошлой версии продукта: на такой базе стоит живой бот, и миграция
-# обязана довести её до актуальной без потери данных.
-LEGACY_SCHEMA = """
-CREATE TABLE users (
-    tg_id INTEGER PRIMARY KEY, name TEXT, persona TEXT DEFAULT 'friend',
-    oracle_name TEXT DEFAULT 'Лилит', tz TEXT DEFAULT 'Europe/Moscow',
-    birth_date TEXT, birth_time TEXT, birth_time_known INTEGER DEFAULT 1,
-    birth_city TEXT, birth_lat REAL, birth_lon REAL, chart_json TEXT,
-    sub_level TEXT DEFAULT 'vip', sub_until TEXT, crystals INTEGER DEFAULT 0,
-    onboarded INTEGER DEFAULT 0, created_at TEXT, ref_by INTEGER
-);
-CREATE TABLE messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id INTEGER, role TEXT, text TEXT,
-    is_question INTEGER DEFAULT 0, created_at TEXT
-);
-CREATE TABLE promo_codes (
-    code TEXT PRIMARY KEY, days INTEGER DEFAULT 30, batch TEXT,
-    used_by INTEGER, used_at TEXT
-);
-"""
 
 
 async def test_fresh_database_has_full_schema(db):
     state = await healthcheck(db)
     assert state["ok"]
-    assert state["journal_mode"].lower() == "wal"
-    cur = await db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    assert state["journal_mode"].lower() == "postgresql"
+    cur = await db.execute(
+        "SELECT tablename FROM pg_tables WHERE schemaname='public'")
     tables = {row[0] for row in await cur.fetchall()}
     for required in ("users", "messages", "threads", "orders", "payments",
                      "entitlements", "events", "settings", "content_items",
@@ -66,68 +43,6 @@ async def test_seed_is_idempotent_and_keeps_edits(db):
     plan = await billing.get_plan(db, "vip")
     assert plan["price_stars"] == 999, "повторный сид перезаписал правки админа"
     assert plan["title"] == "Мой VIP"
-
-
-async def test_legacy_database_is_migrated(tmp_path):
-    """Главная проверка миграции: боевая база старой версии + данные в ней."""
-    path = tmp_path / "legacy.db"
-    raw = await aiosqlite.connect(str(path))
-    await raw.executescript(LEGACY_SCHEMA)
-    await raw.execute(
-        "INSERT INTO users(tg_id, name, sub_until, crystals, onboarded, created_at, "
-        "ref_by) VALUES(500, 'Старая', '2030-01-01T00:00:00+00:00', 40, 1, "
-        "'2026-01-01T00:00:00+00:00', 501)")
-    await raw.execute(
-        "INSERT INTO users(tg_id, name, created_at) VALUES(501, 'Пригласившая', "
-        "'2026-01-01T00:00:00+00:00')")
-    await raw.execute(
-        "INSERT INTO promo_codes(code, days, batch, used_by, used_at) "
-        "VALUES('OLD1', 30, 'etsy-1', 500, '2026-01-02T00:00:00+00:00')")
-    await raw.execute("PRAGMA user_version=7")
-    await raw.commit()
-    await raw.close()
-
-    db = await connect(str(path))
-    try:
-        legacy = await users.get(db, 500)
-        assert legacy["name"] == "Старая"
-        assert legacy["crystals"] == 40, "миграция потеряла данные"
-        # новые колонки появились
-        assert legacy["status"] == "active"
-        assert legacy["ltv_stars"] == 0
-        # ref_by перенесён в таблицу referrals
-        cur = await db.execute(
-            "SELECT referrer_id FROM referrals WHERE invitee_id=500 AND level=1")
-        assert (await cur.fetchone())["referrer_id"] == 501
-        # промокод получил счётчик активаций и запись о применении
-        cur = await db.execute("SELECT used_count FROM promo_codes WHERE code='OLD1'")
-        assert (await cur.fetchone())["used_count"] == 1
-        cur = await db.execute("SELECT tg_id FROM promo_redemptions WHERE code='OLD1'")
-        assert (await cur.fetchone())["tg_id"] == 500
-    finally:
-        await db.close()
-
-
-async def test_migration_runs_twice_without_error(tmp_path):
-    path = str(tmp_path / "twice.db")
-    first = await connect(path)
-    await first.close()
-    second = await connect(path)          # повторный старт сервиса
-    try:
-        added = await migrations.reconcile_columns(second)
-        assert added == [], "вторая миграция снова добавляет колонки"
-        applied = await migrations.apply_data_migrations(second)
-        assert applied == []
-    finally:
-        await second.close()
-
-
-async def test_schema_script_is_valid_sql(tmp_path):
-    raw = await aiosqlite.connect(str(tmp_path / "schema.db"))
-    try:
-        await raw.executescript(SCHEMA)     # упадёт при опечатке в DDL
-    finally:
-        await raw.close()
 
 
 async def test_transaction_rolls_back_on_error(db, user):
@@ -234,7 +149,8 @@ async def test_anonymize_keeps_row_but_clears_pii(db, user):
 async def test_g13_missing_indexes_exist(db):
     """Индексы под горячие выборки (G13): оплата по заказу, промо, рефералы,
     DAU/WAU по событиям, учёт LLM."""
-    cur = await db.execute("SELECT name FROM sqlite_master WHERE type='index'")
+    cur = await db.execute(
+        "SELECT indexname FROM pg_indexes WHERE schemaname='public'")
     indexes = {row[0] for row in await cur.fetchall()}
     for required in (
         "idx_pay_order", "idx_promo_red", "idx_ref_invitee",

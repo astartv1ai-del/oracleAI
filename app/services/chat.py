@@ -86,15 +86,16 @@ def _proof_payload(spec, user, *, tools_used: list[str], mode: str) -> dict:
 
 
 async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
-              surface: str = "bot", allow_paid: bool = True,
+              surface: str = "api", allow_paid: bool = True,
               thread_id: int | None = None,
               idempotency_key: str | None = None) -> dict:
     """Задаёт вопрос агенту. Поднимает `ChatDenied`, если доступа нет.
 
     `thread_id` — конкретная сессия (многочатовой режим Mini App). Без него —
-    активный тред агента (один диалог на агента, как в боте).
+    активный тред агента (один диалог на агента, как в боте). Direct callers default to
+    the fail-closed API policy; the Bot passes `surface="bot"` explicitly.
     """
-    eligibility.require_eligible_user(user, operation="chat")
+    eligibility.require_eligible_user(user, operation="chat", require_age=surface != "bot")
     question = (text or "").strip()[:MAX_QUESTION_LEN]
     if not question:
         raise ValueError("пустой вопрос")

@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore backup-drill p004-audit config
+.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore test p004-audit config
 
 init:
 	@test -f .env || cp .env.example .env
@@ -57,8 +57,22 @@ restore:
 	@test -n "$(RESTORE_TARGET_DB)" || (echo "RESTORE_TARGET_DB must name an isolated database" && exit 2)
 	RESTORE_TARGET_DB="$(RESTORE_TARGET_DB)" ./infra/restore-postgres.sh "$(BACKUP)"
 
-backup-drill:
-	python3 scripts/check_backup_restore_drill.py
+test:
+	$(COMPOSE) run --rm --entrypoint "" -e DEV_MODE=1 \
+		-e DATABASE_URL=postgresql+asyncpg://oracle:oracle@postgres:5432/oracle_test \
+		-v $(CURDIR)/tests:/opt/oracle/tests \
+		-v $(CURDIR)/infra:/opt/oracle/infra \
+		-v $(CURDIR)/data:/opt/oracle/data:ro \
+		-v $(CURDIR)/.env.production.example:/opt/oracle/.env.production.example:ro \
+		-v $(CURDIR)/.env.example:/opt/oracle/.env.example:ro \
+		-v $(CURDIR)/.github:/opt/oracle/.github:ro \
+		-v $(CURDIR)/.git:/opt/oracle/.git:ro \
+		-v $(CURDIR)/Makefile:/opt/oracle/Makefile:ro \
+		-v $(CURDIR)/scripts:/opt/oracle/scripts \
+		-v $(CURDIR)/load:/opt/oracle/load \
+		-v $(CURDIR)/requirements-dev.txt:/opt/oracle/requirements-dev.txt \
+		-v $(CURDIR)/pytest.ini:/opt/oracle/pytest.ini \
+		api bash -c "pip install --quiet -r requirements-dev.txt && python -m pytest tests -q"
 
 p004-audit:
 	python3 scripts/check_p004_infrastructure.py

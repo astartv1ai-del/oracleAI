@@ -215,7 +215,7 @@ async def refund_order(db, order_id: int) -> bool:
         await db.execute("UPDATE payments SET status='refunded' WHERE order_id=?",
                          (order_id,))
         await db.execute(
-            "UPDATE users SET ltv_stars=MAX(0, ltv_stars-?) WHERE tg_id=?",
+            "UPDATE users SET ltv_stars=GREATEST(0, ltv_stars-?) WHERE tg_id=?",
             (order["amount_stars"] or 0, order["tg_id"]))
     return True
 
@@ -481,7 +481,7 @@ async def revenue(db, *, days: int = 30) -> dict:
 async def top_products(db, *, days: int = 30, limit: int = 10) -> list[dict]:
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     cur = await db.execute(
-        "SELECT COALESCE(sku, kind) sku, title, COUNT(*) sales, "
+        "SELECT COALESCE(sku, kind) sku, MAX(title) title, COUNT(*) sales, "
         "SUM(amount_stars) stars FROM orders WHERE status='paid' AND paid_at>=? "
         "GROUP BY COALESCE(sku, kind) ORDER BY stars DESC LIMIT ?", (since, limit))
     return [dict(r) for r in await cur.fetchall()]

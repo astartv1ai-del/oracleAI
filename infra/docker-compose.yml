@@ -22,7 +22,6 @@ x-app-common: &app-common
   environment: &app-environment
     APP_ENV: ${APP_ENV:?APP_ENV must be set explicitly}
     DATA_DIR: /opt/oracle/data
-    DB_PATH: /opt/oracle/data/oracle.db
     DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set to a PostgreSQL URL}
     REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     CELERY_ENABLED: ${CELERY_ENABLED:-1}
@@ -97,6 +96,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    ports:
+      - "8080:8080"
     expose:
       - "8080"
     healthcheck:
@@ -225,11 +226,10 @@ services:
     logging: *observability-logging
 
   cadvisor:
-    image: ghcr.io/google/cadvisor:0.56.1
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
     command:
       - "--docker_only=true"
       - "--housekeeping_interval=15s"
-      - "--storage_driver=memory"
     privileged: true
     devices:
       - /dev/kmsg:/dev/kmsg

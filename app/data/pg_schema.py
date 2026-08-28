@@ -7,6 +7,7 @@ choices to PostgreSQL equivalents for the production backend.
 from __future__ import annotations
 
 import os
+import re
 
 from .schema import INDEXES, TABLES
 
@@ -16,7 +17,12 @@ PGVECTOR_ENABLED = os.getenv("PGVECTOR_ENABLED", "1") == "1"
 def _render_tables() -> str:
     rendered = TABLES.replace(
         "INTEGER PRIMARY KEY AUTOINCREMENT", "BIGSERIAL PRIMARY KEY")
+    # Telegram ids exceed the int32 range, so every INTEGER column widens to BIGINT
+    # on PostgreSQL. BIGSERIAL was already substituted above and is unaffected.
+    rendered = rendered.replace("INTEGER", "BIGINT")
     rendered = rendered.replace("BLOB", "vector" if PGVECTOR_ENABLED else "BYTEA")
+    # REAL во float4 теряет точность координат и сумм — расширяем до float8.
+    rendered = re.sub(r"\bREAL\b", "DOUBLE PRECISION", rendered)
     return rendered
 
 

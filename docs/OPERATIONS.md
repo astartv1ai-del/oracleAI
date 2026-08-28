@@ -8,7 +8,7 @@
 | **Source of truth** | `infra/docker-compose.yml`, `infra/Dockerfile`, `Makefile`, `app/config.py`, `scripts/` and the linked runbooks below. |
 | **Scope** | Local Docker stack, production prerequisites, migrations, worker scheduling, backup/restore and incident response. |
 | **Do not change** | Do not enable dev authentication in production, publish secrets, skip migrations, or claim a local smoke check is production evidence. |
-| **Key files** | `Makefile`, `infra/docker-compose.yml`, `scripts/selfcheck.py`, `scripts/release_gate.py`, `scripts/check_backup_restore_drill.py`, `docs/DEPLOYMENT.md`. |
+| **Key files** | `Makefile`, `infra/docker-compose.yml`, `scripts/selfcheck.py`, `scripts/release_gate.py`, `docs/DEPLOYMENT.md`. |
 | **Validation** | `make selfcheck`, `python3 -m scripts.release_gate`, `python3 -m scripts.check_repository_hygiene`, and the applicable restore/worker checks. |
 
 ## Operational entry points
@@ -26,7 +26,7 @@
 
 ## Runtime topology
 
-The production-shaped Compose stack contains an application image, PostgreSQL with pgvector, Redis, a one-shot migration service, API, Telegram bot, Celery worker, Celery Beat and Caddy. SQLite/WAL remains the offline/dev and test fallback; the presence of PostgreSQL/Celery scaffolding is not itself evidence that the production data plane has been certified.
+The production-shaped Compose stack contains an application image, PostgreSQL with pgvector, Redis, a one-shot migration service, API, Telegram bot, Celery worker, Celery Beat and Caddy. PostgreSQL is the only supported backend — `DATABASE_URL` is required and SQLite/WAL fallback was removed. The presence of PostgreSQL/Celery scaffolding is not itself evidence that the production data plane has been certified.
 
 The API and bot share domain services and repositories. Background jobs must re-check the same eligibility and safety boundaries as the enqueue path. A local in-process limiter is suitable only for the documented single-process or controlled-beta boundary; distributed deployment requires shared rate-limit and capacity evidence.
 
@@ -38,7 +38,7 @@ Before a release, run the repository’s applicable checks, inspect the diff, ap
 
 ## Recovery and incidents
 
-The backup drill is intentionally disposable and synthetic. It demonstrates integrity and isolation of the tested path, not production key custody, object-storage permissions, retention policy or rollback readiness. Those external checks must be executed with the operator’s approved infrastructure and recorded without secrets or user data.
+The PostgreSQL restore path is intentionally disposable and synthetic. It demonstrates integrity and isolation of the tested path, not production key custody, object-storage permissions, retention policy or rollback readiness. It is exercised via `infra/restore-postgres.sh` and the `make migrate`/`make selfcheck` sequence. Those external checks must be executed with the operator’s approved infrastructure and recorded without secrets or user data.
 
 Incident severity, ownership, first response, evidence capture and scenario playbooks are defined in [`INCIDENT_RESPONSE_RUNBOOK.md`](INCIDENT_RESPONSE_RUNBOOK.md). Safety, privacy, payment, provider, scheduler and restore incidents must preserve correlation IDs and redact user content from operational evidence.
 
@@ -48,4 +48,3 @@ Incident severity, ownership, first response, evidence capture and scenario play
 [2]: [infra/docker-compose.yml](../infra/docker-compose.yml) — service topology and dependencies.
 [3]: [app/config.py](../app/config.py) — runtime configuration names and defaults.
 [4]: [scripts/release_gate.py](../scripts/release_gate.py) — release readiness checks.
-[5]: [scripts/check_backup_restore_drill.py](../scripts/check_backup_restore_drill.py) — disposable restore drill.

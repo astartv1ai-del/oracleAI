@@ -40,7 +40,9 @@ KIND_TITLES = {
 
 
 async def _menu(db, tg_id: int):
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)))
+    user = await users.get(db, tg_id)
+    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+                     lang="en" if user and user["lang"] == "en" else "ru")
 
 
 # ─────────────────────────────── витрина ──────────────────────────────────────
@@ -49,16 +51,16 @@ async def _menu(db, tg_id: int):
 async def shop(cb: CallbackQuery, db):
     user = await users.get(db, cb.from_user.id)
     await analytics.track(db, analytics.E_SHOP_VIEW, cb.from_user.id)
+    lang = "en" if user and user["lang"] == "en" else "ru"
     await cb.message.answer(
-        f"💎 <b>Лавка Оракула</b>\n\n"
-        f"У тебя ✦{user['crystals']} Кристаллов.\n\n"
-        f"<i>Пополняй Кристаллы и открывай расклады, разборы и вопросы — "
-        f"по одному, когда нужно.</i>",
-        reply_markup=shop_kb())
+        (f"💎 <b>Oracle Premium</b>\n\nYou have ✦{user['crystals']} Crystals.\n\n<i>Choose a plan or unlock a single reading when you need it.</i>"
+         if lang == "en" else
+         f"💎 <b>Лавка Оракула</b>\n\nУ тебя ✦{user['crystals']} Кристаллов.\n\n<i>Выбери тариф или открой отдельный разбор, когда он нужен.</i>"),
+        reply_markup=shop_kb(lang))
     await cb.answer()
 
 
-@router.callback_query(F.data == "plans")
+@router.callback_query(F.data.in_({"plans", "plans:monthly", "plans:annual"}))
 async def plans(cb: CallbackQuery, db):
     user = await users.get(db, cb.from_user.id)
     canonical = await monetization_repo.catalog_payload(db, current_state=await entitlements.snapshot(db, user))
@@ -68,22 +70,26 @@ async def plans(cb: CallbackQuery, db):
         for plan in canonical["plans"]
     ]
     current = (await entitlements.snapshot(db, user))["tier"]
+    period = "annual" if cb.data == "plans:annual" else "monthly"
+    lang = "en" if user and user["lang"] == "en" else "ru"
 
-    lines = ["👑 <b>Уровни доступа</b>", ""]
+    lines = ["👑 <b>Premium access</b>" if lang == "en" else "👑 <b>Уровни доступа</b>",
+             "Choose monthly or annual. The server resolves the final price." if lang == "en" else "Выбери месяц или год. Финальную цену всегда определяет сервер.", ""]
     for plan in available:
-        if not plan.get("price_stars"):
+        price = plan.get("annual_price_stars") if period == "annual" else plan.get("price_stars")
+        if not price:
             continue
-        mark = " ← твой" if plan["code"] == current else ""
+        mark = " ← yours" if plan["code"] == current and lang == "en" else " ← твой" if plan["code"] == current else ""
         badge = f" · <i>{plan['badge']}</i>" if plan.get("badge") else ""
-        lines.append(f"<b>{plan['title']}</b> — ⭐{plan['price_stars']}"
-                     f" / {plan['period_days']} дн.{badge}{mark}")
+        days = plan.get("annual_period_days") if period == "annual" else plan.get("period_days")
+        lines.append(f"<b>{plan['title']}</b> — ⭐{price} / {days} days{badge}{mark}" if lang == "en" else f"<b>{plan['title']}</b> — ⭐{price} / {days} дн.{badge}{mark}")
         if plan.get("tagline"):
             lines.append(f"<i>{plan['tagline']}</i>")
         for feature in (plan.get("features") or [])[:6]:
             lines.append(f"  • {feature}")
         lines.append("")
     await _send_long(cb.message, "\n".join(lines),
-                     reply_markup=plans_kb(available, current))
+                     reply_markup=plans_kb(available, current, period=period, lang=lang))
     await cb.answer()
 
 
@@ -155,9 +161,11 @@ async def product_card(cb: CallbackQuery, db):
 
 @router.callback_query(F.data.startswith("buy_plan:"))
 async def buy_plan(cb: CallbackQuery, db):
-    code = cb.data.split(":", 1)[1]
+    parts = cb.data.split(":")
+    code = parts[1]
+    billing_period = parts[2] if len(parts) > 2 and parts[2] in {"monthly", "annual"} else "monthly"
     try:
-        order = await billing_svc.checkout_plan(db, cb.from_user.id, code)
+        order = await billing_svc.checkout_plan(db, cb.from_user.id, code, billing_period=billing_period)
     except billing_svc.PurchaseError as e:
         await cb.answer(str(e), show_alert=True)
         return
@@ -222,8 +230,9 @@ async def buy_with_crystals(cb: CallbackQuery, db):
         result = await billing_svc.pay_with_crystals(db, cb.from_user.id, sku)
     except billing_svc.PurchaseError as e:
         await cb.answer(str(e), show_alert=True)
-        await cb.message.answer("💎 Пополнить Кристаллы:",
-                                reply_markup=shop_kb())
+        user = await users.get(db, cb.from_user.id)
+        await cb.message.answer("💎 Buy Crystals:" if user and user["lang"] == "en" else "💎 Пополнить Кристаллы:",
+                                reply_markup=shop_kb("en" if user and user["lang"] == "en" else "ru"))
         return
     user = await users.get(db, cb.from_user.id)
     await cb.answer("Открыто ✨")

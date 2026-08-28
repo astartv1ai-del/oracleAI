@@ -6,9 +6,9 @@ HTTP-слой Mini App гоняется Locust'ом — `load/locustfile.py`. Э
 `scripts/seed_load.py`; LLM подменяется быстрым стабом — здесь проверяется
 механика очередей и целостность, а не сеть провайдера.
 
-    python scripts/seed_load.py --count 5000 --db /tmp/load.db
-    python load/simulate.py --db /tmp/load.db               # быстрые прогоны
-    python load/simulate.py --db /tmp/load.db --full        # целевые цифры G29
+    python scripts/seed_load.py --count 5000
+    python load/simulate.py                                # быстрые прогоны
+    python load/simulate.py --full                         # целевые цифры G29
 
 --full использует числа из ТЗ: 2000 /start, 4000 прогнозов, 1000 вопросов,
 100 оплат. Без флага — уменьшенные прогоны для быстрой проверки механик.
@@ -113,7 +113,7 @@ async def _run(db, full: bool) -> bool:
     users = [dict(r) for r in await cur.fetchall()]
     if len(users) < pct:
         print(f"⚠ в базе только {len(users)} кандидатов на прогноз, досей: "
-              "python scripts/seed_load.py --count 5000 --db <путь>")
+              "python scripts/seed_load.py --count 5000")
     lat, err = await _flood(users, forecast_one)
     results.append(_report("forecast_p35-4k", len(users), lat, err))
 
@@ -143,8 +143,14 @@ async def _run(db, full: bool) -> bool:
     # ── 100 конкурентных оплат: продажа выдачи ровно один раз на заказ ─────────
     n_pay = 100 if full else 20
     await db.execute(
-        "INSERT OR REPLACE INTO products(sku, kind, title, price_crystals, "
-        "grant_kind, grant_code, grant_qty, sort, is_active) VALUES(?,?,?,?,?,?,?,?,1)",
+        "INSERT INTO products(sku, kind, title, price_crystals, "
+        "grant_kind, grant_code, grant_qty, sort, is_active) VALUES(?,?,?,?,?,?,?,?,1) "
+        "ON CONFLICT(sku) DO UPDATE SET "
+        "kind=EXCLUDED.kind, title=EXCLUDED.title, "
+        "price_crystals=EXCLUDED.price_crystals, "
+        "grant_kind=EXCLUDED.grant_kind, grant_code=EXCLUDED.grant_code, "
+        "grant_qty=EXCLUDED.grant_qty, sort=EXCLUDED.sort, "
+        "is_active=EXCLUDED.is_active",
         PAYMENT_PRODUCT)
     await db.commit()
     cur = await db.execute(
@@ -174,8 +180,8 @@ async def _run(db, full: bool) -> bool:
     return all(results)
 
 
-async def main(db_path: str, full: bool) -> int:
-    db = await connect(db_path, seed=False)
+async def main(full: bool) -> int:
+    db = await connect(seed=False)
     try:
         return 0 if await _run(db, full) else 1
     finally:
@@ -184,8 +190,7 @@ async def main(db_path: str, full: bool) -> int:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--db", default="data/load_seed.db")
     ap.add_argument("--full", action="store_true",
                     help="целевые цифры G29 (по умолчанию — уменьшенный прогон)")
     a = ap.parse_args()
-    raise SystemExit(asyncio.run(main(a.db, a.full)))
+    raise SystemExit(asyncio.run(main(a.full)))

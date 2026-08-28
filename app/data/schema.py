@@ -26,10 +26,14 @@ CREATE TABLE IF NOT EXISTS users (
     birth_date       TEXT,
     birth_time       TEXT,
     birth_time_known INTEGER DEFAULT 1,
+    birth_time_precision TEXT DEFAULT 'exact', -- exact|approximate|unknown
     birth_city       TEXT,
     birth_lat        REAL,
     birth_lon        REAL,
     chart_json       TEXT,
+    natal_technique  TEXT DEFAULT 'astrology', -- astrology|lenormand
+    natal_technique_version TEXT DEFAULT 'v1',
+    onboarding_step  TEXT DEFAULT NULL,
 
     sub_level        TEXT DEFAULT 'trial',   -- код тарифа из plans
     sub_until        TEXT,
@@ -748,11 +752,8 @@ CREATE INDEX IF NOT EXISTS idx_practice_user ON practices(tg_id, code);
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
 """
 
-#: Только таблицы, без индексов. Разделение нужно из-за порядка на старой базе:
-#: `CREATE TABLE IF NOT EXISTS` не добавляет колонки в уже существующую таблицу,
-#: поэтому индекс по новой колонке (например, `messages.thread_id`) упадёт, если
-#: строить его до `migrations.reconcile_columns`. Порядок: таблицы → колонки →
-#: индексы (см. `session.connect`).
+#: Только таблицы, без индексов: сначала создаются таблицы, потом индексы
+#: (см. `session.connect`).
 TABLES = "\n".join([USERS, DIALOG, USER_NOTIFICATIONS, READINGS, BILLING, GROWTH, INFRA,
                     MONETIZATION_V2, ANALYTICS, ADMIN])
 

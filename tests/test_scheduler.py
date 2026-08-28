@@ -148,30 +148,6 @@ async def test_pregen_caches_ru_and_en_independently(db, monkeypatch):
     assert calls == ["ru", "en"], "кэш не должен повторно собирать одну и ту же локаль"
 
 
-async def test_forecast_language_key_migrates_legacy_cache(db):
-    """Миграция старой таблицы сохраняет RU-кэш и разрешает новый EN-кэш."""
-    from app.data import migrations
-
-    await db.execute("DROP TABLE forecasts")
-    await db.execute(
-        "CREATE TABLE forecasts (tg_id INTEGER, day TEXT, text TEXT, "
-        "lang TEXT DEFAULT 'ru', audio_file_id TEXT, created_at TEXT, "
-        "PRIMARY KEY (tg_id, day))")
-    await db.execute(
-        "INSERT INTO forecasts(tg_id, day, text, lang) VALUES(1, '2026-08-03', 'ru-old', 'ru')")
-    await db.commit()
-
-    await migrations._m_forecasts_language_key(db)
-    await readings.save_forecast(db, 1, "2026-08-03", "en-new", lang="en")
-
-    cur = await db.execute("PRAGMA table_info(forecasts)")
-    primary_key = [row[1] for row in sorted(await cur.fetchall(), key=lambda row: row[5])
-                   if row[5]]
-    assert primary_key == ["tg_id", "day", "lang"]
-    assert await readings.get_forecast(db, 1, "2026-08-03", lang="ru") == "ru-old"
-    assert await readings.get_forecast(db, 1, "2026-08-03", lang="en") == "en-new"
-
-
 async def test_voice_forecast_updates_only_current_language(db, monkeypatch):
     """Аудиоверсия EN-прогноза не должна перезаписывать file_id версии RU."""
     from app.core import llm
@@ -217,14 +193,20 @@ async def test_voice_forecast_updates_only_current_language(db, monkeypatch):
     assert versions == {"en": "en-file-id", "ru": None}
 
 
-async def test_scheduler_lease_allows_one_owner_across_connections(tmp_path):
-    """Two bot processes sharing SQLite cannot both own the scheduler tick."""
-    from asyncio import gather
-    from app.data.session import connect
+async def test_scheduler_lease_allows_one_owner_across_connections(db):
+    """Two bot processes sharing one PostgreSQL DB cannot both own the tick.
 
-    path = str(tmp_path / "lease.db")
-    db_a = await connect(path)
-    db_b = await connect(path)
+    `session.connect` creates a fresh engine per call — not two isolated handles
+    on one DB. Здесь обе стороны читают один и тот же DATABASE_URL через отдельные
+    `PostgresDatabase`, схема уже существует (её применил `db`-фикстур).
+    """
+    from asyncio import gather
+
+    from app.config import settings
+    from app.data.postgres import PostgresDatabase
+
+    db_a = PostgresDatabase(settings.database_url)
+    db_b = PostgresDatabase(settings.database_url)
     try:
         results = await gather(
             scheduler.acquire_scheduler_lease(

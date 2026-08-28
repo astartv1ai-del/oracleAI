@@ -16,10 +16,10 @@
       "files": ["app/api/deps.py", "app/api/routers/profile.py", "tests/test_api.py", "docs/API.md", "docs/SECURITY.md"]
     },
     {
-      "area": "data_migrations",
-      "status": "fixed",
-      "details": "A failed named data migration now rolls back partial DML before startup continues, preventing a later commit from persisting an incomplete migration.",
-      "files": ["app/data/migrations.py", "tests/test_migrations.py"]
+      "area": "postgresql_alembic_data_plane",
+      "status": "validated",
+      "details": "The final tree follows the upstream PostgreSQL 16+ and pgvector architecture; the obsolete SQLite migration path and its tests are removed, and the full suite passes against an isolated PostgreSQL database.",
+      "files": ["app/data/pg_schema.py", "alembic/versions/", "app/data/session.py", "tests/conftest.py"]
     },
     {
       "area": "qa_fixtures",
@@ -29,8 +29,8 @@
     },
     {
       "area": "selfcheck",
-      "status": "fixed",
-      "details": "The VIP limit smoke test now creates an explicitly active subscription instead of relying on an environment-dependent trial default.",
+      "status": "validated",
+      "details": "The merged PostgreSQL-backed selfcheck passed schema/seed, payment idempotency, limits, PDF, practices, horoscope and webhook checks; live LLM and incomplete dev configuration remain expected skips.",
       "files": ["scripts/selfcheck.py"]
     },
     {
@@ -49,12 +49,12 @@
   "validation": {
     "full_pytest": {
       "status": "pass",
-      "command": "python3 -m pytest -q -p no:cacheprovider",
+      "command": "DATABASE_URL=postgresql+asyncpg://... python3 -m pytest -q -p no:cacheprovider",
       "result": "100% completed; one test was skipped by its declared environment condition."
     },
     "backend_targeted": {
       "status": "pass",
-      "command": "pytest tests/test_api.py tests/test_api_resilience.py tests/test_migrations.py tests/test_data.py tests/test_billing.py tests/test_payment_monitor.py tests/test_p1_controls.py tests/test_p2_contracts.py",
+      "command": "pytest tests/test_api.py tests/test_api_resilience.py tests/test_data.py tests/test_billing.py tests/test_payment_monitor.py tests/test_p1_controls.py tests/test_p2_contracts.py",
       "result": "All targeted tests passed."
     },
     "ai_domain_palm": {
@@ -83,7 +83,7 @@
     },
     "release_gates": {
       "status": "pass",
-      "result": "release_gate.py, check_p2_quality.py, check_p004_infrastructure.py (40 checks), documentation links, Ruff, compileall, and git diff --check passed."
+      "result": "release_gate.py, check_p2_quality.py, check_p004_infrastructure.py (39 checks), documentation links, Ruff, compileall, and git diff --check passed."
     },
     "dependency_hygiene": {
       "status": "pass",
@@ -91,7 +91,7 @@
     },
     "backup_restore": {
       "status": "pass_with_external_limitations",
-      "result": "Disposable local backup/restore drill passed integrity and owner isolation. Production encryption-key custody, off-site storage permissions, and rollback rehearsal remain external gates."
+      "result": "PostgreSQL backup/restore contract and encrypted restore helper passed static validation. Production encryption-key custody, off-site storage permissions, real restore and rollback rehearsal remain external gates."
     }
   },
   "performance_directional_baseline": {
@@ -113,8 +113,10 @@
     "Manual accessibility and device review for keyboard, screen reader, safe-area, touch, and reduced motion."
   ],
   "working_tree": {
-    "status": "audit_artifacts_ready_for_commit",
-    "changed_files": 16,
+    "status": "merge_resolution_pending",
+    "local_hardening_commit": "110b1f8",
+    "upstream_sync_head": "57ed921",
+    "hardening_commit_files": 18,
     "evidence_files": 2,
     "push_performed": false
   }

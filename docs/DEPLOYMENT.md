@@ -87,7 +87,7 @@ curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 
 ## Обновление версии
 
-> Перед обновлением обязательна подтверждённая резервная копия PostgreSQL. Dump создаётся профилем `backup`; не копируйте файлы тома PostgreSQL или SQLite во время записи.
+> Перед обновлением обязательна подтверждённая резервная копия PostgreSQL. Dump создаётся профилем `backup`; не копируйте файлы тома PostgreSQL во время записи.
 
 ```bash
 cd /srv/oracleAI
@@ -109,7 +109,7 @@ curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 
 В Docker Compose production-like режим использует PostgreSQL + pgvector. Сервис `migrate` выполняет `alembic upgrade head` и должен завершиться успешно до запуска API, бота, worker и Beat. Runtime также выполняет идемпотентный bootstrap для свежей базы. Не выполняйте ручные `ALTER TABLE` в production без кода миграции и резервной копии.[4]
 
-SQLite/WAL остаётся поддерживаемым fallback для ручного dev/test-запуска, когда `DATABASE_URL` пуст. В этом режиме API и бот используют общий `DATA_DIR` и применяют SQLite-миграции при открытии соединения.
+`DATABASE_URL` обязателен во всех окружениях; SQLite/WAL fallback удалён. `connect()` в `app/data/session.py` читает только `DATABASE_URL` (PostgreSQL) и не использует `DB_PATH`. Ручной dev/test-запуск требует поднятого PostgreSQL и корректного `DATABASE_URL`, например через `make test` или Compose.
 
 | Операция | Допустимый подход | Недопустимый подход |
 |---|---|---|
@@ -151,7 +151,7 @@ make migrate
 make selfcheck
 ```
 
-Для аварийного in-place restore требуются оба явных флага: `RESTORE_IN_PLACE=1` и `RESTORE_CONFIRM=I_UNDERSTAND_IN_PLACE_RESTORE`; без них helper завершится с отказом. `restore-postgres.sh` проверяет checksum, расшифровывает dump во временный файл, создаёт isolated target DB и передаёт custom-format dump в `pg_restore --clean --if-exists`. Для legacy/fallback SQLite остаётся отдельный `scripts/restore_db.sh`; он не предназначен для PostgreSQL-тома.
+Для аварийного in-place restore требуются оба явных флага: `RESTORE_IN_PLACE=1` и `RESTORE_CONFIRM=I_UNDERSTAND_IN_PLACE_RESTORE`; без них helper завершится с отказом. `infra/restore-postgres.sh` проверяет checksum, расшифровывает dump во временный файл, создаёт isolated target DB и передаёт custom-format dump в `pg_restore --clean --if-exists`. Это единственный поддерживаемый путь; SQLite fallback и `scripts/restore_db.sh` удалены.
 
 ## Наблюдаемость и инциденты
 
@@ -232,6 +232,6 @@ Workflow не передаёт production `.env` через GitHub Actions и н
 [1]: [infra/docker-compose.yml](../infra/docker-compose.yml), [infra/Caddyfile](../infra/Caddyfile) и [infra/backup-postgres.sh](../infra/backup-postgres.sh) — состав runtime-стека, TLS и backup.
 [2]: [app/config.py](../app/config.py), [.env.production.example](../.env.production.example) — типизированная конфигурация и production-шаблон.
 [3]: [miniapp/index.html](../miniapp/index.html) и [miniapp/styles.css](../miniapp/styles.css) — подключение versioned клиентских ассетов.
-[4]: [alembic/versions/0001_pg_baseline.py](../alembic/versions/0001_pg_baseline.py), [alembic/versions/0002_task_jobs.py](../alembic/versions/0002_task_jobs.py) и [app/data/migrations.py](../app/data/migrations.py) — порядок и правила миграций.
+[4]: [alembic/versions/0001_pg_baseline.py](../alembic/versions/0001_pg_baseline.py), [alembic/versions/0002_task_jobs.py](../alembic/versions/0002_task_jobs.py) и [alembic/versions/0003_widen_tg_id_to_bigint.py](../alembic/versions/0003_widen_tg_id_to_bigint.py) — порядок и правила миграций (`make migrate` = `alembic upgrade head`).
 [5]: [Grafana Promtail EOL notice](https://grafana.com/docs/loki/latest/send-data/promtail/) и [Grafana Alloy Docker monitoring](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/) — актуальная схема сбора Docker logs/metrics.
 [6]: [GitHub Actions secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions) — правила хранения и использования deployment secrets.

@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
-import tempfile
 import time
 from pathlib import Path
 
@@ -73,50 +72,49 @@ async def main() -> int:
 
     builder.geo.resolve_city_async = fake_geo
     builder.llm.enabled = lambda: False
-    with tempfile.TemporaryDirectory(prefix="oracleai-perf-") as tmp:
-        db = await connect(str(Path(tmp) / "perf.db"), seed=False)
-        try:
-            user = await users.ensure(db, 15001, "Synthetic performance user")
-            for i in range(20):
-                await memory.remember(db, user["tg_id"], f"Synthetic preference number {i}")
+    db = await connect(seed=False)
+    try:
+        user = await users.ensure(db, 15001, "Synthetic performance user")
+        for i in range(20):
+            await memory.remember(db, user["tg_id"], f"Synthetic preference number {i}")
 
-            async def memory_op():
-                await memory.recall(db, user["tg_id"], "Synthetic preference", limit=8)
+        async def memory_op():
+            await memory.recall(db, user["tg_id"], "Synthetic preference", limit=8)
 
-            async def pdf_op():
-                await builder.generate(
-                    None,
-                    builder.Order(name="Synthetic", birth_date="1990-06-21", birth_time="14:30", birth_city="Synthetic City"),
-                    concurrency=1,
-                )
+        async def pdf_op():
+            await builder.generate(
+                None,
+                builder.Order(name="Synthetic", birth_date="1990-06-21", birth_time="14:30", birth_city="Synthetic City"),
+                concurrency=1,
+            )
 
-            image = Image.new("RGB", (640, 640), (185, 135, 105))
-            draw = ImageDraw.Draw(image)
-            draw.ellipse((100, 40, 540, 620), fill=(220, 170, 140))
-            draw.arc((160, 190, 500, 560), 75, 290, fill=(80, 40, 30), width=7)
-            draw.arc((120, 180, 530, 420), 185, 350, fill=(80, 40, 30), width=6)
-            palm_buffer = io.BytesIO()
-            image.save(palm_buffer, format="JPEG", quality=92)
-            palm_bytes = palm_buffer.getvalue()
-            palm_status = {"status": "unavailable"}
+        image = Image.new("RGB", (640, 640), (185, 135, 105))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((100, 40, 540, 620), fill=(220, 170, 140))
+        draw.arc((160, 190, 500, 560), 75, 290, fill=(80, 40, 30), width=7)
+        draw.arc((120, 180, 530, 420), 185, 350, fill=(80, 40, 30), width=6)
+        palm_buffer = io.BytesIO()
+        image.save(palm_buffer, format="JPEG", quality=92)
+        palm_bytes = palm_buffer.getvalue()
+        palm_status = {"status": "unavailable"}
 
-            def palm_line_op():
-                nonlocal palm_status
-                palm_status = palm_lines.analyze(palm_bytes)
+        def palm_line_op():
+            nonlocal palm_status
+            palm_status = palm_lines.analyze(palm_bytes)
 
-            metrics = {
-                "chart_compute": summary(timed_sync(lambda: astro.compute_chart(
-                    "1990-06-21", "14:30", "Казань", 55.79, 49.12, "Europe/Moscow"), repeats=5)),
-                "tarot_draw": summary(timed_sync(lambda: tarot.reading_ledger(
-                    tarot.draw(5, seed="synthetic-performance"), "three"), repeats=20)),
-                "memory_recall": summary(await timed_async(memory_op, repeats=5)),
-                "pdf_html_generation": summary(await timed_async(pdf_op, repeats=20)),
-                "palm_line_segmentation": summary(timed_sync(palm_line_op, repeats=3)),
-            }
-        finally:
-            await db.close()
-            builder.geo.resolve_city_async = original_geo
-            builder.llm.enabled = original_llm
+        metrics = {
+            "chart_compute": summary(timed_sync(lambda: astro.compute_chart(
+                "1990-06-21", "14:30", "Казань", 55.79, 49.12, "Europe/Moscow"), repeats=5)),
+            "tarot_draw": summary(timed_sync(lambda: tarot.reading_ledger(
+                tarot.draw(5, seed="synthetic-performance"), "three"), repeats=20)),
+            "memory_recall": summary(await timed_async(memory_op, repeats=5)),
+            "pdf_html_generation": summary(await timed_async(pdf_op, repeats=20)),
+            "palm_line_segmentation": summary(timed_sync(palm_line_op, repeats=3)),
+        }
+    finally:
+        await db.close()
+        builder.geo.resolve_city_async = original_geo
+        builder.llm.enabled = original_llm
 
     result = {
         "synthetic": True,

@@ -120,8 +120,8 @@ The matrix below records what was actually exercised. `Local pass` means reprodu
 | Release gate | `python3 -m scripts.release_gate` | **PASS** |
 | Dependency audit | `pip-audit -r requirements.txt` | **PASS**, no known vulnerabilities |
 | Product benchmark | `python3 scripts/benchmark_product_performance.py` | **PASS**, directional |
-| Backup drill | `python3 scripts/check_backup_restore_drill.py` | **PASS**, disposable SQLite only |
-| Full load harness | `python3 scripts/seed_load.py --count 5000 --db /tmp/oracleai-load-full.db && python3 load/simulate.py --db /tmp/oracleai-load-full.db --full` | **PASS**, synthetic/offline provider |
+| Backup infrastructure | `python3 scripts/check_p004_infrastructure.py && make p004-audit` | **PASS**, static PostgreSQL encrypted-backup contract; production restore remains external |
+| Full load harness | `python3 scripts/seed_load.py --count 5000 && python3 load/simulate.py --full` | **PASS**, synthetic/offline provider |
 | Docker validation | `docker compose ... config/build/up` | **NOT RUN**, Docker absent |
 
 ## External blockers

@@ -5,17 +5,21 @@ import os
 import re
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from decimal import Decimal
 from typing import Any, Iterable
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 _ID_TABLES = {
-    "admin_audit", "broadcasts", "crystal_ledger", "diary", "entitlements",
-    "events", "llm_usage", "memories", "messages", "orders", "payments",
-    "palm_readings", "practices", "promo_codes", "reports", "tarot_readings",
-    "threads", "user_notes", "webhook_events", "payment_webhook_failures",
-    "price_book_items", "monetization_usage", "crystal_lots",
+    "admin_audit", "broadcasts", "content_items", "crystal_ledger",
+    "crystal_lots", "diary", "entitlements", "events", "llm_usage", "memories",
+    "messages", "monetization_usage", "orders", "palm_readings", "partners",
+    "payment_webhook_failures", "payments", "practices", "price_book_items",
+    "product_cost_events", "promo_redemptions", "referrals", "reports",
+    "safety_events", "shared_context_events", "shared_context_snapshots",
+    "synastry_cache", "tarot_readings", "threads", "user_notes",
+    "user_notifications",
 }
 _INSERT_TABLE_RE = re.compile(r"^\s*INSERT(?:\s+OR\s+IGNORE)?\s+INTO\s+([\w]+)", re.I)
 
@@ -86,14 +90,22 @@ def _translate_sql(sql: str) -> tuple[str, list[str]]:
     return sql, names
 
 
+def _coerce_pg(value):
+    """PostgreSQL NUMERIC arrives as Decimal; repositories expect int/float."""
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else float(value)
+    return value
+
+
 class PostgresRow:
-    """A small sqlite3.Row-compatible view over a SQLAlchemy Row."""
+    """A row-compatible view over a SQLAlchemy Row (supports row["col"])."""
 
     __slots__ = ("_values", "_mapping")
 
     def __init__(self, row):
-        self._values = tuple(row)
-        self._mapping = dict(row._mapping)
+        mapping = {key: _coerce_pg(value) for key, value in row._mapping.items()}
+        self._values = tuple(mapping.values())
+        self._mapping = mapping
 
     def __getitem__(self, key):
         if isinstance(key, int):
