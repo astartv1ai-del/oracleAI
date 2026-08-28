@@ -101,7 +101,7 @@ def check() -> list[str]:
     ):
         require(ci, needle, "CI P0-004 gate", failures)
 
-    for needle in ('p004-audit:', 'backup:', 'restore:'):
+    for needle in ('p004-audit:', 'backup:', 'restore:', 'backup-drill:'):
         require(makefile, needle, "Makefile P0-004 target", failures)
 
     # Refuse accidental plaintext/sensitive backup naming in the tracked infra.
@@ -113,7 +113,7 @@ def check() -> list[str]:
 
 def main() -> int:
     failures = check()
-    result = {"ok": not failures, "checks": 39 - len(failures), "failures": failures}
+    result = {"ok": not failures, "checks": 40 - len(failures), "failures": failures}
     print(result)
     return 0 if result["ok"] else 1
 

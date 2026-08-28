@@ -48,6 +48,10 @@ COPY prompts ./prompts
 COPY scripts ./scripts
 COPY alembic ./alembic
 COPY docs ./docs
+COPY data ./data
+COPY .github ./.github
+COPY Makefile ./Makefile
+COPY .env.example .env.production.example ./
 COPY alembic.ini ./
 
 RUN useradd --create-home --uid 10001 oracle \

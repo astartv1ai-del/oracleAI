@@ -17,7 +17,7 @@
 | Visual QA fixture | Синтетический пользователь visual QA получает явный `sub_until` на 30 дней. Это устраняет ложный `402 Payment Required` в платном домашнем сценарии. | `scripts/seed_visual_user.py`; прямой API smoke для `/api/today` вернул `200`. |
 | Selfcheck | Limits, payment idempotency, schema/seed, PDF, practices, horoscope и webhook checks прошли на PostgreSQL-backed runtime; live LLM и incomplete dev config остались ожидаемыми skips. | `scripts/selfcheck.py`; завершился `✨ Всё работает`, 2 ожидаемых предупреждения. |
 | Lint | В intentional `sys.path` bootstrap добавлен точечный `# noqa: E402`, чтобы документированный startup checker проходил Ruff. | `ruff check app scripts tests` — pass. |
-| Production deployment defaults | Compose больше не подставляет `dev`, `oracle`, `change-me` или иные известные значения для критичных настроек. Обязательны `APP_ENV`, PostgreSQL `DATABASE_URL`, `POSTGRES_PASSWORD` и `GRAFANA_ADMIN_PASSWORD`; release gate также отклоняет небезопасные шаблоны. | Новый `test_compose_requires_non_default_credentials`; `check_p004_infrastructure.py` расширен до 39 проверок; `tests/test_release_gate.py` обновлён. Docker CLI в sandbox отсутствует, поэтому проверка `docker compose config` выполнена статическим контрактом, а не запуском Docker. |
+| Production deployment defaults | Compose больше не подставляет `dev`, `oracle`, `change-me` или иные известные значения для критичных настроек. Обязательны `APP_ENV`, PostgreSQL `DATABASE_URL`, `POSTGRES_PASSWORD` и `GRAFANA_ADMIN_PASSWORD`; release gate также отклоняет небезопасные шаблоны. | Новый `test_compose_requires_non_default_credentials`; `check_p004_infrastructure.py` расширен до 40 проверок; `tests/test_release_gate.py` обновлён. Docker CLI в sandbox отсутствует, поэтому проверка `docker compose config` выполнена статическим контрактом, а не запуском Docker. |
 
 ## Проверенная матрица
 
@@ -32,7 +32,7 @@
 | Lighthouse | **PARTIAL** | Accessibility `100` и SEO `100` наблюдались на audited states. Best-practices score нельзя считать окончательно сертифицированным: в комбинированном запуске axe + Lighthouse общий rate-limit bucket дал один `429`; матрицы нужно запускать на независимых свежих процессах. |
 | Bot, Telegram UX, billing, jobs, notifications, observability | **PASS** | Тесты FSM, Mini App actions, notifications, broadcast, log stream, analytics, payment monitor и growth прошли. |
 | Backup/restore | **PASS WITH EXTERNAL LIMITATIONS** | Static PostgreSQL backup contract и encrypted restore helper прошли; production key custody, off-site permissions, real restore и rollback rehearsal не выполнялись. |
-| Release gates | **PASS** | `release_gate.py`, `check_p2_quality.py`, `check_p004_infrastructure.py` (39 checks), documentation links, compileall, Ruff и diff hygiene прошли. |
+| Release gates | **PASS** | `release_gate.py`, `check_p2_quality.py`, `check_p004_infrastructure.py` (40 checks), documentation links, compileall, Ruff и diff hygiene прошли. |
 | Dependency hygiene | **PASS** | `npm audit --omit=dev --audit-level=high` сообщил `0 vulnerabilities`; JS syntax и Python compilation прошли. |
 
 ## Производительность

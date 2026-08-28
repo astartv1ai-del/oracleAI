@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore test p004-audit config
+.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore backup-drill test p004-audit config
 
 init:
 	@test -f .env || cp .env.example .env
@@ -56,6 +56,12 @@ restore:
 	@test -n "$(BACKUP)" || (echo "usage: make restore BACKUP=/path/to/oracle-<timestamp>.dump.enc RESTORE_TARGET_DB=oracle_restore" && exit 2)
 	@test -n "$(RESTORE_TARGET_DB)" || (echo "RESTORE_TARGET_DB must name an isolated database" && exit 2)
 	RESTORE_TARGET_DB="$(RESTORE_TARGET_DB)" ./infra/restore-postgres.sh "$(BACKUP)"
+
+# P0-004 drill, рефактор после удаления SQLite: исполнительский drill-скрипт ушёл
+# вместе с SQLite; статический контракт P0-004 проверяет всю backup/restore-инфру.
+backup-drill:
+	python3 scripts/check_p004_infrastructure.py
+	bash -n infra/backup-postgres.sh infra/restore-postgres.sh
 
 test:
 	$(COMPOSE) run --rm --entrypoint "" -e DEV_MODE=1 \

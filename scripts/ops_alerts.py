@@ -125,10 +125,8 @@ def main() -> int:
     backup_dir = Path(args.backup_dir)
     backups = sorted(
         [
-            *backup_dir.glob("oracle-*.dump"),
             *backup_dir.glob("oracle-*.dump.enc"),
             *backup_dir.glob("oracle-*.dump.enc.sha256"),
-            *backup_dir.glob("oracle-*.custom"),
         ],
         key=lambda path: path.stat().st_mtime,
         reverse=True,

@@ -14,6 +14,7 @@ import os
 import pathlib
 import sys
 import traceback
+from datetime import datetime, timedelta, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -322,7 +323,9 @@ async def limits_smoke():
         await _truncate_all(db)
         await users.ensure(db, 999000333, "Спрашивающая")
         await users.update(db, 999000333, onboarded=1, age_confirmed=1,
-                           birth_date="1990-06-21", sub_level="vip")
+                           birth_date="1990-06-21", sub_level="vip",
+                           sub_until=(datetime.now(timezone.utc)
+                                      + timedelta(days=30)).isoformat())
         user = await users.get(db, 999000333)
 
         allowance = await limits.allowance(db, user)

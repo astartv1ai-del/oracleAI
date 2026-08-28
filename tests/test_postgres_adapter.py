@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+from app.data.pg_schema import POSTGRES_TABLES
 from app.data.postgres import PostgresDatabase, _split_script, _translate_sql
 
 
@@ -14,6 +15,11 @@ def test_postgres_sql_translation_handles_ignore_and_placeholders():
         "INSERT INTO users(tg_id, name) VALUES(:p0, :p1) "
         "ON CONFLICT DO NOTHING")
     assert names == ["p0", "p1"]
+
+
+def test_postgres_schema_uses_native_numeric_type():
+    assert " REAL" not in POSTGRES_TABLES
+    assert "DOUBLE PRECISION" in POSTGRES_TABLES
 
 
 def test_postgres_script_split_ignores_comment_and_literal_semicolons():
