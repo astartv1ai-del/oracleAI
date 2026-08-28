@@ -15,6 +15,10 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+# Allow an isolated test database to override a developer’s default DATABASE_URL.
+if os.getenv("TEST_DATABASE_URL"):
+    os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+
 # Выключаем провайдеров до импорта настроек: иначе тесты полезут в сеть.
 os.environ["LLM_PROVIDER"] = "off"
 # Tests use deterministic keyword memory; never inherit a sandbox embedding key.
@@ -31,21 +35,6 @@ os.environ["DEV_MODE"] = "1"
 os.environ["AUTO_TRIAL"] = "1"
 
 
-async def _ensure_vector_extension() -> None:
-    """Заводит pgvector-расширение на тестовой базе до применения схемы."""
-    import re
-
-    import asyncpg
-
-    url = os.environ["DATABASE_URL"]
-    dsn = re.sub(r"^postgresql\+\w+://", "postgresql://", url)
-    conn = await asyncpg.connect(dsn)
-    try:
-        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    finally:
-        await conn.close()
-
-
 @pytest.fixture
 async def db():
     """Пустая-но-посевочная база для одного теста, в общей PostgreSQL.
@@ -59,12 +48,9 @@ async def db():
     from app.data.session import connect
     from app.data.seed import seed_defaults
 
-    # Схема требует pgvector (memories.embedding). В проде расширение создаёт
-    # alembic-миграция; на общей тестовой базе его обязан поставить сам контур
-    # ДО применения схемы — отдельным подключением, чтобы не зависеть от того,
-    # кто создавал тестовую БД.
-    await _ensure_vector_extension()
-
+    # pgvector is an infrastructure prerequisite. The CI/local reset flow and
+    # Alembic migration install it before pytest; fixtures must not require
+    # superuser privileges or mutate extensions at test runtime.
     connection = await connect(seed=False)
     try:
         cur = await connection.execute(

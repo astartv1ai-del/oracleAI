@@ -64,8 +64,8 @@ flowchart LR
 * Не импортируйте один API-router из другого. Общий HTTP-код размещается в `app/api/common/`, DTO — в `app/api/contracts/`, workflow из нескольких операций — в `app/services/`.
 * Любой пользовательский ресурс проверяет ownership на сервере. Нельзя доверять `tg_id`, plan, price или permission из тела браузерного запроса.
 * Любая mutation получает соответствующий `rate_limit`; LLM-путь использует категорию `llm`.
-* При изменении схемы обновляйте PostgreSQL DDL **и** добавляйте последовательную Alembic migration; изменение не считается готовым без регрессионного теста на PostgreSQL.
-* Результаты async PostgreSQL имеют тип `asyncpg.Record`; используйте `row["field"]` или индекс, не `row.get("field")`.
+* OracleAI использует только PostgreSQL. Для новой таблицы или колонки добавляйте PostgreSQL-native Alembic migration в `alembic/versions/`; не создавайте схему из runtime-кода и не выполняйте ручные `ALTER TABLE` в deployment.[1]
+* Результаты DB-запросов приходят через PostgreSQL adapter как SQLAlchemy-compatible rows; используйте явные имена полей и проверяйте типы/nullable semantics в migration-тестах.
 * Не добавляйте контекст дневника/памяти в агентный путь без server-side проверки `memory_enabled`.
 * Новое административное действие нуждается в ограничении роли и audit trail.
 
@@ -86,8 +86,9 @@ flowchart LR
 Минимальный набор зависит от изменения, но все изменённые пути должны быть проверены до pull request.
 
 ```bash
-# Python tests, включая architecture guardrails
-pytest -q
+# PostgreSQL test database is required; TEST_DATABASE_URL may override DATABASE_URL.
+TEST_DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle_test \
+  pytest -q
 
 # Проектная диагностика
 python -m scripts.selfcheck
@@ -102,7 +103,7 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 | Изменение | Обязательная дополнительная проверка |
 |---|---|
 | API / профиль | Позитивный и негативный запрос, ownership, 400/409/429-состояние. |
-| Миграция | Чистая PostgreSQL БД, Alembic upgrade и регрессионный тест на изолированной PostgreSQL базе. |
+| Миграция | Чистая PostgreSQL БД, `alembic upgrade head`, схема/индексы/FK и regression-тест. |
 | Память / дневник / чат | `memory_enabled=false` исключает чтение, запись и агентный контекст. |
 | Age-gate | Чистый профиль, подтверждение, отказ/закрытие и persistence после reload. |
 | UI / motion | 360–430 px, RU/EN, keyboard, reduced motion, disabled/loading/error. |
@@ -145,5 +146,5 @@ APP_ENV=dev DEV_MODE=1 uvicorn app.api.main:app --host 127.0.0.1 --port 8080
 
 ## References
 
-[1]: [app/data/pg_schema.py](../app/data/pg_schema.py) и [alembic/versions/](../alembic/versions/) — PostgreSQL schema, индексы и упорядоченные миграции.
+[1]: [alembic/versions/0001_pg_baseline.py](../alembic/versions/0001_pg_baseline.py), [alembic/versions/0002_task_jobs.py](../alembic/versions/0002_task_jobs.py) и [alembic/versions/0003_widen_tg_id_to_bigint.py](../alembic/versions/0003_widen_tg_id_to_bigint.py) — PostgreSQL schema migrations.
 [2]: [app/api/main.py](../app/api/main.py) и [miniapp/js/13-events.js](../miniapp/js/13-events.js) — CSP и делегирование событий.

@@ -40,7 +40,7 @@ A production game day was not executed because Docker Engine, public DNS/TLS, ex
 
 ## Data
 
-SQLite schema/bootstrap, idempotent data migrations, report append-only history, owner-scoped reads, deletion/anonymization and transaction behavior are covered locally. The disposable backup/restore drill returned `integrity_check=ok`, `restored_integrity_check=ok` and `owner_isolation=true`; both owner and other-user report counts were preserved.
+PostgreSQL schema/migrations, report append-only history, owner-scoped reads, deletion/anonymization and transaction behavior are covered locally. The disposable `oracle_test` rebuild reached Alembic head, and the PostgreSQL backup/restore contract passed the static P0-004 gate; production restore timing, storage and owner-isolation evidence remain external.
 
 The local drill is not a production backup pass. Encrypted PostgreSQL dump creation, off-site retention, host-key custody, restore timing, RPO/RTO and code/schema rollback require P0-004 in a production-like environment.[7]
 

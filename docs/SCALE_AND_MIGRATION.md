@@ -1,70 +1,102 @@
-# Scale and Migration
+# PostgreSQL scale and migration runbook
 
 ## Current decision
 
-OracleAI uses PostgreSQL 16+ with `pgvector` as its durable data plane. Alembic owns ordered schema changes, `app/data/session.py` owns the async connection boundary, and Redis/Celery handles asynchronous jobs in the production-like Compose topology. SQLite migration and fallback scripts are not part of the supported runtime.
+**OracleAI uses PostgreSQL as its sole database backend** in development, test, staging and production. `DATABASE_URL` is mandatory; an absent or non-PostgreSQL URL is a configuration error. The application uses SQLAlchemy 2.0 with `asyncpg`, while Alembic is the authoritative schema creation and change mechanism.
 
-The deployment contract is explicit: set `APP_ENV`, `DATABASE_URL`, `POSTGRES_PASSWORD` and `GRAFANA_ADMIN_PASSWORD` before starting Compose. The Compose file and production release gate fail closed when these values are missing or match known template credentials.
+The database is not created or upgraded implicitly by application startup. Deployments must run `alembic upgrade head` before starting API, bot, workers or Beat. The `vector` extension is an infrastructure/DBA prerequisite when `PGVECTOR_ENABLED=1`; it is not a substitute for a migration.
 
 ## Operational measurements
 
-Run health and application checks against an isolated staging or production replica, never against a path uploaded by a user. The supported operational checks are:
+Run measurements against the target PostgreSQL instance with a role that has only the required read permissions. Do not export raw user content or payment data.
 
 ```bash
-python3 scripts/healthcheck.py
-python3 scripts/check_p004_infrastructure.py
-make p004-audit
+DATABASE_URL=postgresql+asyncpg://oracle:password@db:5432/oracle \
+  alembic current
 ```
 
-The health and infrastructure checks must expose aggregate status only. They must not print diary text, messages, memory facts, birth data, Telegram IDs, payment details, credentials or raw rows.
+For a lightweight SQL check, use PostgreSQL metadata and aggregate counts:
+
+```sql
+SELECT current_database(), current_setting('server_version');
+SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';
+SELECT extname FROM pg_extension ORDER BY extname;
+```
 
 ## Scale trigger matrix
 
 | Signal | Observe now | Trigger | Response |
 |---|---|---|---|
-| PostgreSQL | query latency, pool usage, locks, table/index growth | pool exhaustion, lock growth or read p95 above the error budget | inspect slow queries/indexes, tune pool and transaction scope, repeat load test |
-| pgvector | embedding dimension, recall latency, index size | semantic recall exceeds the product latency budget | confirm model dimension, add the approved vector index, benchmark recall/latency |
-| Redis/Celery | queue depth, task age, retries, worker utilization | queue age or retries exceed the SLO | scale workers, inspect idempotency and provider backoff, separate interactive and batch queues |
-| Backup | duration, checksum, local/off-site status, restore result | restore fails, artifact is stale or RTO misses target | stop release, repair backup topology and repeat the isolated restore drill |
-| API load | p50/p95, 5xx, active connections and rate-limit rejects | 50 RPS baseline no longer meets the error budget | capacity test, tune workers/queue, review provider concurrency |
-| LLM | p50/p95, fallback rate, tool timeout and cost | latency, fallback or cost regresses against the scorecard | route to a healthy provider, reduce context/tool budget, or roll back the model/prompt |
-| Morning jobs | task duration, overlap and retry rate | background work contends with interactive requests | separate deterministic jobs from generation workers and tune Celery concurrency |
+| Connections | Pool usage, wait time, active sessions and `pg_stat_activity`. | Pool exhaustion, rising wait time or connection budget breach. | Recalculate worker/pool budget, cap overflow, and inspect long-running transactions. |
+| Table/index growth | `pg_total_relation_size`, row counts and index/table ratio. | Growth outside the retention or capacity budget. | Review retention, query plans and indexes before increasing resources. |
+| Query latency | p50/p95/p99 for history, chat, memory, billing and analytics. | Error-budget breach or an unexplained regression. | Capture `EXPLAIN (ANALYZE, BUFFERS)` on a safe replica and fix the query/index contract. |
+| PostgreSQL health | `SELECT 1`, readiness, locks, checkpoints and replication state where applicable. | Failed readiness, lock pressure or replication lag. | Stop unsafe rollout, resolve the DB incident and verify recovery before resuming. |
+| Backup | Dump duration, checksum, encryption, retention and restore result. | Missed RPO/RTO, checksum failure or restore failure. | Stop release, repair the backup path and repeat an isolated restore drill. |
+| API load | p50/p95, 5xx, pool wait, queue depth and provider latency. | Error budget or capacity threshold is exceeded. | Separate deterministic/API work from LLM and background workloads; then retest. |
 
-A threshold is not an automatic migration command. The owner records the observation window, workload, release, user impact and rollback options in an incident or release note.
+A threshold is not an automatic schema change. Record the observation window, workload, release, user impact and rollback option in the incident or release note.
 
-## PostgreSQL rollout sequence
+## Clean database rebuild
 
-1. Provision PostgreSQL 16+ and enable the `vector` extension through an approved DBA step.
-2. Create a disposable or staging database and run `DATABASE_URL=... alembic upgrade head`.
-3. Run `python3 scripts/check_p004_infrastructure.py` and `make p004-audit`.
-4. Start one `migrate` service, then API, bot, worker and Beat from the same release image.
-5. Verify `/api/health`, schema version, `pg_extension`, owner-scoped reads, queued jobs and redacted operational logs.
-6. Execute the staging backup and isolated restore procedure from `docs/BACKUP_RESTORE_DRILL.md`.
-7. Promote only after payment/webhook replay, real Telegram device QA, live provider evaluation, capacity evidence and owner sign-off.
-
-Do not use destructive Alembic downgrades as an emergency rollback. Stop writes, preserve the failed release evidence, restore the approved backup into an isolated target, and follow the documented release rollback procedure.
-
-## Migration rehearsal sequence
-
-1. Review the new schema and migration plan; confirm that every changed table, index and constraint has an Alembic revision.
-2. Apply `alembic upgrade head` to an empty PostgreSQL database and verify the expected schema.
-3. Apply the same revisions to a disposable copy of the staging snapshot and compare aggregate row counts and non-sensitive reference checksums.
-4. Exercise API, bot and queued-job paths against the migrated database, including owner isolation, deletion, consent, billing idempotency and retry behavior.
-5. Create an encrypted custom-format backup, verify its checksum and restore into an isolated target database.
-6. Measure migration time, restore time, lock behavior and query latency under a representative synthetic load.
-7. If a gate fails, stop writes, preserve logs and metrics, and roll back to the prior release using the approved backup/runbook rather than a destructive schema downgrade.
-8. Promote only after production-like restore, payment/webhook replay, privacy review and owner sign-off.
-
-## Load-test entry points
-
-The repository provides a Locust API workload and a synthetic bot-flow simulator. Both use synthetic IDs and must never run against production or real Telegram sessions.
+For a disposable test database, use the reset helper only with a dedicated PostgreSQL database name. It refuses protected database names and never accepts SQLite paths.
 
 ```bash
-python3 scripts/seed_load.py --count 5000
-DEV_MODE=1 python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
-locust -f load/locustfile.py --host http://127.0.0.1:8000 -u 1000 -r 25 --run-time 2m
-python3 load/simulate.py
-python3 load/simulate.py --full
+TEST_DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle_test \
+POSTGRES_ADMIN_DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/postgres \
+PGVECTOR_ENABLED=1 \
+python scripts/reset_test_database.py
+
+DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle_test \
+PGVECTOR_ENABLED=1 \
+alembic upgrade head
+
+DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle_test \
+PGVECTOR_ENABLED=1 \
+python -m pytest tests/ -q
 ```
 
-The report must include release, PostgreSQL pool usage, p50/p95/p99 per endpoint, 5xx, rate-limit rejects, queue depth, backup duration and LLM calls. LLM generation is a separate workload; do not infer AI capacity from read-only API traffic.
+The expected order is **reset → extension → Alembic → seed/fixtures → tests**. Application processes must not be used to repair a missing table or column. The CI workflow provisions PostgreSQL, waits for readiness, applies migrations through the test harness, and then runs pytest.
+
+## Production migration procedure
+
+1. Provision PostgreSQL 16 or newer, create a least-privilege application role, and enable `vector` through the infrastructure/DBA path when embeddings are enabled.
+2. Take an encrypted PostgreSQL backup and verify its checksum and restore listing before the release.
+3. Run `DATABASE_URL=... alembic upgrade head` with the migration role.
+4. Verify `alembic_version`, required tables, foreign keys, indexes, extensions and `/api/health`.
+5. Run offline or mocked smoke flows on staging: profile, history, chat, reports, billing and webhook idempotency.
+6. Start API, bot, workers and Beat only after migration completion and dependency readiness.
+7. Record the revision, release ID, health evidence, smoke output and rollback owner in the release evidence.
+
+Do not run a migration against production from an application startup hook, and do not perform an ad-hoc `ALTER TABLE` without a reviewed Alembic revision and backup.
+
+## Rollback and recovery
+
+Rollback is a **forward deployment or PostgreSQL restore procedure**, not a return to SQLite and not an Alembic downgrade of the baseline. Stop writes if necessary, preserve the incident evidence, restore an isolated PostgreSQL database first, validate schema and application smoke flows, and promote the verified recovery according to the deployment runbook. Keep the application and migration revisions compatible with the restored database.
+
+PostgreSQL backup and restore helpers are [`infra/backup-postgres.sh`](../infra/backup-postgres.sh) and [`infra/restore-postgres.sh`](../infra/restore-postgres.sh). Backup artifacts must remain encrypted and checksummed; plaintext dumps must not be retained by the monitoring or release contract.
+
+## Load test entry points
+
+The workload in `load/` uses synthetic users and must target a disposable PostgreSQL database. Do not run it against production or with real Telegram sessions.
+
+```bash
+DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle_load \
+PGVECTOR_ENABLED=1 \
+python scripts/seed_load.py --count 5000
+
+APP_ENV=dev DEV_MODE=1 \
+DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle_load \
+python -m uvicorn app.api.main:app --port 8000
+
+locust -f load/locustfile.py --host http://127.0.0.1:8000 -u 1000 -r 25 --run-time 2m
+```
+
+The report must include release ID, PostgreSQL version, migration revision, p50/p95/p99 per endpoint, 5xx, pool wait, lock errors, backup duration and LLM calls. LLM generation is a separate workload; do not infer AI capacity from read-only API traffic.
+
+## References
+
+[1]: ../alembic/versions/0001_pg_baseline.py "PostgreSQL baseline schema"
+[2]: ../alembic/versions/0003_widen_tg_id_to_bigint.py "PostgreSQL identifier widening"
+[3]: ../scripts/reset_test_database.py "Disposable PostgreSQL test database reset"
+[4]: ../infra/backup-postgres.sh "Encrypted PostgreSQL backup helper"
+[5]: ../infra/restore-postgres.sh "Isolated PostgreSQL restore helper"

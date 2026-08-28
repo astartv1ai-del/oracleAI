@@ -140,6 +140,6 @@ A technical GO requires every blocker row to be `PASS`, all failed/retried cases
 [4]: [app/services/chat.py](https://github.com/astartv1ai-del/oracleAI/blob/master/app/services/chat.py) — shared chat, safety, limits and persistence.
 [5]: [app/api/deps.py](https://github.com/astartv1ai-del/oracleAI/blob/master/app/api/deps.py) — identity, age confirmation and rate limiting.
 [6]: [app/services/billing.py](https://github.com/astartv1ai-del/oracleAI/blob/master/app/services/billing.py) and [app/api/routers/webhooks.py](https://github.com/astartv1ai-del/oracleAI/blob/master/app/api/routers/webhooks.py) — payment integrity paths.
-[7]: [scripts/check_backup_restore_drill.py](https://github.com/astartv1ai-del/oracleAI/blob/master/scripts/check_backup_restore_drill.py) — local disposable restore drill.
+[7]: [infra/backup-postgres.sh](https://github.com/astartv1ai-del/oracleAI/blob/master/infra/backup-postgres.sh) и [infra/restore-postgres.sh](https://github.com/astartv1ai-del/oracleAI/blob/master/infra/restore-postgres.sh) — PostgreSQL backup/restore procedure; production drill remains an external gate.
 [8]: [scripts/check_pdf_golden_cases.py](https://github.com/astartv1ai-del/oracleAI/blob/master/scripts/check_pdf_golden_cases.py) — synthetic PDF truth-state checks.
 [9]: [docs/AI_SYSTEM.md](https://github.com/astartv1ai-del/oracleAI/blob/master/docs/AI_SYSTEM.md) — agent quality, safety and latency baseline.

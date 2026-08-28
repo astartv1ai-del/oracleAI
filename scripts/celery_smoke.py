@@ -6,11 +6,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://oracle_test:oracle_test@127.0.0.1:5432/oracle_test"
-os.environ["REDIS_URL"] = "redis://127.0.0.1:6379/15"
-os.environ["CELERY_ENABLED"] = "1"
-os.environ["LLM_PROVIDER"] = "off"
-os.environ["ADMIN_ID"] = "900001"
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://oracle_test:oracle_test@127.0.0.1:5432/oracle_test",
+)
+os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/15")
+os.environ.setdefault("CELERY_ENABLED", "1")
+os.environ.setdefault("LLM_PROVIDER", "off")
+os.environ.setdefault("ADMIN_ID", "900001")
 
 from app.data.session import connect
 from app.repo import jobs as jobs_repo, users

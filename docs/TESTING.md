@@ -17,7 +17,7 @@
 | Layer | Scope | Command / evidence |
 |---|---|---|
 | Unit | Domain calculations, parsers, safety rules, repositories and services. | `pytest -q` and focused test modules. |
-| Integration | SQLite schema, migrations, billing idempotency, API contracts and provider fallbacks. | `tests/`, `scripts/selfcheck.py`. |
+| Integration | PostgreSQL schema/migrations, billing idempotency, API contracts and provider fallbacks. | `tests/`, `scripts/selfcheck.py`, `scripts/reset_test_database.py`. |
 | Static | Python syntax, Ruff, JavaScript syntax, repository hygiene and design contracts. | CI commands and `scripts/check_*.py`. |
 | Domain QA | Golden cases for exact/date-only charts, timezone/DST, products, Tarot/Matrix/Vedic boundaries and palm confidence. | Versioned fixtures and comparison evidence. |
 | Security QA | Telegram signature, owner isolation, IDOR, rate limits, secret redaction, upload validation and webhook signatures. | `tests/test_security_regressions.py`, auth/webhook tests. |
@@ -28,7 +28,9 @@
 ## Baseline commands
 
 ```bash
-APP_ENV=dev DEV_MODE=1 LLM_PROVIDER=off pytest -q
+APP_ENV=dev DEV_MODE=1 LLM_PROVIDER=off \
+DATABASE_URL=postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle_test \
+pytest -q
 python3 -m scripts.selfcheck
 python3 -m scripts.release_gate
 python3 -m compileall -q app scripts tests

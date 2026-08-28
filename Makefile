@@ -78,7 +78,7 @@ test:
 		-v $(CURDIR)/load:/opt/oracle/load \
 		-v $(CURDIR)/requirements-dev.txt:/opt/oracle/requirements-dev.txt \
 		-v $(CURDIR)/pytest.ini:/opt/oracle/pytest.ini \
-		api bash -c "pip install --quiet -r requirements-dev.txt && python -m pytest tests -q"
+		api bash -c "python scripts/reset_test_database.py && alembic upgrade head && pip install --quiet -r requirements-dev.txt && python -m pytest tests -q"
 
 p004-audit:
 	python3 scripts/check_p004_infrastructure.py

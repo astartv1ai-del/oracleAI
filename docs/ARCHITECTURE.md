@@ -12,7 +12,7 @@
 | **Validation** | `python3 -m compileall -q app scripts tests`. |
 
 
-OracleAI — единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют общие сервисы, PostgreSQL/pgvector, Redis/Celery, safety boundaries, calculation contracts и provider fallback.
+OracleAI — единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют общие сервисы, PostgreSQL, safety boundaries, calculation contracts и provider fallback.
 
 ## Топология
 
@@ -25,7 +25,7 @@ flowchart TB
     F --> S
     S --> A[Agents and deterministic calculations]
     S --> R[Repositories]
-    R --> D[(PostgreSQL / pgvector)]
+    R --> D[(PostgreSQL / asyncpg)]
     A --> P[LLM provider chain]
     P --> O[Offline fallback]
     F --> ADM[Admin surface]
@@ -39,7 +39,7 @@ flowchart TB
 | Domain services | Chat, limits, practices, analytics, payments, referrals, scheduler | `app/services/` |
 | Core | Agents, deterministic astrology/card calculations, evidence, safety and LLM runtime | `app/core/` |
 | Repositories | SQL access, row mapping and unified cross-tool history projections | `app/repo/` |
-| Data | PostgreSQL schema, Alembic migrations, seed and sessions | `app/data/`, `alembic/` |
+| Data | Schema, migrations, seed and sessions | `app/data/` |
 | Operations | Docker Compose, Caddy, backup/restore and health checks | `infra/`, `scripts/` |
 
 ## Request flow
@@ -63,7 +63,7 @@ sequenceDiagram
     A->>C: product action
     C->>R: read/write
     R->>DB: SQL
-    DB-->>R: sqlite3.Row
+    DB-->>R: SQLAlchemy Row
     R-->>C: domain data
     C-->>A: response contract
     A-->>M: JSON
@@ -141,9 +141,9 @@ Frontend намеренно не использует bundler: `miniapp/index.ht
 
 ## Data and migrations
 
-PostgreSQL stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. The canonical DDL is defined in `app/data/pg_schema.py`; ordered changes use `alembic/versions/`. Repository code must access `asyncpg.Record` fields by key/index and not call `.get`.
+PostgreSQL stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. The canonical PostgreSQL schema is created and changed by Alembic revisions in `alembic/versions/`; `app/data/pg_schema.py` contains only the shared DDL rendering constants used by the baseline migration. Repositories consume PostgreSQL-compatible rows through the database adapter.
 
-Alembic revisions are applied in order and the PostgreSQL test fixture runs them against an isolated database before each test. Composite indexes cover chat history by user/thread/agent and recency; analytics, payment, event and memory-ranking indexes support the main milestone queries. `prune_analytics()` removes old events and LLM usage in bounded batches, while PostgreSQL pool and statement boundaries are configured through the environment.
+The legacy `messages.thread_id IS NULL` migration is idempotent: existing users are attached to an active default `oracle` thread, while orphan rows without a matching user are preserved. Composite indexes cover chat history by user/thread/agent and recency. Analytics, payment, event and memory-ranking indexes support the main milestone queries; `prune_analytics()` removes old events and LLM usage in batches. Schema changes are applied explicitly with `alembic upgrade head` before application processes start.
 
 ## Operations and trust boundaries
 
@@ -158,4 +158,4 @@ Public launch remains gated by external production evidence: deployment/image va
 [3]: [app/core/chart_contract.py](../app/core/chart_contract.py) — natal calculation contract.
 [4]: [app/core/chart_products.py](../app/core/chart_products.py) — synastry, transit, composite and returns product contracts.
 [5]: [app/core/interpretation.py](../app/core/interpretation.py) — evidence-first interpretation and guardrails.
-[6]: [app/data/pg_schema.py](../app/data/pg_schema.py) and [alembic/versions/](../alembic/versions/) — PostgreSQL schema and ordered migrations.
+[6]: [alembic/versions/0001_pg_baseline.py](../alembic/versions/0001_pg_baseline.py), [alembic/versions/0002_task_jobs.py](../alembic/versions/0002_task_jobs.py) and [alembic/versions/0003_widen_tg_id_to_bigint.py](../alembic/versions/0003_widen_tg_id_to_bigint.py) — PostgreSQL schema migrations.

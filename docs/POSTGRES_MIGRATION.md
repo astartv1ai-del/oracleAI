@@ -1,80 +1,102 @@
-# PostgreSQL migration runbook
+# PostgreSQL deployment and migration runbook
 
-OracleAI can now run through `DATABASE_URL` using SQLAlchemy 2.0 with the asyncpg driver. The existing SQLite path remains available when `DATABASE_URL` is empty or when tests pass an explicit SQLite path. This fallback is intentional: it permits a reversible rollout and keeps offline tooling usable.
+## Architecture contract
 
-## Recommended target
-
-Use PostgreSQL 16 or newer with the `vector` extension enabled in the target database. The application role needs normal schema/table privileges, but installing `vector` may require a DBA or provider-specific extension step.
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-Set the application environment without placing credentials in source control:
+OracleAI is **PostgreSQL-only**. `DATABASE_URL` is required in every environment and must use the SQLAlchemy asyncpg URL form. There is no SQLite runtime, test backend, fallback, import path or rollback path. Alembic is the sole authority for schema creation and change.
 
 ```dotenv
-DATABASE_URL=postgresql+asyncpg://oracle:password@postgres:5432/oracle
+DATABASE_URL=postgresql+asyncpg://oracle:strong-password@postgres:5432/oracle
 PGVECTOR_ENABLED=1
 PG_POOL_SIZE=10
 PG_MAX_OVERFLOW=10
 PG_POOL_TIMEOUT=30
 ```
 
-`memories.embedding` is rendered as an unbounded pgvector column for compatibility with the current SQLite BLOB representation. Before creating an HNSW index, freeze the embedding model and dimensionality, backfill only vectors with that dimension, and add a dedicated Alembic revision. Mixed dimensions must not share one fixed `vector(n)` index.
+PostgreSQL 16 or newer is supported. When `PGVECTOR_ENABLED=1`, the `vector` extension must be installed by the DBA or infrastructure role before the baseline migration. The application role needs normal database/schema/table privileges; it must not need superuser privileges during normal startup.
 
-## Migration procedure
+## Clean-slate bootstrap
 
-First create and verify an encrypted, restorable SQLite backup. Never run the importer against the only copy of the source database; it opens the source in read-only mode and is designed to leave it untouched, but the backup remains a deployment requirement.
-
-Install the vector extension as DBA, run the Alembic baseline as the application role, and import the snapshot in a disposable target database:
+The project is at a local/test stage with no production data migration requirement. Build a fresh database and apply the canonical migration chain:
 
 ```bash
-sudo -u postgres psql -d oracle -c 'CREATE EXTENSION IF NOT EXISTS vector;'
-DATABASE_URL=postgresql+asyncpg://oracle:password@postgres:5432/oracle \
-  PGVECTOR_ENABLED=1 alembic upgrade head
+# Infrastructure/DBA step
+psql -d oracle -c 'CREATE EXTENSION IF NOT EXISTS vector;'
 
-python -m scripts.migrate_sqlite_to_postgres \
-  --sqlite /srv/oracle/data/oracle.db \
-  --database-url postgresql+asyncpg://oracle:password@postgres:5432/oracle \
-  --batch-size 1000
+# Deployment step, before API/bot/worker/Beat start
+DATABASE_URL=postgresql+asyncpg://oracle:strong-password@postgres:5432/oracle \
+PGVECTOR_ENABLED=1 \
+alembic upgrade head
 ```
 
-The importer copies common columns table by table, converts the current float32 embedding BLOB format into pgvector literals, loads in batches, synchronizes serial sequences, and runs portable data backfills. It also applies the legacy `thread_id IS NULL` migration after the import. It skips the SQLite-only forecasts table rebuild because the PostgreSQL baseline already has the final key.
+The current chain creates the PostgreSQL baseline, durable task-job projection and widened Telegram identifier columns. Application startup only checks that an Alembic revision exists; it does not create or alter tables.
 
-## Application switch
-
-After import verification, restart bot and API with the same `DATABASE_URL`. Do not run two databases in active-write mode. The API and bot share the PostgreSQL pool-backed repository protocol; seed data is applied idempotently at startup. The production API command remains one worker unless the in-process rate-limit state is moved to a shared service.
+For an isolated local/test database, use [`scripts/reset_test_database.py`](../scripts/reset_test_database.py). It drops only an explicitly named non-system PostgreSQL database, recreates it with the application role as owner, enables pgvector through the administrator connection and leaves schema creation to Alembic.
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://oracle:password@postgres:5432/oracle \
-  PGVECTOR_ENABLED=1 python -m app.bot.main
+TEST_DATABASE_URL=postgresql+asyncpg://oracle_test:oracle_test@127.0.0.1:5432/oracle_test \
+POSTGRES_ADMIN_DATABASE_URL=postgresql://postgres:admin-password@127.0.0.1:5432/postgres \
+PGVECTOR_ENABLED=1 \
+python scripts/reset_test_database.py
 
-DATABASE_URL=postgresql+asyncpg://oracle:password@postgres:5432/oracle \
-  PGVECTOR_ENABLED=1 uvicorn app.api.main:app --host 0.0.0.0 --port 8080 --workers 1
+DATABASE_URL=postgresql+asyncpg://oracle_test:oracle_test@127.0.0.1:5432/oracle_test \
+PGVECTOR_ENABLED=1 \
+alembic upgrade head
 ```
+
+## Schema and type decisions
+
+The PostgreSQL baseline renders native `BIGINT` identifiers, `DOUBLE PRECISION` coordinates and numeric values, timezone-aware timestamp semantics where declared, JSONB-compatible payload fields and `vector` embeddings when enabled. Telegram identifiers are widened to avoid int32 overflow. Embedding dimension and model metadata must remain compatible; do not create a fixed-dimension vector index until the model and dimension are frozen and measured.
+
+The baseline and follow-up revisions are:
+
+| Revision | Responsibility |
+|---|---|
+| `0001_pg_baseline` | Creates the canonical PostgreSQL tables, constraints and indexes. |
+| `0002_task_jobs` | Adds durable Celery task status and operational indexes. |
+| `0003_widen_tg_id_to_bigint` | Widens Telegram and related identifiers safely. |
+
+Do not edit an applied revision. Add a new Alembic revision, test it against an empty database and verify upgrade behavior before deployment.
 
 ## Verification checklist
 
-Run `alembic current`, the project lint, and the complete pytest suite. Then check `/api/health`, one profile GET, one chat-history GET, and one offline or mocked chat POST. Compare row counts for users, threads, messages, events, payments and memories between the source snapshot and target. Confirm that `messages.thread_id IS NULL` is zero for migrated users, except intentionally preserved orphan records if the migration policy allows them.
+After migration, verify the revision, tables, constraints, indexes and extension:
 
-For vector search, verify the extension, vector column type, model name and dimension before adding HNSW or IVFFlat. Measure recall and latency on production-like data; approximate indexes trade recall for speed. Keep `pgvector` index creation in a separate controlled Alembic migration because it can consume substantial memory and build time.
-
-## Rollback
-
-Rollback is a configuration switch, not a destructive database downgrade. Stop writes, restore the SQLite backup if PostgreSQL verification fails, remove or unset `DATABASE_URL`, and restart the prior release. Do not use Alembic downgrade for the baseline: the baseline downgrade intentionally raises an error rather than dropping production data.
-
-## Celery/Redis rollout after PostgreSQL migration
-
-If the target database was already upgraded to `0001_pg_baseline`, apply the follow-up `0002_task_jobs` revision before enabling background jobs:
-
-```bash
-DATABASE_URL=postgresql+asyncpg://oracle:password@db:5432/oracle alembic upgrade head
+```sql
+SELECT version_num FROM alembic_version;
+SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';
+SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';
+SELECT COUNT(*) FROM information_schema.table_constraints
+ WHERE constraint_schema = 'public';
+SELECT extname FROM pg_extension ORDER BY extname;
 ```
 
-This creates the durable `task_jobs` status projection and its user/status indexes. Then deploy Redis, start exactly one Celery Beat instance and one or more workers, and only afterwards set `CELERY_ENABLED=1` for the API. The full queue operation, API contract, retry semantics, and local smoke procedure are documented in [`docs/CELERY_REDIS.md`](CELERY_REDIS.md).
+Then run the PostgreSQL test suite and health/smoke checks:
 
-Do not use the Redis result backend as the only record of a user-visible job. Clients poll the PostgreSQL-backed `/api/jobs/{job_id}` endpoint, and the Telegram bot remains the owner of Telegram polling and outbound delivery until delivery idempotency is designed and tested.
+```bash
+DATABASE_URL=postgresql+asyncpg://oracle:strong-password@postgres:5432/oracle \
+PGVECTOR_ENABLED=1 \
+python -m pytest tests/ -q
 
-## Current local verification
+DATABASE_URL=postgresql+asyncpg://oracle:strong-password@postgres:5432/oracle \
+PGVECTOR_ENABLED=1 \
+python scripts/selfcheck.py
+```
 
-The repository was verified against a local PostgreSQL 16.15 cluster with pgvector 0.6.0. The migration importer loaded an isolated 1,000-user, 2,000-thread, 70,000-message fixture, produced zero remaining NULL-thread messages, and passed API health/profile/history plus an offline chat POST. The full existing pytest suite and lint also pass; these checks are not a substitute for a production copy rehearsal.
+At minimum, exercise profile creation, history retrieval, chat persistence, memory consent, report history, billing idempotency, crystal spending, webhook replay and account deletion. Confirm that application logs do not include credentials, Telegram init data, raw palm images or private user content.
+
+## Backup and recovery
+
+Use [`infra/backup-postgres.sh`](../infra/backup-postgres.sh) for encrypted custom-format dumps and [`infra/restore-postgres.sh`](../infra/restore-postgres.sh) for checksum-verified isolated restores. A baseline downgrade is intentionally not a production rollback mechanism. If a release must be reversed, stop unsafe writes, restore a verified PostgreSQL backup or deploy a forward-compatible application revision, then re-run health and smoke checks.
+
+## Celery and Redis rollout
+
+Apply the full Alembic head before enabling Celery. Redis is a broker and queue aid, not the durable source of user-visible job state. Start one Beat instance and the required workers only after PostgreSQL readiness and migration success; keep `task_jobs` as the durable status projection.
+
+## References
+
+[1]: ../alembic/versions/0001_pg_baseline.py "PostgreSQL baseline"
+[2]: ../alembic/versions/0002_task_jobs.py "Durable task jobs"
+[3]: ../alembic/versions/0003_widen_tg_id_to_bigint.py "BIGINT identifier migration"
+[4]: ../scripts/reset_test_database.py "Disposable PostgreSQL reset"
+[5]: ../infra/backup-postgres.sh "PostgreSQL backup"
+[6]: ../infra/restore-postgres.sh "PostgreSQL restore"

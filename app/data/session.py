@@ -1,14 +1,16 @@
-"""Подключение к БД: схема, сиды, транзакции.
+"""Подключение к PostgreSQL, сиды и транзакции.
 
-Единственный бэкенд — PostgreSQL через `postgres.PostgresDatabase`. Схема и
-индексы создаются при каждом старте (`IF NOT EXISTS`), структурные изменения
-ведутся через alembic-миграции.
+Единственный бэкенд — PostgreSQL через `postgres.PostgresDatabase`. Alembic
+создаёт и изменяет схему до старта приложения; этот модуль только проверяет
+миграционную ревизию, открывает pool и применяет идемпотентные product seeds.
 """
 from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..config import settings
 
@@ -20,21 +22,30 @@ def utcnow() -> str:
 
 
 async def connect(*, seed: bool = True):
-    """Открывает PostgreSQL из DATABASE_URL и применяет схему."""
+    """Открывает PostgreSQL из DATABASE_URL после Alembic migration."""
     if not settings.database_url:
         raise RuntimeError("DATABASE_URL не задан")
-    from .pg_schema import POSTGRES_BOOTSTRAP, POSTGRES_INDEXES, POSTGRES_TABLES
     from .postgres import PostgresDatabase
 
     db = PostgresDatabase(settings.database_url)
-    await db.executescript(POSTGRES_BOOTSTRAP)
-    await db.executescript(POSTGRES_TABLES)
-    await db.executescript(POSTGRES_INDEXES)
-    if seed:
-        from .seed import seed_defaults
-        async with db.transaction():
-            await seed_defaults(db)
-    return db
+    try:
+        revision = await db.execute(
+            "SELECT version_num FROM alembic_version ORDER BY version_num LIMIT 1")
+        if not await revision.fetchone():
+            raise RuntimeError(
+                "Alembic schema revision is missing; run `alembic upgrade head`")
+        if seed:
+            from .seed import seed_defaults
+            async with db.transaction():
+                await seed_defaults(db)
+        return db
+    except SQLAlchemyError as exc:
+        await db.close()
+        raise RuntimeError(
+            "PostgreSQL schema is unavailable; run `alembic upgrade head`") from exc
+    except Exception:
+        await db.close()
+        raise
 
 
 @asynccontextmanager

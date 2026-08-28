@@ -226,7 +226,7 @@ Deployment guide содержит `git checkout main`, а текущий remote 
 
 [5]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/api/routers/chat.py "Chat API routes"
 
-[6]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/data/schema.py "Canonical SQLite schema"
+[6]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/data/pg_schema.py "Shared PostgreSQL schema rendering"
 
 [7]: https://github.com/astartv1ai-del/oracleAI/blob/master/web/privacy.html "Public privacy policy"
 

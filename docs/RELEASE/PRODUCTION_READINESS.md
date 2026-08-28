@@ -26,7 +26,7 @@
 | Palm vision | Валидация изображений, quality gates, safety sanitization, raw image не хранится, mocked E2E зелёный. | Надёжный live provider fallback, strict structured response, latency budget, manual quality benchmark на согласованном датасете. |
 | Безопасность | Server-side auth/ownership, rate limits, 16+, memory privacy guard, CSP, webhook principles, backup guidance. | Внешний security review, секреты и доступы, legal review, verified restore drill, abuse/incident rehearsal. |
 | Инфраструктура | Compose с bot/api/Caddy/backup, HTTPS runbook, healthcheck, Sentry, rollback notes. | Staging, CI/CD, production secrets, off-site backups, operational dashboard, capacity/load proof. |
-| Масштабирование | SQLite WAL и single API worker подходят для ранней контролируемой аудитории. | Измерить пределы; для роста подготовить PostgreSQL, distributed rate limiting, очередь задач и object-storage policy без хранения raw palm images. |
+| Масштабирование | PostgreSQL 16 + pgvector, pooled connections, Alembic migrations и single API worker — контролируемая стартовая конфигурация. | Измерить пределы; для роста подготовить distributed rate limiting, очередь задач и object-storage policy без хранения raw palm images. |
 | Монетизация и рост | Платёжная модель и Paddle webhook safeguards описаны. | Sandbox-to-production payment certification, price/entitlement review, support/refund workflow, acquisition funnel и lifecycle messaging. |
 
 > Главный принцип: выпускать не «всё сразу», а только после выполнения измеримых launch gates. Функция, для которой нет владельца, SLO, наблюдаемости и rollback-плана, не считается production-ready.
@@ -103,13 +103,13 @@ Vision pipeline Миры должен перейти от prompt-only JSON disci
 
 Нужно создать отдельные staging и production environments, которые никогда не используют production Telegram token, payments или реальную пользовательскую БД для тестирования. Каждый release должен собираться одним способом, получать immutable version/tag, проходить CI и деплоиться в staging до production. CI включает unit tests, API contract tests, static checks, migration test на чистой и заполненной базе, frontend asset validation, dependency/security scan и report artifact.
 
-В текущем варианте SQLite WAL и один API worker разумны для ограниченной beta, но не являются доказанной конфигурацией для рекламного всплеска. Следует выполнить нагрузочные тесты с правдоподобными read/write/LLM-mix сценариями. Если при целевом p95 latency, queue length или database-lock rate не достигаются SLO, следующая фаза — миграция на PostgreSQL, Redis-based distributed rate limit и очередь долгих vision/LLM jobs. Palm uploads обрабатываются асинхронно: API быстро создаёт job/status, worker выполняет provider call, клиент безопасно poll/получает обновление; raw image удаляется сразу после обработки согласно policy.
+В текущем варианте PostgreSQL, pooled connections и один API worker разумны для ограниченной beta, но не являются доказанной конфигурацией для рекламного всплеска. Следует выполнить нагрузочные тесты с правдоподобными read/write/LLM-mix сценариями. Если при целевом p95 latency, queue length или pool-wait rate не достигаются SLO, следующая фаза — Redis-based distributed rate limit и очередь долгих vision/LLM jobs. Palm uploads обрабатываются асинхронно: API быстро создаёт job/status, worker выполняет provider call, клиент безопасно poll/получает обновление; raw image удаляется сразу после обработки согласно policy.
 
 Для production нужна наблюдаемость по четырём уровням: infrastructure health, HTTP/API, business funnel и LLM/provider. В dashboard должны быть p50/p95/p99 latency, 4xx/5xx, DB lock/retry, queue depth, provider success/timeout/fallback rate, cost per successful outcome, palm quality distribution, payment conversion и support/deletion volume. Alerting должен иметь owner, threshold, runbook и test alert.
 
 | Масштабный контур | Controlled beta baseline | Public-scale baseline |
 |---|---|---|
-| Database | SQLite WAL, один writer, ежедневный encrypted off-site backup, измеренный load ceiling. | PostgreSQL with PITR, connection pooling и миграционный rollback plan. |
+| Database | PostgreSQL 16 + pgvector, Alembic, connection pooling, encrypted off-site backup и измеренный load ceiling. | PITR/replication evidence, capacity baseline и проверенный restore/forward-recovery plan. |
 | Rate limiting | Текущие server-side limits с measured safe capacity. | Redis/distributed limits, per-user quota и abuse detection. |
 | Long LLM/vision | Короткие timeout, fallback, quota и мониторинг; ограниченный доступ. | Queue worker, status/retry UX, idempotency key, provider routing and circuit breakers. |
 | Observability | Sentry, JSONL, ops alerts, uptime checks, manual on-call. | Central dashboard, alert routing, SLO/error budget, runbooks и weekly ops review. |
@@ -181,7 +181,7 @@ Growth plan строится из четырёх потоков: Telegram referr
 | Риск | Почему важен | Управление |
 |---|---|---|
 | Vision provider timeout/invalid JSON | Palm is a differentiated feature; silent failure разрушает доверие. | Strict schema, provider fallback, circuit breaker, retry policy, queue/status UX and provider SLO. |
-| SQLite write contention | Резкий рост одновременных действий может вызвать lock/latency. | Load test, one-writer beta limit, metrics, documented migration trigger to PostgreSQL. |
+| PostgreSQL pool/lock pressure | Резкий рост одновременных действий может вызвать pool wait, lock contention или latency. | Load test, connection budget, lock/query metrics и documented capacity trigger. |
 | LLM unsafe output | Темы здоровья, кризиса, денег и «судьбы» имеют высокий trust risk. | Red-team, safety filters, human review, crisis routing, immutable regression suite. |
 | Privacy/compliance gap | Дневники, birth data и palm analysis чувствительны. | Legal review, data map, retention, deletion/export, access control and encrypted backups. |
 | Telegram device variation | WebView и permissions различаются на iOS/Android/Desktop. | Real-device matrix, cache-busting control, fallback UI and staged rollout. |
@@ -191,7 +191,7 @@ Growth plan строится из четырёх потоков: Telegram referr
 ## Предпосылки и открытые решения
 
 1. План предполагает, что первая публичная версия будет обслуживать русско- и англоязычных пользователей Telegram и сохранит позиционирование 16+ self-reflection, а не медицинского, юридического, финансового или психологического сервиса.
-2. До Gate 0 нужно выбрать маршрут: controlled beta либо public-scale preparation. Это решение определяет необходимость немедленной миграции от SQLite к PostgreSQL/Redis/queue.
+2. До Gate 0 нужно выбрать маршрут: controlled beta либо public-scale preparation. Оба маршрута используют PostgreSQL; различаются только уровнем доказанной capacity, distributed rate limiting и фоновой очереди.
 3. До включения платежей требуется отдельное подтверждение владельца продукта и завершённая sandbox certification; данный план не предусматривает реальных платежных действий без такого подтверждения.
 4. Правовые документы и трансграничная обработка данных требуют external legal review в странах запуска.
 5. Точные SLO, quota и экономические пороги должны быть утверждены после baseline measurement текущего production-like environment, а не скопированы из development QA.

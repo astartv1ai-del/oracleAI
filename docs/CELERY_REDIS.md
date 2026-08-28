@@ -33,7 +33,7 @@ Revision `0002_task_jobs` creates `task_jobs` and these indexes:
 | `idx_task_jobs_status_available` | Finds queued/retry jobs eligible for operational inspection or future claim logic |
 | `idx_task_jobs_user_created` | Lists a user’s newest jobs efficiently |
 
-The runtime `connect()` path also creates the table idempotently for fresh databases and SQLite fallback. Alembic is still required for an existing PostgreSQL deployment because the baseline revision is already recorded and does not re-run its dynamic canonical schema.
+Application startup does not create or alter schema. Alembic is the only schema authority, so every environment must run `alembic upgrade head` before enabling the API, worker or Beat. The migration service in Compose enforces this ordering.
 
 ## Environment
 

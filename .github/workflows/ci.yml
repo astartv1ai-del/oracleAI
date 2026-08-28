@@ -11,6 +11,13 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      APP_ENV: dev
+      DEV_MODE: "1"
+      LLM_PROVIDER: off
+      DATABASE_URL: postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle
+      TEST_DATABASE_URL: postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle
+      PGVECTOR_ENABLED: "1"
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -69,6 +76,9 @@ jobs:
         run: |
           find miniapp/js admin -type f -name '*.js' -print0 \
             | xargs -0 -r -n1 node --check
+
+      - name: PostgreSQL schema migration
+        run: alembic upgrade head
 
       - name: Repository hygiene
         run: python scripts/check_repository_hygiene.py

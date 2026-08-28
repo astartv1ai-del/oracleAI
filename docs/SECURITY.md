@@ -62,9 +62,8 @@ Server-side privacy guard присутствует в profile router, chat servi
 3. API валидирует тела Pydantic-моделями и назначает `read`, `write` или `llm` rate limit по операции.
 4. Все запросы с персональными ресурсами получают пользователя через dependency и проверяют ownership в репозитории/сервисе; чувствительные product routes дополнительно требуют server-side `age_confirmed`.
 5. Admin API требует отдельную авторизацию и фиксирует действия в `admin_audit`; raw safety incidents выделены в permission `safety:read`.[4]
-6. Удалённая учётная запись остаётся только обезличенным settlement-safe anchor: обычные authenticated routes отклоняют её с `410`, а единственное исключение — повторный confirm-gated `/api/account/delete` для идемпотентного завершения удаления.
-7. Ответы не включают stack trace, секреты конфигурации, внутренние SQL-ошибки или данные другой пользовательницы.
-8. Каждое чувствительное административное изменение, включая добавление и удаление CRM-тегов, оставляет server-owned запись в `admin_audit`; payload ограничен нормализованными операционными полями.
+6. Ответы не включают stack trace, секреты конфигурации, внутренние SQL-ошибки или данные другой пользовательницы.
+7. Каждое чувствительное административное изменение, включая добавление и удаление CRM-тегов, оставляет server-owned запись в `admin_audit`; payload ограничен нормализованными операционными полями.
 
 Новый endpoint запрещено выпускать только с проверкой на клиенте: авторизация, ownership, лимит и business rule проверяются на сервере.
 
@@ -101,7 +100,7 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 
 * `.env`, production-токены, ключи LLM, webhook secrets и Sentry DSN не коммитятся, не отправляются в чат и не попадают в screenshot.
 * Production-доступ выдаётся персонально, по минимально необходимым правам и отзывается при смене роли.
-* PostgreSQL-бэкапы считаются чувствительными: production backup service fail-closed требует отдельный host key, шифрует custom-format dump, создаёт checksum, соблюдает retention и восстанавливается в изолированном контуре через `infra/restore-postgres.sh`.
+* PostgreSQL-бэкапы считаются чувствительными: production backup service fail-closed требует отдельный host key, шифрует dump через PBKDF2/соль, создаёт checksum, соблюдает retention и регулярно восстанавливается в изолированном контуре через `infra/restore-postgres.sh`.
 * Structured JSONL логи содержат только whitelisted operational fields, request/release IDs и redaction; они не должны содержать целые тексты чатов, дневников, города рождения, токены, initData, Telegram IDs, invoice/charge identifiers или webhook payload. Сырые provider/Telegram exception messages не пишутся в operational log paths, где достаточно типа ошибки.
 * Retention housekeeping удаляет product events/LLM usage через 120 дней, safety incidents через 90 дней, webhook evidence через 180 дней и admin audit через 365 дней; сроки должны быть подтверждены оператором и юристом.
 
@@ -122,23 +121,22 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 - [ ] HTTPS и production-домен настроены.
 - [ ] Secrets отсутствуют в diff, логах и клиентском bundle.
 - [ ] Age-gate отображается, `age_confirmed` сохраняется для чистого профиля, а прямые sensitive API calls до подтверждения получают 403.
-- [ ] Удалённый аккаунт не может войти в обычные product/admin routes или повторно включить age/memory/push; повторный подтверждённый delete остаётся идемпотентным.
 - [ ] Memory default равен 0; memory-off исключает список, сохранение и агентный контекст.
 - [ ] New API routes имеют auth, ownership, server-side age/business rules, validation и rate limit.
 - [ ] `/api/admin/safety` не отдаёт raw excerpts, support не имеет `grants`, а sensitive CRM views разделены по ролям.
 - [ ] Telegram user/AI text escaped; upload body/pixel limits проверены.
 - [ ] Критические действия не доверяют данным браузера.
 - [ ] Webhook signature, `transaction.completed`, server-side order binding и idempotency проверены в sandbox.
-- [ ] Зашифрованный бэкап создан, checksum проверен и restore drill выполнен через `infra/restore-postgres.sh`.
+- [ ] Зашифрованный PostgreSQL-бэкап создан, checksum проверен и restore drill выполнен через `infra/restore-postgres.sh`.
 - [ ] JSONL logs redacted; `ops_alerts.py` проверяет 5xx, webhook failures, LLM fallback rate и backup freshness.
 - [ ] Публичные Privacy Policy, Terms, 16+ wording и deletion/support flow доступны и прошли юридическую проверку.
 - [ ] Нет новых unsafe inline, утечек личного текста или недоступных CTA.
 
 ## References
 
-[1]: [app/data/pg_schema.py](../app/data/pg_schema.py), [app/api/routers/profile.py](../app/api/routers/profile.py) и [miniapp/js/05-app.js](../miniapp/js/05-app.js) — age-gate и профильное согласие.
+[1]: [app/data/schema.py](../app/data/schema.py), [app/api/routers/profile.py](../app/api/routers/profile.py) и [miniapp/js/05-app.js](../miniapp/js/05-app.js) — age-gate и профильное согласие.
 [2]: [app/api/routers/diary.py](../app/api/routers/diary.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — privacy guard по памяти.
 [3]: [app/api/main.py](../app/api/main.py) — ограничение dev-режима.
-[4]: [app/api/routers/admin.py](../app/api/routers/admin.py) и [app/data/pg_schema.py](../app/data/pg_schema.py) — административные маршруты и `admin_audit`.
+[4]: [app/api/routers/admin.py](../app/api/routers/admin.py) и [app/data/schema.py](../app/data/schema.py) — административные маршруты и `admin_audit`.
 [5]: [app/api/main.py](../app/api/main.py), [miniapp/js/13-events.js](../miniapp/js/13-events.js) — CSP и event delegation.
 [6]: [app/config.py](../app/config.py), [app/core/agents/base.py](../app/core/agents/base.py) — цепочка провайдеров и стандарт ответа.

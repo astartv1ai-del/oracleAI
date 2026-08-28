@@ -225,7 +225,7 @@ Production Compose состоит из `bot`, `api`, `caddy` и `backup`. Bot и
 
 [10]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/services/chat.py "OracleAI chat service — safety, limits, refund and memory flow"
 
-[11]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/data/schema.py "OracleAI canonical SQLite schema"
+[11]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/data/pg_schema.py "OracleAI shared PostgreSQL schema rendering"
 
 [12]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/repo/billing.py "OracleAI billing repository — orders, ledger and atomic spending"
 

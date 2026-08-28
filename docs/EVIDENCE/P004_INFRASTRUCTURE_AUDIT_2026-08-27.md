@@ -48,9 +48,9 @@ The sandbox does not have Docker, a PostgreSQL server, an S3-compatible bucket, 
 | `python3 scripts/check_p004_infrastructure.py` | PASS — 36 contract checks |
 | `bash -n infra/backup-postgres.sh infra/restore-postgres.sh` | PASS |
 | Python compile for uploader and static checker | PASS |
-| `python3 scripts/check_backup_restore_drill.py` | PASS — SQLite integrity and owner isolation |
+| `python3 scripts/reset_test_database.py` + `alembic upgrade head` | PASS — disposable PostgreSQL rebuild; production restore remains external |
 | `pytest -q tests/test_stage0_operations.py` | PASS — 6 tests, including PostgreSQL dump freshness and off-site failure alert |
-| Full repository QA | PASS — full pytest, compileall, Ruff, JavaScript syntax, frontend build/reference checks, P0-004 checker, disposable drill, release gate and diff hygiene |
+| Full repository QA | PASS — full pytest, compileall, Ruff, JavaScript syntax, frontend build/reference checks, P0-004 checker, PostgreSQL rebuild, release gate and diff hygiene |
 | Docker/Compose availability | NOT AVAILABLE in sandbox (`docker: command not found`) |
 | Real PostgreSQL encrypted dump/restore | NOT RUN — requires Docker/PostgreSQL and isolated target |
 | Real S3-compatible upload | NOT RUN — requires staging endpoint, bucket and credentials |

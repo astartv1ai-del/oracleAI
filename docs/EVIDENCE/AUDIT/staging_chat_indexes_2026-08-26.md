@@ -4,6 +4,8 @@
 **Коммит кода до staging-проверки:** `279278f`
 **Окружение:** локальный isolated staging, FastAPI/uvicorn, SQLite/WAL
 
+> **Historical evidence.** This report predates the PostgreSQL-only rearchitecture and is retained as historical evidence only. It is not a current deployment or rollback procedure; use `docs/POSTGRES_MIGRATION.md` and `docs/SCALE_AND_MIGRATION.md` for the current contract.
+
 ## Ограничение стенда
 
 В checkout не обнаружена реальная staging или production SQLite-копия. Поэтому проверка выполнена на изолированной staging-fixture базе, созданной из текущего DDL без доступа к production-данным. Стенд воспроизводим: 1 000 synthetic users, 1 800 threads, 70 000 messages, включая 10 000 legacy-сообщений с `thread_id IS NULL`.
@@ -67,7 +69,7 @@ GET chat-history endpoint вернул мигрированный default thread
 Успешно выполнены:
 
 ```text
-ruff check app/data/migrations.py app/data/schema.py tests/test_data.py tests/test_migrations.py
+ruff check app/data/pg_schema.py app/data/postgres.py tests/test_data.py tests/test_postgres_adapter.py
 All checks passed!
 
 python3 -m pytest -q
@@ -88,8 +90,8 @@ all tests passed
 
 ## References
 
-[1]: ../../app/data/migrations.py — startup data migrations and legacy message migration.
-[2]: ../../app/data/schema.py — messages/threads tables and new indexes.
-[3]: ../../app/data/session.py — order `TABLES → reconcile_columns → INDEXES → migrations`.
+[1]: ../../alembic/versions/0001_pg_baseline.py и ../../alembic/versions/0003_widen_tg_id_to_bigint.py — PostgreSQL schema migrations.
+[2]: ../../app/data/pg_schema.py — canonical shared DDL rendering for the PostgreSQL baseline.
+[3]: ../../app/data/session.py — PostgreSQL connection and migration-state validation.
 [4]: ../../app/repo/dialog.py — thread lookup, message history and metadata maintenance.
 [5]: ../../app/api/main.py — FastAPI lifecycle and startup logs.
