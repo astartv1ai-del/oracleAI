@@ -1,8 +1,8 @@
 """PostgreSQL rendering of the canonical application schema.
 
 The repository layer still speaks the project's small async DB protocol. This module
-keeps one source of truth for tables/indexes while translating SQLite-only storage
-choices to PostgreSQL equivalents for the production backend.
+keeps the existing table inventory while rendering PostgreSQL-specific storage types
+for the production and test backends.
 """
 from __future__ import annotations
 

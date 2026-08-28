@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import date
-
 from app.bot.keyboards import language_kb, main_menu, plans_kb
 from app.bot.onboarding_parsers import parse_birth_date, parse_birth_time
 from app.repo import users

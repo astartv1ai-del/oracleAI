@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore test p004-audit config
+.PHONY: init up down restart ps logs observability build migrate selfcheck docs-check shell worker-scale up-local-llm backup restore backup-drill test p004-audit config
 
 init:
 	@test -f .env || cp .env.example .env
@@ -73,6 +73,9 @@ test:
 		-v $(CURDIR)/requirements-dev.txt:/opt/oracle/requirements-dev.txt \
 		-v $(CURDIR)/pytest.ini:/opt/oracle/pytest.ini \
 		api bash -c "pip install --quiet -r requirements-dev.txt && python -m pytest tests -q"
+
+backup-drill:
+	python3 scripts/check_backup_restore_drill.py
 
 p004-audit:
 	python3 scripts/check_p004_infrastructure.py

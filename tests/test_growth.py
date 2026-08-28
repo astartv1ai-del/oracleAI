@@ -337,3 +337,38 @@ def test_signature_rotation_accepts_any_h1():
     ts = str(int(time.time()))
     assert verify_paddle(
         body, f"ts={ts};h1=deadbeef;h1={valid}", SECRET)
+
+
+# ───────────────────── dashboard referral aggregation regression ───────────────
+
+async def test_top_referrers_returns_grouped_user_fields(db):
+    from app.repo import growth, users
+
+    await users.ensure(db, 2001, "Реферер", "referrer")
+    await users.ensure(db, 2002, "Приглашённая", "invitee")
+    await users.ensure(db, 2003, "Ещё одна", "invitee2")
+
+    assert await growth.record_referral(db, 2001, 2002)
+    assert await growth.record_referral(db, 2001, 2003)
+
+    rows = await growth.top_referrers(db)
+
+    assert rows[0]["tg_id"] == 2001
+    assert rows[0]["name"] == "Реферер"
+    assert rows[0]["username"] == "referrer"
+    assert rows[0]["invited"] == 2
+    assert rows[0]["bonus"] == 0
+
+
+async def test_top_referrers_keeps_referrers_with_missing_profile(db):
+    from app.repo import growth, users
+
+    await users.ensure(db, 2004, "Known")
+    assert await growth.record_referral(db, 2004, 2005)
+
+    rows = await growth.top_referrers(db)
+
+    assert rows[0]["tg_id"] == 2004
+    assert rows[0]["name"] == "Known"
+    assert rows[0]["username"] is None
+    assert rows[0]["invited"] == 1

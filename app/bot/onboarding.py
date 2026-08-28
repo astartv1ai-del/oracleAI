@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import date
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
@@ -24,7 +23,7 @@ from ..repo import content, users
 from ..services import analytics, billing, referrals
 from .formatting import tg_esc
 from .onboarding_parsers import date_error_copy, parse_birth_date, parse_birth_time, time_error_copy
-from .keyboards import (age_gate_kb, ask_starters_kb, back_menu, confirmation_kb,
+from .keyboards import (ask_starters_kb, back_menu, confirmation_kb,
                         gender_kb, language_kb, main_menu, onboarding_edit_kb,
                         personas_kb, technique_kb, time_kb)
 
@@ -416,7 +415,6 @@ async def onb_city(message: Message, state: FSMContext, db):
                        onboarding_step="confirm")
 
     sun = chart["sun"]
-    asc = chart.get("ascendant") if user["birth_time_known"] else None
     moon = next((item for item in chart.get("planets", [])
                  if item.get("name") in {"Луна", "Moon"}), None)
     precision_value = user["birth_time_precision"] or "exact"
