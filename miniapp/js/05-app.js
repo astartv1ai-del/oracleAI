@@ -43,7 +43,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
         pill.setAttribute('aria-label', (oracleLang() === 'en' ? 'Open profile: ' : 'Открыть профиль: ') + this.me.name);
       }
     } catch (e) {
-      this.renderAuthRequired();
+      this.renderAuthRequired(e);
       return;
     }
     this.loadAgents();
@@ -61,24 +61,39 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     if (!qaMode && this.me && !this.me.age_confirmed) this.showAgeGate();
     else if (!qaMode) this.maybeIntro();
   };
-  app.renderAuthRequired = function() {
+  app.renderAuthRequired = function(err) {
     const main = document.getElementById('app-main');
     const nav = document.querySelector('.app-nav');
     if (nav) nav.hidden = true;
     if (!main) return;
-    const title = t('authRequiredTitle', 'Открой OracleAI в Telegram');
-    const copy = t('authRequiredCopy', 'Личное пространство загружается только внутри защищённого входа Telegram.');
-    const retry = t('authRetry', 'Повторить');
+    // UX-009: 404 внутри Telegram означает «бот ещё не знает пользователя» —
+    // ведём прямо в бота по deep-link вместо тупикового «открой из Telegram».
+    const unknownUser = !!(err && err.status === 404);
+    const title = t(unknownUser ? 'authBotTitle' : 'authRequiredTitle');
+    const copy = t(unknownUser ? 'authBotCopy' : 'authRequiredCopy');
+    const retry = t('authRetry');
     main.innerHTML = `<div class="screen" data-auth-required>
       <div class="soft-empty soft-empty--recovery" data-state="error">
         <div class="soft-empty__orb" aria-hidden="true">⌁</div>
         <div class="soft-empty__title">${esc(title)}</div>
         <div class="soft-empty__copy">${esc(copy)}</div>
-        <div class="soft-empty__action"><button class="btn btn-primary" type="button" data-auth-retry>${esc(retry)}</button></div>
+        <div class="soft-empty__action" data-auth-actions><button class="btn btn-primary" type="button" data-auth-retry>${esc(retry)}</button></div>
       </div>
     </div>`;
     const button = main.querySelector('[data-auth-retry]');
     if (button) button.addEventListener('click', () => window.location.reload());
+    if (unknownUser) {
+      api('/api/public/config').then(cfg => {
+        const actions = main.querySelector('[data-auth-actions]');
+        if (!actions || !cfg || !cfg.bot_username) return;
+        const link = document.createElement('a');
+        link.className = 'btn btn-primary';
+        link.href = `https://t.me/${encodeURIComponent(cfg.bot_username)}?start=miniapp`;
+        link.textContent = t('authOpenBot');
+        actions.prepend(link);
+        if (button) button.classList.replace('btn-primary', 'btn-ghost');
+      }).catch(() => {});
+    }
   };
 
   // G001 клавиатура: композер поднимается, когда Telegram раскрывает клавиатуру
@@ -94,34 +109,64 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
       else composer.style.paddingBottom = '';
     }, { passive: true });
   };
-  // P0: самоподтверждение 16+ без сбора даты рождения. Это не верификация личности,
-  // а ясная граница продукта и путь к безопасным настройкам приватности.
+  // Аттестация 16+ с годом рождения (аудит SEC-010): сервер проверяет год и
+  // хранит только его keyed-хеш. Это не верификация личности, а ясная граница
+  // продукта и путь к безопасным настройкам приватности.
   app.showAgeGate = function() {
     if (document.getElementById('age-gate')) return;
+    const currentYear = new Date().getFullYear();
     const ov = document.createElement('div');
     ov.id = 'age-gate';
     ov.innerHTML = `<div class="age-gate-card">
       <div class="age-gate-mark age-gate-sigil" aria-label="OracleAI">${sigilIcon('brand')}</div>
-      <div class="age-gate-kicker">Твоё безопасное пространство</div>
-      <h2>Сначала — бережная граница</h2>
-      <p>OracleAI создан для пользователей от 16 лет. Здесь есть развлекательные астрологические практики и поддерживающие диалоги, но не медицинская, юридическая или психологическая помощь.</p>
-      <button class="btn btn-primary" data-age-accept>Мне есть 16 лет · продолжить</button>
-      <button class="age-gate-leave" data-age-leave>Мне нет 16 · закрыть</button>
-      <div class="age-gate-note">Продолжая, ты подтверждаешь возраст и принимаешь бережный формат сервиса. Настройки памяти всегда доступны в разделе «Моё».</div>
+      <div class="age-gate-kicker">${esc(t('ageKicker'))}</div>
+      <h2>${esc(t('ageTitle'))}</h2>
+      <p>${esc(t('ageCopy'))}</p>
+      <label class="age-gate-field">
+        <span>${esc(t('ageYearLabel'))}</span>
+        <input class="ipt" id="age-gate-year" type="number" inputmode="numeric"
+               min="1900" max="${currentYear}" placeholder="${esc(t('ageYearPlaceholder'))}">
+      </label>
+      <div class="age-gate-error" data-age-error role="alert" hidden></div>
+      <button class="btn btn-primary" data-age-accept>${esc(t('ageAccept'))}</button>
+      <button class="age-gate-leave" data-age-leave>${esc(t('ageLeave'))}</button>
+      <div class="age-gate-note">${esc(t('ageNote'))}</div>
     </div>`;
     document.body.appendChild(ov);
+    const errorBox = ov.querySelector('[data-age-error]');
+    const showError = msg => {
+      errorBox.textContent = msg || '';
+      errorBox.hidden = !msg;
+      if (msg) haptic('error');
+    };
+    // FE-006: вместо системного alert() — инлайн-ошибка в карточке.
+    const showComeBack = () => {
+      ov.querySelector('.age-gate-card').innerHTML =
+        `<div class="age-gate-kicker">${esc(t('ageThanks'))}</div><h2>${esc(t('ageComeBack'))}</h2><p>${esc(t('ageComeBackCopy'))}</p>`;
+    };
     ov.querySelector('[data-age-accept]').addEventListener('click', async () => {
+      const yearField = ov.querySelector('#age-gate-year');
+      const year = parseInt(yearField && yearField.value, 10);
+      if (!year || year < 1900 || year > currentYear) {
+        showError(t('ageYearInvalid'));
+        yearField && yearField.focus();
+        return;
+      }
+      showError('');
       try {
-        await api('/api/profile', { method: 'POST', body: JSON.stringify({ age_confirmed: true }) });
+        await api('/api/profile', { method: 'POST', body: JSON.stringify({ age_confirmed: true, birth_year: year }) });
         this.me = await api('/api/me');
         ov.remove();
         haptic('success');
         this.maybeIntro();
-      } catch (e) { alert('Не удалось сохранить подтверждение. Проверь соединение и попробуй снова.'); }
+      } catch (e) {
+        if (e && e.status === 403) { showComeBack(); return; }
+        showError(friendlyError(e, t('ageErrorRetry')));
+      }
     });
     ov.querySelector('[data-age-leave]').addEventListener('click', () => {
       try { tg() && tg().close && tg().close(); } catch (e) {}
-      ov.querySelector('.age-gate-card').innerHTML = '<div class="age-gate-kicker">Спасибо за честность</div><h2>Вернись, когда тебе исполнится 16</h2><p>Береги себя. Если тебе тревожно или нужна срочная поддержка, пожалуйста, обратись к близкому взрослому или в местную службу помощи.</p>';
+      showComeBack();
     });
   };
 
@@ -133,17 +178,21 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     // добавляем CTA «собрать натальную карту» (строится у Астролога в чате)
     const needChart = !!(this.me && this.me.birth_date && !this.me.chart_mode);
     const firstName = this.me && this.me.name ? esc(this.me.name.split(' ')[0]) : '';
+    // FE-008: слайды первого входа — на языке интерфейса, а не только на русском.
     const slides = [
-      `<div class="intro-slide"><div class="intro-emoji">🔮</div><div class="intro-title">Твоё небо уже ждёт</div><div class="intro-sub">Личный Оракул читает твою карту, Луну и расклады — честно, по звёздам.</div></div>`,
-      `<div class="intro-slide"><div class="intro-emoji">🎴</div><div class="intro-title">Карты отвечают на твой вопрос</div><div class="intro-sub">Настоящая колода Райдера-Уэйта придёт прямо в чат. Задай вопрос — карты лягут в расклад.</div></div>`,
-      `<div class="intro-slide"><div class="intro-emoji">✨</div><div class="intro-title">Прогноз каждый день</div><div class="intro-sub">Натальная карта, лунный календарь и карта дня — утро начинается с опоры.</div></div>`,
+      `<div class="intro-slide"><div class="intro-emoji">🔮</div><div class="intro-title">${esc(t('intro1Title'))}</div><div class="intro-sub">${esc(t('intro1Sub'))}</div></div>`,
+      `<div class="intro-slide"><div class="intro-emoji">🎴</div><div class="intro-title">${esc(t('intro2Title'))}</div><div class="intro-sub">${esc(t('intro2Sub'))}</div></div>`,
+      `<div class="intro-slide"><div class="intro-emoji">✨</div><div class="intro-title">${esc(t('intro3Title'))}</div><div class="intro-sub">${esc(t('intro3Sub'))}</div></div>`,
     ];
     if (needChart) {
+      const lead = firstName
+        ? t('introChartCopyName').replace('{name}', firstName)
+        : t('introChartCopy');
       slides.push(`<div class="intro-slide">
         <div class="intro-emoji">🌌</div>
-        <div class="intro-title">Собери натальную карту</div>
-        <div class="intro-sub">${firstName ? 'Лилит посмотрит на твою карту, ' + firstName + '.' : 'Твоя карта рождения откроет характер и путь.'} Планеты, дома и предназначение — по дате и времени рождения.</div>
-        <button class="btn btn-primary" style="margin-top:14px;width:100%" data-act="chat-fn" data-chat="astro" data-fn="featureChart" data-intro-chart>Собрать мою натальную карту ✨</button>
+        <div class="intro-title">${esc(t('introChartTitle'))}</div>
+        <div class="intro-sub">${lead} ${esc(t('introChartCopyTail'))}</div>
+        <button class="btn btn-primary" style="margin-top:14px;width:100%" data-act="chat-fn" data-chat="astro" data-fn="featureChart" data-intro-chart>${esc(t('introChartCta'))}</button>
       </div>`);
     }
     const last = slides.length - 1;
@@ -154,24 +203,28 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
         ${slides.join('')}
       </div>
       <div class="intro-dots">${slides.map((_, k) => `<span${k === 0 ? ' class="active"' : ''}></span>`).join('')}</div>
-      <button class="btn btn-primary intro-start" data-intro-start>Начать ✨</button>
-      <button class="intro-skip" data-intro-skip>Пропустить</button>`;
+      <button class="btn btn-primary intro-start" data-intro-start>${esc(t('introStart'))}</button>
+      <button class="intro-skip" data-intro-skip>${esc(t('introSkip'))}</button>`;
     document.body.appendChild(ov);
     const track = ov.querySelector('.intro-track');
     const dots = ov.querySelectorAll('.intro-dots span');
+    // Текущий слайд — состояние, а не разбор текста кнопки: подпись кнопки
+    // локализована, и сравнение с RU-строкой ломало логику на EN (FE-008).
+    let current = 0;
     const sync = () => {
-      const i = Math.max(0, Math.min(last, Math.round(track.scrollLeft / (track.clientWidth || 1))));
-      dots.forEach((d, k) => d.classList.toggle('active', k === i));
-      ov.querySelector('.intro-start').textContent = i === last ? 'Начать ✨' : 'Дальше →';
+      current = Math.max(0, Math.min(last, Math.round(track.scrollLeft / (track.clientWidth || 1))));
+      dots.forEach((d, k) => d.classList.toggle('active', k === current));
+      ov.querySelector('.intro-start').textContent = current === last ? t('introStart') : t('introNext');
     };
     track.addEventListener('scroll', sync, { passive: true });
+    sync();
     const done = () => {
       try { localStorage.setItem('oracle_intro_seen', '1'); } catch (e) {}
       ov.remove();
       haptic('success');
     };
     ov.querySelector('[data-intro-start]').addEventListener('click', () => {
-      if (!ov.querySelector('.intro-start').textContent.startsWith('Начать')) {
+      if (current < last) {
         track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
       } else done();
     });

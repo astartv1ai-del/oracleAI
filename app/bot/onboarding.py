@@ -312,7 +312,12 @@ async def onb_date(message: Message, state: FSMContext, db):
                               props={"step": "date", "reason": str(exc)}, surface="bot")
         await message.answer(date_error_copy(str(exc), _lang(user)))
         return
+    # SEC-010: онбординг бота знает настоящую дату рождения — это более сильная
+    # аттестация возраста, чем самоподтверждение, поэтому хеш доказательства
+    # вычисляем из неё (год при этом в открытом виде в новой колонке не хранится).
     await users.update(db, message.from_user.id, birth_date=parsed.normalized,
+                       age_proof_hash=users.age_proof_hash(message.from_user.id,
+                                                           parsed.value.year),
                        onboarding_step="time")
     await analytics.track(db, "onboarding_step", message.from_user.id,
                           props={"step": "date"}, surface="bot")
@@ -659,21 +664,40 @@ async def promo_enter(message: Message, state: FSMContext, db):
 
 @router.message(Command("help"))
 async def help_cmd(message: Message, db):
+    user = await users.get(db, message.from_user.id)
+    en = _lang(user) == "en" if user else False
     disclaimer = await content.get_setting(
-        db, "disclaimer",
+        db, "disclaimer_en" if en else "disclaimer",
+        "Oracle is made for self-discovery and inspiration." if en else
         "Оракул создан для самопознания и вдохновения.")
-    faq = await content.list_content(db, "faq", active_only=True)
-    lines = ["🔮 <b>Как я работаю</b>", ""]
-    for item in faq[:4]:
-        lines.append(f"<b>{item['title']}</b>\n{item['body']}\n")
-    lines += [
-        "<b>Команды</b>",
-        "/start — начать заново · /today — прогноз дня",
-        "/promo — промокод · /help — эта справка",
-        "/delete_me — удалить мои данные",
-        "",
-        f"<i>{disclaimer}</i>",
-    ]
+    faq = await content.list_content(db, "faq_en" if en else "faq",
+                                     active_only=True)
+    if not faq and en:
+        faq = await content.list_content(db, "faq", active_only=True)
+    if en:
+        lines = ["🔮 <b>How I work</b>", ""]
+        for item in faq[:4]:
+            lines.append(f"<b>{item['title']}</b>\n{item['body']}\n")
+        lines += [
+            "<b>Commands</b>",
+            "/start — begin again · /today — daily forecast",
+            "/promo — promo code · /help — this guide",
+            "/delete_me — delete my data",
+            "",
+            f"<i>{disclaimer}</i>",
+        ]
+    else:
+        lines = ["🔮 <b>Как я работаю</b>", ""]
+        for item in faq[:4]:
+            lines.append(f"<b>{item['title']}</b>\n{item['body']}\n")
+        lines += [
+            "<b>Команды</b>",
+            "/start — начать заново · /today — прогноз дня",
+            "/promo — промокод · /help — эта справка",
+            "/delete_me — удалить мои данные",
+            "",
+            f"<i>{disclaimer}</i>",
+        ]
     await message.answer("\n".join(lines),
                          reply_markup=await _menu(db, message.from_user.id))
 

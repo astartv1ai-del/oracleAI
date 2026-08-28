@@ -63,6 +63,14 @@
     send: (el, data) => call('doSend', data.val || undefined),
     'cancel-chat': () => call('cancelChatRequest'),
     'retry-chat': () => call('loadThread', app.chat.key),
+    // FE-012: повторная отправка сохранённого черновика без дубля «пузыря»
+    'retry-send': () => {
+      const draft = app.chat && app.chat.draft;
+      if (!draft || app.chat.busy) return;
+      const msgs = app.chat.messages;
+      if (msgs && msgs.length && msgs[msgs.length - 1].widget) msgs.pop();
+      call('doSend', draft, { echo: false });
+    },
     fill: (el, data) => call('fillInput', data.val),
     memories: () => call('openMemories'),
     'toggle-memory': () => call('toggleMemory'),

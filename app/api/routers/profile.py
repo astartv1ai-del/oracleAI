@@ -74,6 +74,20 @@ async def health(db=Depends(get_db)):
     return {"ok": True}
 
 
+@router.get("/public/config", dependencies=[Depends(rate_limit("read"))])
+async def public_config(db=Depends(get_db)):
+    """Неавторизованные параметры для первого касания (аудит UX-009).
+
+    Экран «открой бота» в Mini App показывается ДО того, как /api/me может
+    ответить (пользователь ещё не нажимал /start), поэтому username бота для
+    deep-link нужен без подписи. Секретов здесь нет: username бота публичен.
+    """
+    return {
+        "bot_username": await content.get_setting(db, "brand.bot_username", "") or "",
+        "webapp_url": settings.webapp_url,
+    }
+
+
 @router.get("/me")
 async def me(user=Depends(touched_user), db=Depends(get_db)):
     """Всё, что нужно интерфейсу на старте: профиль, лимиты, тариф, фичи."""
@@ -239,10 +253,48 @@ class ProfileIn(BaseModel):
     morning_push: bool | None = None
     memory_enabled: bool | None = None
     age_confirmed: bool | None = None
+    # Аудит SEC-010: подтверждение 16+ требует год рождения — «клиентский
+    # boolean» больше не является достаточной аттестацией. Год не хранится:
+    # в БД пишется только keyed-хеш (см. _age_proof_hash).
+    birth_year: int | None = Field(default=None, ge=1900, le=2100)
     lang: str | None = Field(default=None, max_length=8)
     gender: Literal["f", "m"] | None = None
     tz: str | None = Field(default=None, max_length=64)
     goal: str | None = Field(default=None, max_length=40)
+
+
+def _confirm_age(fields: dict, user) -> None:
+    """Проверяет и материализует подтверждение 16+ (аудит SEC-010).
+
+    Повторное подтверждение уже подтверждённого аккаунта не требует года
+    заново (идемпотентный ретрай клиента). Снятие флага (False) остаётся
+    доступным — оно используется при удалении/анонимизации аккаунта.
+    """
+    lang = (user["lang"] or "ru")
+    # Год — не колонка users: извлекаем до любой записи, чтобы повторный
+    # ретрай уже подтверждённого клиента не падал на allowlist колонок.
+    year = fields.pop("birth_year", None)
+    if not fields.get("age_confirmed"):
+        return
+    if user["age_confirmed"]:
+        return
+    if year is None:
+        raise HTTPException(400, detail={
+            "code": "birth_year_required",
+            "message": ("укажи год рождения — так я пойму, что тебе есть 16"
+                        if lang != "en" else
+                        "Please enter your birth year so I know you are 16 or older"),
+        })
+    if date.today().year - year < users.MIN_AGE_YEARS:
+        raise HTTPException(403, detail={
+            "code": "age_requirement_not_met",
+            "message": ("OracleAI создан для пользователей от 16 лет. "
+                        "Вернись, когда тебе исполнится 16 🌙"
+                        if lang != "en" else
+                        "OracleAI is designed for people aged 16 and over. "
+                        "Come back when you turn 16 🌙"),
+        })
+    fields["age_proof_hash"] = users.age_proof_hash(user["tg_id"], year)
 
 
 @router.post("/profile", dependencies=[Depends(rate_limit("write"))])
@@ -264,6 +316,8 @@ async def update_profile(item: ProfileIn, user=Depends(current_user),
         fields["memory_enabled"] = int(item.memory_enabled)
     if item.age_confirmed is not None:
         fields["age_confirmed"] = int(item.age_confirmed)
+        if item.age_confirmed and item.birth_year is not None:
+            fields["birth_year"] = item.birth_year
     if item.goal:
         fields["goal"] = item.goal.strip()[:40]
     if item.lang is not None:
@@ -281,6 +335,7 @@ async def update_profile(item: ProfileIn, user=Depends(current_user),
             raise HTTPException(400, "неизвестная таймзона")
         fields["tz"] = item.tz
     if fields:
+        _confirm_age(fields, user)
         was_age_confirmed = bool(user["age_confirmed"])
         await users.update(db, user["tg_id"], **fields)
         await analytics.track(db, "profile_update", user["tg_id"],

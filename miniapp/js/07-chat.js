@@ -129,12 +129,26 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
   };
 
   // Ошибки остаются отдельными бережными состояниями, без технического текста.
+  // FE-012: у неотправленного ответа есть кнопка «Повторить» — черновик вопроса
+  // сохраняется в chat.draft, так что ретрай не просит ничего перепечатывать.
   app.chatRecoveryHtml = function(kind) {
     const history = kind === 'history';
+    const en = chatLang() === 'en';
+    const title = history
+      ? (en ? 'History could not be opened' : 'История сейчас не открылась')
+      : (en ? 'The reply has not arrived yet' : 'Ответ пока не пришёл');
+    const copy = history
+      ? (en ? 'You can start the conversation right now or try loading the saved messages again.'
+           : 'Можно начать разговор прямо сейчас или попробовать загрузить сохранённые сообщения ещё раз.')
+      : (en ? 'Your question is safe in this conversation. Check the connection and send it again when you are ready.'
+            : 'Твой вопрос не потерялся в этом диалоге. Проверь соединение и отправь его ещё раз, когда будешь готов(а).');
+    const action = history
+      ? `<button class="chat-retry" data-act="retry-chat">${en ? 'Load history' : 'Загрузить историю'}</button>`
+      : `<button class="chat-retry" data-act="retry-send">${en ? 'Try again' : 'Повторить отправку'}</button>`;
     return `<div class="chat-recovery" role="status">
-      <strong>${history ? 'История сейчас не открылась' : 'Ответ пока не пришёл'}</strong>
-      <p>${history ? 'Можно начать разговор прямо сейчас или попробовать загрузить сохранённые сообщения ещё раз.' : 'Твой вопрос не потерялся в этом диалоге. Проверь соединение и отправь его ещё раз, когда будешь готов(а).'}</p>
-      ${history ? '<button class="chat-retry" data-act="retry-chat">Загрузить историю</button>' : ''}
+      <strong>${title}</strong>
+      <p>${copy}</p>
+      ${action}
     </div>`;
   };
 
@@ -393,7 +407,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
           </div>
 
           <div class="composer-top">
-            <textarea class="ipt" id="chat-input" rows="1" maxlength="1600" placeholder="${esc(chatLang() === 'en' ? 'Write to ' : 'Напиши ')}${esc(displayName || (chatLang() === 'en' ? 'your guide' : 'Проводник'))} — ${chatLang() === 'en' ? 'just as it is…' : 'как есть…'}" autocomplete="off" spellcheck="true" aria-label="${esc(chatT('messageFor'))} ${esc(displayName || (chatLang() === 'en' ? 'your guide' : 'Проводник'))}">${esc(this.chat.draft || '')}</textarea>
+            <textarea class="ipt" id="chat-input" rows="1" maxlength="1000" placeholder="${esc(chatLang() === 'en' ? 'Write to ' : 'Напиши ')}${esc(displayName || (chatLang() === 'en' ? 'your guide' : 'Проводник'))} — ${chatLang() === 'en' ? 'just as it is…' : 'как есть…'}" autocomplete="off" spellcheck="true" aria-label="${esc(chatT('messageFor'))} ${esc(displayName || (chatLang() === 'en' ? 'your guide' : 'Проводник'))}">${esc(this.chat.draft || '')}</textarea>
             ${busy ? `<button class="send-btn" id="send-btn" data-act="cancel-chat" aria-label="${esc(chatT('stop'))}">×</button>` : `<button class="send-btn" id="send-btn" data-act="send" aria-label="${esc(chatT('send'))}">➤</button>`}
           </div>
           ${suggest.length ? `
@@ -685,7 +699,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
     if (request && request.controller) request.controller.abort();
   };
 
-  app.doSend = async function(text) {
+  app.doSend = async function(text, opts = {}) {
     const a = this.chat.spec;
     const val = (text || (document.getElementById('chat-input') || {}).value || '').trim();
     if (!val || this.chat.busy) return;
@@ -694,7 +708,9 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
     const input = document.getElementById('chat-input');
     if (input) input.value = '';
     this.chat.draft = '';
-    this.chat.messages.push({ role: 'user', text: val });
+    // echo=false — ретрай после ошибки: «пузырь» вопроса уже в ленте,
+    // второй раз его не дублируем (FE-012).
+    if (opts.echo !== false) this.chat.messages.push({ role: 'user', text: val });
     this.chat.busy = true;
     const requestKey = newRequestKey();
     const controller = new AbortController();

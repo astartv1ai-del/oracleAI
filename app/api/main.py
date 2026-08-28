@@ -31,7 +31,7 @@ from ..core.observability import (
     reset_request_id,
     set_request_id,
 )
-from .deps import close_db, get_db
+from .deps import get_db
 from .routers import ROUTERS
 
 configure_logging(level=settings.log_level, log_file=settings.log_file)
@@ -96,16 +96,13 @@ def _validate_production_config() -> None:
 async def lifespan(app: FastAPI):
     """Подключаемся к БД на старте, чтобы миграции прошли до первого запроса."""
     # DEV_MODE=1 отключает подпись Telegram (?dev_user=<id>) — это только для
-    # разработки. Забытая на бою единица открывает API всем подряд, поэтому
-    # запуск падает, если режим включён не в dev-окружении (APP_ENV=dev).
-    if settings.dev_mode and os.getenv("APP_ENV", "") != "dev":
-        raise RuntimeError(
-            "DEV_MODE=1 включает вход по ?dev_user=<id> БЕЗ подписи Telegram. "
-            "Допустимо только в dev: выстави APP_ENV=dev либо выключи DEV_MODE=0")
+    # разработки. Недопустимая комбинация с APP_ENV падает ещё при импорте
+    # app.config (аудит SEC-001); здесь остаётся видимое предупреждение в логе.
     _validate_production_config()
     sentry.init()
-    db = await get_db()
-    from ..data.session import healthcheck
+    from ..data.session import connect, healthcheck
+    db = await connect()
+    app.state.db = db
     state = await healthcheck(db)
     log_event(
         log, logging.INFO, "api_ready", "API готов",
@@ -116,13 +113,25 @@ async def lifespan(app: FastAPI):
         log.warning("DEV_MODE=1 — вход по ?dev_user=<id> без подписи Telegram. "
                     "На боевом сервере поставь DEV_MODE=0")
     yield
-    await close_db()
+    await db.close()
 
 
 app = FastAPI(title="Оракул API", version="1.0.0", lifespan=lifespan,
               docs_url="/api/docs" if settings.dev_mode else None,
               redoc_url=None, openapi_url="/api/openapi.json"
               if settings.dev_mode else None)
+
+
+def _server_error_copy(request: Request) -> str:
+    """Тёплый 500 на языке клиентки (аудит CONT-002).
+
+    В обработчике исключения нет доступа к профилю из БД, поэтому язык берём
+    из Accept-Language: браузер/webview всегда шлёт его с локалью устройства.
+    """
+    accept = (request.headers.get("accept-language") or "").lower()
+    if accept.startswith("en"):
+        return "The connection to the stars was interrupted… try once more 🌙"
+    return "Связь со звёздами прервалась… попробуй ещё раз 🌙"
 
 
 @app.middleware("http")
@@ -148,7 +157,7 @@ async def access_log(request: Request, call_next):
                 },
             )
             response = JSONResponse(
-                {"detail": "Связь со звёздами прервалась… попробуй ещё раз 🌙"},
+                {"detail": _server_error_copy(request)},
                 status_code=500)
         took = (time.monotonic() - started) * 1000
         HTTP_REQUESTS.labels(request.method, str(response.status_code)).inc()
@@ -178,7 +187,11 @@ async def access_log(request: Request, call_next):
                 "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
                 "font-src 'self'; connect-src 'self'; media-src 'self'; "
                 "object-src 'none'; base-uri 'self'; form-action 'self'; "
-                "frame-ancestors 'self'")
+                # Mini App живёт в iframe веб-клиентов Telegram: 'self' одного
+                # origin формально запрещал им встраивание (аудит SEC-002).
+                "frame-ancestors 'self' https://telegram.org "
+                "https://web.telegram.org https://k.web.telegram.org "
+                "https://z.web.telegram.org https://a.web.telegram.org")
         _cache_control(request.url.path, response)
         return response
     finally:

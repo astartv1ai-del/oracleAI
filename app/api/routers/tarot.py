@@ -52,7 +52,7 @@ async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
     try:
         result = await chat_svc.draw(db, user, spread, surface="miniapp", question=q)
     except chat_svc.ChatDenied as e:
-        raise access_denied(e.verdict) from e
+        raise access_denied(e.verdict, lang=user["lang"] or "ru") from e
     # короткое описание расклада для страницы выбора / карточки результата
     result["guide"] = tarot.spread(result["spread"]).get("guide", "")
     return result

@@ -361,7 +361,7 @@ async def compat_full(item: CompatIn, user=Depends(active_user), db=Depends(get_
             relation=item.relation, save=item.save)
     except compatibility_svc.CompatibilityDenied as exc:
         from ..common.errors import access_denied
-        raise access_denied(exc.verdict) from exc
+        raise access_denied(exc.verdict, lang=user["lang"] or "ru") from exc
 
 
 # ──────────────────────────────── партнёры ────────────────────────────────────

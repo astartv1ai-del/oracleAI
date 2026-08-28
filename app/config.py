@@ -63,6 +63,10 @@ class Settings:
     # ── мониторинг (G31): пусто = Sentry выключен ──
     sentry_dsn: str = os.getenv("SENTRY_DSN", "")
 
+    # ── age-gate (аудит SEC-010): соль для хеша подтверждения возраста.
+    # Сырой год рождения не храним — только keyed-хеш как доказательство аттестации.
+    age_proof_salt: str = os.getenv("AGE_PROOF_SALT", "")
+
     # ── защита LLM от всплеска: сколько вызовов одновременно и в минуту ──
     llm_max_concurrency: int = _int("LLM_MAX_CONCURRENCY", 8)
     llm_rate_per_min: int = _int("LLM_RATE_PER_MIN", 240)
@@ -97,6 +101,10 @@ class Settings:
     # ── окружение и наблюдаемость ──
     app_env: str = os.getenv("APP_ENV", "dev").lower()
     dev_mode: bool = os.getenv("DEV_MODE", "0") == "1"
+    # Подписанный ключ для ?dev_user=<id> в DEV_MODE (аудит SEC-001): когда задан,
+    # каждый dev-запрос обязан нести заголовок X-Dev-Key с этим значением.
+    # Локальный docker-compose монтирует его только на машине разработчика.
+    dev_key: str = os.getenv("DEV_KEY", "")
     log_level: str = os.getenv("LOG_LEVEL", "INFO").upper()
     log_file: str = os.getenv("LOG_FILE", "")
     release_id: str = os.getenv("RELEASE_ID", "local")
@@ -186,4 +194,21 @@ class Settings:
         return problems
 
 
+def assert_dev_mode_allowed(dev_mode: bool, app_env: str) -> None:
+    """Fail-closed при импорте (аудит SEC-001).
+
+    DEV_MODE выключает подпись Telegram на всём API. Раньше единственной
+    преградой была проверка в lifespan API-процесса — одна опечатка в .env
+    (APP_ENV=dev на бою или забытый DEV_MODE=1) открывала полный обход
+    авторизации. Теперь недопустимая комбинация роняет ЛЮБОЙ процесс
+    (бот, API, воркер, скрипт) ещё при импорте конфигурации.
+    """
+    if dev_mode and app_env not in {"dev", "test"}:
+        raise RuntimeError(
+            "DEV_MODE=1 допустим только при APP_ENV=dev|test: режим выключает "
+            "подпись Telegram (?dev_user=<id>). Выключи DEV_MODE или исправь "
+            "APP_ENV — процесс остановлен до первого запроса.")
+
+
 settings = Settings()
+assert_dev_mode_allowed(settings.dev_mode, settings.app_env)

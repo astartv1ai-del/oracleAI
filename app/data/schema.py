@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
     morning_push     INTEGER DEFAULT 1,
     memory_enabled   INTEGER DEFAULT 0,   -- память включается только явным согласием
     age_confirmed    INTEGER DEFAULT 0,   -- добровольное самоподтверждение «мне есть 16 лет»
+    age_proof_hash   TEXT,                -- SEC-010: keyed-хеш года рождения из age-gate (сам год не храним)
     ref_by           INTEGER,
     goal             TEXT,                   -- главный запрос: love|career|practice
     source           TEXT,                   -- канал привлечения (utm/ref/organic)

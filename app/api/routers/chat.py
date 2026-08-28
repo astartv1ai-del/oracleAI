@@ -41,7 +41,7 @@ async def ask_agent(agent: str, item: AskIn, user=Depends(confirmed_age_user),
                                   surface="miniapp", allow_paid=item.allow_paid,
                                   idempotency_key=x_idempotency_key)
     except chat_svc.ChatDenied as e:
-        raise access_denied(e.verdict) from e
+        raise access_denied(e.verdict, lang=user["lang"] or "ru") from e
     except chat_svc.ChatRequestInProgress as e:
         raise HTTPException(409, detail={"code": "request_in_progress", "message": str(e)}) from e
     except ValueError as e:
@@ -55,7 +55,7 @@ async def ask(item: AskIn, user=Depends(confirmed_age_user), db=Depends(get_db))
         result = await chat_svc.ask(db, user, item.text,
                                    agent=agents.DEFAULT_AGENT, surface="miniapp")
     except chat_svc.ChatDenied as e:
-        raise access_denied(e.verdict) from e
+        raise access_denied(e.verdict, lang=user["lang"] or "ru") from e
     return {"answer": result["answer"],
             "questions_left": result["allowance"]["left"],
             "allowance": result["allowance"]}
@@ -133,7 +133,7 @@ async def ask_session(agent: str, thread_id: int, item: AskIn,
                                   idempotency_key=x_idempotency_key)
 
     except chat_svc.ChatDenied as e:
-        raise access_denied(e.verdict) from e
+        raise access_denied(e.verdict, lang=user["lang"] or "ru") from e
     except chat_svc.ChatRequestInProgress as e:
         raise HTTPException(409, detail={"code": "request_in_progress", "message": str(e)}) from e
     except ValueError as e:

@@ -6,6 +6,9 @@
 
 ### Added
 
+- Аудит-волна Wave 0/Wave 1: age-gate Mini App получил поле года рождения с серверной проверкой 16+ (SEC-010); интро-онбординг, age-gate и чат-состояния восстановления локализованы RU/EN (FE-008/FE-009/CONT-008); у неотправленного ответа появилась кнопка «Повторить отправку» без потери черновика (FE-012); экран «открой бота» ведёт deep-link'ом в бота через новый неавторизованный `GET /api/public/config` (UX-009); `/help` в боте и серверные отказы 402/429/500 отвечают на языке клиентки (BOT-006, CONT-001/002); добавлены полные EN system/user промпты хиромантии с выбором по языку пользователя (AI-010); композер чата ограничен 1000 символами в соответствии с серверным контрактом (FE-014).
+- Добавлены regression tests `tests/test_wave0_wave1_fixes.py` для DEV_MODE fail-closed, DEV_KEY gate, age-gate контракта, public config, билингвальных отказов и выбора palm-промптов.
+- Добавлена Alembic-миграция `0004_age_proof_hash`: keyed-хеш аттестации возраста в `users.age_proof_hash`; сырой год рождения не хранится.
 - Добавлены `UI_PIXEL_AUDIT.md` и geometry snapshots в visual baseline harness для измерения frame, header, cards, CTA и bottom navigation.
 - Добавлены `18-pixel-reconstruction.css` для Mini App и `admin/pixel-reconstruction.css` для bounded desktop/mobile dashboard layout.
 - Добавлены `PRODUCTION_GAUNTLET.md` и `PRODUCTION_FINAL_REVIEW.md` с полной phase matrix, локальными evidence и явными внешними release blockers.
@@ -39,6 +42,9 @@
 
 ### Security
 
+- SEC-001: недопустимая комбинация DEV_MODE=1 с APP_ENV вне dev|test роняет любой процесс при импорте `app.config` (fail-closed до первого запроса); при заданном `DEV_KEY` вход по `?dev_user=<id>` дополнительно требует заголовок `X-Dev-Key`.
+- SEC-002: CSP `frame-ancestors` разрешает встраивание Mini App в веб-клиенты Telegram (`web/k/z/a.web.telegram.org`, `telegram.org`) — прежний `'self'`-only формально запрещал Telegram Web/Desktop embedding.
+- DB-005: модульный синглтон `_db` в `app/api/deps.py` удалён; пул БД создаётся lifespan'ом и выдаётся запросам из `app.state` через request-scoped зависимость.
 - CRM tag mutations в admin API теперь записываются в `admin_audit`; production startup/release gate блокируют шаблонные PostgreSQL credentials, неполную DB/Redis конфигурацию и отсутствующий release identity; operational logs больше не интерполируют Telegram IDs, invoice payloads, charge IDs или сырые provider errors в проверенных путях.
 - Синастрия использует только owner-scoped `partner_id`; birth data не принимаются через GET URL и не появляются в публичных cache keys.
 - Unknown-time natal charts не получают выдуманные дома, ASC, MC или колесо.

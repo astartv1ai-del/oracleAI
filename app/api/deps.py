@@ -1,13 +1,13 @@
 """Зависимости FastAPI: соединение с БД, клиентка, администратор, темп запросов."""
 from __future__ import annotations
 
+import hmac
 import logging
 
 
 from fastapi import Depends, Header, HTTPException, Query, Request
 
 from ..config import settings
-from ..data.session import connect
 from ..repo import admin as admin_repo
 from ..repo import users as users_repo
 from ..services import rate_limit as rate_limit_service
@@ -15,22 +15,38 @@ from .security import parse_init_data
 
 log = logging.getLogger("oracle.api")
 
-# Одно соединение на процесс: пул PostgreSQL-адаптера живёт в db_ объекта.
-_db = None
+
+async def get_db(request: Request):
+    """Пул БД, созданный lifespan'ом и лежащий в ``app.state`` (аудит DB-005).
+
+    Модульный синглтон ``_db = None`` удалён: он имитировал «одно соединение
+    на процесс» и скрывал владельца ресурса. Пул (SQLAlchemy AsyncEngine)
+    по-прежнему один на процесс — это правильно, — но теперь его жизненный
+    цикл явно принадлежит приложению, а не глобальной переменной, и каждый
+    запрос получает фасад пула через request-scoped зависимость.
+    """
+    db = getattr(request.app.state, "db", None)
+    if db is None:
+        raise RuntimeError(
+            "пул БД не инициализирован: lifespan приложения не запускался")
+    return db
 
 
-async def get_db():
-    global _db
-    if _db is None:
-        _db = await connect()
-    return _db
+def _dev_identity_allowed(request: Request) -> bool:
+    """Право на вход по ?dev_user=<id> в DEV_MODE (аудит SEC-001).
 
-
-async def close_db() -> None:
-    global _db
-    if _db is not None:
-        await _db.close()
-        _db = None
+    DEV_MODE сам по себе fail-closed при импорте (см. config). Когда задан
+    DEV_KEY, каждый dev-запрос дополнительно обязан предъявить заголовок
+    X-Dev-Key — так dev-вход становится подписанным короткоживущим ключом,
+    который существует только в локальном docker-compose разработчика.
+    """
+    if not settings.dev_mode:
+        return False
+    if settings.dev_key:
+        provided = request.headers.get("x-dev-key", "")
+        if not provided or not hmac.compare_digest(provided, settings.dev_key):
+            return False
+    return True
 
 
 # ─────────────────────────────── темп запросов ────────────────────────────────
@@ -54,7 +70,7 @@ def rate_limit(bucket: str = "read"):
         data = parse_init_data(request.headers.get("x-init-data", ""))
         if data:
             tg_id = str(data["tg_id"])
-        elif settings.dev_mode and request.query_params.get("dev_user"):
+        elif _dev_identity_allowed(request) and request.query_params.get("dev_user"):
             try:
                 tg_id = str(int(request.query_params["dev_user"]))
             except ValueError:
@@ -84,7 +100,8 @@ def rate_limit(bucket: str = "read"):
 # ──────────────────────────────── клиентка ────────────────────────────────────
 
 async def _authenticated_user(db, x_init_data: str | None, dev_user: int | None,
-                              *, allow_deleted: bool = False):
+                              *, allow_deleted: bool = False,
+                              dev_allowed: bool = False):
     """Resolve identity and enforce the account lifecycle state.
 
     Deleted users remain as anonymized accounting anchors, but are not valid
@@ -93,7 +110,7 @@ async def _authenticated_user(db, x_init_data: str | None, dev_user: int | None,
     """
     data = parse_init_data(x_init_data) if x_init_data else None
     tg_id = data["tg_id"] if data else None
-    if tg_id is None and settings.dev_mode and dev_user:
+    if tg_id is None and dev_allowed and dev_user:
         tg_id = dev_user
     if tg_id is None:
         raise HTTPException(401, "подпись Telegram не подтверждена")
@@ -111,18 +128,20 @@ async def _authenticated_user(db, x_init_data: str | None, dev_user: int | None,
     return user
 
 
-async def current_user(db=Depends(get_db),
+async def current_user(request: Request, db=Depends(get_db),
                        x_init_data: str | None = Header(default=None),
                        dev_user: int | None = Query(default=None)):
-    """Клиентка по подписи Telegram. В DEV_MODE — по `?dev_user=<id>`."""
-    return await _authenticated_user(db, x_init_data, dev_user)
+    """Клиентка по подписи Telegram. В DEV_MODE — по `?dev_user=<id>` (+ DEV_KEY)."""
+    return await _authenticated_user(db, x_init_data, dev_user,
+                                     dev_allowed=_dev_identity_allowed(request))
 
 
-async def deletion_user(db=Depends(get_db),
+async def deletion_user(request: Request, db=Depends(get_db),
                         x_init_data: str | None = Header(default=None),
                         dev_user: int | None = Query(default=None)):
     """Identity dependency for a retry of the confirm-gated delete operation."""
-    return await _authenticated_user(db, x_init_data, dev_user, allow_deleted=True)
+    return await _authenticated_user(db, x_init_data, dev_user, allow_deleted=True,
+                                     dev_allowed=_dev_identity_allowed(request))
 
 
 async def confirmed_age_user(user=Depends(current_user)):
@@ -169,18 +188,18 @@ class AdminContext:
             raise HTTPException(403, f"недостаточно прав: нужно {permission}")
 
 
-async def current_admin(db=Depends(get_db),
+async def current_admin(request: Request, db=Depends(get_db),
                         x_init_data: str | None = Header(default=None),
                         dev_user: int | None = Query(default=None)) -> AdminContext:
     """Администратор панели.
 
     Вход только через подпись Telegram: панель открывается кнопкой из бота, и
     отдельного пароля у неё нет — так нечего утекать. `dev_user` работает лишь
-    при DEV_MODE, то есть на машине разработчика.
+    при DEV_MODE (и с DEV_KEY, когда он задан), то есть на машине разработчика.
     """
     data = parse_init_data(x_init_data) if x_init_data else None
     tg_id = data["tg_id"] if data else None
-    if tg_id is None and settings.dev_mode and dev_user:
+    if tg_id is None and _dev_identity_allowed(request) and dev_user:
         tg_id = dev_user
     if tg_id is None:
         raise HTTPException(401, "подпись Telegram не подтверждена")

@@ -763,13 +763,20 @@ async def test_admin_rate_limited(client, db):
 
 
 async def test_csp_header_in_production(client, monkeypatch):
-    """В бою (dev_mode=0) все ответы несут CSP; в dev — нет (нужен Swagger)."""
+    """В бою (dev_mode=0) все ответы несут CSP; в dev — нет (нужен Swagger).
+
+    frame-ancestors обязан включать веб-клиенты Telegram — иначе Mini App
+    формально не может быть встроен в web.telegram.org (аудит SEC-002).
+    """
     import app.config as config
     monkeypatch.setattr(config.settings, "dev_mode", False)
     res = await client.get("/api/health")
     csp = res.headers.get("content-security-policy")
     assert csp and "default-src 'self'" in csp
     assert "frame-ancestors 'self'" in csp
+    for origin in ("https://web.telegram.org", "https://k.web.telegram.org",
+                   "https://z.web.telegram.org", "https://telegram.org"):
+        assert origin in csp, f"CSP должен разрешать встраивание в {origin}"
 
 
 async def test_csp_absent_in_dev(client):
