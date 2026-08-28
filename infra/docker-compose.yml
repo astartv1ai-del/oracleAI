@@ -20,10 +20,10 @@ x-app-common: &app-common
   env_file:
     - ../.env
   environment: &app-environment
-    APP_ENV: ${APP_ENV:-dev}
+    APP_ENV: ${APP_ENV:?APP_ENV must be set explicitly}
     DATA_DIR: /opt/oracle/data
     DB_PATH: /opt/oracle/data/oracle.db
-    DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://oracle:oracle@postgres:5432/oracle}
+    DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set to a PostgreSQL URL}
     REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     CELERY_ENABLED: ${CELERY_ENABLED:-1}
     CELERY_TASK_ALWAYS_EAGER: ${CELERY_TASK_ALWAYS_EAGER:-0}
@@ -42,7 +42,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-oracle}
       POSTGRES_USER: ${POSTGRES_USER:-oracle}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oracle}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres-init.sql:/docker-entrypoint-initdb.d/10-pgvector.sql:ro
@@ -280,7 +280,7 @@ services:
     image: grafana/grafana:13.0.7
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_PATHS_PROVISIONING: /etc/grafana/provisioning
@@ -356,7 +356,7 @@ services:
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB:-oracle}
       PGUSER: ${POSTGRES_USER:-oracle}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-oracle}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       BACKUP_ENCRYPTION_KEY_FILE: /run/secrets/oracle-backup-key
       BACKUP_REQUIRE_ENCRYPTION: ${BACKUP_REQUIRE_ENCRYPTION:-1}
       BACKUP_REQUIRE_OFFSITE: ${BACKUP_REQUIRE_OFFSITE:-0}

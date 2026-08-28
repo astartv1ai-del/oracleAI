@@ -34,6 +34,10 @@ def check() -> list[str]:
 
     for needle in (
         'dockerfile: infra/backup.Dockerfile',
+        'APP_ENV: ${APP_ENV:?APP_ENV must be set explicitly}',
+        'DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set to a PostgreSQL URL}',
+        'POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}',
+        'GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}',
         'BACKUP_REQUIRE_OFFSITE: ${BACKUP_REQUIRE_OFFSITE:-0}',
         'BACKUP_STATUS_FILE: /backups/backup-status.json',
         '${BACKUP_STORAGE_PATH:-./backups}:/backups',
@@ -109,7 +113,7 @@ def check() -> list[str]:
 
 def main() -> int:
     failures = check()
-    result = {"ok": not failures, "checks": 36 - len(failures), "failures": failures}
+    result = {"ok": not failures, "checks": 40 - len(failures), "failures": failures}
     print(result)
     return 0 if result["ok"] else 1
 

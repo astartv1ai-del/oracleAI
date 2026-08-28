@@ -11,6 +11,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import os
+from datetime import datetime, timedelta, timezone
 import pathlib
 import sys
 import tempfile
@@ -301,8 +302,11 @@ async def limits_smoke():
         db = await connect(f"{tmp}/limits.db")
         try:
             await users.ensure(db, 999000333, "Спрашивающая")
-            await users.update(db, 999000333, onboarded=1, age_confirmed=1,
-                               birth_date="1990-06-21", sub_level="vip")
+            await users.update(
+                db, 999000333, onboarded=1, age_confirmed=1,
+                birth_date="1990-06-21", sub_level="vip",
+                sub_until=(datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            )
             user = await users.get(db, 999000333)
 
             allowance = await limits.allowance(db, user)

@@ -16,7 +16,14 @@ from ...repo import billing, content, dialog, readings, users
 from ...repo import monetization as monetization_repo
 from ...services import analytics, chat, limits, referrals
 from ...services.entitlements import entitlements
-from ..deps import confirmed_age_user, current_user, get_db, rate_limit, touched_user
+from ..deps import (
+    confirmed_age_user,
+    current_user,
+    deletion_user,
+    get_db,
+    rate_limit,
+    touched_user,
+)
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -214,7 +221,7 @@ async def export_account(user=Depends(current_user), db=Depends(get_db)):
 
 
 @router.post("/account/delete", dependencies=[Depends(rate_limit("write"))])
-async def delete_account(item: AccountDeletionIn, user=Depends(current_user), db=Depends(get_db)):
+async def delete_account(item: AccountDeletionIn, user=Depends(deletion_user), db=Depends(get_db)):
     """Anonymize the current account while retaining only settlement-safe records."""
     if not item.confirm:
         raise HTTPException(400, "для удаления требуется явное подтверждение")

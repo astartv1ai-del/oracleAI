@@ -8,7 +8,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.data.session import connect
+from app.data.session import connect  # noqa: E402
 
 
 async def main() -> None:

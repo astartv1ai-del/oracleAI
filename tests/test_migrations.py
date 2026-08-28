@@ -167,6 +167,36 @@ async def test_legacy_messages_move_to_default_threads_idempotently(tmp_path):
         await db.close()
 
 
+async def test_failed_data_migration_rolls_back_partial_writes(tmp_path, monkeypatch):
+    """A failed migration must not leak DML into a later startup commit."""
+    from app.data import schema
+
+    path = str(tmp_path / "failed_migration.db")
+    db = await aiosqlite.connect(path)
+    try:
+        await db.executescript(schema.TABLES)
+        await db.execute("CREATE TABLE migration_probe (value TEXT)")
+        await db.commit()
+
+        async def failing_migration(connection):
+            await connection.execute("INSERT INTO migration_probe(value) VALUES('leak')")
+            raise RuntimeError("synthetic migration failure")
+
+        monkeypatch.setattr(mig, "DATA_MIGRATIONS", [("synthetic_failure", failing_migration)])
+        assert await mig.apply_data_migrations(db) == []
+
+        row = await (await db.execute("SELECT COUNT(*) FROM migration_probe")).fetchone()
+        assert row[0] == 0
+        marker = await (
+            await db.execute(
+                "SELECT COUNT(*) FROM migrations_applied WHERE name='synthetic_failure'"
+            )
+        ).fetchone()
+        assert marker[0] == 0
+    finally:
+        await db.close()
+
+
 async def test_concurrent_legacy_message_migration_is_single_owner(tmp_path):
     """Два стартующих процесса не дублируют тред и не делят перенос пополам."""
     from app.data.schema import INDEXES, TABLES

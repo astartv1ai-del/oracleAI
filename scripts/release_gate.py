@@ -67,12 +67,16 @@ def check_production_env() -> list[str]:
         errors.append("DEV_MODE must be disabled")
     if not os.getenv("WEBAPP_URL", "").startswith("https://"):
         errors.append("WEBAPP_URL must be an HTTPS URL")
-    for name in ("BOT_TOKEN", "ADMIN_ID", "POSTGRES_PASSWORD", "DATABASE_URL", "RELEASE_ID"):
+    for name in (
+        "BOT_TOKEN", "ADMIN_ID", "POSTGRES_PASSWORD", "GRAFANA_ADMIN_PASSWORD",
+        "DATABASE_URL", "RELEASE_ID",
+    ):
         if not os.getenv(name):
             errors.append(f"{name} is missing")
-    password = os.getenv("POSTGRES_PASSWORD", "").strip().lower()
-    if password in {"oracle", "change_me", "password", "postgres"}:
-        errors.append("POSTGRES_PASSWORD uses an unsafe template value")
+    for name in ("POSTGRES_PASSWORD", "GRAFANA_ADMIN_PASSWORD"):
+        password = os.getenv(name, "").strip().lower()
+        if password in {"oracle", "change_me", "change-me", "password", "postgres"}:
+            errors.append(f"{name} uses an unsafe template value")
     database_url = os.getenv("DATABASE_URL", "").lower()
     if database_url and "postgresql" not in database_url:
         errors.append("DATABASE_URL must point to PostgreSQL")

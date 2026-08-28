@@ -129,6 +129,32 @@ async def test_blocked_user_is_refused(client, db, user):
     await users.set_status(db, user["tg_id"], "active")
 
 
+async def test_deleted_user_cannot_reenter_product_surfaces_but_delete_is_idempotent(client, db, user):
+    await users.anonymize(db, user["tg_id"])
+
+    me = await client.get("/api/me", params=as_user(user))
+    assert me.status_code == 410
+
+    privacy = await client.get("/api/account/privacy", params=as_user(user))
+    assert privacy.status_code == 410
+
+    profile = await client.patch(
+        "/api/profile", params=as_user(user),
+        json={"memory_enabled": True, "age_confirmed": True},
+    )
+    assert profile.status_code == 410
+    deleted = await users.get(db, user["tg_id"])
+    assert deleted["status"] == "deleted"
+    assert deleted["memory_enabled"] == 0
+    assert deleted["age_confirmed"] == 0
+
+    repeated = await client.post(
+        "/api/account/delete", params=as_user(user), json={"confirm": True},
+    )
+    assert repeated.status_code == 200
+    assert repeated.json() == {"ok": True, "already_deleted": True, "status": "deleted"}
+
+
 async def test_bad_init_data_is_rejected():
     assert parse_init_data("") is None
     assert parse_init_data("user=%7B%22id%22%3A1%7D&hash=deadbeef") is None

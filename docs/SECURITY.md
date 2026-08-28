@@ -62,8 +62,9 @@ Server-side privacy guard присутствует в profile router, chat servi
 3. API валидирует тела Pydantic-моделями и назначает `read`, `write` или `llm` rate limit по операции.
 4. Все запросы с персональными ресурсами получают пользователя через dependency и проверяют ownership в репозитории/сервисе; чувствительные product routes дополнительно требуют server-side `age_confirmed`.
 5. Admin API требует отдельную авторизацию и фиксирует действия в `admin_audit`; raw safety incidents выделены в permission `safety:read`.[4]
-6. Ответы не включают stack trace, секреты конфигурации, внутренние SQL-ошибки или данные другой пользовательницы.
-7. Каждое чувствительное административное изменение, включая добавление и удаление CRM-тегов, оставляет server-owned запись в `admin_audit`; payload ограничен нормализованными операционными полями.
+6. Удалённая учётная запись остаётся только обезличенным settlement-safe anchor: обычные authenticated routes отклоняют её с `410`, а единственное исключение — повторный confirm-gated `/api/account/delete` для идемпотентного завершения удаления.
+7. Ответы не включают stack trace, секреты конфигурации, внутренние SQL-ошибки или данные другой пользовательницы.
+8. Каждое чувствительное административное изменение, включая добавление и удаление CRM-тегов, оставляет server-owned запись в `admin_audit`; payload ограничен нормализованными операционными полями.
 
 Новый endpoint запрещено выпускать только с проверкой на клиенте: авторизация, ownership, лимит и business rule проверяются на сервере.
 
@@ -121,6 +122,7 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 - [ ] HTTPS и production-домен настроены.
 - [ ] Secrets отсутствуют в diff, логах и клиентском bundle.
 - [ ] Age-gate отображается, `age_confirmed` сохраняется для чистого профиля, а прямые sensitive API calls до подтверждения получают 403.
+- [ ] Удалённый аккаунт не может войти в обычные product/admin routes или повторно включить age/memory/push; повторный подтверждённый delete остаётся идемпотентным.
 - [ ] Memory default равен 0; memory-off исключает список, сохранение и агентный контекст.
 - [ ] New API routes имеют auth, ownership, server-side age/business rules, validation и rate limit.
 - [ ] `/api/admin/safety` не отдаёт raw excerpts, support не имеет `grants`, а sensitive CRM views разделены по ролям.

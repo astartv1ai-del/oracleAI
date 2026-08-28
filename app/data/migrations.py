@@ -423,8 +423,11 @@ async def apply_data_migrations(db) -> list[str]:
         except Exception as e:  # noqa: BLE001
             # Миграция данных не должна валить старт сервиса: продукт работает и
             # без перенесённой истории, а падение здесь означало бы, что бот не
-            # поднимется вообще. Отметку не ставим — попробуем на следующем старте.
-            log.error("миграция %s не выполнена: %s", name, e)
+            # поднимется вообще. Но rollback обязателен: иначе частичные DML-записи
+            # останутся в открытой транзакции и могут быть зафиксированы следующим
+            # commit() уже после не связанной миграции.
+            await db.rollback()
+            log.error("миграция %s не выполнена: %s", name, type(e).__name__)
             continue
         await db.execute(
             "INSERT OR REPLACE INTO migrations_applied(name, applied_at) VALUES(?,?)",

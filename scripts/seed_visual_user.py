@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +30,8 @@ async def seed(path: str) -> None:
                 birth_time="14:30", birth_time_known=1, birth_city="Казань",
                 birth_lat=55.79, birth_lon=49.12, tz="Europe/Moscow",
                 chart_json=json.dumps(chart, ensure_ascii=False), memory_enabled=1,
-                sub_level="vip")
+                sub_level="vip",
+                sub_until=(datetime.now(timezone.utc) + timedelta(days=30)).isoformat())
             await dialog.save_memory(
                 db, tg_id,
                 "Любит тихие синтетические утра" if lang == "ru"

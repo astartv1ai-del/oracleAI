@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0",
+  "project": "OracleAI",
+  "repository": "astartv1ai-del/oracleAI",
+  "branch": "master",
+  "base_commit": "a4a7e5b1e363b77d733f8e54e4a411ef76aa025a",
+  "audit_date": "2026-08-28",
+  "verdict": "IMPLEMENTED_WITH_LIMITATIONS",
+  "public_launch": "BLOCKED",
+  "scope": "Independent second-pass repository audit, implementation remediation, and execution of the attached production-readiness plan in a disposable local environment.",
+  "changes": [
+    {
+      "area": "authentication_lifecycle",
+      "status": "fixed",
+      "details": "Deleted accounts are rejected by ordinary authenticated surfaces with HTTP 410 and cannot re-enable age, memory, push, or profile state. Confirm-gated account deletion remains idempotent for retries.",
+      "files": ["app/api/deps.py", "app/api/routers/profile.py", "tests/test_api.py", "docs/API.md", "docs/SECURITY.md"]
+    },
+    {
+      "area": "data_migrations",
+      "status": "fixed",
+      "details": "A failed named data migration now rolls back partial DML before startup continues, preventing a later commit from persisting an incomplete migration.",
+      "files": ["app/data/migrations.py", "tests/test_migrations.py"]
+    },
+    {
+      "area": "qa_fixtures",
+      "status": "fixed",
+      "details": "The disposable visual QA user now receives an explicit future subscription expiry, so paid home journeys do not produce a false 402 entitlement failure.",
+      "files": ["scripts/seed_visual_user.py"]
+    },
+    {
+      "area": "selfcheck",
+      "status": "fixed",
+      "details": "The VIP limit smoke test now creates an explicitly active subscription instead of relying on an environment-dependent trial default.",
+      "files": ["scripts/selfcheck.py"]
+    },
+    {
+      "area": "deployment_credentials",
+      "status": "fixed",
+      "details": "Compose now requires APP_ENV, DATABASE_URL, POSTGRES_PASSWORD, and GRAFANA_ADMIN_PASSWORD instead of silently falling back to dev or known credentials. Both environment templates are blank for required secrets, and the production release gate rejects unsafe password templates.",
+      "files": ["infra/docker-compose.yml", ".env.example", ".env.production.example", "scripts/release_gate.py", "scripts/check_p004_infrastructure.py", "tests/test_release_gate.py"]
+    },
+    {
+      "area": "lint",
+      "status": "fixed",
+      "details": "The documented monetization startup checker no longer fails Ruff on its intentional sys.path bootstrap import.",
+      "files": ["scripts/check_monetization_v2_startup.py"]
+    }
+  ],
+  "validation": {
+    "full_pytest": {
+      "status": "pass",
+      "command": "python3 -m pytest -q -p no:cacheprovider",
+      "result": "100% completed; one test was skipped by its declared environment condition."
+    },
+    "backend_targeted": {
+      "status": "pass",
+      "command": "pytest tests/test_api.py tests/test_api_resilience.py tests/test_migrations.py tests/test_data.py tests/test_billing.py tests/test_payment_monitor.py tests/test_p1_controls.py tests/test_p2_contracts.py",
+      "result": "All targeted tests passed."
+    },
+    "ai_domain_palm": {
+      "status": "pass_with_accuracy_gate",
+      "result": "Agent context, routing, memory, domain, palm guardrail, evidence, integration, and vision tests passed. Static palm contract critic passed; semantic accuracy sign-off remains blocked because no adjudicated golden manifest or human-review report is present."
+    },
+    "frontend_static": {
+      "status": "pass",
+      "result": "Frontend build, JS syntax, provenance, asset references, cache busting, design contract, and contrast checks passed."
+    },
+    "frontend_axe": {
+      "status": "pass",
+      "result": "Ten audited Mini App states, zero axe violations, accessibility gate passed."
+    },
+    "frontend_lighthouse": {
+      "status": "partial",
+      "result": "Accessibility 100 and SEO 100 were observed across the audited states. Best-practices evidence was contaminated by shared rate-limit state in a combined axe/Lighthouse run; an isolated clean matrix is required before claiming a stable 100 score."
+    },
+    "billing_jobs_observability": {
+      "status": "pass",
+      "result": "Bot FSM, Mini App actions, billing, jobs, notifications, broadcast, log stream, analytics, payment monitor, and growth tests passed."
+    },
+    "security_resilience": {
+      "status": "pass",
+      "result": "Security regressions, safety guardrails, API resilience, rate limits, flood controls, provider compatibility, engine paths, and architecture boundaries passed."
+    },
+    "release_gates": {
+      "status": "pass",
+      "result": "release_gate.py, check_p2_quality.py, check_p004_infrastructure.py (40 checks), documentation links, Ruff, compileall, and git diff --check passed."
+    },
+    "dependency_hygiene": {
+      "status": "pass",
+      "result": "npm audit --omit=dev --audit-level=high reported 0 vulnerabilities; JavaScript syntax and Python compilation passed."
+    },
+    "backup_restore": {
+      "status": "pass_with_external_limitations",
+      "result": "Disposable local backup/restore drill passed integrity and owner isolation. Production encryption-key custody, off-site storage permissions, and rollback rehearsal remain external gates."
+    }
+  },
+  "performance_directional_baseline": {
+    "synthetic": true,
+    "chart_compute_p50_ms": 2.52,
+    "tarot_draw_p50_ms": 0.06,
+    "memory_recall_p50_ms": 0.0,
+    "pdf_html_generation_p50_ms": 739.41,
+    "palm_line_segmentation_p50_ms": 15140.05,
+    "palm_line_engine": "palm_line_student_fp16.onnx",
+    "note": "Local directional measurements only; p95/p99 are not SLO-valid for metrics with fewer than 20 runs, and production SLOs require staging traffic and provider instrumentation."
+  },
+  "remaining_external_gates": [
+    "Real Telegram signed initData, device/WebView onboarding, invalid/tampered identity cases, and owner isolation.",
+    "Payment provider sandbox invoice, duplicate webhook, refund, chargeback/error, and reconciliation evidence.",
+    "Live LLM provider quality, safety, language, latency, cost, and fallback evaluation.",
+    "Production-like encrypted off-site backup, storage permissions, migration/rollback rehearsal, and capacity ceiling.",
+    "Independent astrology comparison and licensing confirmation.",
+    "Manual accessibility and device review for keyboard, screen reader, safe-area, touch, and reduced motion."
+  ],
+  "working_tree": {
+    "status": "audit_artifacts_ready_for_commit",
+    "changed_files": 16,
+    "evidence_files": 2,
+    "push_performed": false
+  }
+}

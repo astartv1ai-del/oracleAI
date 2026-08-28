@@ -79,10 +79,14 @@ def rate_limit(bucket: str = "read"):
 
 # ──────────────────────────────── клиентка ────────────────────────────────────
 
-async def current_user(db=Depends(get_db),
-                       x_init_data: str | None = Header(default=None),
-                       dev_user: int | None = Query(default=None)):
-    """Клиентка по подписи Telegram. В DEV_MODE — по `?dev_user=<id>`."""
+async def _authenticated_user(db, x_init_data: str | None, dev_user: int | None,
+                              *, allow_deleted: bool = False):
+    """Resolve identity and enforce the account lifecycle state.
+
+    Deleted users remain as anonymized accounting anchors, but are not valid
+    product principals. The sole exception is the confirm-gated deletion route,
+    which must remain idempotent for a retried client request.
+    """
     data = parse_init_data(x_init_data) if x_init_data else None
     tg_id = data["tg_id"] if data else None
     if tg_id is None and settings.dev_mode and dev_user:
@@ -93,11 +97,28 @@ async def current_user(db=Depends(get_db),
     user = await users_repo.get(db, tg_id)
     if not user:
         raise HTTPException(404, "открой бота и нажми /start — я ещё не знаю тебя ✨")
-    if user["status"] == "blocked":
+    status = user["status"]
+    if status == "blocked":
         raise HTTPException(403, "доступ приостановлен")
+    if status == "deleted" and not allow_deleted:
+        raise HTTPException(410, "аккаунт удалён — создай новый аккаунт через бота")
     if data and data["username"] and user["username"] != data["username"]:
         await users_repo.update(db, tg_id, username=data["username"])
     return user
+
+
+async def current_user(db=Depends(get_db),
+                       x_init_data: str | None = Header(default=None),
+                       dev_user: int | None = Query(default=None)):
+    """Клиентка по подписи Telegram. В DEV_MODE — по `?dev_user=<id>`."""
+    return await _authenticated_user(db, x_init_data, dev_user)
+
+
+async def deletion_user(db=Depends(get_db),
+                        x_init_data: str | None = Header(default=None),
+                        dev_user: int | None = Query(default=None)):
+    """Identity dependency for a retry of the confirm-gated delete operation."""
+    return await _authenticated_user(db, x_init_data, dev_user, allow_deleted=True)
 
 
 async def confirmed_age_user(user=Depends(current_user)):
@@ -164,8 +185,8 @@ async def current_admin(db=Depends(get_db),
         log.warning("попытка входа в админку без роли")
         raise HTTPException(403, "нет доступа к панели")
     user = await users_repo.get(db, tg_id)
-    if user and user["status"] == "blocked":
-        log.warning("заблокированный администратор отклонён")
+    if user and user["status"] in {"blocked", "deleted"}:
+        log.warning("администратор с недействительным статусом отклонён")
         raise HTTPException(403, "доступ приостановлен")
     return AdminContext(tg_id, role)
 
