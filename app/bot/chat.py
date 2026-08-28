@@ -233,6 +233,18 @@ async def any_text(message: Message, state: FSMContext, db):
     await _handle_text(message, state, db, message.text)
 
 
+@router.message(F.text & F.text.startswith("/"))
+async def unknown_command(message: Message, state: FSMContext, db):
+    """Неизвестная команда не должна утопать в тишине — показываем меню."""
+    await state.clear()
+    user = await users.get(db, message.from_user.id)
+    if not user or not user["onboarded"]:
+        await message.answer("Начнём знакомство — нажми /start 🌙")
+        return
+    await message.answer("У меня нет такой команды 🌙 Вот что я умею:",
+                         reply_markup=await _menu(db, message.from_user.id))
+
+
 async def _handle_text(message: Message, state: FSMContext, db, text: str) -> None:
     user = await users.get(db, message.from_user.id)
     if not user or not user["onboarded"]:

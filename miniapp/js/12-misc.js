@@ -831,7 +831,8 @@
     ov.innerHTML = `<div class="modal${variant === 'full' ? ' full' : ''}">${html}</div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
+    if (typeof app.syncBackButton === 'function') app.syncBackButton();
   };
 
-  app.closeModal = function() { const el = document.getElementById('app-modal'); if (el) el.remove(); };
+  app.closeModal = function() { const el = document.getElementById('app-modal'); if (el) el.remove(); if (typeof app.syncBackButton === 'function') app.syncBackButton(); };
 

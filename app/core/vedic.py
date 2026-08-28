@@ -9,7 +9,10 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-import swisseph as swe
+try:
+    import swisseph as swe
+except ImportError:  # lazy import guard: tests/dev envs without pyswisseph
+    swe = None
 
 SIGNS_EN = (
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -19,11 +22,15 @@ SIGNS_RU = (
     "Овен", "Телец", "Близнецы", "Рак", "Лев", "Дева",
     "Весы", "Скорпион", "Стрелец", "Козерог", "Водолей", "Рыбы",
 )
-PLANETS = {
-    "Sun": swe.SUN, "Moon": swe.MOON, "Mercury": swe.MERCURY,
-    "Venus": swe.VENUS, "Mars": swe.MARS, "Jupiter": swe.JUPITER,
-    "Saturn": swe.SATURN, "Rahu": swe.TRUE_NODE,
-}
+PLANETS = (
+    {
+        "Sun": swe.SUN, "Moon": swe.MOON, "Mercury": swe.MERCURY,
+        "Venus": swe.VENUS, "Mars": swe.MARS, "Jupiter": swe.JUPITER,
+        "Saturn": swe.SATURN, "Rahu": swe.TRUE_NODE,
+    }
+    if swe is not None
+    else {}
+)
 PLANET_RU = {
     "Sun": "Солнце", "Moon": "Луна", "Mercury": "Меркурий", "Venus": "Венера",
     "Mars": "Марс", "Jupiter": "Юпитер", "Saturn": "Сатурн", "Rahu": "Раху",

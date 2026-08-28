@@ -289,7 +289,9 @@ async def cryptobot_webhook(request: Request, db=Depends(get_db)):
         duplicate = await _already_seen(
             db, f"{invoice_id}:paid", "cryptobot", "invoice_paid",
             raw.decode("utf-8", "ignore"))
-        return {"ok": True, "duplicate": True} if duplicate else {"ok": True, "unmatched": True}
+        if duplicate:
+            return {"ok": True, "granted": False, "duplicate": True}
+        return {"ok": True, "unmatched": True}
     if order["kind"] != "crystals" or (order["surface"] or "") == "web":
         log.error("Crypto Pay webhook с недопустимым заказом")
         return {"ok": True, "unmatched": True}

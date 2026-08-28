@@ -31,7 +31,7 @@ log = logging.getLogger("oracle.agents")
 
 # Ответ агента — это несколько абзацев. Всё, что короче, — обрывок: модели
 # иногда возвращают заглушку вроде «Готова услышать твои мысли».
-MIN_ANSWER_LEN = 120
+MIN_ANSWER_LEN = 50
 
 
 async def resolve(db, code: str | None):
@@ -165,21 +165,34 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                     trace.append(name)
                 return result
 
-            text = await llm.run_agent(
-                system, messages, skills.tools_for(spec.skills), executor,
-                tier=spec.tier, max_tokens=spec.max_tokens,
-                purpose=f"answer:{spec.code}", tg_id=user["tg_id"], db=db,
-                max_iters=spec.max_turns, timeout_s=spec.timeout_s,
-                max_tool_calls=spec.max_tool_calls)
-            quality = validate_nonfatal_text(text)
-            if not quality.ok:
-                log.warning("агент %s не прошёл safety gate: %s — офлайн",
-                            spec.code, "; ".join(quality.issues))
-            elif len(text.strip()) >= MIN_ANSWER_LEN:
-                return text
-            else:
-                log.info("агент %s вернул слишком короткий ответ (%d симв) — офлайн",
-                         spec.code, len(text.strip()))
+            feedback = ""
+            for attempt in (1, 2):
+                text = await llm.run_agent(
+                    system, messages, skills.tools_for(spec.skills), executor,
+                    tier=spec.tier, max_tokens=spec.max_tokens,
+                    purpose=f"answer:{spec.code}", tg_id=user["tg_id"], db=db,
+                    max_iters=spec.max_turns, timeout_s=spec.timeout_s,
+                    max_tool_calls=spec.max_tool_calls)
+                quality = validate_nonfatal_text(text)
+                if not quality.ok:
+                    log.warning("агент %s не прошёл safety gate: %s — попытка %d",
+                                spec.code, "; ".join(quality.issues), attempt)
+                    feedback = (
+                        "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий ответ не прошёл "
+                        "safety gate. Проблемы: " + "; ".join(quality.issues)
+                        + ". Перепиши ответ, не нарушая этих правил.")
+                elif len(text.strip()) >= MIN_ANSWER_LEN:
+                    return text
+                else:
+                    log.info("агент %s вернул слишком короткий ответ (%d симв) — попытка %d",
+                             spec.code, len(text.strip()), attempt)
+                    feedback = (
+                        "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий ответ был обрывком. "
+                        "Дай полноценный ответ из нескольких абзацев.")
+                if attempt == 2:
+                    break
+                messages.append({"role": "assistant", "content": text})
+                messages.append({"role": "user", "content": feedback})
         except Exception as e:  # noqa: BLE001
             log.warning("агент %s не ответил (%s) — офлайн", spec.code, e)
 

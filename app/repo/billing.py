@@ -66,6 +66,7 @@ async def upsert_plan(db, code: str, **fields) -> None:
             "VALUES(?,?,?,?)", (code, fields.get("title", code), utcnow(), utcnow()))
         if fields:
             keys = ", ".join(f"{k}=?" for k in fields)
+            # INVARIANT: keys only from allowlist above — never interpolate user input
             await db.execute(
                 f"UPDATE plans SET {keys}, updated_at=? WHERE code=?",
                 (*fields.values(), utcnow(), code))
@@ -105,6 +106,7 @@ async def upsert_product(db, sku: str, **fields) -> None:
              utcnow(), utcnow()))
         if fields:
             keys = ", ".join(f"{k}=?" for k in fields)
+            # INVARIANT: keys only from allowlist above — never interpolate user input
             await db.execute(f"UPDATE products SET {keys}, updated_at=? WHERE sku=?",
                              (*fields.values(), utcnow(), sku))
 
@@ -162,9 +164,17 @@ async def mark_order_paid(db, payload: str, *, charge_id: str | None = None,
         if not order:
             return None
         stars = amount_stars if amount_stars is not None else order["amount_stars"]
-        await db.execute(
-            "UPDATE orders SET status='paid', paid_at=? WHERE id=?",
+        # Сверка суммы (аудит 2.1): цена могла смениться между инвойсом и
+        # оплатой — не выдаём полный грант за меньшую сумму Stars.
+        if provider == "telegram_stars" and stars < (order["amount_stars"] or 0):
+            return None
+        # Условный UPDATE закрывает TOCTOU (аудит 1.1): при параллельной
+        # доставке вебхука статус 'pending' у заказа ровно у одного вызова.
+        cur = await db.execute(
+            "UPDATE orders SET status='paid', paid_at=? WHERE id=? AND status='pending'",
             (utcnow(), order["id"]))
+        if not cur.rowcount:
+            return None
         await db.execute(
             "INSERT INTO payments(order_id, tg_id, amount_stars, currency, charge_id, "
             "provider, status, created_at) VALUES(?,?,?, ?, ?, ?,'succeeded',?)",

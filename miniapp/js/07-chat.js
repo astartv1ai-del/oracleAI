@@ -52,6 +52,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
     }
     this.view = 'hub';
     this.renderNav();
+    if (typeof this.syncBackButton === 'function') this.syncBackButton();
     this.renderChat(document.getElementById('app-main'));
     if (after) setTimeout(after, 60);
     this.maybeChatGuide();
@@ -636,6 +637,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
     el.setAttribute('aria-hidden', next ? 'false' : 'true');
     document.body.classList.toggle('toolbox-open', next);
     triggers.forEach(trigger => trigger.setAttribute('aria-expanded', next ? 'true' : 'false'));
+    if (typeof this.syncBackButton === 'function') this.syncBackButton();
 
     if (!this._toolboxKeydownReady) {
       this._toolboxKeydownReady = true;

@@ -64,6 +64,7 @@ backup-drill:
 	bash -n infra/backup-postgres.sh infra/restore-postgres.sh
 
 test:
+	$(CURDIR)/.venv/bin/python scripts/check_test_env.py || python3 scripts/check_test_env.py
 	$(COMPOSE) run --rm --entrypoint "" -e DEV_MODE=1 \
 		-e DATABASE_URL=postgresql+asyncpg://oracle:oracle@postgres:5432/oracle_test \
 		-v $(CURDIR)/tests:/opt/oracle/tests \

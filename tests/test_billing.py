@@ -100,6 +100,23 @@ async def test_unknown_payload_is_ignored(db):
     assert await svc.apply_payment(db, "o999:plan:nope") is None
 
 
+async def test_payment_below_order_amount_is_refused(db, user):
+    """Аудит 2.1: смена цены между инвойсом и оплатой не выдаёт грант."""
+    order = await svc.checkout_plan(db, user["tg_id"], "vip")
+    assert await svc.apply_payment(db, order["payload"],
+                                   amount_stars=order["amount_stars"] - 1) is None
+    fresh = await repo.order_by_payload(db, order["payload"])
+    assert fresh["status"] == "pending", "недооплата пометила заказ paid"
+
+
+async def test_payment_overpay_is_accepted(db, user):
+    """Больше ожидаемого — не проблема (цены растут), грант выдаётся."""
+    order = await svc.checkout_plan(db, user["tg_id"], "vip")
+    result = await svc.apply_payment(db, order["payload"],
+                                     amount_stars=order["amount_stars"] + 100)
+    assert result and result["granted"]["kind"] == "plan"
+
+
 # ─────────────── атомарность: оплата и выдача одним коммитом ─────────────────
 
 async def test_payment_crash_midway_leaves_order_pending(db, free_user, monkeypatch):
@@ -310,6 +327,12 @@ async def test_referral_cannot_be_applied_twice(db, user, free_user):
 
 async def test_self_referral_is_refused(db, user):
     assert await referrals.apply(db, user["tg_id"], user["tg_id"]) is None
+
+
+async def test_referral_cycle_is_refused(db, user, free_user):
+    """Аудит 2.2: A→B и B→A — цикл, B сам себе реферер во 2-м уровне."""
+    assert await referrals.apply(db, free_user["tg_id"], user["tg_id"])
+    assert await referrals.apply(db, user["tg_id"], free_user["tg_id"]) is None
 
 
 async def test_second_level_referral(db, user, free_user):

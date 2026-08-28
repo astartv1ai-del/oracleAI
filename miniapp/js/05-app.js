@@ -94,49 +94,6 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
       else composer.style.paddingBottom = '';
     }, { passive: true });
   };
-  // G003 Свайпы: назад в чате (вправо) + переключение экранов (влево/вправо).
-  // Нижний бар остаётся подстраховкой; горизонтальные скролл-ленты не задеваем.
-
-  app.initSwipe = function() {
-    let sx = 0, sy = 0;
-    const skipSel = '.toolbar, .tool-expand, .rc-strip-row, .agent-chips, .suggest-chips, .chat-widget';
-    document.addEventListener('touchstart', e => {
-      const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY;
-    }, { passive: true });
-    document.addEventListener('touchend', e => {
-      const t = e.changedTouches[0];
-      const dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) < 70 && Math.abs(dy) < 70) return;
-      if (e.target && e.target.closest && e.target.closest(skipSel)) return;
-      const inChat = !!(e.target && e.target.closest && e.target.closest('.chat-shell'));
-      if (inChat) {
-        // свайп вбок по переключателю агентов → листаем агентов
-        if (e.target.closest('.agent-tabs') && Math.abs(dx) > Math.abs(dy)) {
-          this.cycleAgent(dx < 0 ? 1 : -1);
-          return;
-        }
-        // вертикальный свайп: вверх у нижнего края ленты — открыть панель
-        // инструментов, вниз — закрыть открытую. Прокрутку сообщений не трогаем:
-        // у края скролл уже мёртв, поэтому жест безопасно переназначаем.
-        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) >= 70) {
-          const box = document.querySelector('.chat-messages');
-          const open = document.getElementById('tool-expand');
-          if (dy < 0 && (!box || (box.scrollTop + box.clientHeight >= box.scrollHeight - 2))) {
-            this.setToolbox(true);
-          } else if (dy > 0 && open && open.classList.contains('open')) {
-            this.setToolbox(false);
-          }
-          return;
-        }
-        if (dx > 0) { this.closeChat(); haptic('light'); }  // вправо → из чата
-        return;
-      }
-      if (this.view === 'chat' || this.view === 'home' || this.view === 'hub' || this.view === 'profile') {
-        if (dx < 0) this.go(this.view === 'home' ? 'hub' : 'profile');
-        else this.go(this.view === 'profile' ? 'hub' : 'home');
-      }
-    }, { passive: true });
-  };
   // P0: самоподтверждение 16+ без сбора даты рождения. Это не верификация личности,
   // а ясная граница продукта и путь к безопасным настройкам приватности.
   app.showAgeGate = function() {
@@ -346,11 +303,35 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
       </button>`).join('');
   };
 
+  // 7.1 Telegram BackButton: Android hardware back не закрывает Mini App,
+  // а идёт по иерархии: модал → панель инструментов → чат → корневой экран.
+  app.syncBackButton = function() {
+    if (!tg() || !tg().BackButton) return;
+    const back = (() => {
+      if (document.getElementById('app-modal')) return () => app.closeModal();
+      const tool = document.getElementById('tool-expand');
+      if (tool && tool.classList.contains('open')) return () => app.setToolbox(false);
+      if (app.chat && app.chat.key) return () => app.closeChat();
+      if (app.view !== 'home') return () => app.go('home');
+      return null;
+    })();
+    tg().BackButton.offClick(app._backHandler);
+    if (back) {
+      app._backHandler = () => { back(); haptic('light'); app.syncBackButton(); };
+      tg().BackButton.onClick(app._backHandler);
+      tg().BackButton.show();
+    } else {
+      app._backHandler = null;
+      tg().BackButton.hide();
+    }
+  };
+
   app.go = function(v) {
     if (v === 'chat') v = 'hub';
     if (v !== 'hub') this.chat.key = null;
     this.view = v;
     this.renderNav();
+    this.syncBackButton();
     const main = document.getElementById('app-main');
     if (v === 'home') this.renderHome(main);
     else if (v === 'hub') this.renderHub(main);

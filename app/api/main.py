@@ -289,10 +289,12 @@ if MINIAPP_DIR.is_dir():
 if ADMIN_DIR.is_dir():
     app.mount("/admin/static", StaticFiles(directory=str(ADMIN_DIR)),
               name="admin-static")
-if WEB_DIR.is_dir():
-    # Только публичные стили и изображения лендинга; HTML отдаётся отдельными
-    # маршрутами выше, поэтому страницы не становятся случайно browseable.
-    app.mount("/public", StaticFiles(directory=str(WEB_DIR)), name="public-static")
+if WEB_DIR.is_dir() and (WEB_DIR / "landing.css").is_file():
+    # Только публичные стили лендинга: HTML отдаётся отдельными маршрутами выше,
+    # а мёртвые статичные robots.txt/sitemap.xml удалены (аудит 4.4) —
+    # их генерируют динамические маршруты ниже.
+    app.mount("/public", StaticFiles(directory=str(WEB_DIR)),
+              name="public-static")
 
 
 def _public_base(request: Request) -> str:

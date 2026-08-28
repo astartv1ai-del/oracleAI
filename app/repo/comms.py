@@ -168,6 +168,7 @@ async def mark_target(db, broadcast_id: int, tg_id: int, status: str,
         if not cur.rowcount:
             return
         column = "sent" if status == "sent" else "failed"
+        # INVARIANT: keys only from allowlist above — never interpolate user input
         await db.execute(
             f"UPDATE broadcasts SET {column} = COALESCE({column},0) + 1 WHERE id=?",
             (broadcast_id,))

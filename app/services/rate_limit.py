@@ -41,7 +41,11 @@ class MemoryLimiter:
                 return LimitDecision(False, retry, self.backend)
             hits.append(now)
             if len(self._hits) > 50_000:
-                self._hits.clear()
+                # Выбрасываем самые старые ключи (порядок вставки = первое
+                # использование), а не всё состояние разом: clear() сбрасывал
+                # лимиты активных пользователей и открывал всплеск.
+                for _ in range(len(self._hits) // 10):
+                    self._hits.pop(next(iter(self._hits)))
             return LimitDecision(True, backend=self.backend)
 
 
@@ -56,22 +60,29 @@ class RedisLimiter:
     async def allow(self, identity: str, bucket: str, limit: int,
                     window: int) -> LimitDecision:
         key = f"oracleai:ratelimit:{bucket}:{identity}"
-        pipe = self._redis.pipeline(transaction=True)
+        # Атомарный первый хит: SET NX EX гарантирует, что окно и TTL созданы
+        # вместе; параллельные запросы не видят count==1 с ttl<0 (гонка 1.7).
         try:
-            pipe.incr(key)
-            pipe.ttl(key)
-            count, ttl = await pipe.execute()
-            if count == 1 or ttl < 0:
+            created = await self._redis.set(key, 0, nx=True, ex=window)
+        except Exception:
+            created = False
+        count = await self._redis.incr(key)
+        ttl = await self._redis.ttl(key)
+        if (created or ttl < 0) and count == 1:
+            await self._redis.expire(key, window)
+            ttl = window
+        if count > limit:
+            if ttl < 0:
                 await self._redis.expire(key, window)
                 ttl = window
-            if count > limit:
-                return LimitDecision(False, max(1, int(ttl)), self.backend)
-            return LimitDecision(True, backend=self.backend)
-        finally:
-            await pipe.reset()
+            return LimitDecision(False, max(1, int(ttl)), self.backend)
+        return LimitDecision(True, backend=self.backend)
 
 
 _limiter = None
+
+
+_degraded_limiter = None
 
 
 def get_limiter():
@@ -81,10 +92,7 @@ def get_limiter():
             try:
                 _limiter = RedisLimiter(settings.redis_url)
             except Exception:
-                if settings.rate_limit_fail_closed:
-                    _limiter = _UnavailableLimiter("redis")
-                else:
-                    _limiter = MemoryLimiter()
+                _limiter = _UnavailableLimiter("redis")
         else:
             _limiter = MemoryLimiter()
     return _limiter
@@ -100,8 +108,9 @@ class _UnavailableLimiter:
 
 
 def reset_limiter_for_tests() -> None:
-    global _limiter
+    global _limiter, _degraded_limiter
     _limiter = None
+    _degraded_limiter = None
 
 
 async def allow(identity: str, bucket: str, limit: int,
@@ -110,6 +119,13 @@ async def allow(identity: str, bucket: str, limit: int,
     try:
         return await limiter.allow(identity, bucket, limit, window)
     except Exception:
+        # Сбой бэкенда не должен молча снимать лимиты: fail-closed по умолчанию,
+        # а осознанная деградация (RATE_LIMIT_FAIL_CLOSED=0) использует один
+        # общий MemoryLimiter — не новый на каждый вызов (иначе лимит не
+        # накапливается и фактически отключается).
         if settings.rate_limit_fail_closed:
             return LimitDecision(False, window, getattr(limiter, "backend", "unknown"))
-        return await MemoryLimiter().allow(identity, bucket, limit, window)
+        global _degraded_limiter
+        if _degraded_limiter is None:
+            _degraded_limiter = MemoryLimiter()
+        return await _degraded_limiter.allow(identity, bucket, limit, window)

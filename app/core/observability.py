@@ -27,6 +27,9 @@ _BEARER_RE = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
 _SECRET_RE = re.compile(
     r"(?i)\b(api[_ -]?key|token|secret|password|signature|initData)\s*[:=]\s*[^\s,;]+"
 )
+# Токен бота Telegram: <bot_id>:<35+ chars>. Падает в логи как есть (URL,
+# исключения httpx) и без маскировки даёт полный контроль над ботом.
+_BOT_TOKEN_RE = re.compile(r"\b\d{8,10}:[A-Za-z0-9_-]{30,}\b")
 _TG_ID_RE = re.compile(r"(?i)\b(?:tg[_ -]?id|telegram[_ -]?id)\s*[:=]\s*-?\d+")
 _TELEGRAM_ID_RE = re.compile(r"(?<!\w)\d{5,20}(?!\w)")
 
@@ -51,6 +54,7 @@ def redact_text(value: Any) -> str:
     """Удаляет очевидные секреты, email и идентификаторы из сообщения лога."""
     text = str(value)
     text = _BEARER_RE.sub("Bearer <redacted>", text)
+    text = _BOT_TOKEN_RE.sub("<redacted-bot-token>", text)
     text = _SECRET_RE.sub(lambda m: f"{m.group(1)}=<redacted>", text)
     text = _TG_ID_RE.sub(lambda m: m.group(0).split("=", 1)[0].split(":", 1)[0] + "=<redacted-id>", text)
     text = _EMAIL_RE.sub("<redacted-email>", text)

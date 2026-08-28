@@ -76,6 +76,7 @@ async def update(db, tg_id: int, **fields) -> None:
     if not fields:
         return
     keys = ", ".join(f"{k}=?" for k in fields)
+    # INVARIANT: keys only from allowlist above — never interpolate user input
     async with transaction(db):
         await db.execute(f"UPDATE users SET {keys} WHERE tg_id=?",
                          (*fields.values(), tg_id))
@@ -215,7 +216,9 @@ async def anonymize(db, tg_id: int) -> None:
             "reports", "threads", "deliveries", "practices", "user_notes",
             "user_tags", "broadcast_targets", "promo_redemptions",
         ):
-            await db.execute(f"DELETE FROM {table} WHERE tg_id=?", (tg_id,))
+            await db.execute(
+                # INVARIANT: keys only from allowlist above — never interpolate user input
+                f"DELETE FROM {table} WHERE tg_id=?", (tg_id,))
 
         await db.execute(
             "DELETE FROM referrals WHERE referrer_id=? OR invitee_id=?",
@@ -231,7 +234,9 @@ async def anonymize(db, tg_id: int) -> None:
         # Orders/payments/ledger are retained only as an anonymized accounting
         # trace. Zero is a reserved non-user subject for aggregate reconciliation.
         for table in ("orders", "payments", "entitlements", "crystal_ledger"):
-            await db.execute(f"UPDATE {table} SET tg_id=0 WHERE tg_id=?", (tg_id,))
+            await db.execute(
+                # INVARIANT: keys only from allowlist above — never interpolate user input
+                f"UPDATE {table} SET tg_id=0 WHERE tg_id=?", (tg_id,))
 
         # Retained audit rows are scrubbed by direct marker. Webhook bodies are
         # never needed for settlement or idempotency, so clear every legacy raw

@@ -83,7 +83,9 @@ async def palm_photo(message: Message, state: FSMContext, db):
         await message.bot.download(message.photo[-1].file_id, destination=buf)
         result = await palm_core.analyze_and_save(db, user, buf.getvalue(), surface="bot")
     except ValueError as exc:
-        await status.set(BotStage.RECOVERABLE_ERROR, "Проверь кадр и попробуй снова" if user["lang"] == "en" else "Проверь кадр и попробуй снова")
+        await status.set(BotStage.RECOVERABLE_ERROR,
+                         "Try a clearer photo" if user["lang"] == "en"
+                         else "Проверь кадр и попробуй снова")
         await message.answer(
             f"✋ Не получилось подготовить снимок: {str(exc)}\n\n"
             "Попробуй фото одной ладони целиком при ровном свете.", reply_markup=back_menu())

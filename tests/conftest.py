@@ -53,6 +53,11 @@ async def db():
     # superuser privileges or mutate extensions at test runtime.
     connection = await connect(seed=False)
     try:
+        # Фикстура очищает ОБЩУЮ схему TRUNCATE'ом: параллельный pytest-процесс
+        # (второе окно, CI-матрица) ловил взаимоблокировку TRUNCATE↔DML. Сессионный
+        # advisory lock сериализует прогоны на одной базе; держим его всё время
+        # теста, чтобы чужой TRUNCATE не пришёл посреди наших вставок.
+        await connection.execute("SELECT pg_advisory_lock(hashtext('oracleai-test-db'))")
         cur = await connection.execute(
             "SELECT tablename FROM pg_tables WHERE schemaname=current_schema()")
         tables = [row[0] for row in await cur.fetchall()
@@ -65,7 +70,11 @@ async def db():
             await seed_defaults(connection)
         yield connection
     finally:
-        await connection.close()
+        try:
+            await connection.execute(
+                "SELECT pg_advisory_unlock(hashtext('oracleai-test-db'))")
+        finally:
+            await connection.close()
 
 
 @pytest.fixture

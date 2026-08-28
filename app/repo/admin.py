@@ -73,6 +73,27 @@ async def add_admin(db, tg_id: int, role: str = "admin", *, title: str = "",
             (tg_id, role, title, added_by, tg_id, utcnow()))
 
 
+async def _assert_owner_remains(db, tg_id: int) -> None:
+    """Действие не должно оставить панель без владельца.
+
+    Владелец из .env (`settings.admin_id`) — владелец независимо от записи
+    в таблице (см. `resolve_role`), поэтому пока он настроен, снятие
+    табличной записи блокировки не создаёт. Без него нельзя снимать
+    последнего табличного владельца.
+    """
+    if settings.admin_id:
+        return
+    cur = await db.execute(
+        "SELECT COUNT(*) FROM admins WHERE role='owner'")
+    row = await cur.fetchone()
+    if (row[0] or 0) <= 1:
+        cur = await db.execute(
+            "SELECT role FROM admins WHERE tg_id=?", (tg_id,))
+        target = await cur.fetchone()
+        if target and target["role"] == "owner":
+            raise ValueError("нельзя снять последнего владельца панели")
+
+
 async def update_admin_role(db, tg_id: int, role: str, *,
                             title: str | None = None,
                             changed_by: int | None = None) -> bool:
@@ -84,6 +105,7 @@ async def update_admin_role(db, tg_id: int, role: str, *,
     if role not in ROLE_LEVEL:
         raise ValueError(f"неизвестная роль: {role}")
     async with transaction(db):
+        await _assert_owner_remains(db, tg_id)
         if title is None:
             cur = await db.execute(
                 "UPDATE admins SET role=?, added_by=? WHERE tg_id=?",
@@ -97,6 +119,7 @@ async def update_admin_role(db, tg_id: int, role: str, *,
 
 async def remove_admin(db, tg_id: int) -> None:
     async with transaction(db):
+        await _assert_owner_remains(db, tg_id)
         await db.execute("DELETE FROM admins WHERE tg_id=?", (tg_id,))
 
 

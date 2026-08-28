@@ -261,13 +261,16 @@ def _granted_hint(granted: dict) -> str:
 
 @router.pre_checkout_query()
 async def pre_checkout(query: PreCheckoutQuery, db):
-    """Подтверждаем оплату, если заказ существует и ещё не оплачен."""
+    """Подтверждаем оплату, если заказ существует.
+
+    Уже оплаченный payload не отклоняем: Telegram может повторно доставить
+    pre_checkout для ретрая, и отказ в кассе за оплаченный заказ выглядит
+    для клиентки как ложный сбой. Идемпотентность выдачи держит
+    `apply_payment` — повторная доставка не выдаст товар дважды.
+    """
     order = await billing_repo.order_by_payload(db, query.invoice_payload)
     if not order:
         await query.answer(ok=False, error_message="Заказ не найден, создай его заново")
-        return
-    if order["status"] == "paid":
-        await query.answer(ok=False, error_message="Этот заказ уже оплачен")
         return
     await query.answer(ok=True)
 

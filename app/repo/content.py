@@ -193,6 +193,7 @@ async def upsert_content(db, kind: str, code: str, *, title: str | None = None,
             fields["sort"] = sort
         if fields:
             keys = ", ".join(f"{k}=?" for k in fields)
+            # INVARIANT: keys only from allowlist above — never interpolate user input
             await db.execute(
                 f"UPDATE content_items SET {keys}, updated_at=?, updated_by=? "
                 f"WHERE kind=? AND code=?",
@@ -262,6 +263,7 @@ async def set_flag(db, code: str, *, is_on: bool | None = None,
             fields["description"] = description
         if fields:
             keys = ", ".join(f"{k}=?" for k in fields)
+            # INVARIANT: keys only from allowlist above — never interpolate user input
             await db.execute(
                 f"UPDATE feature_flags SET {keys}, updated_at=?, updated_by=? "
                 f"WHERE code=?", (*fields.values(), utcnow(), admin_id, code))

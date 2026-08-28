@@ -178,15 +178,40 @@ def load_profile(path: Path) -> FileProfile:
     )
 
 
+def _dir_signature(root: Path) -> tuple | None:
+    """mtime каждого агента и его файлов: сигнатура для инвалидиции кэша."""
+    try:
+        sig = []
+        for path in sorted(root.iterdir()):
+            if not path.is_dir():
+                continue
+            files = sorted(p for p in path.rglob("*") if p.is_file())
+            sig.append((path.name,
+                        tuple((str(f), f.stat().st_mtime_ns) for f in files)))
+        return tuple(sig)
+    except OSError:
+        return None
+
+
+_PROFILE_CACHE: dict[str, tuple[tuple, dict[str, FileProfile]]] = {}
+
+
 def load_profiles(root: Path = ROOT) -> dict[str, FileProfile]:
     if not root.is_dir():
         return {}
+    sig = _dir_signature(root)
+    cached = _PROFILE_CACHE.get(str(root))
+    if cached and cached[0] == sig and sig is not None:
+        return cached[1]
     profiles: dict[str, FileProfile] = {}
     for path in sorted(item for item in root.iterdir() if item.is_dir()):
         profile = load_profile(path)
         if profile.agent_id in profiles:
             raise ValueError(f"duplicate agent id: {profile.agent_id}")
         profiles[profile.agent_id] = profile
+    if sig is not None:
+        # Сигнатуру берём заново: между stat и парсингом файл мог измениться.
+        _PROFILE_CACHE[str(root)] = (_dir_signature(root), profiles)
     return profiles
 
 

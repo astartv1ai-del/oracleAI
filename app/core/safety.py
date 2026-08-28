@@ -44,6 +44,8 @@ _SUICIDE = [
     r"вскрыть вены", r"вскрыла вены", r"наглоталась таблеток",
     r"убить себя", r"убью себя", r"конец всему", r"меня не станет",
     r"kill myself", r"want to die", r"end my life", r"suicide",
+    r"end it all", r"take my (own )?life", r"better off dead",
+    r"don'?t want to (be alive|live)", r"no reason to live",
 ]
 
 _SELF_HARM = [
@@ -91,8 +93,10 @@ RE_SUICIDE_SQ = _compile([p.replace(" ", "") for p in _SUICIDE])
 RE_SELF_HARM_SQ = _compile([p.replace(" ", "") for p in _SELF_HARM])
 RE_VIOLENCE_SQ = _compile([p.replace(" ", "") for p in _VIOLENCE])
 
-#: Чем разделяют буквы, чтобы обойти фильтр: пробелы, точки, дефисы, звёздочки.
-_SEPARATORS = re.compile(r"[\s.\-_*+~·•|/\\]+")
+#: Чем разделяют буквы, чтобы обойти фильтр: пробелы, пунктуация, эмодзи,
+#: ZWJ/вариационные селекторы. Проще убрать всё, что не буква и не цифра:
+#: словари кризиса содержат только буквы, лишние цифры в строке не помешают.
+_SEPARATORS = re.compile(r"[\W_]+", re.UNICODE)
 
 
 def _normalize(text: str) -> str:

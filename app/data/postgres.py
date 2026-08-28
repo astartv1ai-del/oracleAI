@@ -166,6 +166,8 @@ class PostgresDatabase:
             pool_size=_env_int("PG_POOL_SIZE", 10),
             max_overflow=_env_int("PG_MAX_OVERFLOW", 10, minimum=0),
             pool_timeout=_env_int("PG_POOL_TIMEOUT", 30),
+            # Recycle idle connections to survive NAT/PgBouncer silent timeouts.
+            pool_recycle=_env_int("PG_POOL_RECYCLE", 1800),
         )
         self._connection: ContextVar[Any] = ContextVar(
             "oracle_pg_connection", default=None)

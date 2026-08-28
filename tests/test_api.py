@@ -932,6 +932,33 @@ async def test_owner_manages_roles_without_losing_admin_title(client, db):
                for item in audit)
 
 
+async def test_cannot_remove_last_table_owner_when_env_owner_unset(client, db, monkeypatch):
+    """Без владельца из .env нельзя снять последнего табличного owner:
+    панель осталась бы без администратора с правом менять состав админов.
+
+    Через API инвариант недостижим (меняющий роль сам owner, операции с собой
+    отклоняет self-guard), поэтому guard проверяется на уровне репозитория.
+    """
+    from app.config import settings
+    from app.repo import admin as admin_repo
+    import pytest
+
+    monkeypatch.setattr(settings, "admin_id", None)
+    # seed_defaults уже вставил ADMIN_ID как табличного owner'а: чистим,
+    # чтобы guard проверял «последнего оставшегося», а не одного из двух.
+    await db.execute("DELETE FROM admins")
+    await users.ensure(db, 3001, "Владелец")
+    await admin_repo.add_admin(db, 3001, "owner")
+    with pytest.raises(ValueError):
+        await admin_repo.update_admin_role(db, 3001, "analyst", changed_by=3001)
+    with pytest.raises(ValueError):
+        await admin_repo.remove_admin(db, 3001)
+    # .env-владелец настроен — таблица без владельцев блокировки не создаёт
+    monkeypatch.setattr(settings, "admin_id", 1)
+    await admin_repo.update_admin_role(db, 3001, "analyst", changed_by=1)
+    await admin_repo.remove_admin(db, 3001)
+
+
 async def test_admin_sees_coupon_activations_and_can_filter_batch(client, db, user):
     from app.repo import growth
     from app.repo import users as users_repo

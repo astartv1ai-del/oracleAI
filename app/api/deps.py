@@ -51,16 +51,21 @@ def rate_limit(bucket: str = "read"):
     limit, window = LIMITS.get(bucket, LIMITS["read"])
 
     async def guard(request: Request):
-        tg_id = 0
         data = parse_init_data(request.headers.get("x-init-data", ""))
         if data:
-            tg_id = data["tg_id"]
-        elif settings.dev_mode:
+            tg_id = str(data["tg_id"])
+        elif settings.dev_mode and request.query_params.get("dev_user"):
             try:
-                tg_id = int(request.query_params.get("dev_user") or 0)
+                tg_id = str(int(request.query_params["dev_user"]))
             except ValueError:
-                tg_id = 0
-        decision = await rate_limit_service.allow(str(tg_id), bucket, limit, window)
+                # Неаутентифицированный ключ по IP клиента, не общий tg_id=0:
+                # иначе один аноним кладёт лимит для всех без подписи.
+                client = request.client
+                tg_id = f"ip:{client.host if client else 'unknown'}"
+        else:
+            client = request.client
+            tg_id = f"ip:{client.host if client else 'unknown'}"
+        decision = await rate_limit_service.allow(tg_id, bucket, limit, window)
         if not decision.allowed:
             log.warning(
                 "rate_limit_denied bucket=%s backend=%s retry_after=%s",

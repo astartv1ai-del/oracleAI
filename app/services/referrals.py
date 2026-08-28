@@ -48,6 +48,13 @@ async def apply(db, invitee_id: int, referrer_id: int) -> dict | None:
         return None
     if await growth.referrer_of(db, invitee_id):
         return None
+    # Цикл (аудит 2.2): A→B и B→A дают самосебе-реферала с level-2 бонусом.
+    # Идём вверх по цепочке пригласивших; встретили приглашённую — отказ.
+    walker = referrer_id
+    while walker:
+        walker = await growth.referrer_of(db, walker)
+        if walker == invitee_id:
+            return None
 
     bonus = int(await content.get_setting(db, "referral.bonus", 15) or 0)
     if not await growth.record_referral(db, referrer_id, invitee_id,

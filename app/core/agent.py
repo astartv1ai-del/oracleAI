@@ -209,10 +209,18 @@ async def daily_forecast(db, user, chart: dict) -> str:
                         f"4-6 строк, тепло и по-человечески: обыграй карту дня, "
                         f"отметь лунный день, один конкретный совет завяжи на "
                         f"сферу внимания. Начни с 🌅, обратись ко мне по имени.")
-            text = await llm.complete(system, user_msg, tier="lite", max_tokens=400,
-                                      purpose="forecast", tg_id=user["tg_id"], db=db)
-            if text.strip():
-                return text
+            feedback = ""
+            for attempt in (1, 2):
+                text = await llm.complete(system, user_msg + feedback, tier="lite",
+                                          max_tokens=400, purpose="forecast",
+                                          tg_id=user["tg_id"], db=db)
+                if text.strip() and len(text.strip()) >= 120:
+                    return text
+                log.info("прогноз дня отклонён quality gate: attempt=%d len=%d",
+                         attempt, len(text.strip()))
+                feedback = ("\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий текст был пустым "
+                            "или обрывком. Напиши полную утреннюю карточку: 4-6 строк, "
+                            "с картой дня, лунным днём и советом по сфере внимания.")
         except Exception as e:  # noqa: BLE001
             log.warning("прогноз дня ушёл в офлайн: %s", e)
     return _forecast_offline(user, chart, sky)
@@ -523,6 +531,13 @@ def _chart_required_coverage(text: str, chart: dict, *, time_known: bool) -> tup
                  if available and not any(needle in lowered for needle in needles))
 
 
+def _report_missing_sections(text: str, sections: list[str]) -> tuple[str, ...]:
+    """Проверяет, что каждый заданный раздел отчёта раскрыт в тексте."""
+    lowered = (text or "").lower()
+    return tuple(title for title in sections
+                 if title.lower() not in lowered)
+
+
 def _full_chart_fallback(chart: dict, *, time_known: bool) -> str:
     """Подробный deterministic fallback, который сохраняет все доступные темы."""
     sun = chart.get("sun") or {}
@@ -769,14 +784,26 @@ async def build_report(db, user, kind: str, *, partner_date: str | None = None,
                 f"Каждый раздел — заголовок в теге <b> и 2-4 коротких связанных абзаца. "
                 f"Не пересказывай источник и не выдумывай отсутствующие факты. Пиши лично, "
                 f"тепло и конкретно; последний раздел заверши одним наблюдаемым шагом.")
-            candidate = await llm.complete(system, user_msg, tier="main", max_tokens=4000,
-                                           purpose=f"report:{kind}", tg_id=user["tg_id"],
-                                           db=db)
-            check = interpretation.validate_nonfatal_text(candidate)
-            if check.ok:
-                body = candidate
-            else:
-                log.warning("разбор %s отклонён quality guardrail: %s", kind, "; ".join(check.issues))
+            feedback = ""
+            for attempt in (1, 2):
+                candidate = await llm.complete(system, user_msg + feedback,
+                                               tier="main", max_tokens=4000,
+                                               purpose=f"report:{kind}",
+                                               tg_id=user["tg_id"], db=db)
+                check = interpretation.validate_nonfatal_text(candidate)
+                missing = _report_missing_sections(candidate, spec["sections"])
+                if check.ok and not missing:
+                    body = candidate
+                    break
+                issues = list(check.issues) + (
+                    [f"не раскрыты разделы: {', '.join(missing)}"] if missing else [])
+                log.warning("разбор %s отклонён quality guardrail: attempt=%d issues=%s",
+                            kind, attempt, "; ".join(issues))
+                feedback = (
+                    "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий текст не прошёл quality gate. "
+                    "Проблемы: " + "; ".join(issues[:6])
+                    + ". Обязательно раскрой каждый раздел из списка, сохрани "
+                      "заголовки в теге <b> и не добавляй фактов вне evidence.")
         except Exception as e:  # noqa: BLE001
             log.warning("разбор %s ушёл в офлайн: %s", kind, e)
     if len(body.strip()) < 200:

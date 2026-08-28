@@ -54,10 +54,13 @@ class DbMiddleware(BaseMiddleware):
 
 
 class ThrottleMiddleware(BaseMiddleware):
-    """Антифлуд по пользователю.
+    """Антифлуд по пользователю на текст/голос.
 
-    Молча гасим слишком частые сообщения: ответ «не так быстро» на каждый
-    лишний тап сам превращается в спам.
+    Лишний текст молча гасим: ответ «не так быстро» на каждый
+    лишний тап сам превращается в спам. Callback-запросы не дросселим
+    вовсе — дропнутый колбэк для клиентки выглядит как мёртвая кнопка
+    (нет ни toast, ни действия), а двойной тап по кнопке безвреден:
+    хендлеры идемпотентны или сами отвечают ошибкой.
     """
 
     def __init__(self, interval: float = 1.2):
@@ -72,7 +75,9 @@ class ThrottleMiddleware(BaseMiddleware):
                 return None
             self.last[user.id] = now
             if len(self.last) > 20_000:
-                self.last.clear()
+                # Выбрасываем самых старых, не всё состояние разом.
+                for _ in range(len(self.last) // 10):
+                    self.last.pop(next(iter(self.last)))
         return await handler(event, data)
 
 

@@ -286,6 +286,43 @@ async def test_paddle_webhook_grants_only_bound_pending_order(client, db, user, 
     assert second.json()["duplicate"] is True
 
 
+async def test_crypto_webhook_replays_are_rejected(client, db, user, monkeypatch):
+    """Аудит 2.4: повторная доставка invoice_paid не выдаёт Кристаллы дважды."""
+    import hashlib
+    import hmac
+    import json
+
+    from app.config import settings
+    from app.repo import billing as billing_repo
+
+    secret = "crypto-test-secret"
+    monkeypatch.setattr(settings, "cryptobot_api_token", secret)
+    order = await billing_repo.create_order(
+        db, user["tg_id"], "crystals", sku="crystals_100", title="100 Кристаллов",
+        meta={"grant_kind": "crystals", "grant_code": "crystals_100", "grant_qty": 100,
+              "provider": "cryptobot", "asset": "TON", "cryptobot_invoice_id": 992},
+    )
+    body = json.dumps({"payload": {"update_type": "invoice_paid", "payload": {
+        "invoice_id": 992, "payload": order["payload"], "status": "paid", "asset": "TON",
+    }}}, separators=(",", ":")).encode()
+    signature = hmac.new(hashlib.sha256(secret.encode()).digest(), body,
+                         hashlib.sha256).hexdigest()
+    headers = {"crypto-pay-api-signature": signature}
+
+    first = await client.post("/api/webhooks/cryptobot", content=body, headers=headers)
+    assert first.status_code == 200
+    assert first.json()["granted"] is True
+
+    second = await client.post("/api/webhooks/cryptobot", content=body, headers=headers)
+    assert second.status_code == 200
+    payload = second.json()
+    assert payload["granted"] is False, "реплей выдал Кристаллы второй раз"
+    assert payload["duplicate"] is True
+
+    fresh = await billing_repo.order_by_payload(db, order["payload"])
+    assert fresh["status"] == "paid"
+
+
 async def test_crypto_invoice_binds_server_selected_ton_asset(client, user, monkeypatch):
     from app.config import settings
     from app.services import cryptobot

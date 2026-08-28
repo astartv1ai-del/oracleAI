@@ -123,7 +123,10 @@ class _RateLimit:
             if len(self._calls) < self.rate:
                 self._calls.append(now)
                 return
-            await asyncio.sleep(0.05)
+            # Спим ровно до истечения самого старого вызова, а не поллингом
+            # каждые 50 мс: меньше просыпаний, точное окно.
+            wait = self._calls[0] + self.window - now
+            await asyncio.sleep(max(0.01, wait))
 
 
 # Ограничители живут на уровне модуля: на 10k пользователей без них всплеск

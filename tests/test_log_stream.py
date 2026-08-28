@@ -32,6 +32,13 @@ def test_log_handler_publishes_redacted_json_payload():
     assert "<redacted" in entry["message"]
 
 
+def test_bot_token_is_redacted_in_log_payload():
+    from app.core.observability import redact_text
+    text = redact_text("webhook failed for 1234567890:AAEds_pXq9R2LmNoPqRsTuVwXyZ0123456789abc")
+    assert "AAEds" not in text
+    assert "<redacted-bot-token>" in text
+
+
 def test_log_stream_is_bounded_and_filterable():
     stream = LogStream(max_entries=2)
     stream.publish({"level": "INFO", "logger": "oracle.api", "message": "ready"})

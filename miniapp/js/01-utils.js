@@ -113,8 +113,8 @@ async function apiBlob(path, opts = {}) {
   }
 }
 
-const esc = s => String(s == null ? '' : s).replace(/[&<>\"]/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* User-facing errors must never expose Telegram auth, provider, HTML or JSON details. */
 function friendlyError(err, fallback) {
