@@ -207,3 +207,49 @@ async def test_delete_me_wipes_data_and_clears_state(db):
     assert user["status"] == "deleted"
     assert user["name"] == "удалено"
     assert await state.get_state() is None, "FSM должен был очиститься"
+
+
+async def test_onboarding_prompts_show_step_progress(db):
+    """Онбординг показывает «Шаг N/5», чтобы клиентка видела, сколько осталось."""
+    await users.ensure(db, 1010, "Аня")
+    state = _state_for()
+    callback = _Callback(1010, "age:confirm", _Message(1010, "/start"))
+    await onb_age_confirm(callback, state, db)
+    assert "Шаг 1/5" in callback.message.replied
+
+    name_message = _Message(1010, "Аня")
+    await onb_name(name_message, state, db)
+    assert "Шаг 2/5" in name_message.replied
+    await onb_gender(_Callback(1010, "gender:f", name_message), state, db)
+    assert "Шаг 2/5" in name_message.replied
+
+
+def test_step_label_is_bilingual_and_empty_outside_flow():
+    from app.bot.onboarding import _step_label
+    assert _step_label("city", "ru") == "Шаг 4/5\n"
+    assert _step_label("city", "en") == "Step 4/5\n"
+    assert _step_label("language", "ru") == ""
+
+
+async def test_throttle_answers_friendly_message_instead_of_silence():
+    """Второе сообщение в окне не исчезает молча: бот отвечает «не так быстро»."""
+    from app.bot.main import ThrottleMiddleware
+    mw = ThrottleMiddleware(interval=60)
+
+    class _ThrottledUser:
+        id = 777
+        language_code = "ru"
+    message = _Message(777, "вопрос")
+    message.from_user = _ThrottledUser()
+    data = {"event_from_user": message.from_user}
+
+    async def _handler(_event, _data):
+        return "handled"
+
+    assert await mw(_handler, message, data) == "handled"  # первое — проходит
+    assert await mw(_handler, message, data) is None       # второе — гасится
+    assert "быстро" in message.replied
+    message.text = "вопрос на английском"
+    message.from_user.language_code = "en-US"
+    await mw(_handler, message, data)
+    assert "Too fast" in message.replied

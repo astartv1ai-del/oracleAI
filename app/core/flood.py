@@ -34,6 +34,40 @@ _lock = asyncio.Lock()
 _tokens = BURST
 _last = time.monotonic()
 
+#: Отдельная корзина рассылок: broadcast не конкурирует с ответами клиенткам
+#: за общие токены, но суммарный темп остаётся под потолком Telegram
+#: (25 + 10 < 30/с с запасом на ретраи).
+BROADCAST_RATE = 10.0
+BROADCAST_BURST = 15.0
+
+_broadcast_lock = asyncio.Lock()
+_broadcast_tokens = BROADCAST_BURST
+_broadcast_last = time.monotonic()
+
+
+async def acquire_broadcast() -> None:
+    """Ждёт токен из корзины рассылок (отдельный лейн, см. выше)."""
+    global _broadcast_tokens, _broadcast_last
+    while True:
+        async with _broadcast_lock:
+            now = time.monotonic()
+            _broadcast_tokens = min(
+                BROADCAST_BURST,
+                _broadcast_tokens + (now - _broadcast_last) * BROADCAST_RATE)
+            _broadcast_last = now
+            if _broadcast_tokens >= 1.0:
+                _broadcast_tokens -= 1.0
+                return
+            wait = (1.0 - _broadcast_tokens) / BROADCAST_RATE
+        await asyncio.sleep(wait)
+
+
+def reset_for_tests() -> None:
+    """Сброс обеих корзин (тесты гоняют модуль-синглтон много раз)."""
+    global _tokens, _last, _broadcast_tokens, _broadcast_last
+    _tokens, _broadcast_tokens = BURST, BROADCAST_BURST
+    _last = _broadcast_last = time.monotonic()
+
 
 async def acquire() -> None:
     """Ждёт токен общей корзины и занимает один."""

@@ -400,3 +400,20 @@ def test_engine_accepts_unambiguous_dst_local_time():
     assert request.local_time_status == "normal"
     assert request.time_confirmed is True
     assert request.precision == "exact"
+
+
+def test_tarot_grounding_rejects_non_drawn_card():
+    """Гейт, завязанный на мягкий ретрай в interpret_reading, обязан ловить
+    упоминание не выпавшей карты и пропускать только фактические карты."""
+    from app.core import interpretation
+
+    cards = [dict(tarot.DECK[0]), dict(tarot.DECK[1])]  # две выпавшие карты
+    names = {c["name"] for c in cards}
+    foreign = next(c["name"] for c in tarot.DECK if c["name"] not in names)
+    clean = interpretation.validate_tarot_text(
+        f"В позиции «Прошлое» — {cards[0]['name']}.", cards, tarot.DECK)
+    assert clean.ok is True
+    dirty = interpretation.validate_tarot_text(
+        f"{cards[0]['name']} и {cards[1]['name']}, а рядом {foreign}.", cards, tarot.DECK)
+    assert dirty.ok is False
+    assert foreign in "; ".join(dirty.issues)

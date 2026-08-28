@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 
 import pytest
 
@@ -16,8 +15,7 @@ from app.core import flood
 @pytest.fixture(autouse=True)
 def _reset_bucket():
     yield
-    flood._tokens = flood.BURST
-    flood._last = time.monotonic()
+    flood.reset_for_tests()
 
 
 async def test_burst_allows_immediate_burst():
@@ -81,3 +79,44 @@ async def test_invoice_link_refuses_nonpositive_price():
     from app.services import telegram as tg
     with pytest.raises(tg.TelegramError):
         await tg.create_invoice_link("x", "x", "p", 0)
+
+
+async def test_broadcast_lane_does_not_drain_main_bucket():
+    """Рассылка берёт токены из отдельной корзины — общий бакет не тратится."""
+    before = flood._tokens
+    flood._broadcast_tokens = 0.0
+    await asyncio.wait_for(flood.acquire_broadcast(), timeout=2.0)
+    assert flood._tokens == before, "общая корзина не должна расходоваться рассылкой"
+
+
+def test_broadcast_session_uses_broadcast_lane():
+    from app.bot.main import _BroadcastSession, _ThrottledSession
+    assert _BroadcastSession._is_broadcast_session
+    assert not getattr(_ThrottledSession, "_is_broadcast_session", False)
+
+
+async def test_broadcast_run_skips_lane_for_marked_session(db):
+    """run() с помеченной broadcast-сессией не берёт токен дважды."""
+    from app.services import broadcast as bsvc
+
+    class _FakeSession:
+        _is_broadcast_session = True
+
+    class _LaneBot:
+        session = _FakeSession()
+
+        def __init__(self):
+            self.sent = []
+
+        async def send_message(self, tg_id, body, reply_markup=None):
+            self.sent.append(tg_id)
+
+    from app.repo import comms
+    bid = await comms.create_broadcast(db, "Т", "Б")
+    await comms.enqueue_targets(db, bid, [2001])
+    bot = _LaneBot()
+    before = flood._broadcast_tokens
+    await bsvc.run(bot, db, bid)
+    assert bot.sent == [2001]
+    assert flood._broadcast_tokens == before, (
+        "помеченная сессия уже берёт токен в make_request — двойного расхода нет")

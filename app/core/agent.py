@@ -110,14 +110,25 @@ async def interpret_reading(db, user, title: str, cards: list[dict],
                 "пользователя. Не пересказывай справочные значения подряд. Не добавляй карты, "
                 "сроки, гарантии или утверждения о мыслях третьего человека как факт."
             )
-            text = await llm.complete(system, user_msg, tier="main",
-                                      max_tokens=min(1800, 320 * max(3, len(cards))),
-                                      purpose="tarot", tg_id=user["tg_id"], db=db)
-            grounding = interpretation.validate_tarot_text(text, cards, tarot.DECK)
-            if len(text.strip()) >= 120 and grounding.ok:
-                return text
-            if text.strip() and not grounding.ok:
-                log.info("tarot grounding rejected: %s", "; ".join(grounding.issues))
+            feedback = ""
+            for attempt in (1, 2):
+                text = await llm.complete(system, user_msg + feedback, tier="main",
+                                          max_tokens=min(1800, 320 * max(3, len(cards))),
+                                          purpose="tarot", tg_id=user["tg_id"], db=db)
+                grounding = interpretation.validate_tarot_text(text, cards, tarot.DECK)
+                if len(text.strip()) >= 120 and grounding.ok:
+                    return text
+                if attempt == 2:
+                    break
+                log.info("tarot grounding rejected (attempt=%d): %s",
+                         attempt, "; ".join(grounding.issues) or "короткий ответ")
+                feedback = (
+                    "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущая трактовка не прошла проверку "
+                    "фактов расклада." + (" Проблемы: " + "; ".join(grounding.issues) + "."
+                                          if grounding.issues else " Ответ был слишком коротким.")
+                    + " Напиши трактовку заново: разбирай ТОЛЬКО выпавшие карты и позиции "
+                    "из списка, не добавляй не выпавшие карты, сроки или гарантии.")
+
         except Exception as e:  # noqa: BLE001
             log.warning("трактовка расклада ушла в офлайн: %s", e)
     return _reading_offline(user, title, cards, cards_block, question)

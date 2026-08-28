@@ -56,11 +56,10 @@ class DbMiddleware(BaseMiddleware):
 class ThrottleMiddleware(BaseMiddleware):
     """Антифлуд по пользователю на текст/голос.
 
-    Лишний текст молча гасим: ответ «не так быстро» на каждый
-    лишний тап сам превращается в спам. Callback-запросы не дросселим
-    вовсе — дропнутый колбэк для клиентки выглядит как мёртвая кнопка
-    (нет ни toast, ни действия), а двойной тап по кнопке безвреден:
-    хендлеры идемпотентны или сами отвечают ошибкой.
+    Callback-запросы не дросселим вовсе — двойной тап по кнопке безвреден:
+    хендлеры идемпотентны или сами отвечают ошибкой. Лишний текст гасим,
+    но не молча: отвечаем один раз за окно, иначе клиентка решит, что бот
+    сломался, а ответ на каждый лишний тап сам превращается в спам.
     """
 
     def __init__(self, interval: float = 1.2):
@@ -72,6 +71,16 @@ class ThrottleMiddleware(BaseMiddleware):
         if user:
             now = time.monotonic()
             if now - self.last.get(user.id, 0) < self.interval:
+                msg = getattr(event, "message", None) or event
+                answer = getattr(msg, "answer", None)
+                if callable(answer):
+                    en = getattr(user, "language_code", "") or ""
+                    try:
+                        await answer("Too fast 🌙 Try again in a moment."
+                                     if en.startswith("en")
+                                     else "Не так быстро 🌙 Напиши через пару секунд.")
+                    except Exception:  # noqa: BLE001
+                        pass
                 return None
             self.last[user.id] = now
             if len(self.last) > 20_000:
@@ -89,14 +98,19 @@ async def on_error(event, exception=None, **kwargs):
 
 
 async def broadcast_loop(bot: Bot, db) -> None:
-    while True:
-        try:
-            await broadcast.tick(bot, db)
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:  # noqa: BLE001
-            log.error("цикл рассылок: %s", e)
-        await asyncio.sleep(BROADCAST_TICK)
+    # Отдельный Bot с корзиной рассылок: токены broadcast не конкурируют
+    # с ответами живым клиенткам, но суммарный темп остаётся под потолком.
+    async with Bot(settings.bot_token,
+                   default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+                   session=_BroadcastSession(timeout=60)) as bcast_bot:
+        while True:
+            try:
+                await broadcast.tick(bcast_bot, db)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # noqa: BLE001
+                log.error("цикл рассылок: %s", e)
+            await asyncio.sleep(BROADCAST_TICK)
 
 
 async def _remember_username(bot: Bot, db) -> None:
@@ -121,6 +135,21 @@ class _ThrottledSession(AiohttpSession):
     async def make_request(self, bot, method, timeout=None):
         if not flood.is_control(method.__api_method__):
             await flood.acquire()
+        return await super().make_request(bot, method, timeout)
+
+
+class _BroadcastSession(AiohttpSession):
+    """Сессия рассылок: берёт токены из отдельного бакета (`acquire_broadcast`).
+
+    Рассылка на тысячи адресатов не должна выедать общую корзину — иначе
+    ответы живым клиенткам ждут своей очереди за токенами рассылки.
+    """
+
+    _is_broadcast_session = True
+
+    async def make_request(self, bot, method, timeout=None):
+        if not flood.is_control(method.__api_method__):
+            await flood.acquire_broadcast()
         return await super().make_request(bot, method, timeout)
 
 

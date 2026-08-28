@@ -53,6 +53,16 @@ def _lang(user) -> str:
     return "en" if user["lang"] == "en" else "ru"
 
 
+def _step_label(step: str, lang: str) -> str:
+    """Прогресс онбординга «Шаг N/5» — пять шагов, считая от имени."""
+    numbers = {"name": 1, "gender": 2, "date": 2, "time": 3, "city": 4,
+               "confirm": 5}
+    n = numbers.get(step)
+    if not n:
+        return ""
+    return (f"Шаг {n}/5" if lang == "ru" else f"Step {n}/5") + "\n"
+
+
 def _copy(user, ru: str, en: str) -> str:
     return en if _lang(user) == "en" else ru
 
@@ -214,7 +224,7 @@ async def onb_language(cb: CallbackQuery, state: FSMContext, db):
             reply_markup=main_menu(is_admin=await _is_admin(db, cb.from_user.id), lang=value))
     else:
         await state.set_state(Onb.name)
-        await cb.message.edit_text(_copy(
+        await cb.message.edit_text(_step_label("name", _lang(user)) + _copy(
             user,
             "Как мне тебя называть? Имя можно изменить позже.",
             "What should I call you? You can change it later.",
@@ -232,7 +242,7 @@ async def onb_age_confirm(cb: CallbackQuery, state: FSMContext, db):
     await cb.answer()
     await cb.message.edit_reply_markup(reply_markup=None)
     await state.set_state(Onb.name)
-    await cb.message.answer(_copy(
+    await cb.message.answer(_step_label("name", _lang(user)) + _copy(
         user,
         "Как мне тебя называть? Имя можно изменить позже.",
         "What should I call you? You can change it later.",
@@ -261,7 +271,7 @@ async def onb_name(message: Message, state: FSMContext, db):
     await analytics.track(db, "onboarding_step", message.from_user.id, props={"step": "name"}, surface="bot")
     await state.set_state(Onb.gender)
     await message.answer(
-        _copy(
+        _step_label("gender", _lang(user)) + _copy(
             user,
             f"{tg_esc(name)}... красивое имя, в нём есть свет. 💫\n\n"
             "Чтобы подобрать форму обращения, выбери свой пол. Это можно изменить позже.",
@@ -283,7 +293,7 @@ async def onb_gender(cb: CallbackQuery, state: FSMContext, db):
     user = await users.get(db, cb.from_user.id)
     await state.set_state(Onb.date)
     await cb.message.edit_text(
-        _copy(
+        _step_label("date", _lang(user)) + _copy(
             user,
             "Спасибо. Теперь — дата рождения в формате <b>ДД.ММ.ГГГГ</b>, например 21.06.1999:",
             "Thank you. Now send your birth date in <b>DD.MM.YYYY</b> format, for example 21.06.1999:",
@@ -307,7 +317,7 @@ async def onb_date(message: Message, state: FSMContext, db):
     await analytics.track(db, "onboarding_step", message.from_user.id,
                           props={"step": "date"}, surface="bot")
     await state.set_state(Onb.time)
-    await message.answer(_copy(
+    await message.answer(_step_label("time", _lang(user)) + _copy(
         user,
         f"Поняла: <b>{tg_esc(parsed.label)}</b> 🌙\n\nЗнаешь ли ты время рождения? Выбери вариант или напиши его текстом.",
         f"Got it: <b>{tg_esc(parsed.label)}</b> 🌙\n\nDo you know your birth time? Choose an option or type it.",
@@ -323,7 +333,7 @@ async def _advance_from_time(target: Message, state: FSMContext, db, parsed) -> 
                           props={"step": "time", "precision": parsed.precision}, surface="bot")
     await state.set_state(Onb.city)
     city_question = _g(user, "город, где ты родилась", "город, где ты родился", "город рождения")
-    await target.answer(_copy(
+    await target.answer(_step_label("city", _lang(user)) + _copy(
         user,
         f"Поняла: <b>{tg_esc(parsed.label)}</b>. И последнее — {city_question}? 🏙\n\nМожно написать город на русском, английском или в транслитерации.",
         f"Got it: <b>{tg_esc(parsed.label)}</b>. One last detail — your birth city? 🏙\n\nYou can write it in your local language, English, or transliteration.",
@@ -421,7 +431,7 @@ async def onb_city(message: Message, state: FSMContext, db):
                     else "Время приблизительное — дома и Асцендент не используются")
     precision_en = ("Exact birth time" if precision_value == "exact"
                     else "Approximate time — houses and Ascendant are not used")
-    summary = _copy(
+    summary = _step_label("confirm", _lang(user)) + _copy(
         user,
         "🌌 <b>Твои данные</b>\n\n"
         f"Имя: <b>{tg_esc(user['name'] or '—')}</b>\n"

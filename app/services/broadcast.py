@@ -82,6 +82,14 @@ async def run(bot, db, broadcast_id: int, *, batch: int = 100) -> dict:
             if not await comms.claim_target(db, broadcast_id, tg_id):
                 continue
             try:
+                # Токен из корзины рассылок (не общей): в бот-процессе сессия
+                # и так _BroadcastSession, но run() могут звать и с обычной
+                # сессией/тестовым ботом — тогда рассылка всё равно не выест
+                # токены живых диалогов.
+                from ..core import flood
+                if not getattr(getattr(bot, "session", None),
+                               "_is_broadcast_session", False):
+                    await flood.acquire_broadcast()
                 await bot.send_message(tg_id, broadcast["body"], reply_markup=markup)
                 await comms.mark_target(db, broadcast_id, tg_id, "sent")
             except TelegramRetryAfter as e:
