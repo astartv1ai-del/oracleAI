@@ -46,7 +46,9 @@ async def _failure(db, provider: str, code: str, *,
     try:
         await db.execute(
             "INSERT INTO payment_webhook_failures(provider, code, status_code, created_at) "
-            "VALUES(?,?,?,?)", (provider[:32], code[:96], status_code, utcnow()))
+            "VALUES(:provider, :code, :status_code, :created_at)",
+            {"provider": provider[:32], "code": code[:96],
+             "status_code": status_code, "created_at": utcnow()})
     except Exception as exc:  # noqa: BLE001
         log.error("journal ошибок webhook недоступен: %s", type(exc).__name__)
 
@@ -114,10 +116,11 @@ async def _already_seen(db, event_id: str, provider: str, kind: str,
     try:
         async with transaction(db):
             cur = await db.execute(
-                "INSERT OR IGNORE INTO webhook_events(event_id, provider, kind, "
-                "payload, created_at) VALUES(?,?,?,?,?)",
-                (event_id[:MAX_EVENT_ID_LENGTH], provider[:32], kind[:MAX_EVENT_KIND_LENGTH],
-                 None, utcnow()))
+                "INSERT INTO webhook_events(event_id, provider, kind, "
+                "payload, created_at) VALUES(:event_id, :provider, :kind, "
+                "NULL, :created_at) ON CONFLICT (event_id) DO NOTHING",
+                {"event_id": event_id[:MAX_EVENT_ID_LENGTH], "provider": provider[:32],
+                 "kind": kind[:MAX_EVENT_KIND_LENGTH], "created_at": utcnow()})
         return not cur.rowcount
     except Exception as e:  # noqa: BLE001
         await _failure(db, provider, "idempotency_journal_unavailable", status_code=503)

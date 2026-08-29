@@ -37,18 +37,20 @@ async def ensure_thread(db, tg_id: int, agent: str = "oracle", title: str | None
     список. Архивные треды (`archived=1`) остаются в истории и не мешают.
     """
     cur = await db.execute(
-        "SELECT * FROM threads WHERE tg_id=? AND agent=? AND archived=0 "
-        "ORDER BY id DESC LIMIT 1", (tg_id, agent))
+        "SELECT * FROM threads WHERE tg_id=:tg_id AND agent=:agent AND archived=0 "
+        "ORDER BY id DESC LIMIT 1", {"tg_id": tg_id, "agent": agent})
     row = await cur.fetchone()
     if row:
         return row
     async with transaction(db):
         await db.execute(
             "INSERT INTO threads(tg_id, agent, title, created_at, last_at) "
-            "VALUES(?,?,?,?,?)", (tg_id, agent, title, utcnow(), utcnow()))
+            "VALUES(:tg_id, :agent, :title, :created_at, :last_at)",
+            {"tg_id": tg_id, "agent": agent, "title": title,
+             "created_at": utcnow(), "last_at": utcnow()})
     cur = await db.execute(
-        "SELECT * FROM threads WHERE tg_id=? AND agent=? AND archived=0 "
-        "ORDER BY id DESC LIMIT 1", (tg_id, agent))
+        "SELECT * FROM threads WHERE tg_id=:tg_id AND agent=:agent AND archived=0 "
+        "ORDER BY id DESC LIMIT 1", {"tg_id": tg_id, "agent": agent})
     return await cur.fetchone()
 
 
@@ -63,45 +65,52 @@ async def create_thread(db, tg_id: int, agent: str = "oracle",
     async with transaction(db):
         cur = await db.execute(
             "INSERT INTO threads(tg_id, agent, title, created_at, last_at) "
-            "VALUES(?,?,?,?,?)", (tg_id, agent, title, utcnow(), utcnow()))
-        thread_id = cur.lastrowid
-    cur = await db.execute("SELECT * FROM threads WHERE id=? AND tg_id=?",
-                           (thread_id, tg_id))
+            "VALUES(:tg_id, :agent, :title, :created_at, :last_at) RETURNING id",
+            {"tg_id": tg_id, "agent": agent, "title": title,
+             "created_at": utcnow(), "last_at": utcnow()})
+        row = await cur.fetchone()
+        thread_id = row["id"]
+    cur = await db.execute(
+        "SELECT * FROM threads WHERE id=:id AND tg_id=:tg_id",
+        {"id": thread_id, "tg_id": tg_id})
     return dict(await cur.fetchone())
 
 
 async def get_thread(db, thread_id: int, tg_id: int):
     cur = await db.execute(
-        "SELECT * FROM threads WHERE id=? AND tg_id=?", (thread_id, tg_id))
+        "SELECT * FROM threads WHERE id=:id AND tg_id=:tg_id",
+        {"id": thread_id, "tg_id": tg_id})
     return await cur.fetchone()
 
 
 async def list_threads(db, tg_id: int, limit: int | None = 30, *,
                        offset: int = 0) -> list[dict]:
     query = (
-        "SELECT * FROM threads WHERE tg_id=? AND archived=0 "
+        "SELECT * FROM threads WHERE tg_id=:tg_id AND archived=0 "
         "ORDER BY COALESCE(last_at, created_at) DESC"
     )
-    params: list[object] = [tg_id]
+    params: dict = {"tg_id": tg_id}
     if limit is not None:
-        query += " LIMIT ? OFFSET ?"
-        params += [limit, max(0, offset)]
-    cur = await db.execute(query, tuple(params))
+        query += " LIMIT :limit OFFSET :offset"
+        params["limit"] = limit
+        params["offset"] = max(0, offset)
+    cur = await db.execute(query, params)
     return [dict(r) for r in await cur.fetchall()]
 
 
 async def archive_thread(db, thread_id: int, tg_id: int) -> None:
     async with transaction(db):
-        await db.execute("UPDATE threads SET archived=1 WHERE id=? AND tg_id=?",
-                         (thread_id, tg_id))
+        await db.execute(
+            "UPDATE threads SET archived=1 WHERE id=:id AND tg_id=:tg_id",
+            {"id": thread_id, "tg_id": tg_id})
 
 
 async def archive_all_threads(db, tg_id: int, agent: str) -> int:
     """Archives all active sessions for one agent without deleting messages or memory."""
     async with transaction(db):
         cur = await db.execute(
-            "UPDATE threads SET archived=1 WHERE tg_id=? AND agent=? AND archived=0",
-            (tg_id, agent),
+            "UPDATE threads SET archived=1 WHERE tg_id=:tg_id AND agent=:agent AND archived=0",
+            {"tg_id": tg_id, "agent": agent},
         )
     return max(int(cur.rowcount or 0), 0)
 
@@ -116,20 +125,26 @@ async def save_message(db, tg_id: int, role: str, text: str,
     async with transaction(db):
         cur = await db.execute(
             "INSERT INTO messages(tg_id, thread_id, agent, role, text, is_question, "
-            "surface, tokens, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-            (tg_id, thread_id, agent, role, text, int(is_question), surface,
-             tokens, utcnow()))
-        msg_id = cur.lastrowid
+            "surface, tokens, created_at) VALUES(:tg_id, :thread_id, :agent, :role, "
+            ":text, :is_question, :surface, :tokens, :created_at) RETURNING id",
+            {"tg_id": tg_id, "thread_id": thread_id, "agent": agent, "role": role,
+             "text": text, "is_question": int(is_question), "surface": surface,
+             "tokens": tokens, "created_at": utcnow()})
+        row = await cur.fetchone()
+        msg_id = row["id"]
         if thread_id and role == "user":
             await db.execute(
-                "UPDATE threads SET msg_count=msg_count+1, last_text=?, last_at=?, "
-                "title=CASE WHEN msg_count=0 THEN ? ELSE title END WHERE id=?",
-                (text[:160], utcnow(), auto_thread_title(text, agent), thread_id),
+                "UPDATE threads SET msg_count=msg_count+1, last_text=:last_text, "
+                "last_at=:last_at, "
+                "title=CASE WHEN msg_count=0 THEN :auto_title ELSE title END WHERE id=:id",
+                {"last_text": text[:160], "last_at": utcnow(),
+                 "auto_title": auto_thread_title(text, agent), "id": thread_id},
             )
         elif thread_id:
             await db.execute(
-                "UPDATE threads SET msg_count=msg_count+1, last_text=?, last_at=? "
-                "WHERE id=?", (text[:160], utcnow(), thread_id))
+                "UPDATE threads SET msg_count=msg_count+1, last_text=:last_text, "
+                "last_at=:last_at WHERE id=:id",
+                {"last_text": text[:160], "last_at": utcnow(), "id": thread_id})
     return msg_id
 
 
@@ -141,18 +156,18 @@ async def claim_chat_request(db, tg_id: int, idempotency_key: str) -> dict:
     now = utcnow()
     async with transaction(db):
         await db.execute(
-            "DELETE FROM chat_requests WHERE updated_at < ?",
-            ((datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(),),
+            "DELETE FROM chat_requests WHERE updated_at < :cutoff",
+            {"cutoff": (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()},
         )
         insert = await db.execute(
             "INSERT INTO chat_requests(idempotency_key, tg_id, status, response_json, created_at, updated_at) "
-            "VALUES(?,?, 'processing', NULL, ?, ?) ON CONFLICT(idempotency_key) DO NOTHING",
-            (key, tg_id, now, now),
+            "VALUES(:key, :tg_id, 'processing', NULL, :now, :now2) ON CONFLICT(idempotency_key) DO NOTHING",
+            {"key": key, "tg_id": tg_id, "now": now, "now2": now},
         )
         created = insert.rowcount == 1
         cur = await db.execute(
-            "SELECT tg_id, status, response_json FROM chat_requests WHERE idempotency_key=?",
-            (key,),
+            "SELECT tg_id, status, response_json FROM chat_requests WHERE idempotency_key=:key",
+            {"key": key},
         )
         row = await cur.fetchone()
         if not row or int(row["tg_id"]) != int(tg_id):
@@ -168,9 +183,9 @@ async def claim_chat_request(db, tg_id: int, idempotency_key: str) -> dict:
         if status == "processing":
             return {"state": "processing"}
         await db.execute(
-            "UPDATE chat_requests SET status='processing', response_json=NULL, updated_at=? "
-            "WHERE idempotency_key=? AND tg_id=?",
-            (now, key, tg_id),
+            "UPDATE chat_requests SET status='processing', response_json=NULL, updated_at=:now "
+            "WHERE idempotency_key=:key AND tg_id=:tg_id",
+            {"now": now, "key": key, "tg_id": tg_id},
         )
         return {"state": "claimed"}
 
@@ -183,9 +198,10 @@ async def finish_chat_request(db, tg_id: int, idempotency_key: str,
     payload = json.dumps(response, ensure_ascii=False, separators=(",", ":")) if response is not None else None
     async with transaction(db):
         await db.execute(
-            "UPDATE chat_requests SET status=?, response_json=?, updated_at=? "
-            "WHERE idempotency_key=? AND tg_id=?",
-            ("failed" if failed else "completed", payload, utcnow(), key, tg_id),
+            "UPDATE chat_requests SET status=:status, response_json=:payload, updated_at=:now "
+            "WHERE idempotency_key=:key AND tg_id=:tg_id",
+            {"status": "failed" if failed else "completed", "payload": payload,
+             "now": utcnow(), "key": key, "tg_id": tg_id},
         )
 
 
@@ -198,12 +214,12 @@ async def history(db, tg_id: int, limit: int = 16, *,
     """
     if thread_id:
         cur = await db.execute(
-            "SELECT role, text FROM messages WHERE thread_id=? ORDER BY id DESC LIMIT ?",
-            (thread_id, limit))
+            "SELECT role, text FROM messages WHERE thread_id=:thread_id ORDER BY id DESC LIMIT :limit",
+            {"thread_id": thread_id, "limit": limit})
     else:
         cur = await db.execute(
-            "SELECT role, text FROM messages WHERE tg_id=? ORDER BY id DESC LIMIT ?",
-            (tg_id, limit))
+            "SELECT role, text FROM messages WHERE tg_id=:tg_id ORDER BY id DESC LIMIT :limit",
+            {"tg_id": tg_id, "limit": limit})
     rows = await cur.fetchall()
     return [{"role": r["role"], "content": r["text"]} for r in reversed(rows)]
 
@@ -213,13 +229,14 @@ async def thread_messages(db, thread_id: int, limit: int = 100,
     """Read messages with optional owner scoping for defense in depth."""
     if tg_id is None:
         cur = await db.execute(
-            "SELECT id, role, text, created_at FROM messages WHERE thread_id=? "
-            "ORDER BY id DESC LIMIT ?", (thread_id, limit))
+            "SELECT id, role, text, created_at FROM messages WHERE thread_id=:thread_id "
+            "ORDER BY id DESC LIMIT :limit",
+            {"thread_id": thread_id, "limit": limit})
     else:
         cur = await db.execute(
             "SELECT id, role, text, created_at FROM messages "
-            "WHERE thread_id=? AND tg_id=? ORDER BY id DESC LIMIT ?",
-            (thread_id, tg_id, limit))
+            "WHERE thread_id=:thread_id AND tg_id=:tg_id ORDER BY id DESC LIMIT :limit",
+            {"thread_id": thread_id, "tg_id": tg_id, "limit": limit})
     rows = [dict(r) for r in await cur.fetchall()]
     rows.reverse()
     return rows
@@ -227,30 +244,31 @@ async def thread_messages(db, thread_id: int, limit: int = 100,
 
 async def questions_used_today(db, user) -> int:
     cur = await db.execute(
-        "SELECT COUNT(*) c FROM messages WHERE tg_id=? AND is_question=1 AND created_at>=?",
-        (user["tg_id"], users_repo.day_start_utc(user)))
+        "SELECT COUNT(*) c FROM messages WHERE tg_id=:tg_id AND is_question=1 AND created_at>=:since",
+        {"tg_id": user["tg_id"], "since": users_repo.day_start_utc(user)})
     return (await cur.fetchone())["c"]
 
 
 async def questions_used_since(db, tg_id: int, since_iso: str) -> int:
     cur = await db.execute(
-        "SELECT COUNT(*) c FROM messages WHERE tg_id=? AND is_question=1 AND created_at>=?",
-        (tg_id, since_iso))
+        "SELECT COUNT(*) c FROM messages WHERE tg_id=:tg_id AND is_question=1 AND created_at>=:since",
+        {"tg_id": tg_id, "since": since_iso})
     return (await cur.fetchone())["c"]
 
 
 async def followups_since(db, tg_id: int, since_iso: str) -> int:
     """Сообщений клиентки после указанного момента, не помеченных вопросом."""
     cur = await db.execute(
-        "SELECT COUNT(*) c FROM messages WHERE tg_id=? AND role='user' "
-        "AND is_question=0 AND created_at > ?", (tg_id, since_iso))
+        "SELECT COUNT(*) c FROM messages WHERE tg_id=:tg_id AND role='user' "
+        "AND is_question=0 AND created_at > :since",
+        {"tg_id": tg_id, "since": since_iso})
     return (await cur.fetchone())["c"]
 
 
 async def last_question_at(db, tg_id: int) -> str | None:
     cur = await db.execute(
-        "SELECT created_at FROM messages WHERE tg_id=? AND is_question=1 "
-        "ORDER BY id DESC LIMIT 1", (tg_id,))
+        "SELECT created_at FROM messages WHERE tg_id=:tg_id AND is_question=1 "
+        "ORDER BY id DESC LIMIT 1", {"tg_id": tg_id})
     row = await cur.fetchone()
     return row["created_at"] if row else None
 
@@ -278,21 +296,24 @@ async def save_memory(db, tg_id: int, fact: str, kind: str = "fact",
     # работает только с ASCII, поэтому «Работает» и «работает» для него разные
     # строки — на кириллице дедупликация молча не срабатывала.
     key = dedup_key(fact)
-    cur = await db.execute("SELECT id, fact FROM memories WHERE tg_id=?", (tg_id,))
+    cur = await db.execute(
+        "SELECT id, fact FROM memories WHERE tg_id=:tg_id", {"tg_id": tg_id})
     twin = next((r["id"] for r in await cur.fetchall()
                  if dedup_key(r["fact"]) == key), None)
     if twin is not None:
         async with transaction(db):
             await db.execute(
-                "UPDATE memories SET weight=weight+1, last_used=? WHERE id=?",
-                (utcnow(), twin))
+                "UPDATE memories SET weight=weight+1, last_used=:last_used WHERE id=:id",
+                {"last_used": utcnow(), "id": twin})
         from ..core.memory import invalidate_recall_cache
         invalidate_recall_cache(tg_id)
         return False
     async with transaction(db):
         await db.execute(
             "INSERT INTO memories(tg_id, fact, kind, weight, created_at) "
-            "VALUES(?,?,?,?,?)", (tg_id, fact, kind, weight, utcnow()))
+            "VALUES(:tg_id, :fact, :kind, :weight, :created_at)",
+            {"tg_id": tg_id, "fact": fact, "kind": kind,
+             "weight": weight, "created_at": utcnow()})
     from ..core.memory import invalidate_recall_cache
     invalidate_recall_cache(tg_id)
     return True
@@ -301,8 +322,8 @@ async def save_memory(db, tg_id: int, fact: str, kind: str = "fact",
 async def get_memories(db, tg_id: int, limit: int = 20) -> list[str]:
     """Самые весомые и свежие факты: вес важнее давности."""
     cur = await db.execute(
-        "SELECT fact FROM memories WHERE tg_id=? ORDER BY weight DESC, id DESC LIMIT ?",
-        (tg_id, limit))
+        "SELECT fact FROM memories WHERE tg_id=:tg_id ORDER BY weight DESC, id DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
     return [r["fact"] for r in await cur.fetchall()]
 
 
@@ -310,8 +331,8 @@ async def memories_full(db, tg_id: int, limit: int = 100) -> list[dict]:
     """Return inspectable memory fields without internal vector payloads."""
     cur = await db.execute(
         "SELECT id, fact, kind, weight, last_used, created_at FROM memories "
-        "WHERE tg_id=? ORDER BY weight DESC, id DESC LIMIT ?",
-        (tg_id, limit))
+        "WHERE tg_id=:tg_id ORDER BY weight DESC, id DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
     return [dict(r) for r in await cur.fetchall()]
 
 
@@ -319,19 +340,22 @@ async def search_memories(db, tg_id: int, query: str, limit: int = 10) -> list[s
     words = [w for w in (query or "").lower().split() if len(w) > 2]
     if not words:
         return await get_memories(db, tg_id, limit)
-    clause = " OR ".join(["lower(fact) LIKE ?"] * len(words))
-    params = [tg_id] + [f"%{w}%" for w in words] + [limit]
+    clause = " OR ".join(["lower(fact) LIKE :w" + str(i) for i in range(len(words))])
+    params: dict = {"tg_id": tg_id, "limit": limit}
+    for i, w in enumerate(words):
+        params[f"w{i}"] = f"%{w}%"
     cur = await db.execute(
-        f"SELECT fact FROM memories WHERE tg_id=? AND ({clause}) "
-        f"ORDER BY weight DESC, id DESC LIMIT ?", params)
+        f"SELECT fact FROM memories WHERE tg_id=:tg_id AND ({clause}) "
+        f"ORDER BY weight DESC, id DESC LIMIT :limit", params)
     hits = [r["fact"] for r in await cur.fetchall()]
     return hits or await get_memories(db, tg_id, limit)
 
 
 async def forget_memory(db, memory_id: int, tg_id: int) -> bool:
     async with transaction(db):
-        cur = await db.execute("DELETE FROM memories WHERE id=? AND tg_id=?",
-                               (memory_id, tg_id))
+        cur = await db.execute(
+            "DELETE FROM memories WHERE id=:id AND tg_id=:tg_id",
+            {"id": memory_id, "tg_id": tg_id})
     deleted = bool(cur.rowcount)
     if deleted:
         # Local import avoids a repo/core import cycle while keeping recall fresh.
@@ -345,14 +369,15 @@ async def forget_memory(db, memory_id: int, tg_id: int) -> bool:
 async def add_diary(db, tg_id: int, text: str, mood: str | None = None) -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT INTO diary(tg_id, text, mood, created_at) VALUES(?,?,?,?)",
-            (tg_id, text, mood, utcnow()))
+            "INSERT INTO diary(tg_id, text, mood, created_at) VALUES(:tg_id, :text, :mood, :created_at)",
+            {"tg_id": tg_id, "text": text, "mood": mood, "created_at": utcnow()})
 
 
 async def get_diary(db, tg_id: int, limit: int = 30) -> list[dict]:
     cur = await db.execute(
-        "SELECT id, text, mood, created_at FROM diary WHERE tg_id=? "
-        "ORDER BY id DESC LIMIT ?", (tg_id, limit))
+        "SELECT id, text, mood, created_at FROM diary WHERE tg_id=:tg_id "
+        "ORDER BY id DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
     return [dict(r) for r in await cur.fetchall()]
 
 
@@ -364,16 +389,17 @@ async def diary_entries_between(db, tg_id: int, start_iso: str,
     только сползает по краям — для сводки это приемлемо.
     """
     cur = await db.execute(
-        "SELECT id, text, mood, created_at FROM diary WHERE tg_id=? "
-        "AND created_at>=? AND created_at<? ORDER BY id", (tg_id, start_iso, end_iso))
+        "SELECT id, text, mood, created_at FROM diary WHERE tg_id=:tg_id "
+        "AND created_at>=:start AND created_at<:end ORDER BY id",
+        {"tg_id": tg_id, "start": start_iso, "end": end_iso})
     return [dict(r) for r in await cur.fetchall()]
 
 
 async def diary_streak(db, tg_id: int) -> int:
     """Дней подряд с записями. Сегодня ещё не писала — считаем от вчера."""
     cur = await db.execute(
-        "SELECT DISTINCT substr(created_at, 1, 10) d FROM diary WHERE tg_id=? "
-        "ORDER BY d DESC LIMIT 400", (tg_id,))
+        "SELECT DISTINCT substr(created_at, 1, 10) d FROM diary WHERE tg_id=:tg_id "
+        "ORDER BY d DESC LIMIT 400", {"tg_id": tg_id})
     dayset = {r["d"] for r in await cur.fetchall()}
     if not dayset:
         return 0
@@ -390,5 +416,6 @@ async def diary_streak(db, tg_id: int) -> int:
 async def diary_count_since(db, tg_id: int, days: int) -> int:
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     cur = await db.execute(
-        "SELECT COUNT(*) c FROM diary WHERE tg_id=? AND created_at>=?", (tg_id, since))
+        "SELECT COUNT(*) c FROM diary WHERE tg_id=:tg_id AND created_at>=:since",
+        {"tg_id": tg_id, "since": since})
     return (await cur.fetchone())["c"]

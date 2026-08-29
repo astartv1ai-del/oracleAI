@@ -19,40 +19,44 @@ async def create(db, task_id: str, kind: str, *, tg_id: int | None = None,
     now = utcnow()
     async with transaction(db):
         await db.execute(
-            "INSERT OR IGNORE INTO task_jobs "
+            "INSERT INTO task_jobs "
             "(id, kind, status, tg_id, payload_json, attempts, available_at, "
-            "created_at, updated_at) VALUES(?,?, 'queued', ?, ?, 0, ?, ?, ?)",
-            (task_id, kind, tg_id,
-             json.dumps(payload, ensure_ascii=False) if payload else None,
-             now, now, now))
+            "created_at, updated_at) VALUES(:id, :kind, 'queued', :tg_id, "
+            ":payload_json, 0, :available_at, :created_at, :updated_at) "
+            "ON CONFLICT (id) DO NOTHING",
+            {"id": task_id, "kind": kind, "tg_id": tg_id,
+             "payload_json": json.dumps(payload, ensure_ascii=False) if payload else None,
+             "available_at": now, "created_at": now, "updated_at": now})
 
 
 async def mark_running(db, task_id: str) -> bool:
     async with transaction(db):
         cur = await db.execute(
             "UPDATE task_jobs SET status='running', attempts=attempts+1, "
-            "started_at=COALESCE(started_at, ?), updated_at=? WHERE id=? "
-            "AND status NOT IN ('succeeded','failed','rejected')",
-            (utcnow(), utcnow(), task_id))
+            "started_at=COALESCE(started_at, :started_at), updated_at=:updated_at "
+            "WHERE id=:id AND status NOT IN ('succeeded','failed','rejected')",
+            {"started_at": utcnow(), "updated_at": utcnow(), "id": task_id})
         return bool(cur.rowcount)
 
 
 async def mark_retry(db, task_id: str, error: str, available_at: str) -> None:
     async with transaction(db):
         await db.execute(
-            "UPDATE task_jobs SET status='retry', error=?, available_at=?, "
-            "updated_at=? WHERE id=? AND status NOT IN ('succeeded','failed','rejected')",
-            (error[:1000], available_at, utcnow(), task_id))
+            "UPDATE task_jobs SET status='retry', error=:error, available_at=:available_at, "
+            "updated_at=:updated_at WHERE id=:id "
+            "AND status NOT IN ('succeeded','failed','rejected')",
+            {"error": error[:1000], "available_at": available_at,
+             "updated_at": utcnow(), "id": task_id})
 
 
 async def mark_succeeded(db, task_id: str, result: Any = None) -> None:
     async with transaction(db):
         await db.execute(
-            "UPDATE task_jobs SET status='succeeded', result_json=?, error=NULL, "
-            "finished_at=?, updated_at=? WHERE id=? AND status NOT IN "
-            "('succeeded','failed','rejected')",
-            (json.dumps(result, ensure_ascii=False) if result is not None else None,
-             utcnow(), utcnow(), task_id))
+            "UPDATE task_jobs SET status='succeeded', result_json=:result_json, "
+            "error=NULL, finished_at=:finished_at, updated_at=:updated_at "
+            "WHERE id=:id AND status NOT IN ('succeeded','failed','rejected')",
+            {"result_json": json.dumps(result, ensure_ascii=False) if result is not None else None,
+             "finished_at": utcnow(), "updated_at": utcnow(), "id": task_id})
 
 
 async def mark_rejected(db, task_id: str, code: str, reason: str) -> None:
@@ -60,23 +64,27 @@ async def mark_rejected(db, task_id: str, code: str, reason: str) -> None:
     error = f"{code}: {reason}"[:2000]
     async with transaction(db):
         await db.execute(
-            "UPDATE task_jobs SET status='rejected', result_json=NULL, error=?, "
-            "finished_at=?, updated_at=? WHERE id=? AND status NOT IN "
-            "('succeeded','failed','rejected')",
-            (error, utcnow(), utcnow(), task_id),
+            "UPDATE task_jobs SET status='rejected', result_json=NULL, error=:error, "
+            "finished_at=:finished_at, updated_at=:updated_at WHERE id=:id "
+            "AND status NOT IN ('succeeded','failed','rejected')",
+            {"error": error, "finished_at": utcnow(), "updated_at": utcnow(),
+             "id": task_id},
         )
 
 
 async def mark_failed(db, task_id: str, error: str) -> None:
     async with transaction(db):
         await db.execute(
-            "UPDATE task_jobs SET status='failed', error=?, finished_at=?, "
-            "updated_at=? WHERE id=? AND status NOT IN ('succeeded','failed','rejected')",
-            (error[:2000], utcnow(), utcnow(), task_id))
+            "UPDATE task_jobs SET status='failed', error=:error, "
+            "finished_at=:finished_at, updated_at=:updated_at WHERE id=:id "
+            "AND status NOT IN ('succeeded','failed','rejected')",
+            {"error": error[:2000], "finished_at": utcnow(),
+             "updated_at": utcnow(), "id": task_id})
 
 
 async def get(db, task_id: str):
-    cur = await db.execute("SELECT * FROM task_jobs WHERE id=?", (task_id,))
+    cur = await db.execute(
+        "SELECT * FROM task_jobs WHERE id=:id", {"id": task_id})
     row = await cur.fetchone()
     if not row:
         return None
@@ -98,7 +106,8 @@ async def list_for_user(db, tg_id: int, *, limit: int = 20) -> list[dict]:
     cur = await db.execute(
         "SELECT id, kind, status, result_json, error, attempts, available_at, "
         "started_at, finished_at, created_at, updated_at FROM task_jobs "
-        "WHERE tg_id=? ORDER BY created_at DESC LIMIT ?", (tg_id, limit))
+        "WHERE tg_id=:tg_id ORDER BY created_at DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
     rows = []
     for row in await cur.fetchall():
         item = dict(row)

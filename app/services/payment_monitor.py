@@ -46,7 +46,7 @@ def _safe_dashboard_url(value: str) -> str | None:
     return value[:500]
 
 
-async def _scalar(db, sql: str, *params) -> int:
+async def _scalar(db, sql: str, params: dict | tuple = ()) -> int:
     cur = await db.execute(sql, params)
     row = await cur.fetchone()
     return int((row[0] if row else 0) or 0)
@@ -55,7 +55,8 @@ async def _scalar(db, sql: str, *params) -> int:
 async def _webhook_activity(db, since: str) -> dict:
     cur = await db.execute(
         "SELECT provider, COUNT(*) AS n, MAX(created_at) AS last_at "
-        "FROM webhook_events WHERE created_at>=? GROUP BY provider", (since,))
+        "FROM webhook_events WHERE created_at>=:since GROUP BY provider",
+        {"since": since})
     return {
         str(row["provider"] or "unknown"): {
             "events_24h": int(row["n"] or 0),
@@ -68,7 +69,7 @@ async def _webhook_activity(db, since: str) -> dict:
 async def _webhook_failures(db, since: str) -> dict:
     cur = await db.execute(
         "SELECT provider, COUNT(*) AS n FROM payment_webhook_failures "
-        "WHERE created_at>=? GROUP BY provider", (since,))
+        "WHERE created_at>=:since GROUP BY provider", {"since": since})
     return {str(row["provider"] or "unknown"): int(row["n"] or 0)
             for row in await cur.fetchall()}
 
@@ -77,14 +78,16 @@ async def _webhook_timeline(db, since: str, limit: int = 30) -> list[dict]:
     """Return safe recent webhook facts without IDs, payloads or PII."""
     cur = await db.execute(
         "SELECT provider, kind, created_at FROM webhook_events "
-        "WHERE created_at>=? ORDER BY created_at DESC LIMIT ?", (since, limit))
+        "WHERE created_at>=:since ORDER BY created_at DESC LIMIT :limit",
+        {"since": since, "limit": limit})
     rows = [{"provider": str(row["provider"] or "unknown")[:32],
              "event": str(row["kind"] or "received")[:48],
              "status": "received", "at": row["created_at"]}
             for row in await cur.fetchall()]
     cur = await db.execute(
         "SELECT provider, code, status_code, created_at FROM payment_webhook_failures "
-        "WHERE created_at>=? ORDER BY created_at DESC LIMIT ?", (since, limit))
+        "WHERE created_at>=:since ORDER BY created_at DESC LIMIT :limit",
+        {"since": since, "limit": limit})
     rows.extend({"provider": str(row["provider"] or "unknown")[:32],
                  "event": str(row["code"] or "failure")[:48],
                  "status": "failed", "status_code": int(row["status_code"] or 0),
@@ -153,10 +156,11 @@ async def _database_checks(db, now: datetime) -> dict:
     timeline = await _webhook_timeline(db, since)
 
     stale_pending = await _scalar(
-        db, "SELECT COUNT(*) FROM orders WHERE status='pending' AND created_at<?",
-        stale_before)
+        db, "SELECT COUNT(*) FROM orders WHERE status='pending' AND created_at<:stale_before",
+        {"stale_before": stale_before})
     failed_orders = await _scalar(
-        db, "SELECT COUNT(*) FROM orders WHERE status='failed' AND created_at>=?", since)
+        db, "SELECT COUNT(*) FROM orders WHERE status='failed' AND created_at>=:since",
+        {"since": since})
     orphan_payments = await _scalar(
         db, "SELECT COUNT(*) FROM payments p LEFT JOIN orders o ON o.id=p.order_id "
         "WHERE o.id IS NULL")
@@ -166,7 +170,7 @@ async def _database_checks(db, now: datetime) -> dict:
     duplicate_paid_orders = await _scalar(
         db, "SELECT COUNT(*) FROM (SELECT order_id FROM payments "
         "WHERE status='succeeded' AND order_id IS NOT NULL GROUP BY order_id "
-        "HAVING COUNT(*)>1)")
+        "HAVING COUNT(*)>1) subq")
     ledger_mismatches = await _scalar(
         db, "SELECT COUNT(*) FROM users u JOIN crystal_ledger l ON l.id=("
         "SELECT MAX(l2.id) FROM crystal_ledger l2 WHERE l2.tg_id=u.tg_id) "
@@ -198,7 +202,7 @@ async def _provider_checks(db, now: datetime, *, external: bool) -> dict:
             "dashboard_url": _safe_dashboard_url(settings.telegram_stars_dashboard_url),
             "payments_24h": await _scalar(
                 db, "SELECT COUNT(*) FROM payments WHERE provider='telegram_stars' "
-                "AND status='succeeded' AND created_at>=?", since),
+                "AND status='succeeded' AND created_at>=:since", {"since": since}),
         },
         "cryptobot": {
             "configured": bool(settings.cryptobot_api_token),
@@ -352,8 +356,8 @@ async def reconciliation(db) -> dict:
                   "count": int(row["n"])} for row in await cur.fetchall())
     cur = await db.execute(
         "SELECT id, status, kind, sku, created_at FROM orders "
-        "WHERE status='pending' AND created_at<? ORDER BY id DESC LIMIT 50",
-        (_iso(_now() - timedelta(hours=STALE_PENDING_HOURS)),))
+        "WHERE status='pending' AND created_at<:stale ORDER BY id DESC LIMIT 50",
+        {"stale": _iso(_now() - timedelta(hours=STALE_PENDING_HOURS))})
     items.extend({"order_id": int(row["id"]), "issue": "stale_pending",
                   "status": row["status"], "kind": row["kind"], "sku": row["sku"],
                   "created_at": row["created_at"]} for row in await cur.fetchall())
@@ -364,13 +368,14 @@ async def reconciliation(db) -> dict:
 async def recheck_order(db, order_id: int) -> dict:
     cur = await db.execute(
         "SELECT id, status, kind, sku, title, amount_stars, surface, created_at, paid_at, meta_json "
-        "FROM orders WHERE id=?", (order_id,))
+        "FROM orders WHERE id=:id", {"id": order_id})
     order = await cur.fetchone()
     if not order:
         return {"order_id": order_id, "found": False, "issues": []}
     cur = await db.execute(
         "SELECT COUNT(*) AS n, MAX(provider) AS provider, MAX(currency) AS currency, "
-        "MAX(status) AS payment_status FROM payments WHERE order_id=?", (order_id,))
+        "MAX(status) AS payment_status FROM payments WHERE order_id=:order_id",
+        {"order_id": order_id})
     payment = await cur.fetchone()
     issues: list[str] = []
     payment_count = int(payment["n"] or 0)

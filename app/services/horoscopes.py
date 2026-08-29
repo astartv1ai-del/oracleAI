@@ -58,7 +58,8 @@ def _lock_for(sign: str, day: str) -> asyncio.Lock:
 async def get(db, sign: str, day: str | None = None) -> str | None:
     day = day or date.today().isoformat()
     cur = await db.execute(
-        "SELECT text FROM horoscopes WHERE day=? AND sign=?", (day, sign))
+        "SELECT text FROM horoscopes WHERE day=:day AND sign=:sign",
+        {"day": day, "sign": sign})
     row = await cur.fetchone()
     return row["text"] if row else None
 
@@ -90,15 +91,17 @@ async def _save_if_absent(db, sign: str, day: str, text: str) -> bool:
     """True — сохранили мы; False — параллельный процесс успел раньше."""
     async with transaction(db):
         cur = await db.execute(
-            "INSERT OR IGNORE INTO horoscopes(day, sign, text, posted_at, created_at) "
-            "VALUES(?,?,?,NULL,?)", (day, sign, text, utcnow()))
+            "INSERT INTO horoscopes(day, sign, text, posted_at, created_at) "
+            "VALUES(:day, :sign, :text, NULL, :created_at) "
+            "ON CONFLICT (day, sign) DO NOTHING",
+            {"day": day, "sign": sign, "text": text, "created_at": utcnow()})
         return bool(cur.rowcount)
 
 
 async def all_for_day(db, day: str | None = None) -> list[dict]:
     day = day or date.today().isoformat()
     cur = await db.execute(
-        "SELECT sign, text, posted_at FROM horoscopes WHERE day=?", (day,))
+        "SELECT sign, text, posted_at FROM horoscopes WHERE day=:day", {"day": day})
     have = {r["sign"]: dict(r) for r in await cur.fetchall()}
     return [{"sign": s, "symbol": SIGN_SYMBOL[s], "element": SIGN_ELEMENT[s],
              "code": SIGN_CODE[s], "text": have.get(s, {}).get("text"),
@@ -110,10 +113,13 @@ async def save(db, sign: str, day: str, text: str) -> None:
     async with transaction(db):
         await db.execute(
             "INSERT INTO horoscopes(day, sign, text, posted_at, created_at) "
-            "VALUES(?,?,?,(SELECT posted_at FROM horoscopes WHERE day=? AND sign=?),?) "
+            "VALUES(:day, :sign, :text, "
+            "(SELECT posted_at FROM horoscopes WHERE day=:day2 AND sign=:sign2), "
+            ":created_at) "
             "ON CONFLICT(day, sign) DO UPDATE SET text=excluded.text, "
             "created_at=excluded.created_at",
-            (day, sign, text, day, sign, utcnow()))
+            {"day": day, "sign": sign, "text": text, "day2": day, "sign2": sign,
+             "created_at": utcnow()})
 
 
 # ─────────────────────────────── генерация ────────────────────────────────────
@@ -232,8 +238,8 @@ async def post_day(bot, db, day: str | None = None) -> dict:
     posted = 0
     for sign, channel in channels.items():
         cur = await db.execute(
-            "SELECT text, posted_at FROM horoscopes WHERE day=? AND sign=?",
-            (day, sign))
+            "SELECT text, posted_at FROM horoscopes WHERE day=:day AND sign=:sign",
+            {"day": day, "sign": sign})
         row = await cur.fetchone()
         if not row or not row["text"] or row["posted_at"]:
             continue
@@ -246,8 +252,8 @@ async def post_day(bot, db, day: str | None = None) -> dict:
             continue
         async with transaction(db):
             await db.execute(
-                "UPDATE horoscopes SET posted_at=? WHERE day=? AND sign=?",
-                (utcnow(), day, sign))
+                "UPDATE horoscopes SET posted_at=:posted_at WHERE day=:day AND sign=:sign",
+                {"posted_at": utcnow(), "day": day, "sign": sign})
         posted += 1
     if posted:
         log.info("гороскопы на %s: опубликовано %d постов", day, posted)

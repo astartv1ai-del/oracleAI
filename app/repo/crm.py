@@ -10,21 +10,25 @@ from . import analytics, billing, dialog, growth, readings, users
 async def add_note(db, tg_id: int, text: str, author_id: int | None = None) -> int:
     async with transaction(db):
         cur = await db.execute(
-            "INSERT INTO user_notes(tg_id, author_id, text, created_at) VALUES(?,?,?,?)",
-            (tg_id, author_id, text, utcnow()))
-        return cur.lastrowid
+            "INSERT INTO user_notes(tg_id, author_id, text, created_at) "
+            "VALUES(:tg_id, :author_id, :text, :created_at) RETURNING id",
+            {"tg_id": tg_id, "author_id": author_id,
+             "text": text, "created_at": utcnow()})
+        row = await cur.fetchone()
+        return row["id"]
 
 
 async def list_notes(db, tg_id: int, limit: int = 50) -> list[dict]:
     cur = await db.execute(
-        "SELECT * FROM user_notes WHERE tg_id=? ORDER BY id DESC LIMIT ?",
-        (tg_id, limit))
+        "SELECT * FROM user_notes WHERE tg_id=:tg_id ORDER BY id DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
     return [dict(r) for r in await cur.fetchall()]
 
 
 async def delete_note(db, note_id: int) -> None:
     async with transaction(db):
-        await db.execute("DELETE FROM user_notes WHERE id=?", (note_id,))
+        await db.execute(
+            "DELETE FROM user_notes WHERE id=:id", {"id": note_id})
 
 
 # ──────────────────────────────── теги ────────────────────────────────────────
@@ -35,19 +39,24 @@ async def add_tag(db, tg_id: int, tag: str, author_id: int | None = None) -> Non
         return
     async with transaction(db):
         await db.execute(
-            "INSERT OR IGNORE INTO user_tags(tg_id, tag, author_id, created_at) "
-            "VALUES(?,?,?,?)", (tg_id, tag, author_id, utcnow()))
+            "INSERT INTO user_tags(tg_id, tag, author_id, created_at) "
+            "VALUES(:tg_id, :tag, :author_id, :created_at) "
+            "ON CONFLICT (tg_id, tag) DO NOTHING",
+            {"tg_id": tg_id, "tag": tag, "author_id": author_id,
+             "created_at": utcnow()})
 
 
 async def remove_tag(db, tg_id: int, tag: str) -> None:
     async with transaction(db):
-        await db.execute("DELETE FROM user_tags WHERE tg_id=? AND tag=?",
-                         (tg_id, (tag or "").strip().lower()))
+        await db.execute(
+            "DELETE FROM user_tags WHERE tg_id=:tg_id AND tag=:tag",
+            {"tg_id": tg_id, "tag": (tag or "").strip().lower()})
 
 
 async def tags_of(db, tg_id: int) -> list[str]:
-    cur = await db.execute("SELECT tag FROM user_tags WHERE tg_id=? ORDER BY tag",
-                           (tg_id,))
+    cur = await db.execute(
+        "SELECT tag FROM user_tags WHERE tg_id=:tg_id ORDER BY tag",
+        {"tg_id": tg_id})
     return [r["tag"] for r in await cur.fetchall()]
 
 

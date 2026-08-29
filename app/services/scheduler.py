@@ -122,14 +122,15 @@ async def _audience(db, zones: set[str]) -> list:
     """
     if not zones:
         return []
-    placeholders = ",".join("?" * len(zones))
+    zones_list = list(zones)
     out: list = []
     last_id = 0
     while True:
         cur = await db.execute(
             f"SELECT * FROM users WHERE onboarded=1 AND status='active' "
-            f"AND tg_id>? AND COALESCE(tz,'Europe/Moscow') IN ({placeholders}) "
-            f"ORDER BY tg_id LIMIT {AUDIENCE_CAP}", (last_id, *zones))
+            f"AND tg_id>:last_id AND COALESCE(tz,'Europe/Moscow') = ANY(:zones) "
+            f"ORDER BY tg_id LIMIT {AUDIENCE_CAP}",
+            {"last_id": last_id, "zones": zones_list})
         batch = await cur.fetchall()
         if not batch:
             return out
@@ -144,16 +145,17 @@ async def _expiring_audience(db, now_utc: datetime) -> list:
     а не к часу, поэтому условие другое, а лимита быть не должно.
     """
     soon = (now_utc + timedelta(days=2)).isoformat()
+    now_iso = now_utc.isoformat()
     out: list = []
     last_id = 0
     while True:
         cur = await db.execute(
-            "SELECT * FROM users WHERE onboarded=1 AND status='active' AND tg_id>? "
+            "SELECT * FROM users WHERE onboarded=1 AND status='active' AND tg_id>:last_id "
             "AND sub_until IS NOT NULL AND ("
-            "  (sub_until > ? AND sub_until <= ? AND COALESCE(expiry_notified,0) = 0)"
-            "  OR (sub_until <= ? AND COALESCE(expiry_notified,0) <> 2)"
+            "  (sub_until > :now AND sub_until <= :soon AND COALESCE(expiry_notified,0) = 0)"
+            "  OR (sub_until <= :now2 AND COALESCE(expiry_notified,0) <> 2)"
             f") ORDER BY tg_id LIMIT {AUDIENCE_CAP}",
-            (last_id, now_utc.isoformat(), soon, now_utc.isoformat()))
+            {"last_id": last_id, "now": now_iso, "soon": soon, "now2": now_iso})
         batch = await cur.fetchall()
         if not batch:
             return out
@@ -233,8 +235,9 @@ async def _free_lunar_alert(bot, db, user, now) -> None:
         return
     week = now.strftime("%G-W%V")
     cur = await db.execute(
-        "SELECT COUNT(*) c FROM deliveries WHERE tg_id=? AND kind='forecast_lunar' "
-        "AND key LIKE ?", (user["tg_id"], week + ":%"))
+        "SELECT COUNT(*) c FROM deliveries WHERE tg_id=:tg_id AND kind='forecast_lunar' "
+        "AND key LIKE :week_pat",
+        {"tg_id": user["tg_id"], "week_pat": week + ":%"})
     if (await cur.fetchone())["c"] >= _FREE_LUNAR_PER_WEEK:
         return
     key = f"{week}:{now.strftime('%Y-%m-%d')}"
@@ -288,10 +291,10 @@ async def _voice_forecast(bot, db, user, text: str, day: str) -> None:
         from ..data.session import transaction
         async with transaction(db):
             await db.execute(
-                "UPDATE forecasts SET audio_file_id=? "
-                "WHERE tg_id=? AND day=? AND lang=?",
-                (message.voice.file_id if message.voice else None,
-                 user["tg_id"], day, lang))
+                "UPDATE forecasts SET audio_file_id=:audio_file_id "
+                "WHERE tg_id=:tg_id AND day=:day AND lang=:lang",
+                {"audio_file_id": message.voice.file_id if message.voice else None,
+                 "tg_id": user["tg_id"], "day": day, "lang": lang})
     except Exception as e:  # noqa: BLE001
         log.info("озвучка прогноза не отправлена: %s", type(e).__name__)
 
@@ -496,15 +499,17 @@ async def acquire_scheduler_lease(db, owner: str, *, now: datetime | None = None
         cursor = await db.execute(
             "INSERT INTO scheduler_leases "
             "(name, owner, acquired_at, lease_until, last_started_at, last_status, "
-            "last_error, run_count) VALUES (?, ?, ?, ?, ?, 'running', NULL, 1) "
+            "last_error, run_count) VALUES (:name, :owner, :stamp, :lease_until, "
+            ":stamp2, 'running', NULL, 1) "
             "ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, "
             "acquired_at=excluded.acquired_at, lease_until=excluded.lease_until, "
             "last_started_at=excluded.last_started_at, last_status='running', "
             "last_error=NULL, run_count=scheduler_leases.run_count + 1 "
             "WHERE scheduler_leases.lease_until IS NULL "
-            "OR scheduler_leases.lease_until <= ? "
-            "OR scheduler_leases.owner = ?",
-            (SCHEDULER_NAME, owner, stamp, lease_until, stamp, stamp, owner),
+            "OR scheduler_leases.lease_until <= :now "
+            "OR scheduler_leases.owner = :owner2",
+            {"name": SCHEDULER_NAME, "owner": owner, "stamp": stamp,
+             "lease_until": lease_until, "stamp2": stamp, "now": stamp, "owner2": owner},
         )
         return cursor.rowcount == 1
 
@@ -519,11 +524,13 @@ async def finish_scheduler_lease(db, owner: str, *, status: str,
     message = (error or "")[:500] or None
     async with transaction(db):
         cursor = await db.execute(
-            "UPDATE scheduler_leases SET lease_until=?, last_finished_at=?, "
-            "last_status=?, last_error=?, failure_count=failure_count + ? "
-            "WHERE name=? AND owner=?",
-            (stamp, stamp, status, message, 1 if status == "error" else 0,
-             SCHEDULER_NAME, owner),
+            "UPDATE scheduler_leases SET lease_until=:stamp, last_finished_at=:stamp2, "
+            "last_status=:status, last_error=:error, "
+            "failure_count=failure_count + :fail_inc "
+            "WHERE name=:name AND owner=:owner",
+            {"stamp": stamp, "stamp2": stamp, "status": status, "error": message,
+             "fail_inc": 1 if status == "error" else 0,
+             "name": SCHEDULER_NAME, "owner": owner},
         )
         return cursor.rowcount == 1
 
@@ -533,7 +540,7 @@ async def scheduler_status(db) -> dict:
     cursor = await db.execute(
         "SELECT name, acquired_at, lease_until, last_started_at, last_finished_at, "
         "last_status, last_error, run_count, failure_count "
-        "FROM scheduler_leases WHERE name=?", (SCHEDULER_NAME,))
+        "FROM scheduler_leases WHERE name=:name", {"name": SCHEDULER_NAME})
     row = await cursor.fetchone()
     if not row:
         return {"name": SCHEDULER_NAME, "status": "never", "run_count": 0,
