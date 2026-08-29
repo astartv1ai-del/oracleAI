@@ -134,9 +134,9 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 
 ## References
 
-[1]: [app/data/schema.py](../app/data/schema.py), [app/api/routers/profile.py](../app/api/routers/profile.py) и [miniapp/js/05-app.js](../miniapp/js/05-app.js) — age-gate и профильное согласие.
+[1]: [alembic/schema/baseline.sql](../alembic/schema/baseline.sql), [app/api/routers/profile.py](../app/api/routers/profile.py) и [miniapp/js/05-app.js](../miniapp/js/05-app.js) — age-gate и профильное согласие.
 [2]: [app/api/routers/diary.py](../app/api/routers/diary.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — privacy guard по памяти.
 [3]: [app/api/main.py](../app/api/main.py) — ограничение dev-режима.
-[4]: [app/api/routers/admin.py](../app/api/routers/admin.py) и [app/data/schema.py](../app/data/schema.py) — административные маршруты и `admin_audit`.
+[4]: [app/api/routers/admin.py](../app/api/routers/admin.py) и [alembic/schema/baseline.sql](../alembic/schema/baseline.sql) — административные маршруты и `admin_audit`.
 [5]: [app/api/main.py](../app/api/main.py), [miniapp/js/13-events.js](../miniapp/js/13-events.js) — CSP и event delegation.
 [6]: [app/config.py](../app/config.py), [app/core/agents/base.py](../app/core/agents/base.py) — цепочка провайдеров и стандарт ответа.

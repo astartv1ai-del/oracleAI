@@ -65,8 +65,8 @@ def imports_all():
     """Импортируем всё: так ловятся опечатки в именах и циклические импорты."""
     import importlib
     modules = [
-        "app.config", "app.data.session", "app.data.schema", "app.data.seed",
-        "app.data.pg_schema", "app.repo", "app.services", "app.core.agent",
+        "app.config", "app.data.session", "app.data.seed",
+        "app.repo", "app.services", "app.core.agent",
         "app.core.agents", "app.core.llm", "app.core.tool_registry", "app.core.astro",
         "app.core.tarot", "app.core.matrix", "app.core.memory", "app.core.safety",
         "app.core.practices", "app.core.cards", "app.core.geo",
