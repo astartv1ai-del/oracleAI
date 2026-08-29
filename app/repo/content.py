@@ -15,7 +15,7 @@ from ..data.session import transaction, utcnow
 
 
 async def get_setting(db, key: str, default=None):
-    cur = await db.execute("SELECT value_json FROM settings WHERE key=?", (key,))
+    cur = await db.execute("SELECT value_json FROM settings WHERE key=:key", {"key": key})
     row = await cur.fetchone()
     if not row:
         return default
@@ -29,10 +29,11 @@ async def set_setting(db, key: str, value, admin_id: int | None = None) -> None:
     async with transaction(db):
         await db.execute(
             "INSERT INTO settings(key, value_json, updated_at, updated_by) "
-            "VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET "
+            "VALUES(:key, :value_json, :updated_at, :updated_by) ON CONFLICT(key) DO UPDATE SET "
             "value_json=excluded.value_json, updated_at=excluded.updated_at, "
             "updated_by=excluded.updated_by",
-            (key, json.dumps(value, ensure_ascii=False), utcnow(), admin_id))
+            {"key": key, "value_json": json.dumps(value, ensure_ascii=False),
+             "updated_at": utcnow(), "updated_by": admin_id})
 
 
 async def all_settings(db) -> dict:
@@ -136,8 +137,8 @@ def localized_item(item: dict, lang: str | None) -> dict:
 
 async def get_content(db, kind: str, code: str) -> dict | None:
     cur = await db.execute(
-        "SELECT * FROM content_items WHERE kind=? AND code=? AND is_active=1",
-        (kind, code))
+        "SELECT * FROM content_items WHERE kind=:kind AND code=:code AND is_active=1",
+        {"kind": kind, "code": code})
     row = await cur.fetchone()
     return dict(row) if row else None
 
@@ -160,10 +161,10 @@ async def get_text(db, kind: str, code: str, default: str = "", *,
 async def list_content(db, kind: str | None = None, *,
                        active_only: bool = False) -> list[dict]:
     sql = ["SELECT * FROM content_items WHERE 1=1"]
-    params: list = []
+    params: dict = {}
     if kind:
-        sql.append("AND kind=?")
-        params.append(kind)
+        sql.append("AND kind=:kind")
+        params["kind"] = kind
     if active_only:
         sql.append("AND is_active=1")
     sql.append("ORDER BY kind, sort, code")
@@ -177,9 +178,11 @@ async def upsert_content(db, kind: str, code: str, *, title: str | None = None,
                          admin_id: int | None = None) -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT OR IGNORE INTO content_items(kind, code, title, body, is_active, "
-            "sort, created_at, updated_at) VALUES(?,?,?,?,1,100,?,?)",
-            (kind, code, title or code, body or "", utcnow(), utcnow()))
+            "INSERT INTO content_items(kind, code, title, body, is_active, "
+            "sort, created_at, updated_at) VALUES(:kind, :code, :title, :body, 1, 100, :created_at, :updated_at) "
+            "ON CONFLICT (kind, code) DO NOTHING",
+            {"kind": kind, "code": code, "title": title or code, "body": body or "",
+             "created_at": utcnow(), "updated_at": utcnow()})
         fields: dict = {}
         if title is not None:
             fields["title"] = title
@@ -192,18 +195,19 @@ async def upsert_content(db, kind: str, code: str, *, title: str | None = None,
         if sort is not None:
             fields["sort"] = sort
         if fields:
-            keys = ", ".join(f"{k}=?" for k in fields)
+            keys = ", ".join(f"{k}=:{k}" for k in fields)
             # INVARIANT: keys only from allowlist above — never interpolate user input
             await db.execute(
-                f"UPDATE content_items SET {keys}, updated_at=?, updated_by=? "
-                f"WHERE kind=? AND code=?",
-                (*fields.values(), utcnow(), admin_id, kind, code))
+                f"UPDATE content_items SET {keys}, updated_at=:updated_at, updated_by=:updated_by "
+                f"WHERE kind=:kind AND code=:code",
+                {**fields, "updated_at": utcnow(), "updated_by": admin_id,
+                 "kind": kind, "code": code})
 
 
 async def delete_content(db, kind: str, code: str) -> None:
     async with transaction(db):
-        await db.execute("DELETE FROM content_items WHERE kind=? AND code=?",
-                         (kind, code))
+        await db.execute("DELETE FROM content_items WHERE kind=:kind AND code=:code",
+                         {"kind": kind, "code": code})
 
 
 def content_meta(item: dict | None) -> dict:
@@ -218,7 +222,7 @@ def content_meta(item: dict | None) -> dict:
 # ─────────────────────────────── фиче-флаги ───────────────────────────────────
 
 async def flag_row(db, code: str):
-    cur = await db.execute("SELECT * FROM feature_flags WHERE code=?", (code,))
+    cur = await db.execute("SELECT * FROM feature_flags WHERE code=:code", {"code": code})
     return await cur.fetchone()
 
 
@@ -252,8 +256,9 @@ async def set_flag(db, code: str, *, is_on: bool | None = None,
                    admin_id: int | None = None) -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT OR IGNORE INTO feature_flags(code, is_on, rollout_pct, updated_at) "
-            "VALUES(?,0,100,?)", (code, utcnow()))
+            "INSERT INTO feature_flags(code, is_on, rollout_pct, updated_at) "
+            "VALUES(:code, 0, 100, :updated_at) ON CONFLICT (code) DO NOTHING",
+            {"code": code, "updated_at": utcnow()})
         fields: dict = {}
         if is_on is not None:
             fields["is_on"] = int(is_on)
@@ -262,8 +267,9 @@ async def set_flag(db, code: str, *, is_on: bool | None = None,
         if description is not None:
             fields["description"] = description
         if fields:
-            keys = ", ".join(f"{k}=?" for k in fields)
+            keys = ", ".join(f"{k}=:{k}" for k in fields)
             # INVARIANT: keys only from allowlist above — never interpolate user input
             await db.execute(
-                f"UPDATE feature_flags SET {keys}, updated_at=?, updated_by=? "
-                f"WHERE code=?", (*fields.values(), utcnow(), admin_id, code))
+                f"UPDATE feature_flags SET {keys}, updated_at=:updated_at, updated_by=:updated_by "
+                f"WHERE code=:code",
+                {**fields, "updated_at": utcnow(), "updated_by": admin_id, "code": code})

@@ -73,7 +73,16 @@ def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
 
 
 def _translate_sql(sql: str) -> tuple[str, list[str]]:
-    """Convert the small SQLite SQL dialect used by repositories to PostgreSQL."""
+    """Convert the small SQLite SQL dialect used by repositories to PostgreSQL.
+
+    Files that have already been ported to the native PostgreSQL dialect
+    (named :param placeholders, ON CONFLICT (<col>) DO NOTHING, explicit
+    RETURNING id) pass through this function unchanged:
+      - No '?' → the re.sub loop produces names=[] and returns sql as-is.
+      - No 'INSERT OR IGNORE' prefix → the first branch is skipped.
+    _bind_params then returns the caller-supplied dict directly (isinstance
+    check), so execute() works correctly for both ported and legacy files.
+    """
     sql = sql.strip().rstrip(";")
     if sql.upper().startswith("INSERT OR IGNORE"):
         sql = re.sub(r"^INSERT\s+OR\s+IGNORE", "INSERT", sql, count=1, flags=re.I)

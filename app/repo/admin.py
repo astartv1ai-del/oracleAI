@@ -28,7 +28,7 @@ PERMISSIONS = {
 
 
 async def get_admin(db, tg_id: int):
-    cur = await db.execute("SELECT * FROM admins WHERE tg_id=?", (tg_id,))
+    cur = await db.execute("SELECT * FROM admins WHERE tg_id=:tg_id", {"tg_id": tg_id})
     return await cur.fetchone()
 
 
@@ -67,10 +67,12 @@ async def add_admin(db, tg_id: int, role: str = "admin", *, title: str = "",
     async with transaction(db):
         await db.execute(
             "INSERT INTO admins(tg_id, role, title, added_by, created_at) "
-            "VALUES(?,?,?,?,COALESCE((SELECT created_at FROM admins WHERE tg_id=?),?)) "
+            "VALUES(:tg_id, :role, :title, :added_by, "
+            "COALESCE((SELECT created_at FROM admins WHERE tg_id=:tg_id), :created_at)) "
             "ON CONFLICT(tg_id) DO UPDATE SET role=excluded.role, "
             "title=excluded.title, added_by=excluded.added_by",
-            (tg_id, role, title, added_by, tg_id, utcnow()))
+            {"tg_id": tg_id, "role": role, "title": title,
+             "added_by": added_by, "created_at": utcnow()})
 
 
 async def _assert_owner_remains(db, tg_id: int) -> None:
@@ -88,7 +90,7 @@ async def _assert_owner_remains(db, tg_id: int) -> None:
     row = await cur.fetchone()
     if (row[0] or 0) <= 1:
         cur = await db.execute(
-            "SELECT role FROM admins WHERE tg_id=?", (tg_id,))
+            "SELECT role FROM admins WHERE tg_id=:tg_id", {"tg_id": tg_id})
         target = await cur.fetchone()
         if target and target["role"] == "owner":
             raise ValueError("нельзя снять последнего владельца панели")
@@ -108,19 +110,19 @@ async def update_admin_role(db, tg_id: int, role: str, *,
         await _assert_owner_remains(db, tg_id)
         if title is None:
             cur = await db.execute(
-                "UPDATE admins SET role=?, added_by=? WHERE tg_id=?",
-                (role, changed_by, tg_id))
+                "UPDATE admins SET role=:role, added_by=:added_by WHERE tg_id=:tg_id",
+                {"role": role, "added_by": changed_by, "tg_id": tg_id})
         else:
             cur = await db.execute(
-                "UPDATE admins SET role=?, title=?, added_by=? WHERE tg_id=?",
-                (role, title, changed_by, tg_id))
+                "UPDATE admins SET role=:role, title=:title, added_by=:added_by WHERE tg_id=:tg_id",
+                {"role": role, "title": title, "added_by": changed_by, "tg_id": tg_id})
     return bool(cur.rowcount)
 
 
 async def remove_admin(db, tg_id: int) -> None:
     async with transaction(db):
         await _assert_owner_remains(db, tg_id)
-        await db.execute("DELETE FROM admins WHERE tg_id=?", (tg_id,))
+        await db.execute("DELETE FROM admins WHERE tg_id=:tg_id", {"tg_id": tg_id})
 
 
 # ──────────────────────────────── аудит ───────────────────────────────────────
@@ -130,14 +132,16 @@ async def audit(db, admin_id: int | None, action: str, *, target: str = "",
     async with transaction(db):
         await db.execute(
             "INSERT INTO admin_audit(admin_id, action, target, payload_json, created_at) "
-            "VALUES(?,?,?,?,?)",
-            (admin_id, action, target,
-             json.dumps(payload, ensure_ascii=False) if payload else None, utcnow()))
+            "VALUES(:admin_id, :action, :target, :payload_json, :created_at) "
+            "RETURNING id",
+            {"admin_id": admin_id, "action": action, "target": target,
+             "payload_json": json.dumps(payload, ensure_ascii=False) if payload else None,
+             "created_at": utcnow()})
 
 
 async def audit_log(db, limit: int = 200) -> list[dict]:
     cur = await db.execute(
         "SELECT a.*, u.name admin_name FROM admin_audit a "
-        "LEFT JOIN users u ON u.tg_id = a.admin_id ORDER BY a.id DESC LIMIT ?",
-        (limit,))
+        "LEFT JOIN users u ON u.tg_id = a.admin_id ORDER BY a.id DESC LIMIT :limit",
+        {"limit": limit})
     return [dict(r) for r in await cur.fetchall()]

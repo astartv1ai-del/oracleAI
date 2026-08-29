@@ -39,14 +39,14 @@ def age_proof_hash(tg_id: int, birth_year: int) -> str:
 
 
 async def get(db, tg_id: int):
-    cur = await db.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,))
+    cur = await db.execute("SELECT * FROM users WHERE tg_id=:tg_id", {"tg_id": tg_id})
     return await cur.fetchone()
 
 
 async def by_username(db, username: str):
     cur = await db.execute(
-        "SELECT * FROM users WHERE lower(username)=lower(?)",
-        (username.lstrip("@"),))
+        "SELECT * FROM users WHERE lower(username)=lower(:username)",
+        {"username": username.lstrip("@")})
     return await cur.fetchone()
 
 
@@ -69,17 +69,22 @@ async def ensure(db, tg_id: int, name: str | None = None,
     sub_until = ((datetime.now(timezone.utc) + timedelta(days=trial_days)).isoformat()
                  if auto_trial else None)
     # Двойной /start в один момент: оба прошли SELECT выше и оба идут в INSERT.
-    # INSERT OR IGNORE + rowcount снимает гонку — второй INSERT не валит UNIQUE
-    # по tg_id и не пишет второй раз welcome в журнал.
+    # ON CONFLICT (tg_id) DO NOTHING + rowcount снимает гонку — второй INSERT
+    # не валит UNIQUE по tg_id и не пишет второй раз welcome в журнал.
     async with transaction(db):
         cur = await db.execute(
-            "INSERT OR IGNORE INTO users(tg_id, name, username, lang, sub_level, sub_until, "
-            "crystals, source, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-            (tg_id, name, username, profile_lang, sub_level, sub_until, crystals, source, utcnow()))
+            "INSERT INTO users(tg_id, name, username, lang, sub_level, sub_until, "
+            "crystals, source, created_at) VALUES(:tg_id, :name, :username, :lang, "
+            ":sub_level, :sub_until, :crystals, :source, :created_at) "
+            "ON CONFLICT (tg_id) DO NOTHING",
+            {"tg_id": tg_id, "name": name, "username": username, "lang": profile_lang,
+             "sub_level": sub_level, "sub_until": sub_until, "crystals": crystals,
+             "source": source, "created_at": utcnow()})
         if cur.rowcount:
             await db.execute(
                 "INSERT INTO crystal_ledger(tg_id, delta, reason, balance, created_at) "
-                "VALUES(?,?,'welcome',?,?)", (tg_id, crystals, crystals, utcnow()))
+                "VALUES(:tg_id, :delta, 'welcome', :balance, :created_at)",
+                {"tg_id": tg_id, "delta": crystals, "balance": crystals, "created_at": utcnow()})
     return await get(db, tg_id)
 
 
@@ -89,11 +94,11 @@ async def update(db, tg_id: int, **fields) -> None:
         raise ValueError(f"нельзя писать в колонки users: {', '.join(sorted(unknown))}")
     if not fields:
         return
-    keys = ", ".join(f"{k}=?" for k in fields)
+    keys = ", ".join(f"{k}=:{k}" for k in fields)
     # INVARIANT: keys only from allowlist above — never interpolate user input
     async with transaction(db):
-        await db.execute(f"UPDATE users SET {keys} WHERE tg_id=?",
-                         (*fields.values(), tg_id))
+        await db.execute(f"UPDATE users SET {keys} WHERE tg_id=:tg_id",
+                         {**fields, "tg_id": tg_id})
 
 
 #: Когда последний раз писали last_seen клиентке. Точность в минутах достаточна
@@ -123,8 +128,8 @@ _touch_tasks: set[asyncio.Task] = set()
 async def _write_last_seen(db, tg_id: int) -> None:
     try:
         async with transaction(db):
-            await db.execute("UPDATE users SET last_seen=? WHERE tg_id=?",
-                             (utcnow(), tg_id))
+            await db.execute("UPDATE users SET last_seen=:last_seen WHERE tg_id=:tg_id",
+                             {"last_seen": utcnow(), "tg_id": tg_id})
     except Exception:  # noqa: BLE001
         pass
 
@@ -195,8 +200,8 @@ async def extend_subscription(db, tg_id: int, plan_code: str, days: int) -> str:
                 pass
         until = (base + timedelta(days=days)).isoformat()
         await db.execute(
-            "UPDATE users SET sub_until=?, sub_level=?, expiry_notified=0 WHERE tg_id=?",
-            (until, plan_code, tg_id))
+            "UPDATE users SET sub_until=:sub_until, sub_level=:sub_level, expiry_notified=0 WHERE tg_id=:tg_id",
+            {"sub_until": until, "sub_level": plan_code, "tg_id": tg_id})
     return until
 
 
@@ -218,8 +223,9 @@ async def anonymize(db, tg_id: int) -> None:
             "birth_time=NULL, birth_city=NULL, birth_lat=NULL, birth_lon=NULL, "
             "chart_json=NULL, natal_technique='astrology', natal_technique_version='v1', "
             "onboarding_step=NULL, birth_time_precision='unknown', goal=NULL, memory_enabled=0, age_confirmed=0, "
-            "status='deleted', deleted_at=?, onboarded=0, morning_push=0 "
-            "WHERE tg_id=?", (utcnow(), tg_id))
+            "status='deleted', deleted_at=:deleted_at, onboarded=0, morning_push=0 "
+            "WHERE tg_id=:tg_id",
+            {"deleted_at": utcnow(), "tg_id": tg_id})
 
         # Personal content and targeting records have no retention reason after
         # deletion. Keep the table names static so dynamic SQL cannot be injected.
@@ -232,25 +238,25 @@ async def anonymize(db, tg_id: int) -> None:
         ):
             await db.execute(
                 # INVARIANT: keys only from allowlist above — never interpolate user input
-                f"DELETE FROM {table} WHERE tg_id=?", (tg_id,))
+                f"DELETE FROM {table} WHERE tg_id=:tg_id", {"tg_id": tg_id})
 
         await db.execute(
-            "DELETE FROM referrals WHERE referrer_id=? OR invitee_id=?",
-            (tg_id, tg_id),
+            "DELETE FROM referrals WHERE referrer_id=:referrer_id OR invitee_id=:invitee_id",
+            {"referrer_id": tg_id, "invitee_id": tg_id},
         )
 
         # Analytics and safety rows contain a direct identity or sensitive
         # excerpt, so they are deleted rather than retained under a stable ID.
-        await db.execute("DELETE FROM events WHERE tg_id=?", (tg_id,))
-        await db.execute("DELETE FROM safety_events WHERE tg_id=?", (tg_id,))
-        await db.execute("UPDATE llm_usage SET tg_id=NULL WHERE tg_id=?", (tg_id,))
+        await db.execute("DELETE FROM events WHERE tg_id=:tg_id", {"tg_id": tg_id})
+        await db.execute("DELETE FROM safety_events WHERE tg_id=:tg_id", {"tg_id": tg_id})
+        await db.execute("UPDATE llm_usage SET tg_id=NULL WHERE tg_id=:tg_id", {"tg_id": tg_id})
 
         # Orders/payments/ledger are retained only as an anonymized accounting
         # trace. Zero is a reserved non-user subject for aggregate reconciliation.
         for table in ("orders", "payments", "entitlements", "crystal_ledger"):
             await db.execute(
                 # INVARIANT: keys only from allowlist above — never interpolate user input
-                f"UPDATE {table} SET tg_id=0 WHERE tg_id=?", (tg_id,))
+                f"UPDATE {table} SET tg_id=0 WHERE tg_id=:tg_id", {"tg_id": tg_id})
 
         # Retained audit rows are scrubbed by direct marker. Webhook bodies are
         # never needed for settlement or idempotency, so clear every legacy raw
@@ -258,8 +264,10 @@ async def anonymize(db, tg_id: int) -> None:
         marker = str(tg_id)
         await db.execute(
             "UPDATE admin_audit SET target='deleted-user', payload_json=NULL "
-            "WHERE target=? OR payload_json LIKE ? OR payload_json LIKE ?",
-            (marker, f'%"tg_id":{marker}%', f'%"tg_id": {marker}%'),
+            "WHERE target=:target OR payload_json LIKE :pat1 OR payload_json LIKE :pat2",
+            {"target": marker,
+             "pat1": f'%"tg_id":{marker}%',
+             "pat2": f'%"tg_id": {marker}%'},
         )
         await db.execute("UPDATE webhook_events SET payload=NULL WHERE payload IS NOT NULL")
 
@@ -291,17 +299,12 @@ def _segment_params() -> dict:
     }
 
 
-def _segment_sql(segment: str) -> tuple[str, list]:
-    """Разворачивает имя сегмента в SQL-условие с позиционными параметрами."""
+def _segment_sql(segment: str) -> tuple[str, dict]:
+    """Разворачивает имя сегмента в SQL-условие с именованными параметрами."""
     where = SEGMENTS.get(segment or "all", SEGMENTS["all"])
-    params: list = []
     values = _segment_params()
-    # именованные :placeholder → позиционные в порядке появления
-    for name, value in values.items():
-        token = f":{name}"
-        while token in where:
-            where = where.replace(token, "?", 1)
-            params.append(value)
+    # Отбираем только те параметры, которые реально используются в WHERE-условии
+    params = {name: value for name, value in values.items() if f":{name}" in where}
     return where, params
 
 
@@ -337,17 +340,17 @@ async def search(db, query: str = "", segment: str = "all", *,
     sql = [f"SELECT * FROM users WHERE ({where})"]
     query = (query or "").strip()
     if query:
-        sql.append("AND (name LIKE ? ESCAPE '\\' OR username LIKE ? ESCAPE '\\' "
-                   "OR CAST(tg_id AS TEXT) LIKE ? ESCAPE '\\')")
-        like = _like_pattern(query)
-        params += [like, like, like]
+        sql.append("AND (name LIKE :like_q ESCAPE '\\' OR username LIKE :like_q ESCAPE '\\' "
+                   "OR CAST(tg_id AS TEXT) LIKE :like_q ESCAPE '\\')")
+        params["like_q"] = _like_pattern(query)
     orders = {"created_at": "created_at DESC", "last_seen": "last_seen DESC",
               # DB-003: COLLATE NOCASE — SQLite-изм, на PostgreSQL это runtime
               # error; LOWER() даёт тот же case-insensitive порядок переносимо.
               "ltv": "ltv_stars DESC", "name": "LOWER(name)"}
     sql.append(f"ORDER BY {orders.get(order, orders['created_at'])}")
-    sql.append("LIMIT ? OFFSET ?")
-    params += [limit, offset]
+    sql.append("LIMIT :limit OFFSET :offset")
+    params["limit"] = limit
+    params["offset"] = offset
     cur = await db.execute(" ".join(sql), params)
     return [dict(r) for r in await cur.fetchall()]
 
@@ -357,10 +360,9 @@ async def count(db, query: str = "", segment: str = "all") -> int:
     sql = [f"SELECT COUNT(*) c FROM users WHERE ({where})"]
     query = (query or "").strip()
     if query:
-        sql.append("AND (name LIKE ? ESCAPE '\\' OR username LIKE ? ESCAPE '\\' "
-                   "OR CAST(tg_id AS TEXT) LIKE ? ESCAPE '\\')")
-        like = _like_pattern(query)
-        params += [like, like, like]
+        sql.append("AND (name LIKE :like_q ESCAPE '\\' OR username LIKE :like_q ESCAPE '\\' "
+                   "OR CAST(tg_id AS TEXT) LIKE :like_q ESCAPE '\\')")
+        params["like_q"] = _like_pattern(query)
     cur = await db.execute(" ".join(sql), params)
     return (await cur.fetchone())["c"]
 

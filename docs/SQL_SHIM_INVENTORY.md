@@ -16,11 +16,11 @@ Scanned files:
 | File                                          | SQL calls | `?` total | INSERT OR IGNORE | AUTOINCREMENT | COLLATE NOCASE | lastrowid | rowcount | CTE | OVER | executemany | dangerous `?` |
 | --------------------------------------------- | --------- | --------- | ---------------- | ------------- | -------------- | --------- | -------- | --- | ---- | ----------- | ------------- |
 | `app/repo/__init__.py                       ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
-| `app/repo/admin.py                          ` |        10 |        22 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
+| `app/repo/admin.py` ✅ **DONE DB-001 w1**     |        10 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
 | `app/repo/analytics.py                      ` |        20 |        61 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             1 |
 | `app/repo/billing.py                        ` |        45 |       109 |                2 |             0 |              0 |         2 |        7 |   0 |    0 |           0 |             2 |
 | `app/repo/comms.py                          ` |        18 |        45 |                2 |             0 |              0 |         1 |        4 |   0 |    0 |           1 |             4 |
-| `app/repo/content.py                        ` |        11 |        25 |                2 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
+| `app/repo/content.py` ✅ **DONE DB-001 w1**   |        11 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/repo/crm.py                            ` |         7 |        14 |                1 |             0 |              0 |         1 |        0 |   0 |    0 |           0 |             0 |
 | `app/repo/dialog.py                         ` |        36 |        96 |                0 |             0 |              0 |         2 |        3 |   0 |    0 |           0 |             0 |
 | `app/repo/growth.py                         ` |        12 |        31 |                3 |             0 |              0 |         0 |        3 |   0 |    0 |           0 |             0 |
@@ -29,7 +29,7 @@ Scanned files:
 | `app/repo/notifications.py                  ` |         5 |        14 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
 | `app/repo/palm.py                           ` |         5 |        18 |                0 |             0 |              0 |         1 |        1 |   0 |    0 |           0 |             0 |
 | `app/repo/readings.py                       ` |        29 |        96 |                0 |             0 |              0 |         5 |        3 |   0 |    0 |           0 |             0 |
-| `app/repo/users.py                          ` |        19 |        33 |                1 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
+| `app/repo/users.py` ✅ **DONE DB-001 w1**     |        19 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
 | `app/services/__init__.py                   ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/analytics.py                  ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/billing.py                    ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
@@ -106,6 +106,12 @@ Use this checklist when inlining the shim transformations into the SQL callsites
 
 ## Detailed Findings
 
+### `app/repo/admin.py` ✅ DONE — DB-001 w1
+
+- All `?` → named params, dict-params
+- `INSERT INTO admin_audit … RETURNING id` — explicit (was auto-injected by shim via `_ID_TABLES`)
+- `rowcount` check in `update_admin_role` preserved
+
 ### `app/repo/analytics.py`
 
 - **Dangerous `?` in literals**: 1 — manual review needed
@@ -122,9 +128,10 @@ Use this checklist when inlining the shim transformations into the SQL callsites
 - **lastrowid**: 1 usage(s) — ensure RETURNING id is explicit post-migration
 - **Dangerous `?` in literals**: 4 — manual review needed
 
-### `app/repo/content.py`
+### `app/repo/content.py` ✅ DONE — DB-001 w1
 
-- **INSERT OR IGNORE**: 2 occurrence(s)
+- ~~**INSERT OR IGNORE**: 2 occurrence(s)~~ → `ON CONFLICT (kind, code) DO NOTHING` / `ON CONFLICT (code) DO NOTHING`
+- All `?` → named params, dict-params
 
 ### `app/repo/crm.py`
 
@@ -158,9 +165,10 @@ Use this checklist when inlining the shim transformations into the SQL callsites
 
 - **lastrowid**: 5 usage(s) — ensure RETURNING id is explicit post-migration
 
-### `app/repo/users.py`
+### `app/repo/users.py` ✅ DONE — DB-001 w1
 
-- **INSERT OR IGNORE**: 1 occurrence(s)
+- ~~**INSERT OR IGNORE**: 1 occurrence(s)~~ → `ON CONFLICT (tg_id) DO NOTHING`
+- All `?` → named params, dict-params; `_segment_sql` now returns `dict`
 
 ### `app/services/horoscopes.py`
 
