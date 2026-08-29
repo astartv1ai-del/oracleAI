@@ -149,6 +149,12 @@ jobs:
             --out artifacts/llm-eval-report.json \
             --min-score 0.75
 
+      - name: SQL shim inventory report (TEST-001 artifact)
+        run: |
+          mkdir -p artifacts
+          python scripts/sql_shim_inventory.py
+          cp docs/SQL_SHIM_INVENTORY.md artifacts/SQL_SHIM_INVENTORY.md
+
       - name: Migration-focused tests
         run: python -m pytest tests/test_migrations.py tests/test_data.py -q -p no:cacheprovider --timeout=120
 
@@ -174,6 +180,7 @@ jobs:
             artifacts/palm-accuracy-matrix.json
             artifacts/palm-independent-critic.json
             artifacts/palm-corpus-ci.json
+            artifacts/SQL_SHIM_INVENTORY.md
           if-no-files-found: ignore
 
   frontend-quality:
