@@ -83,6 +83,9 @@ jobs:
       - name: Repository hygiene
         run: python scripts/check_repository_hygiene.py
 
+      - name: Architecture lint (canonical implementations only)
+        run: python scripts/check_architecture.py
+
       - name: P0-004 backup/restore infrastructure gate
         run: |
           python scripts/check_p004_infrastructure.py
