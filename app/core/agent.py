@@ -21,7 +21,8 @@ from datetime import date, datetime, timedelta, timezone
 from ..repo import dialog as dialog_repo
 from ..repo import readings as readings_repo
 from ..repo import users as users_repo
-from . import agents, astro, chart_interpretation, chart_products, interpretation, llm, memory, shared_context, skills, tarot
+from . import agents, astro, chart_interpretation, chart_products, interpretation, llm, memory, shared_context, tarot
+from . import tool_registry as skills
 from .stable import stable_seed
 
 log = logging.getLogger("oracle.agent")

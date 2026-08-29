@@ -102,7 +102,7 @@ async def test_agent_synastry_context_includes_versioned_contract(db, user):
 
 @pytest.mark.asyncio
 async def test_agent_transit_tool_includes_structured_evidence(db, user):
-    from app.core import skills
+    from app.core import tool_registry as skills
 
     evidence = await skills._run_get_transits(db, user, {"as_of": "2026-08-26"})
 
@@ -187,7 +187,7 @@ def test_returns_contract_finds_bounded_solar_crossing(monkeypatch):
 async def test_agent_composite_tool_includes_versioned_evidence(db, user):
     import json
 
-    from app.core import skills
+    from app.core import tool_registry as skills
     from app.repo import readings
 
     chart = json.loads(user["chart_json"])
@@ -205,7 +205,7 @@ async def test_agent_composite_tool_includes_versioned_evidence(db, user):
 
 @pytest.mark.asyncio
 async def test_agent_returns_tool_includes_versioned_evidence(monkeypatch, db, user):
-    from app.core import skills
+    from app.core import tool_registry as skills
 
     user_data = dict(user)
     user_data.update(birth_lat=55.79, birth_lon=49.12, tz="Europe/Moscow")

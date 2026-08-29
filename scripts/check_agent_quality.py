@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core import skills
+from app.core import tool_registry as skills
 from app.core.agents.file_loader import (
     load_profiles,
     profile_for_legacy,

@@ -41,7 +41,7 @@ def main() -> int:
     palm = (ROOT / "app/core/palm.py").read_text(encoding="utf-8")
     landmarks = (ROOT / "app/core/palm_landmarks.py").read_text(encoding="utf-8")
     full_scope = (ROOT / "app/core/palm_full_scope.py").read_text(encoding="utf-8")
-    skills = (ROOT / "app/core/skills.py").read_text(encoding="utf-8")
+    skills = (ROOT / "app/core/tool_registry.py").read_text(encoding="utf-8")
     ui = (ROOT / "miniapp/js/13-palm.js").read_text(encoding="utf-8")
     locale = (ROOT / "miniapp/js/12-misc.js").read_text(encoding="utf-8")
     tests = (ROOT / "tests/test_palm_gauntlet.py").read_text(encoding="utf-8")

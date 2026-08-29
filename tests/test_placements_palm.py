@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.core import palm, placements
 from app.core.agents.registry import codes, get
-from app.core.skills import SKILLS
+from app.core.tool_registry import SKILLS
 
 
 BIRTH = {

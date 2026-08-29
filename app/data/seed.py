@@ -286,7 +286,7 @@ async def _seed_content(db) -> int:
              p.get("sort", 100), _now(), _now()))
         n += cur.rowcount or 0
 
-    from ..core import skills as sk
+    from ..core import tool_registry as sk
     for code, body in sk.DEFAULT_GUIDES.items():
         cur = await db.execute(
             "INSERT OR IGNORE INTO content_items(kind, code, title, body, is_active, "

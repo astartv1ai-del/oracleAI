@@ -1,6 +1,12 @@
-"""Скиллы — инструменты, которые LLM вызывает через tool-use.
+"""Executable tool registry — то, что LLM вызывает через function calling.
 
-Каждый скилл состоит из трёх частей:
+Именование канонично: **tool** — исполняемая операция (считает код,
+возвращает данные, безопасно фейлится). **Skill** — domain capability / workflow
+знания, живёт в `app/agents/<code>/skills/*/SKILL.md` и никогда не содержит
+исполняемого Python-кода. Архитектурный lint запрещает миграцию executable-кода
+в SKILL.md.
+
+Каждый tool состоит из трёх частей:
 - `schema` — описание для модели (что это и когда звать);
 - `run(db, user, args) -> str` — детерминированное исполнение: считает КОД;
 - guide — правила трактовки, которые подмешиваются в результат, чтобы модель
@@ -28,7 +34,7 @@ from ..repo import palm as palm_repo
 from . import astro, chart_products, memory, palm, placements, tarot, vedic
 from .matrix import compute_matrix, matrix_brief
 
-log = logging.getLogger("oracle.skills")
+log = logging.getLogger("oracle.tool_registry")
 
 # ---------------------------------------------------------------- guides
 

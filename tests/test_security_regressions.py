@@ -11,7 +11,7 @@ import pytest
 
 from app.api.security import parse_init_data
 from app.config import settings
-from app.core import skills
+from app.core import tool_registry as skills
 from app.repo import dialog, users
 
 

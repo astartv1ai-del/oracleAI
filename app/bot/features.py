@@ -474,7 +474,7 @@ async def compat_date(message: Message, state: FSMContext, db):
         await message.answer("Сначала пройди знакомство: /start 🌙")
         return
 
-    from ..core import skills
+    from ..core import tool_registry as skills
     from ..services import limits
     data = skills._compat(user["birth_date"], partner_date)
     bar = "▰" * round(data["score"] / 10) + "▱" * (10 - round(data["score"] / 10))
