@@ -69,7 +69,7 @@ def imports_all():
         "app.data.pg_schema", "app.repo", "app.services", "app.core.agent",
         "app.core.agents", "app.core.llm", "app.core.tool_registry", "app.core.astro",
         "app.core.tarot", "app.core.matrix", "app.core.memory", "app.core.safety",
-        "app.core.practices", "app.core.cards", "app.core.geo", "app.db",
+        "app.core.practices", "app.core.cards", "app.core.geo",
         "app.pdfgen", "app.services.practices", "app.services.horoscopes",
         "app.api.main", "app.api.deps", "app.api.security",
         "app.bot.main", "app.bot.chat", "app.bot.features", "app.bot.growth",
