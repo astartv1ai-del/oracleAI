@@ -14,6 +14,22 @@
 
 OracleAI — единый Python-домен с двумя пользовательскими поверхностями: Telegram-ботом и Telegram Mini App. Обе поверхности используют общие сервисы, PostgreSQL, safety boundaries, calculation contracts и provider fallback.
 
+## Canonical ownership (single source per responsibility)
+
+| Ответственность | Canonical location | Notes |
+| --------------- | ------------------ | ----- |
+| Идентичность агентов | `app/agents/<code>/{agent.yaml,SYSTEM.md,skills/}` | Файловые пакеты. |
+| Реестр агентов | `app/core/agents/registry.py` | Единственная точка сборки `AgentSpec`. |
+| Runtime агента | `app/core/agents/runtime.py` | Свободный диалог + офлайн-подстраховка. |
+| Executable tools | `app/core/tool_registry.py` | Function-calling schema + executors. |
+| Сценарии | `app/core/scenarios/{forecast,tarot,compat,report,memory}.py` | Прогноз, отчёт, разбор, извлечение фактов. |
+| Business services | `app/services/*.py` | Продуктовая политика. |
+| Repositories (SQL) | `app/repo/*.py` | Единственные пишут SQL. |
+| DB session | `app/data/session.py` + `app/data/postgres.py` | PostgreSQL only. |
+| DB schema | Alembic (`alembic/schema/baseline.sql` + `alembic/versions/`) | Единственный DDL source. |
+
+Legacy layers удалены: `app/db.py`, `app/core/agents/specs.py`, `app/core/skills.py`, `app/data/schema.py`, `app/data/pg_schema.py`. Их возвращение блокируется `scripts/check_architecture.py` в CI.
+
 ## Топология
 
 ```mermaid
@@ -104,7 +120,7 @@ sequenceDiagram
     R->>P: save answer and publish recommendation/event
 ```
 
-Инструменты объявлены централизованно в `app/core/skills.py`: schema description, allow-list и executor разделены. `tools_for()` выдаёт только инструменты выбранного агента, а `execute()` возвращает безопасный fallback при неизвестном или упавшем инструменте. Все четыре агента получают компактный `[SKILL_INDEX]`; `activate_skill` загружает полное тело только выбранного skill, причём runtime подставляет домен агента серверно.
+Инструменты объявлены централизованно в `app/core/tool_registry.py` (единственный executable tool registry; исторический `app/core/skills.py` переименован в этот модуль в рамках архитектурной миграции). Schema description, allow-list и executor разделены. `tools_for()` выдаёт только инструменты выбранного агента, а `execute()` возвращает безопасный fallback при неизвестном или упавшем инструменте. Все четыре агента получают компактный `[SKILL_INDEX]`; `activate_skill` загружает полное тело только выбранного skill, причём runtime подставляет домен агента серверно.
 
 Для Миры порядок такой: `palm_vision` capture precheck → MediaPipe hand geometry/pose → ONNX evidence по life/head/heart → `palm_full_scope` OpenCV candidate search по полному каталогу линий, холмов, пальцев и знаков → vision call как финальный visual adjudicator → strict JSON normalization/safety scrub → LLM explanation только по подтверждённым наблюдениям → сохранение структурированного evidence без raw image, raw mask или raw edge map. Relationship/children/travel zones получают `requires_view=folded_edge`, если исходный кадр — открытая ладонь.
 
@@ -141,7 +157,7 @@ Frontend намеренно не использует bundler: `miniapp/index.ht
 
 ## Data and migrations
 
-PostgreSQL stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. The canonical PostgreSQL schema is created and changed by Alembic revisions in `alembic/versions/`; `app/data/pg_schema.py` contains only the shared DDL rendering constants used by the baseline migration. Repositories consume PostgreSQL-compatible rows through the database adapter.
+PostgreSQL stores profiles, conversations, memory, diary, forecasts, readings, partners, practices, payments, analytics and admin records. The canonical PostgreSQL schema lives entirely in Alembic (`alembic/schema/baseline.sql` + `alembic/versions/*.py`); the legacy `app/data/schema.py` and `app/data/pg_schema.py` files have been removed and runtime schema creation is not possible outside Alembic. Repositories consume PostgreSQL rows through `app/data/postgres.py`.
 
 The legacy `messages.thread_id IS NULL` migration is idempotent: existing users are attached to an active default `oracle` thread, while orphan rows without a matching user are preserved. Composite indexes cover chat history by user/thread/agent and recency. Analytics, payment, event and memory-ranking indexes support the main milestone queries; `prune_analytics()` removes old events and LLM usage in batches. Schema changes are applied explicitly with `alembic upgrade head` before application processes start.
 
