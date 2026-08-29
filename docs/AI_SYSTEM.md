@@ -8,7 +8,7 @@
 | **Source of truth** | `app/core/agents/`, `app/core/skills.py`, `app/core/agent.py`, `app/core/llm.py` and the agent files under `app/agents/`. |
 | **Scope** | Runtime routing and evidence handling for Lilith, Urania, Madame Lenormand and Mira. |
 | **Do not change** | Do not move deterministic calculations into prompts, treat retrieved user data as instructions, bypass server-side safety/eligibility, or expose raw personal data to analytics. |
-| **Key files** | `app/core/agents/specs.py`, `app/core/agents/routing.py`, `app/core/agents/context.py`, `app/core/agents/runtime.py`, `app/core/memory.py`, `app/core/shared_context.py`, `app/core/safety.py`. |
+| **Key files** | `app/core/agents/registry.py`, `app/core/agents/routing.py`, `app/core/agents/context.py`, `app/core/agents/runtime.py`, `app/core/memory.py`, `app/core/shared_context.py`, `app/core/safety.py`. |
 | **Validation** | `python3 -m scripts.check_agent_context_contracts`, `python3 -m scripts.check_agent_quality`, `python3 -m scripts.check_domain_evals`, `pytest -q tests/test_agent_context.py tests/test_agent_context_integrity.py tests/test_agent_routing.py tests/test_safety.py`. |
 
 ## System boundary
@@ -77,7 +77,7 @@ The local AI gates prove code contracts and synthetic evaluations only. They do 
 
 ## References
 
-[1]: [app/core/agents/specs.py](../app/core/agents/specs.py) — agent specifications and server-owned metadata.
+[1]: [app/core/agents/registry.py](../app/core/agents/registry.py) — agent specifications and server-owned metadata.
 [2]: [app/core/skills.py](../app/core/skills.py) — skill/tool registry and allow-lists.
 [3]: [app/core/agents/context.py](../app/core/agents/context.py) — bounded conversation context.
 [4]: [app/core/memory.py](../app/core/memory.py) and [app/core/shared_context.py](../app/core/shared_context.py) — consented memory and shared context.

@@ -4,7 +4,7 @@
 
 ## 1. Runtime-контракт и версия prompt layer
 
-`agents.system_for()` собирает системный prompt в фиксированном порядке: идентичность и голос → пользователь и compact natal JSON → Матрица → consented memory/profile summary → `[SHARED_CONTEXT]` → общие правила диалога и function calling → context-integrity/synthesis → domain rules → safety tail. File-backed `SYSTEM.md` загружается через `file_loader.py` и overlays legacy `AgentSpec`, поэтому редактирование только `specs.py` недостаточно.
+`agents.system_for()` собирает системный prompt в фиксированном порядке: идентичность и голос → пользователь и compact natal JSON → Матрица → consented memory/profile summary → `[SHARED_CONTEXT]` → общие правила диалога и function calling → context-integrity/synthesis → domain rules → safety tail. Идентичность агента живёт целиком в `app/agents/<code>/{agent.yaml,SYSTEM.md,skills/}`; `registry.py` собирает из них immutable `AgentSpec` при импорте.
 
 Версия контракта: **prompt-contract-v2 / shared-context-v1 / natal-json-v1**.
 

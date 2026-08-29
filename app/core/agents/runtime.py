@@ -25,7 +25,7 @@ from .context import build_bounded_history
 from .file_loader import skill_context
 from .. import shared_context
 from ..interpretation import validate_nonfatal_text
-from .specs import DEFAULT_AGENT, REGISTRY, get
+from .registry import DEFAULT_AGENT, REGISTRY, get
 
 log = logging.getLogger("oracle.agents")
 

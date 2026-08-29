@@ -14,7 +14,7 @@ from app.api.deps import get_db
 from app.api.main import app
 from app.core import palm as palm_core
 from app.core import skills
-from app.core.agents.specs import get
+from app.core.agents.registry import get
 from app.repo import palm as palm_repo, users
 
 

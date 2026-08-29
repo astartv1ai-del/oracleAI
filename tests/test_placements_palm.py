@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core import palm, placements
-from app.core.agents.specs import codes, get
+from app.core.agents.registry import codes, get
 from app.core.skills import SKILLS
 
 

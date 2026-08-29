@@ -12,7 +12,7 @@ from app.core.agents.file_loader import (
     select_skills,
 )
 from app.core.agents.runtime import offline_answer
-from app.core.agents.specs import codes, get
+from app.core.agents.registry import codes, get
 
 EXPECTED = {
     "oracle": ("pattern-mapping", "повторяется"),

@@ -1,18 +1,23 @@
 """LLM-агенты сервиса.
 
-Агент описывается данными (`AgentSpec`), а исполняется общим кодом. Чтобы завести
-нового — допишите спецификацию в `specs.py`: треды, лимиты, tool-use цикл,
-переключатель в Mini App и админка подхватят его сами.
+Агент описывается ФАЙЛОВЫМ ПАКЕТОМ под `app/agents/<code>/`
+(`agent.yaml` + `SYSTEM.md` + `skills/`). Runtime собирает из него immutable
+`AgentSpec` через `registry.py`.
 
-    specs.py    — каталог агентов (кто есть в продукте)
-    base.py     — структура агента и сборка системного промпта
-    runtime.py  — исполнение: контекст, инструменты, офлайн-подстраховка
+    registry.py     — canonical реестр (по legacy_code)
+    file_loader.py  — загрузка агентских файлов + skill dependency graph
+    base.py         — dataclass AgentSpec + сборка системного промпта
+    context.py      — bounded history для tool-use
+    routing.py      — выбор агента по вопросу пользователя
+    runtime.py      — исполнение: контекст, инструменты, офлайн-подстраховка
 """
 from .base import SAFETY, AgentSpec, build_system_prompt  # noqa: F401
+from .registry import DEFAULT_AGENT, REGISTRY, codes, get, reload  # noqa: F401
 from .runtime import (agent_list, answer, offline_answer, resolve,  # noqa: F401
                       system_for)
-from .specs import DEFAULT_AGENT, REGISTRY, codes, get  # noqa: F401
 
-__all__ = ["AgentSpec", "SAFETY", "build_system_prompt", "REGISTRY", "DEFAULT_AGENT",
-           "get", "codes", "resolve", "system_for", "answer", "offline_answer",
-           "agent_list"]
+__all__ = [
+    "AgentSpec", "SAFETY", "build_system_prompt", "REGISTRY", "DEFAULT_AGENT",
+    "get", "codes", "reload", "resolve", "system_for", "answer", "offline_answer",
+    "agent_list",
+]
