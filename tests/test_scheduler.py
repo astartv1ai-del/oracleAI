@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from app.core.scenarios import _impl as forecast_impl
 from app.repo import readings, users
 from app.services import scheduler
 
@@ -39,13 +40,13 @@ async def test_pregen_is_idempotent(db, monkeypatch):
     now = datetime(2026, 8, 3, 5, 0, tzinfo=timezone.utc)
 
     calls = []
-    orig = scheduler.agent_core.daily_forecast
+    orig = forecast_impl.daily_forecast
 
     async def counting(db_, user, chart):
         calls.append(user["tg_id"])
         return await orig(db_, user, chart)
 
-    monkeypatch.setattr(scheduler.agent_core, "daily_forecast", counting)
+    monkeypatch.setattr(forecast_impl, "daily_forecast", counting)
     scheduler._KNOWN_ZONES = ["Europe/Moscow"]
     await scheduler._pregen_forecasts(db, now, {"morning_hour": 9})
     await scheduler._pregen_forecasts(db, now, {"morning_hour": 9})
@@ -79,7 +80,7 @@ async def test_pregen_noop_outside_window(db, monkeypatch):
         called.append(user["tg_id"])
         return "🌅"
 
-    monkeypatch.setattr(scheduler.agent_core, "daily_forecast_cached", counting)
+    monkeypatch.setattr(forecast_impl, "daily_forecast_cached", counting)
     scheduler._KNOWN_ZONES = ["Europe/Moscow"]
     # окно прегена = 8:00 МСК, а тут morning_hour=11 → преген должен молчать
     await scheduler._pregen_forecasts(db, now, {"morning_hour": 11})
@@ -135,7 +136,7 @@ async def test_pregen_caches_ru_and_en_independently(db, monkeypatch):
         calls.append(user["lang"])
         return f"forecast-{user['lang']}"
 
-    monkeypatch.setattr(scheduler.agent_core, "daily_forecast", localized_forecast)
+    monkeypatch.setattr(forecast_impl, "daily_forecast", localized_forecast)
     scheduler._KNOWN_ZONES = ["Europe/Moscow"]
     await scheduler._pregen_forecasts(db, now, {"morning_hour": 9})
 

@@ -13,7 +13,7 @@ User request
   → response, persistence, analytics
 ```
 
-The browser and Telegram bot do not call providers directly. `app/core/agent.py`, `app/core/agents/`, `app/core/skills.py` and `app/core/interpretation.py` form the runtime boundary. Deterministic facts are calculated before interpretation; the model cannot rewrite the evidence object.
+The browser and Telegram bot do not call providers directly. `app/core/agent.py`, `app/core/agents/`, `app/core/tool_registry.py` and `app/core/interpretation.py` form the runtime boundary. Deterministic facts are calculated before interpretation; the model cannot rewrite the evidence object.
 
 ## Agent contract
 
@@ -65,5 +65,5 @@ The agents should differ through their allowed skills, prompt policies, evidence
 
 [1]: ../app/core/agent.py "OracleAI orchestration and report generation"  
 [2]: ../app/core/interpretation.py "Evidence and grounding contracts"  
-[3]: ../app/core/skills.py "Deterministic tool registry and execution"  
+[3]: ../app/core/tool_registry.py "Deterministic tool registry and execution"  
 [4]: ../app/core/agents/ "Agent definitions and runtime"

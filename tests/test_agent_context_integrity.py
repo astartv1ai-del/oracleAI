@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from app.core import memory, palm_lines, skills
+from app.core import memory, palm_lines
+from app.core import tool_registry as skills
 from app.core.agents.base import build_system_prompt
 from app.core.agents.registry import get
 from app.core.agents import runtime

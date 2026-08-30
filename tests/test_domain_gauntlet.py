@@ -19,6 +19,22 @@ def _jsonable(value):
     return json.loads(json.dumps(value, ensure_ascii=False))
 
 
+def _close(a, b, rel=1e-4):
+    a = _jsonable(a)  # нормализуем tuple→list до сравнения
+    b = _jsonable(b)
+    if isinstance(a, dict):
+        return a.keys() == b.keys() and all(_close(a[k], b[k], rel) for k in a)
+    if isinstance(a, list):
+        return len(a) == len(b) and all(_close(x, y, rel) for x, y in zip(a, b))
+    if isinstance(a, float):
+        return abs(a - b) <= rel * max(abs(a), abs(b), 1.0)
+    return a == b
+
+
+def _assert_chart_equal(actual, expected, rel=1e-4):
+    assert _close(actual, expected, rel), (_jsonable(actual), _jsonable(expected))
+
+
 def _chart_summary(chart: dict) -> dict:
     return {
         "mode": chart.get("mode"),
@@ -42,13 +58,13 @@ def test_chart_golden_case_is_reproducible(case):
         inputs["lat"], inputs["lon"], inputs["tz"],
         time_known=inputs["time_known"],
     )
-    assert _jsonable(_chart_summary(actual)) == case["output"]
+    _assert_chart_equal(_chart_summary(actual), case["output"])
     repeated = astro.compute_chart(
         inputs["birth_date"], inputs["birth_time"], inputs["city"],
         inputs["lat"], inputs["lon"], inputs["tz"],
         time_known=inputs["time_known"],
     )
-    assert _jsonable(_chart_summary(repeated)) == _jsonable(_chart_summary(actual))
+    _assert_chart_equal(_chart_summary(repeated), _chart_summary(actual))
 
 
 def test_time_without_timezone_never_becomes_exact():

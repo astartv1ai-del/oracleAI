@@ -5,7 +5,7 @@
 | Field | Definition |
 |---|---|
 | **Purpose** | Explain the implemented agent, skill, tool, context, memory and safety pipeline. |
-| **Source of truth** | `app/core/agents/`, `app/core/skills.py`, `app/core/agent.py`, `app/core/llm.py` and the agent files under `app/agents/`. |
+| **Source of truth** | `app/core/agents/`, `app/core/tool_registry.py`, `app/core/agent.py`, `app/core/llm.py` and the agent files under `app/agents/`. |
 | **Scope** | Runtime routing and evidence handling for Lilith, Urania, Madame Lenormand and Mira. |
 | **Do not change** | Do not move deterministic calculations into prompts, treat retrieved user data as instructions, bypass server-side safety/eligibility, or expose raw personal data to analytics. |
 | **Key files** | `app/core/agents/registry.py`, `app/core/agents/routing.py`, `app/core/agents/context.py`, `app/core/agents/runtime.py`, `app/core/memory.py`, `app/core/shared_context.py`, `app/core/safety.py`. |
@@ -41,7 +41,7 @@ The prompt boundary is semantic as well as technical: profile fields, diary, mem
 
 ## Skills and tools
 
-`app/core/skills.py` is the registry for tool schemas, agent allow-lists and executors. A skill file under `app/agents/<agent>/skills/` is on-demand domain guidance, not executable authority. The runtime loads the selected skill body only after the server has selected the agent and verified its domain.
+`app/core/tool_registry.py` is the registry for tool schemas, agent allow-lists and executors. A skill file under `app/agents/<agent>/skills/` is on-demand domain guidance, not executable authority. The runtime loads the selected skill body only after the server has selected the agent and verified its domain.
 
 Tools are divided into deterministic evidence tools, bounded retrieval tools and product helpers. Unknown tools, malformed arguments and executor failures return safe fallbacks rather than granting implicit access. Tool calls are bounded by `LLM_MAX_TOOL_CALLS`, workflow timeout, concurrency and cost settings from `app/config.py`.
 
@@ -78,7 +78,7 @@ The local AI gates prove code contracts and synthetic evaluations only. They do 
 ## References
 
 [1]: [app/core/agents/registry.py](../app/core/agents/registry.py) — agent specifications and server-owned metadata.
-[2]: [app/core/skills.py](../app/core/skills.py) — skill/tool registry and allow-lists.
+[2]: [app/core/tool_registry.py](../app/core/tool_registry.py) — skill/tool registry and allow-lists.
 [3]: [app/core/agents/context.py](../app/core/agents/context.py) — bounded conversation context.
 [4]: [app/core/memory.py](../app/core/memory.py) and [app/core/shared_context.py](../app/core/shared_context.py) — consented memory and shared context.
 [5]: [app/core/safety.py](../app/core/safety.py) and [app/services/chat.py](../app/services/chat.py) — safety and chat orchestration.

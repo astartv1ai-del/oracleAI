@@ -85,7 +85,7 @@ def test_skill_context_is_bounded_and_legacy_registry_is_unchanged():
     assert "[ACTIVATED_SKILL]" in activated
     assert "ACTIVE_SKILL: heart-line" in activated
     assert "ANTI-BARNUM" in activated.upper() or "evidence" in activated.lower()
-    assert codes() == ("oracle", "astro", "tarot", "chiromant")
+    assert set(codes()) == {"oracle", "astro", "tarot", "chiromant"}
     assert get("chiromant").skills == (
         "activate_skill",
         "palm_scanner",

@@ -16,10 +16,12 @@ import logging
 
 # ── canonical free-form dialog entrypoint ────────────────────────────────
 from . import agents
+from . import llm  # noqa: F401  # tests may monkeypatch this attribute
 from . import tool_registry as skills  # noqa: F401  # tests may monkeypatch this attribute
 # ── canonical scenario modules ───────────────────────────────────────────
 from .scenarios import compat as _compat_scn
 from .scenarios import forecast as _forecast_scn
+from .scenarios._impl import REPORTS as REPORTS  # noqa: F401
 from .scenarios import memory as _memory_scn
 from .scenarios import report as _report_scn
 from .scenarios import tarot as _tarot_scn
@@ -60,6 +62,7 @@ extract_memory_llm = _memory_scn.extract_memory_llm
 
 # Историческая совместимость для тестов, которые правят внутренние helpers:
 from .scenarios._impl import (  # noqa: E402, F401
+    _synastry_data,
     _chart_brief,
     _chart_required_coverage,
     _forecast_offline,

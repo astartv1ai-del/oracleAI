@@ -14,6 +14,7 @@ import pytest
 
 from app.api.routers.webhooks import _already_seen, verify_paddle
 from app.core import cards, memory, tarot
+from app.core.scenarios import _impl as forecast_impl
 from app.services import horoscopes
 
 
@@ -89,7 +90,7 @@ async def test_daily_forecast_builds_once_under_concurrency(db, user, monkeypatc
         await asyncio.sleep(0.02)
         return "🌅 Прогноз на сегодня"
 
-    monkeypatch.setattr(agent_core, "daily_forecast", fake_forecast)
+    monkeypatch.setattr(forecast_impl, "daily_forecast", fake_forecast)
     results = await asyncio.gather(
         *[agent_core.daily_forecast_cached(db, user) for _ in range(5)])
 
@@ -318,7 +319,7 @@ async def test_daily_forecast_separates_languages_under_concurrency(db, user, mo
         await asyncio.sleep(0.02)
         return f"🌅 forecast-{user_['lang']}"
 
-    monkeypatch.setattr(agent_core, "daily_forecast", fake_forecast)
+    monkeypatch.setattr(forecast_impl, "daily_forecast", fake_forecast)
     results = await asyncio.gather(
         *[agent_core.daily_forecast_cached(db, ru_user) for _ in range(5)],
         *[agent_core.daily_forecast_cached(db, en_user) for _ in range(5)])
