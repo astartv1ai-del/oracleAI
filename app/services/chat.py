@@ -429,8 +429,8 @@ async def track_open(db, user, surface: str = "miniapp") -> None:
     await analytics.track_now(db, analytics_repo.E_MINIAPP_OPEN, tg_id,
                               surface=surface)
     cur = await db.execute(
-        "SELECT MIN(day) first_day FROM events WHERE tg_id=? AND name=?",
-        (tg_id, analytics_repo.E_MINIAPP_OPEN),
+        "SELECT MIN(day) first_day FROM events WHERE tg_id=:tg_id AND name=:name",
+        {"tg_id": tg_id, "name": analytics_repo.E_MINIAPP_OPEN},
     )
     row = await cur.fetchone()
     if not row or not row["first_day"]:
