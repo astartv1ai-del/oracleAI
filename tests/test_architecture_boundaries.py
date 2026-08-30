@@ -169,18 +169,15 @@ def test_tool_registry_is_the_only_executable_tools_module() -> None:
 
 
 def test_palm_module_is_below_the_split_ceiling_or_split() -> None:
-    """ARCH-001: app/core/palm.py is scheduled to split into
-    core/palm/{prompts,evidence,service}.py. Until the split lands the
-    monolith must not grow — 1200 lines is the absolute ceiling; the
-    current baseline is ~842 lines."""
-    palm = ROOT / "app" / "core" / "palm.py"
+    """ARCH-001: app/core/palm.py is split into app/core/palm/{prompts,service}.py.
+    The split has landed — enforce the package shape instead of the flat ceiling."""
     palm_pkg = ROOT / "app" / "core" / "palm"
-    if palm_pkg.is_dir():
-        # Split already done; the flat file may be gone or become a thin facade.
-        return
-    assert palm.is_file(), "app/core/palm.py missing (unexpected)"
-    lines = palm.read_text(encoding="utf-8").splitlines()
-    assert len(lines) < 1200, (
-        f"app/core/palm.py has {len(lines)} lines — split it into "
-        "app/core/palm/{prompts,evidence,service}.py (ARCH-001)."
+    assert palm_pkg.is_dir(), "app/core/palm package missing"
+    for name in ("__init__.py", "prompts.py", "service.py"):
+        module = palm_pkg / name
+        assert module.is_file(), f"missing palm package module: {module.relative_to(ROOT)}"
+    service_lines = (palm_pkg / "service.py").read_text(encoding="utf-8").splitlines()
+    assert len(service_lines) < 1200, (
+        f"app/core/palm/service.py has {len(service_lines)} lines — keep the "
+        "service module from re-growing (ARCH-001)."
     )

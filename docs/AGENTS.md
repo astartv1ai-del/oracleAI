@@ -1,6 +1,6 @@
 # OracleAI — реестр агентов, инструментов и системных промптов
 
-Дата обновления: **2026-08-27**. Реестр описывает фактически подключённые file-backed профили, общий prompt builder и function-calling каталог. Источниками истины остаются `app/agents/*/SYSTEM.md`, `app/agents/*/agent.yaml`, `app/core/agents/base.py`, `app/core/agents/runtime.py`, `app/core/tool_registry.py` и `app/core/palm.py`; этот документ фиксирует их контракт и не подменяет исходники.
+Дата обновления: **2026-08-27**. Реестр описывает фактически подключённые file-backed профили, общий prompt builder и function-calling каталог. Источниками истины остаются `app/agents/*/SYSTEM.md`, `app/agents/*/agent.yaml`, `app/core/agents/base.py`, `app/core/agents/runtime.py`, `app/core/tool_registry.py` и `app/core/palm/` (ARCH-001); этот документ фиксирует их контракт и не подменяет исходники.
 
 ## 1. Runtime-контракт и версия prompt layer
 
@@ -13,7 +13,7 @@
 | Общая сборка и safety tail | `app/core/agents/base.py` | Общие правила, недоверенные данные, contradiction resolution, few-shot | `acb229a50b66622bdb1cd8c84c927966a72f6f79c1639d889a88646fc3747da2` |
 | Runtime context | `app/core/agents/runtime.py` | Memory tiering, natal JSON и Shared Context на каждый free-form вызов | проверяется тестами `test_shared_context.py` |
 | Shared Context | `app/core/shared_context.py` | Последние 30 дней рекомендаций, единый transit snapshot, bounded rendering | `c92cbf133a9e1d5216c3c9dd96baa7c566eabce9097426423712ec19ca030fe9` |
-| Мира vision prompt | `app/core/palm.py` | Structured palm evidence, strict JSON и capture boundaries | `bc8c81c746aeffc81e126dab6e8edf6787dd895bf749318ad09dbe264d93c905` |
+| Мира vision prompt | `app/core/palm/` (ARCH-001) | Structured palm evidence, strict JSON и capture boundaries | `6921803a8e6570daf2b18cad617267b8d11a6113887c6bca421f7c42f77fe2db` |
 
 Обязательная инструкция, присутствующая в общем prompt builder и в системной инструкции Миры:
 
@@ -44,7 +44,7 @@
 
 ### 2.4. Prompt block Миры
 
-`SYSTEM.md` требует `palm_scanner` до утверждений о руке, различает открытый и согнутый ракурс, объясняет `needs_photo` конкретной инструкцией, использует основные линии, холмы, пальцы и тип руки по стихии. Внутри `app/core/palm.py` закреплены structured fields `visibility`, `summary`, `confidence`, `continuity/path/shape/prominence/length`, а также строгий JSON schema и safety scrub. Натальный JSON можно использовать только как вторичную персонализацию, например «учитывая ваш Марс в …», но нельзя выдавать его за доказательство линии.
+`SYSTEM.md` требует `palm_scanner` до утверждений о руке, различает открытый и согнутый ракурс, объясняет `needs_photo` конкретной инструкцией, использует основные линии, холмы, пальцы и тип руки по стихии. Внутри `app/core/palm/` (ARCH-001) закреплены structured fields `visibility`, `summary`, `confidence`, `continuity/path/shape/prominence/length`, а также строгий JSON schema и safety scrub. Натальный JSON можно использовать только как вторичную персонализацию, например «учитывая ваш Марс в …», но нельзя выдавать его за доказательство линии.
 
 ## 3. Function-calling registry
 
@@ -76,6 +76,6 @@
 [2]: ../app/core/agents/runtime.py "Agent runtime and bounded context"
 [3]: ../app/core/tool_registry.py "Tool schemas and executors"
 [4]: ../app/core/shared_context.py "Shared Context Layer"
-[5]: ../app/core/palm.py "Mira multimodal pipeline"
+[5]: ../app/core/palm/prompts.py "Mira prompts"
 [6]: ../app/agents/mira/SYSTEM.md "Mira file-backed system prompt"
 [7]: ../data/tarot_cards.json "Versioned 78-card Tarot knowledge artifact"

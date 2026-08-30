@@ -37,7 +37,7 @@ A fresh domain/CV/safety/UX critic must receive implementation, matrix, evidence
 
 ## References
 
-[1]: ../../app/core/palm.py "Palm acceptance, normalization and safety contract"
+[1]: ../../app/core/palm/ "Palm acceptance, normalization and safety contract"
 [2]: ../../app/core/palm_landmarks.py "Hand geometry adapter"
 [3]: ../../app/core/palm_full_scope.py "OpenCV candidate evidence adapter"
 [4]: ../../scripts/palm_accuracy_gauntlet.py "Deterministic gauntlet runner"

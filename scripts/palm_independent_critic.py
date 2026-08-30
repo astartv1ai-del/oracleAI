@@ -38,7 +38,8 @@ def main() -> int:
     parser.add_argument("--review-report", type=Path, default=None)
     args = parser.parse_args()
     failures: list[str] = []
-    palm = (ROOT / "app/core/palm.py").read_text(encoding="utf-8")
+    palm = ((ROOT / "app/core/palm/service.py").read_text(encoding="utf-8")
+            + "\n" + (ROOT / "app/core/palm/prompts.py").read_text(encoding="utf-8"))
     landmarks = (ROOT / "app/core/palm_landmarks.py").read_text(encoding="utf-8")
     full_scope = (ROOT / "app/core/palm_full_scope.py").read_text(encoding="utf-8")
     skills = (ROOT / "app/core/tool_registry.py").read_text(encoding="utf-8")

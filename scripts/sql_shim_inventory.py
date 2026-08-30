@@ -224,7 +224,7 @@ def _build_report(stats_list: list[FileStats]) -> str:
     lines.append("| ------ | ------- | ------------- |")
     lines.append("| `?` total | Count of positional `?` placeholders | Replace with `:p0`, `:p1`, … (already done by `_translate_sql`; target: named params via SQLAlchemy `text()`) |")
     lines.append("| INSERT OR IGNORE | SQLite idiom | Replace with `INSERT … ON CONFLICT DO NOTHING` (already in shim; target: inline in SQL text) |")
-    lines.append("| AUTOINCREMENT | SQLite DDL keyword | Remove from DDL; PostgreSQL uses `BIGSERIAL` (already done in `pg_schema.py`) |")
+    lines.append("| AUTOINCREMENT | SQLite DDL keyword | Remove from DDL; PostgreSQL uses `BIGSERIAL` (already done in `alembic/schema/baseline.sql`) |")
     lines.append("| COLLATE NOCASE | SQLite collation | Replace with `LOWER(col) = LOWER(?)` or `ILIKE` |")
     lines.append("| lastrowid | Python attribute on cursor | Ensure `RETURNING id` is present on all INSERT into `_ID_TABLES`; shim injects it today |")
     lines.append("| rowcount | Python attribute on cursor | Verify semantics: PG rowcount after `INSERT OR IGNORE` → ON CONFLICT DO NOTHING is 0 on conflict |")
