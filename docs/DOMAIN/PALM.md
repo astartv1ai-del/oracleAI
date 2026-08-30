@@ -5,7 +5,7 @@
 | Field | Definition |
 |---|---|
 | **Purpose** | Define what the palm surface can observe, retain and explain. |
-| **Source of truth** | `app/core/palm.py`, `app/core/palm_vision.py`, `app/core/palm_lines.py`, `app/core/palm_full_scope.py` and `app/api/routers/placements.py`. |
+| **Source of truth** | `app/core/palm/`, `app/core/palm_vision.py`, `app/core/palm_lines.py`, `app/core/palm_full_scope.py` and `app/api/routers/placements.py`. |
 | **Scope** | Upload validation, capture quality, geometry/vision evidence, normalization, persistence and user-facing limitations. |
 | **Do not change** | Do not retain raw uploads or raw masks as product evidence, accept unbounded file input, or present palm observations as diagnosis or guaranteed prediction. |
 | **Validation** | `pytest -q tests/test_palm_vision.py tests/test_palm_integration.py tests/test_placements_palm.py tests/test_palm_gauntlet.py`. |
@@ -101,7 +101,7 @@ The semantic accuracy gate remains **blocked** until a consented or synthetic go
 
 ## References
 
-[1]: ../../app/core/palm.py "Palm service: acceptance, normalization, safety and persistence boundary"
+[1]: ../../app/core/palm/ "Palm service: acceptance, normalization, safety and persistence boundary"
 [2]: ../../app/core/palm_vision.py "Deterministic capture-quality precheck"
 [3]: ../../app/core/palm_landmarks.py "Optional hand geometry adapter"
 [4]: ../../app/core/palm_lines.py "Auxiliary ONNX line segmentation"

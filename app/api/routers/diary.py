@@ -269,8 +269,8 @@ async def diary_summary(month: str | None = Query(default=None),
 async def diary_item(entry_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Open one diary entry from the unified archive without crossing owners."""
     cur = await db.execute(
-        "SELECT id, text, mood, created_at FROM diary WHERE id=? AND tg_id=?",
-        (entry_id, user["tg_id"]),
+        "SELECT id, text, mood, created_at FROM diary WHERE id=:id AND tg_id=:tg_id",
+        {"id": entry_id, "tg_id": user["tg_id"]},
     )
     row = await cur.fetchone()
     if not row:

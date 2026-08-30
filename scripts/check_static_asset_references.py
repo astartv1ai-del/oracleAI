@@ -92,6 +92,13 @@ def main() -> int:
                 text = path.read_text(encoding="utf-8")
             except UnicodeDecodeError:
                 continue
+            if path.suffix == ".py":
+                # FastAPI route decorators ("/public/config") are URL path
+                # fragments, not static asset references — strip them.
+                text = "\n".join(
+                    line for line in text.splitlines()
+                    if not line.lstrip().startswith(("@router.", "@app."))
+                )
             _check_absolute(path, text, root, errors)
             _check_css_relative(path, text, errors)
     if errors:

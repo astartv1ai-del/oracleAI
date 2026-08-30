@@ -74,3 +74,14 @@ Both are structural, deterministic, and match what ADR-0001 sets as the migratio
 The flag defaults to off. A regression that would depend on the shim continues to work
 in production while it is deployed and only fails in CI, giving the team a full release
 cycle to react before the shim is deleted.
+
+## Close-out (DB-001, 2026-08-30)
+
+The inventory reached 0 placeholders and 0 `INSERT OR IGNORE` across all repos
+(see `docs/SQL_SHIM_INVENTORY.md`, commit ae42aac). With no remaining call sites,
+the two-week warning soak is moot: the shim is dead code. In the close-out commit
+the shim, `LegacyShimUsageError`, `_ID_TABLES`, `_INSERT_TABLE_RE` and
+`_translate_sql` were deleted; `PostgresDatabase.execute` no longer mutates SQL.
+Remaining call sites that still used legacy dialect (geocache, safety events,
+shared context, diary/history/profile routers) were ported to native PG named
+params in the same change. `SHIM_ENFORCED` removed from CI.

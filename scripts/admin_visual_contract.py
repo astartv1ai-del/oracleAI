@@ -6,10 +6,11 @@ this repository by default, so generated artifacts do not pollute release
 history.
 """
 from __future__ import annotations
+import os
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -93,7 +94,7 @@ def main() -> int:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
             headless=True,
-            executable_path="/usr/bin/chromium",
+            executable_path=CHROMIUM_PATH,
             args=["--no-sandbox"],
         )
         for name, width, height in DEFAULT_VIEWPORTS:

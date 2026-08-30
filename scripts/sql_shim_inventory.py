@@ -1,5 +1,6 @@
 """SQL shim inventory — collects and classifies all SQL strings used by the
-repository layer so that DB-001 (dialect migration) has a concrete checklist.
+repository layer. DB-001 is CLOSED (shim removed 2026-08-30); this script
+remains as a historical checklist generator / regression scanner.
 
 Usage:
     python scripts/sql_shim_inventory.py              # prints + writes docs/SQL_SHIM_INVENTORY.md
@@ -222,7 +223,7 @@ def _build_report(stats_list: list[FileStats]) -> str:
     lines.append("")
     lines.append("| Column | Meaning | DB-001 Action |")
     lines.append("| ------ | ------- | ------------- |")
-    lines.append("| `?` total | Count of positional `?` placeholders | Replace with `:p0`, `:p1`, … (already done by `_translate_sql`; target: named params via SQLAlchemy `text()`) |")
+    lines.append("| `?` total | Count of positional `?` placeholders | Replace with `:p0`, `:p1`, … native PostgreSQL named params via SQLAlchemy `text()` |")
     lines.append("| INSERT OR IGNORE | SQLite idiom | Replace with `INSERT … ON CONFLICT DO NOTHING` (already in shim; target: inline in SQL text) |")
     lines.append("| AUTOINCREMENT | SQLite DDL keyword | Remove from DDL; PostgreSQL uses `BIGSERIAL` (already done in `alembic/schema/baseline.sql`) |")
     lines.append("| COLLATE NOCASE | SQLite collation | Replace with `LOWER(col) = LOWER(?)` or `ILIKE` |")
@@ -243,7 +244,7 @@ def _build_report(stats_list: list[FileStats]) -> str:
     lines.append("")
     lines.append("- [ ] For every file in the table above with `?` > 0, replace `?` with "
                  "`:p0`, `:p1`, … (or meaningful names) and pass a `dict` instead of a `tuple`.")
-    lines.append("- [ ] Remove the `_translate_sql` placeholder-replacement loop once all callsites are migrated.")
+    lines.append("- [x] Remove the `_translate_sql` placeholder-replacement loop (done, 2026-08-30).")
     lines.append("- [ ] Run full pytest suite after each file to catch regressions.")
     lines.append("")
     lines.append("### Phase 2 — INSERT OR IGNORE → ON CONFLICT DO NOTHING")
@@ -252,7 +253,7 @@ def _build_report(stats_list: list[FileStats]) -> str:
                  "`INSERT INTO <table> … ON CONFLICT DO NOTHING`.")
     lines.append("- [ ] For tables with a non-PK unique constraint, specify the conflict target: "
                  "`ON CONFLICT (<col>) DO NOTHING`.")
-    lines.append("- [ ] Remove the `INSERT OR IGNORE` branch from `_translate_sql`.")
+    lines.append("- [x] Remove the `INSERT OR IGNORE` branch (done: shim deleted).")
     lines.append("")
     lines.append("### Phase 3 — RETURNING id / lastrowid")
     lines.append("")

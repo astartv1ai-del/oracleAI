@@ -204,20 +204,22 @@ async def record_usage(db, *, provider: str, model: str, purpose: str,
         return
     cost_usd = estimate_cost(model, prompt_tokens, completion_tokens)
     try:
-        from ..data.session import transaction, utcnow
+        from ..repo import analytics as analytics_repo
+        from ..data.session import utcnow
         from . import product_cost
         ctx = product_cost.current()
         now = utcnow()
-        async with transaction(db):
-            await db.execute(
-                "INSERT INTO llm_usage(tg_id, provider, model, purpose, "
-                "prompt_tokens, completion_tokens, cost_usd, latency_ms, ok, day, "
-                "created_at, sku, catalog_version, subscription_code, included_usage, "
-                "crystal_spend, overage) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (tg_id, provider, model, purpose, prompt_tokens, completion_tokens,
-                 cost_usd, latency_ms, int(ok), now[:10], now, ctx.sku,
-                 ctx.catalog_version, ctx.tier_code, int(ctx.charged_source == "included"),
-                 0, int(ctx.charged_source == "crystals")))
+        await analytics_repo.record_llm_usage(db, {
+            "tg_id": tg_id, "provider": provider, "model": model,
+            "purpose": purpose, "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens, "cost_usd": cost_usd,
+            "latency_ms": latency_ms, "ok": int(ok), "day": now[:10],
+            "created_at": now, "sku": ctx.sku,
+            "catalog_version": ctx.catalog_version,
+            "subscription_code": ctx.tier_code,
+            "included_usage": int(ctx.charged_source == "included"),
+            "crystal_spend": 0,
+            "overage": int(ctx.charged_source == "crystals")})
     except Exception as e:  # noqa: BLE001
         log.debug("расход LLM не записан: %s", e)
     try:

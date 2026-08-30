@@ -229,7 +229,9 @@ async def record(db, tg_id: int, category: str, action: str, excerpt: str) -> No
         async with transaction(db):
             await db.execute(
                 "INSERT INTO safety_events(tg_id, category, excerpt, action, "
-                "created_at) VALUES(?,?,?,?,?)",
-                (tg_id, category, (excerpt or "")[:300], action, utcnow()))
+                "created_at) VALUES(:tg_id, :category, :excerpt, :action, :created_at)",
+                {"tg_id": tg_id, "category": category,
+                 "excerpt": (excerpt or "")[:300], "action": action,
+                 "created_at": utcnow()})
     except Exception as e:  # noqa: BLE001
         log.warning("событие безопасности не записано: %s", e)

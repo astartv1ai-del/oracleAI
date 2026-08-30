@@ -112,15 +112,19 @@ async def record_recommendation(db, user, *, agent: str, text: str,
         await db.execute(
             "INSERT INTO shared_context_events"
             "(tg_id, event_type, agent, content, source_ref, created_at, expires_at)"
-            "VALUES(?,?,?,?,?,?,?)",
-            (user["tg_id"], "recommendation", str(agent or "oracle")[:40],
-             content, str(source_ref or "")[:120], utcnow(),
-             (datetime.now(timezone.utc) + timedelta(days=RECOMMENDATION_WINDOW_DAYS)).isoformat()),
+            "VALUES(:tg_id, :event_type, :agent, :content, :source_ref, "
+            ":created_at, :expires_at)",
+            {"tg_id": user["tg_id"], "event_type": "recommendation",
+             "agent": str(agent or "oracle")[:40],
+             "content": content, "source_ref": str(source_ref or "")[:120],
+             "created_at": utcnow(),
+             "expires_at": (datetime.now(timezone.utc)
+                            + timedelta(days=RECOMMENDATION_WINDOW_DAYS)).isoformat()},
         )
         await db.execute(
-            "DELETE FROM shared_context_events WHERE tg_id=? AND event_type='recommendation' "
-            "AND created_at < ?",
-            (user["tg_id"], _cutoff(RECOMMENDATION_WINDOW_DAYS)),
+            "DELETE FROM shared_context_events WHERE tg_id=:tg_id "
+            "AND event_type='recommendation' AND created_at < :created_at",
+            {"tg_id": user["tg_id"], "created_at": _cutoff(RECOMMENDATION_WINDOW_DAYS)},
         )
     return True
 
@@ -128,9 +132,10 @@ async def record_recommendation(db, user, *, agent: str, text: str,
 async def _active_recommendations(db, tg_id: int) -> list[dict[str, str]]:
     cur = await db.execute(
         "SELECT agent, content, source_ref, created_at FROM shared_context_events "
-        "WHERE tg_id=? AND event_type='recommendation' AND created_at>=? "
-        "ORDER BY created_at DESC, id DESC LIMIT ?",
-        (tg_id, _cutoff(RECOMMENDATION_WINDOW_DAYS), RECOMMENDATION_LIMIT),
+        "WHERE tg_id=:tg_id AND event_type='recommendation' AND created_at>=:created_at "
+        "ORDER BY created_at DESC, id DESC LIMIT :limit_",
+        {"tg_id": tg_id, "created_at": _cutoff(RECOMMENDATION_WINDOW_DAYS),
+         "limit_": RECOMMENDATION_LIMIT},
     )
     return [
         {
@@ -148,9 +153,10 @@ async def _transit_snapshot(db, user) -> dict[str, Any]:
     today = date.today().isoformat()
     cur = await db.execute(
         "SELECT payload_json FROM shared_context_snapshots "
-        "WHERE tg_id=? AND snapshot_type='transits' AND snapshot_key=? "
-        "AND (expires_at IS NULL OR expires_at>?) LIMIT 1",
-        (user["tg_id"], today, datetime.now(timezone.utc).isoformat()),
+        "WHERE tg_id=:tg_id AND snapshot_type='transits' AND snapshot_key=:snapshot_key "
+        "AND (expires_at IS NULL OR expires_at>:expires_at) LIMIT 1",
+        {"tg_id": user["tg_id"], "snapshot_key": today,
+         "expires_at": datetime.now(timezone.utc).isoformat()},
     )
     row = await cur.fetchone()
     if row:
@@ -190,11 +196,14 @@ async def _transit_snapshot(db, user) -> dict[str, Any]:
         await db.execute(
             "INSERT INTO shared_context_snapshots"
             "(tg_id, snapshot_type, snapshot_key, payload_json, created_at, expires_at) "
-            "VALUES(?,?,?,?,?,?) "
+            "VALUES(:tg_id, :snapshot_type, :snapshot_key, :payload_json, "
+            ":created_at, :expires_at) "
             "ON CONFLICT(tg_id, snapshot_type, snapshot_key) DO UPDATE SET "
             "payload_json=excluded.payload_json, created_at=excluded.created_at, "
             "expires_at=excluded.expires_at",
-            (user["tg_id"], "transits", today, payload_json, now.isoformat(), expires),
+            {"tg_id": user["tg_id"], "snapshot_type": "transits",
+             "snapshot_key": today, "payload_json": payload_json,
+             "created_at": now.isoformat(), "expires_at": expires},
         )
     return payload
 

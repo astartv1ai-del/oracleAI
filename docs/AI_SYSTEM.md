@@ -58,7 +58,7 @@ Shared context is a separate, bounded stream for recent agent recommendations an
 | Natal chart | `app/core/astro.py` and `app/core/chart_contract.py` | Unknown birth time suppresses houses, ASC, MC and wheel; no invented placements. |
 | Chart products | `app/core/chart_products.py` and `app/api/contracts/chart_products.py` | Synastry, transit, composite and solar-return semantics remain JSON-first and versioned. |
 | Tarot | `app/core/tarot.py` and persisted reading ledger | Interpret only saved cards, positions and orientation. |
-| Palm | `app/core/palm.py`, `palm_vision.py`, `palm_lines.py` and `palm_full_scope.py` | Use normalized observations and quality/confidence; never claim medical or guaranteed predictive meaning. |
+| Palm | `app/core/palm/`, `palm_vision.py`, `palm_lines.py` and `palm_full_scope.py` | Use normalized observations and quality/confidence; never claim medical or guaranteed predictive meaning. |
 | Diary/memory | `app/core/memory.py`, `app/repo/` and profile contracts | Consent, owner isolation, pause and deletion are mandatory. |
 
 The domain contract is documented separately in [`DOMAIN/README.md`](DOMAIN/README.md), while the architecture and transport boundaries are documented in [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`API.md`](API.md).

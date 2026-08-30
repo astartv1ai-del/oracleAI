@@ -14,7 +14,7 @@ from aiogram import BaseMiddleware, Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, MenuButtonWebApp, WebAppInfo
 
 from ..config import settings
 from ..core import flood, sentry
@@ -216,6 +216,12 @@ async def main() -> None:
     try:
         await bot.set_my_commands(COMMANDS)
         await bot.set_my_commands(COMMANDS_EN, language_code="en")
+        if settings.webapp_url:
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="✨ Оракул",
+                    web_app=WebAppInfo(url=settings.webapp_url + "/"),
+                ))
     except Exception as e:  # noqa: BLE001
         log.warning("не удалось задать меню команд: %s", e)
 

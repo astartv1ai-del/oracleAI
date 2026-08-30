@@ -8,7 +8,7 @@
 | **Source of truth** | `app/core/` domain calculators and contract modules. |
 | **Scope** | Western/Vedic astrology, lunar, Tarot, palm and evidence limitations. |
 | **Do not change** | Do not replace deterministic calculation with an LLM or conceal precision limits. |
-| **Key files** | `app/core/astro.py`, `app/core/tarot.py`, `app/core/palm.py`. |
+| **Key files** | `app/core/astro.py`, `app/core/tarot.py`, `app/core/palm/`. |
 | **Validation** | `python3 -m scripts.domain_qa`. |
 
 

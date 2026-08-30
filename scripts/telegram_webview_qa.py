@@ -5,6 +5,8 @@ This validates the browser-side contract only. It cannot emulate native
 Telegram safe-area values or a physical IME; those still require device QA.
 """
 from __future__ import annotations
+import os
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 
 import argparse
 import json
@@ -88,7 +90,7 @@ def main() -> int:
     url = f'{base}/?qa=1&qa_view={args.qa_view}&qa_agent={args.qa_agent}&dev_user={args.dev_user}'
     result = {}
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, executable_path='/usr/bin/chromium',
+        browser = p.chromium.launch(headless=True, executable_path=CHROMIUM_PATH,
                                     args=['--no-sandbox'])
         context = browser.new_context(
             viewport={'width': args.width, 'height': args.height}, is_mobile=True,

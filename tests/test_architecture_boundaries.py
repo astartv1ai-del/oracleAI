@@ -28,6 +28,88 @@ def test_api_routers_do_not_import_each_other() -> None:
     assert not violations, "router-to-router imports found:\n" + "\n".join(violations)
 
 
+# ── Layering: presentation → services → repo ────────────────────────────────
+# Rule: app/api/routers may only call app/services (and app/api/*), never
+# app/repo directly. app/services and app/repo must never import from the
+# presentation layer (app/api/routers). This is the same "frozen allowlist"
+# pattern used for the other architecture guards above.
+KNOWN_ROUTER_REPO_IMPORTS = {
+    # TODO(ARCH-004): shrink to zero by routing these read/write calls through
+    # app/services wrappers. Adding NEW router→repo imports is a hard failure;
+    # removing an entry below is the required regression test for the fix.
+    "admin": 2,
+    "chart": 1,
+    "chart_products": 1,
+    "chat": 1,
+    "diary": 1,
+    "history": 1,
+    "jobs": 1,
+    "notifications": 1,
+    "placements": 2,
+    "profile": 2,
+    "share": 1,
+    "shop": 3,
+    "tarot": 1,
+    "today": 1,
+    "webhooks": 1,
+}
+REPO_IMPORT_RE = re.compile(
+    r"^\s*(?:from\s+(?:\.{2,3}|app)\.repo[\s.]|import\s+(?:\.{2,3}|app)\.repo)"
+)
+
+
+def test_routers_do_not_import_repo_directly() -> None:
+    """Enforce presentation → services → repo layering for routers.
+
+    15 routers still reach into app/repo directly (see KNOWN_ROUTER_REPO_IMPORTS
+    above). The per-file import counts are frozen: any new repo import in any
+    router — including the grandfathered files — fails this test. Existing
+    counts may only go down; update the allowlist when a router is migrated.
+    """
+    violations = []
+    for path in sorted(ROUTERS.glob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        stem = path.stem
+        count = 0
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if REPO_IMPORT_RE.search(line):
+                count += 1
+                if stem not in KNOWN_ROUTER_REPO_IMPORTS:
+                    violations.append(
+                        f"{path.relative_to(ROOT)}:{number}: {line.strip()} "
+                        "(new router→repo import is not allowed — go through app/services)"
+                    )
+        expected = KNOWN_ROUTER_REPO_IMPORTS.get(stem, 0)
+        if count > expected:
+            violations.append(
+                f"{path.relative_to(ROOT)}: {count} repo imports exceed the "
+                f"frozen allowance of {expected} (ARCH-004)"
+            )
+
+    assert not violations, "presentation→repo layering violations:\n" + "\n".join(
+        violations
+    )
+
+
+def test_services_and_repo_do_not_import_presentation() -> None:
+    """Layering guard: services and repo must never import from app/api."""
+    violations = []
+    for layer in ("app/services", "app/repo"):
+        for path in sorted((ROOT / layer).glob("*.py")):
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1
+            ):
+                if re.search(r"^\s*(?:from|import)\s+(?:\.+api|app\.api)\b", line):
+                    violations.append(
+                        f"{path.relative_to(ROOT)}:{number}: {line.strip()}"
+                    )
+
+    assert not violations, "services/repo must not import app/api:\n" + "\n".join(
+        violations
+    )
+
+
 def test_frontend_runtime_boundaries_have_stable_order() -> None:
     html = INDEX.read_text(encoding="utf-8")
     scripts = re.findall(r'<script[^>]+src="([^"]+)"', html)

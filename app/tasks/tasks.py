@@ -14,7 +14,7 @@ from ..config import settings
 from ..data.session import connect
 from ..repo import jobs as jobs_repo, users
 from ..services import analytics, eligibility
-from .celery_app import celery_app
+from ..queue import celery_app
 
 
 def _run(awaitable):

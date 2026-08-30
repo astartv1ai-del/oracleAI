@@ -49,7 +49,7 @@ HTTP smoke в dev-режиме подтвердил доступность Mini 
 | SEC-05 | CRM user-card раскрывает слишком широкий набор данных support/read ролям | **P1** | Высокая | `app/repo/crm.py`, `app/repo/admin.py` |
 | SEC-06 | Support имеет `grants`; refund защищён только этой permission | **P1** | Высокая | `app/repo/admin.py`, `app/api/routers/admin.py` |
 | SEC-07 | Telegram HTML markup injection через пользовательские строки | **P1** | Высокая | `app/bot/main.py`, `app/bot/chat.py`, `app/bot/onboarding.py`, `app/bot/profile.py` |
-| SEC-08 | Palm decode/body/pixel resource limits недостаточно независимы | **P1/P2** | Средняя/высокая | `app/api/routers/placements.py`, `app/core/palm.py`, `infra/Caddyfile` |
+| SEC-08 | Palm decode/body/pixel resource limits недостаточно независимы | **P1/P2** | Средняя/высокая | `app/api/routers/placements.py`, `app/core/palm/`, `infra/Caddyfile` |
 | SEC-09 | Birth city попадает в лог в открытом виде | **P1/P2** | Высокая | `app/core/geo.py`, `app/core/observability.py` |
 | SEC-10 | Retention не охватывает safety/admin и зависит от scheduler | **P1/P2** | Высокая | `app/repo/analytics.py`, `app/services/scheduler.py` |
 | SEC-11 | Плавающие Docker/OS dependencies и runtime `apk add` | **P1/P2** | Высокая | `infra/Dockerfile`, `infra/docker-compose.yml` |
@@ -260,7 +260,7 @@ Deployment guide содержит `git checkout main`, а текущий remote 
 
 [22]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/api/routers/placements.py "Palm upload endpoint"
 
-[23]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/core/palm.py "Palm image validation and decode"
+[23]: https://github.com/astartv1ai-del/oracleAI/blob/master/app/core/palm/ "Palm image validation and decode"
 
 [24]: https://github.com/astartv1ai-del/oracleAI/blob/master/infra/Caddyfile "Caddy request-body limits"
 

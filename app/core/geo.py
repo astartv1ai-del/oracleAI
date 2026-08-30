@@ -195,7 +195,8 @@ async def resolve_city_async(city: str, db=None) -> tuple[float | None, float | 
 async def _cache_get_record(db, key: str) -> dict | None:
     try:
         cur = await db.execute(
-            "SELECT lat, lon, tz, source FROM geocache WHERE city_key=?", (key,))
+            "SELECT lat, lon, tz, source FROM geocache WHERE city_key=:city_key",
+            {"city_key": key})
         row = await cur.fetchone()
     except Exception as e:  # noqa: BLE001
         log.debug("кеш геокодирования недоступен: %s", e)
@@ -219,8 +220,12 @@ async def _cache_put(db, key: str, lat: float, lon: float, tz: str, *,
         from ..data.session import transaction, utcnow
         async with transaction(db):
             await db.execute(
-                "INSERT OR REPLACE INTO geocache(city_key, lat, lon, tz, source, "
-                "created_at) VALUES(?,?,?,?,?,?)",
-                (key, lat, lon, tz, source, utcnow()))
+                "INSERT INTO geocache(city_key, lat, lon, tz, source, "
+                "created_at) VALUES(:city_key, :lat, :lon, :tz, :source, :created_at) "
+                "ON CONFLICT (city_key) DO UPDATE SET lat=excluded.lat, "
+                "lon=excluded.lon, tz=excluded.tz, source=excluded.source, "
+                "created_at=excluded.created_at",
+                {"city_key": key, "lat": lat, "lon": lon, "tz": tz,
+                 "source": source, "created_at": utcnow()})
     except Exception as e:  # noqa: BLE001
         log.debug("кеш геокодирования не записан: %s", e)

@@ -92,11 +92,6 @@ jobs:
           git --no-pager diff --exit-code docs/SQL_SHIM_INVENTORY.md \
             || (echo "::error::SQL_SHIM_INVENTORY.md is stale — run scripts/sql_shim_inventory.py and commit."; exit 1)
 
-      - name: SHIM_ENFORCED gate tests (ADR-0003)
-        env:
-          SHIM_ENFORCED: "0"   # tests toggle the env var themselves
-        run: python -m pytest tests/test_shim_enforced_gate.py -q
-
       - name: P0-004 backup/restore infrastructure gate
         run: |
           python scripts/check_p004_infrastructure.py

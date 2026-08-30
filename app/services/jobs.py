@@ -5,7 +5,7 @@ from kombu.utils.uuid import uuid
 
 from ..config import settings
 from ..repo import jobs as jobs_repo
-from ..tasks.celery_app import celery_app
+from ..queue import celery_app
 
 
 class QueueUnavailable(RuntimeError):

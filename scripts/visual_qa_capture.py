@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "artifacts" / "visual-qa"
 BASE_URL = os.getenv("ORACLEAI_QA_VISUAL_URL", "http://127.0.0.1:8080/?dev_user=10001&qa=1&qa_view=home")
@@ -80,7 +82,7 @@ def capture() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict] = {}
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True, executable_path="/usr/bin/chromium", args=["--no-sandbox"])
+        browser = playwright.chromium.launch(headless=True, executable_path=CHROMIUM_PATH, args=["--no-sandbox"])
         for locale_key, locale in LOCALES.items():
             for viewport_name, (width, height) in VIEWPORTS.items():
                 context = browser.new_context(

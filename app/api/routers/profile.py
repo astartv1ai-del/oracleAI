@@ -37,12 +37,12 @@ async def _global_streak(db, tg_id: int) -> int:
     """
     cur = await db.execute(
         "SELECT d FROM ("
-        " SELECT substr(created_at,1,10) d FROM diary WHERE tg_id=?"
-        " UNION SELECT substr(created_at,1,10) FROM messages WHERE tg_id=? AND role='user'"
-        " UNION SELECT substr(created_at,1,10) FROM tarot_readings WHERE tg_id=?"
-        " UNION SELECT substr(last_done,1,10) FROM practices WHERE tg_id=? AND last_done IS NOT NULL"
+        " SELECT substr(created_at,1,10) d FROM diary WHERE tg_id=:tg_id"
+        " UNION SELECT substr(created_at,1,10) FROM messages WHERE tg_id=:tg_id AND role='user'"
+        " UNION SELECT substr(created_at,1,10) FROM tarot_readings WHERE tg_id=:tg_id"
+        " UNION SELECT substr(last_done,1,10) FROM practices WHERE tg_id=:tg_id AND last_done IS NOT NULL"
         ") ORDER BY d DESC LIMIT 400",
-        (tg_id, tg_id, tg_id, tg_id))
+        {"tg_id": tg_id})
     dayset = {r["d"] for r in await cur.fetchall()}
     if not dayset:
         return 0

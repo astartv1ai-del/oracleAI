@@ -5,6 +5,8 @@ accepts the self-confirmed age gate, never stores real user data, and writes onl
 screenshots plus aggregate DOM checks.
 """
 from __future__ import annotations
+import os
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 
 import json
 import os
@@ -29,8 +31,8 @@ LOCALES = {"ru": "ru-RU", "en": "en-US"}
 def locale_contract(page, locale_key: str) -> dict:
     body_text = page.locator("body").inner_text()
     expected = {
-        "ru": ("Твой мягкий ритуал дня", "Диалоги"),
-        "en": ("Your gentle daily ritual", "Guides"),
+        "ru": ("СЕГОДНЯ — БЕЗ СПЕШКИ", "Рады видеть тебя"),
+        "en": ("TODAY — WITHOUT RUSH", "Glad you’re here"),
     }[locale_key]
     opposite = "Your gentle daily ritual" if locale_key == "ru" else "Твой мягкий ритуал дня"
     return {
@@ -118,7 +120,7 @@ def capture() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict] = {}
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True, executable_path="/usr/bin/chromium", args=["--no-sandbox"])
+        browser = playwright.chromium.launch(headless=True, executable_path=CHROMIUM_PATH, args=["--no-sandbox"])
         for locale_key, locale in LOCALES.items():
             base_url = BASE_URL_TEMPLATE.format(dev_user=LOCALE_USERS[locale_key])
             for name, (width, height) in VIEWPORTS.items():

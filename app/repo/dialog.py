@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import array
 from datetime import date, datetime, timedelta, timezone
 
 from ..data.session import transaction, utcnow
@@ -280,42 +281,131 @@ def dedup_key(fact: str) -> str:
     return " ".join((fact or "").lower().replace("ё", "е").split())
 
 
-async def save_memory(db, tg_id: int, fact: str, kind: str = "fact",
-                      weight: int = 1) -> bool:
-    """Сохраняет факт, отбрасывая дубликаты.
+EMBED_DIM_LIMIT = 3072
 
-    Экстракция памяти запускается после каждого ответа, и без дедупликации
-    «Работает дизайнером» попадало в промпт по десять раз, вытесняя остальное.
-    Сравниваем по нормализованному тексту — точных повторов это ловит, а на
-    смысловые дубликаты нужны эмбеддинги (следующий шаг, см. ТЗ §5).
+
+def pack(vector: list[float]) -> bytes:
+    """float32-массив: в четыре раза компактнее JSON и читается без разбора."""
+    return array.array("f", vector[:EMBED_DIM_LIMIT]).tobytes()
+
+
+def unpack(blob) -> list[float]:
+    if not blob:
+        return []
+    if isinstance(blob, str):
+        try:
+            return [float(item) for item in blob.strip("[]").split(",") if item]
+        except ValueError:
+            return []
+    if hasattr(blob, "to_list"):
+        return list(blob.to_list())
+    arr = array.array("f")
+    try:
+        arr.frombytes(bytes(blob))
+    except (ValueError, TypeError):
+        return []
+    return list(arr)
+
+
+async def find_exact_id(db, tg_id: int, fact: str) -> int | None:
+    """Точный повтор с точностью до регистра, «ё» и пробелов.
+
+    Сравнение в Python: SQL lower() в SQLite покрывает только ASCII, из-за чего
+    «Работает дизайнером» и «работает дизайнером» считались разными фактами.
     """
-    fact = (fact or "").strip()
-    if len(fact) < 3:
-        return False
-    # Сравниваем в Python, а не через SQL lower(): встроенный lower() в SQLite
-    # работает только с ASCII, поэтому «Работает» и «работает» для него разные
-    # строки — на кириллице дедупликация молча не срабатывала.
     key = dedup_key(fact)
     cur = await db.execute(
         "SELECT id, fact FROM memories WHERE tg_id=:tg_id", {"tg_id": tg_id})
-    twin = next((r["id"] for r in await cur.fetchall()
+    return next((r["id"] for r in await cur.fetchall()
                  if dedup_key(r["fact"]) == key), None)
-    if twin is not None:
-        async with transaction(db):
-            await db.execute(
-                "UPDATE memories SET weight=weight+1, last_used=:last_used WHERE id=:id",
-                {"last_used": utcnow(), "id": twin})
-        from ..core.memory import invalidate_recall_cache
-        invalidate_recall_cache(tg_id)
-        return False
+
+
+async def bump_memory(db, memory_id: int) -> None:
     async with transaction(db):
         await db.execute(
-            "INSERT INTO memories(tg_id, fact, kind, weight, created_at) "
-            "VALUES(:tg_id, :fact, :kind, :weight, :created_at)",
-            {"tg_id": tg_id, "fact": fact, "kind": kind,
-             "weight": weight, "created_at": utcnow()})
-    from ..core.memory import invalidate_recall_cache
-    invalidate_recall_cache(tg_id)
+            "UPDATE memories SET weight=weight+1, last_used=:last_used WHERE id=:id",
+            {"last_used": utcnow(), "id": memory_id})
+
+
+def embedding_literal(vector: list[float]) -> str:
+    return "[" + ",".join(format(item, ".9g") for item in vector) + "]"
+
+
+async def insert_memory(db, tg_id: int, fact: str, kind: str, *,
+                        vector: list[float] | None = None,
+                        embed_model_name: str | None = None,
+                        weight: int = 1) -> None:
+    if vector:
+        embedding_sql = (embedding_literal(vector)
+                         if getattr(db, "is_postgres", False) else pack(vector))
+    else:
+        embedding_sql = None
+    async with transaction(db):
+        await db.execute(
+            "INSERT INTO memories(tg_id, fact, kind, weight, embedding, embed_model, "
+            "created_at) VALUES(:tg_id, :fact, :kind, :weight, :embedding, "
+            ":embed_model, :created_at)",
+            {"tg_id": tg_id, "fact": fact, "kind": kind, "weight": weight,
+             "embedding": embedding_sql, "embed_model": embed_model_name,
+             "created_at": utcnow()})
+
+
+async def candidate_embeddings(db, tg_id: int, limit: int) -> list:
+    """Кандидаты для косинусного поиска: недавние по last_used, затем по весу."""
+    cur = await db.execute(
+        "SELECT id, fact, weight, embedding FROM memories "
+        "WHERE tg_id=:tg_id AND embedding IS NOT NULL "
+        "ORDER BY COALESCE(last_used,'') DESC, weight DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
+    return await cur.fetchall()
+
+
+async def facts_count(db, tg_id: int) -> int:
+    cur = await db.execute("SELECT COUNT(*) c FROM memories WHERE tg_id=:tg_id",
+                           {"tg_id": tg_id})
+    return (await cur.fetchone())["c"]
+
+
+async def get_profile_summary(db, tg_id: int) -> str:
+    cur = await db.execute(
+        "SELECT summary FROM profile_summaries WHERE tg_id=:tg_id",
+        {"tg_id": tg_id})
+    row = await cur.fetchone()
+    return (row["summary"] or "") if row else ""
+
+
+async def profile_summary_facts_count(db, tg_id: int) -> int | None:
+    cur = await db.execute(
+        "SELECT facts_count FROM profile_summaries WHERE tg_id=:tg_id",
+        {"tg_id": tg_id})
+    row = await cur.fetchone()
+    return (row["facts_count"] or 0) if row else None
+
+
+async def upsert_profile_summary(db, tg_id: int, summary: str,
+                                 facts_count: int) -> None:
+    async with transaction(db):
+        await db.execute(
+            "INSERT INTO profile_summaries(tg_id, summary, facts_count, built_at) "
+            "VALUES(:tg_id, :summary, :facts_count, :built_at) "
+            "ON CONFLICT(tg_id) DO UPDATE SET "
+            "summary=excluded.summary, facts_count=excluded.facts_count, "
+            "built_at=excluded.built_at",
+            {"tg_id": tg_id, "summary": summary, "facts_count": facts_count,
+             "built_at": utcnow()})
+
+
+async def save_memory(db, tg_id: int, fact: str, kind: str = "fact",
+                      weight: int = 1) -> bool:
+    """Сохраняет факт без эмбеддингов: дедупликация по нормализованному тексту."""
+    fact = (fact or "").strip()
+    if len(fact) < 3:
+        return False
+    twin = await find_exact_id(db, tg_id, fact)
+    if twin is not None:
+        await bump_memory(db, twin)
+        return False
+    await insert_memory(db, tg_id, fact, kind, weight=weight)
     return True
 
 
@@ -352,16 +442,12 @@ async def search_memories(db, tg_id: int, query: str, limit: int = 10) -> list[s
 
 
 async def forget_memory(db, memory_id: int, tg_id: int) -> bool:
+    """Удаляет факт. Инвалидация recall-кеша — обязанность вызывающего слоя."""
     async with transaction(db):
         cur = await db.execute(
             "DELETE FROM memories WHERE id=:id AND tg_id=:tg_id",
             {"id": memory_id, "tg_id": tg_id})
-    deleted = bool(cur.rowcount)
-    if deleted:
-        # Local import avoids a repo/core import cycle while keeping recall fresh.
-        from ..core.memory import invalidate_recall_cache
-        invalidate_recall_cache(tg_id)
-    return deleted
+    return bool(cur.rowcount)
 
 
 # ─────────────────────────────── дневник ──────────────────────────────────────

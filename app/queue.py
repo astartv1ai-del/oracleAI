@@ -1,9 +1,9 @@
-"""Celery application configuration for Redis-backed background work."""
+"""Celery application instance — leaf module for queue configuration."""
 from __future__ import annotations
 
 from celery import Celery
 
-from ..config import settings
+from .config import settings
 
 celery_app = Celery(
     "oracle",

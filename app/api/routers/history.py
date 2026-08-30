@@ -81,8 +81,8 @@ async def unified_history(
         entries.append(record)
 
     cur = await db.execute(
-        "SELECT id, created_at FROM diary WHERE tg_id=? ORDER BY id DESC LIMIT ?",
-        (tg_id, limit),
+        "SELECT id, created_at FROM diary WHERE tg_id=:tg_id ORDER BY id DESC LIMIT :limit_",
+        {"tg_id": tg_id, "limit_": limit},
     )
     for row in await cur.fetchall():
         item = dict(row)

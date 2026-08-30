@@ -181,6 +181,20 @@ async def record_product_cost_event(
         )
 
 
+async def record_llm_usage(db, params: dict) -> None:
+    """Одна строка журнала llm_usage; интерпретация контекста — в core.llm."""
+    async with transaction(db):
+        await db.execute(
+            "INSERT INTO llm_usage(tg_id, provider, model, purpose, "
+            "prompt_tokens, completion_tokens, cost_usd, latency_ms, ok, day, "
+            "created_at, sku, catalog_version, subscription_code, included_usage, "
+            "crystal_spend, overage) VALUES(:tg_id, :provider, :model, :purpose, "
+            ":prompt_tokens, :completion_tokens, :cost_usd, :latency_ms, :ok, "
+            ":day, :created_at, :sku, :catalog_version, :subscription_code, "
+            ":included_usage, :crystal_spend, :overage)",
+            params)
+
+
 async def _scalar(db, sql: str, params: dict | None = None):
     cur = await db.execute(sql, params or {})
     row = await cur.fetchone()

@@ -21,7 +21,6 @@
 """
 from __future__ import annotations
 
-import array
 import logging
 import math
 import re
@@ -54,8 +53,6 @@ RECALL_TTL_S = 300
 RECALL_CACHE_MAX = 512
 
 _recall_cache: dict[tuple[int, str, int], tuple[float, list[str]]] = {}
-
-EMBED_DIM_LIMIT = 3072
 
 
 def invalidate_recall_cache(tg_id: int) -> None:
@@ -100,25 +97,11 @@ async def embed(texts: list[str]) -> list[list[float]] | None:
 
 def pack(vector: list[float]) -> bytes:
     """float32-массив: в четыре раза компактнее JSON и читается без разбора."""
-    return array.array("f", vector[:EMBED_DIM_LIMIT]).tobytes()
+    return dialog_repo.pack(vector)
 
 
 def unpack(blob) -> list[float]:
-    if not blob:
-        return []
-    if isinstance(blob, str):
-        try:
-            return [float(item) for item in blob.strip("[]").split(",") if item]
-        except ValueError:
-            return []
-    if hasattr(blob, "to_list"):
-        return list(blob.to_list())
-    arr = array.array("f")
-    try:
-        arr.frombytes(bytes(blob))
-    except (ValueError, TypeError):
-        return []
-    return list(arr)
+    return dialog_repo.unpack(blob)
 
 
 def cosine(a: list[float], b: list[float]) -> float:
@@ -248,49 +231,25 @@ async def remember_many(db, tg_id: int, facts: list[str],
 
 
 async def _find_exact(db, tg_id: int, fact: str) -> int | None:
-    """Точный повтор с точностью до регистра, «ё» и пробелов.
-
-    Сравнение в Python: `lower()` в SQLite покрывает только ASCII, из-за чего
-    «Работает дизайнером» и «работает дизайнером» считались разными фактами.
-    """
-    from ..repo.dialog import dedup_key
-
-    key = dedup_key(fact)
-    cur = await db.execute("SELECT id, fact FROM memories WHERE tg_id=?", (tg_id,))
-    return next((r["id"] for r in await cur.fetchall()
-                 if dedup_key(r["fact"]) == key), None)
+    return await dialog_repo.find_exact_id(db, tg_id, fact)
 
 
 async def _find_similar(db, tg_id: int, vector: list[float]) -> int | None:
-    cur = await db.execute(
-        "SELECT id, embedding FROM memories WHERE tg_id=? AND embedding IS NOT NULL",
-        (tg_id,))
-    for row in await cur.fetchall():
-        if cosine(vector, unpack(row["embedding"])) >= DUPLICATE_THRESHOLD:
+    rows = await dialog_repo.candidate_embeddings(db, tg_id, CANDIDATE_POOL)
+    for row in rows:
+        if cosine(vector, dialog_repo.unpack(row["embedding"])) >= DUPLICATE_THRESHOLD:
             return row["id"]
     return None
 
 
 async def _bump(db, memory_id: int) -> None:
-    from ..data.session import transaction, utcnow
-    async with transaction(db):
-        await db.execute(
-            "UPDATE memories SET weight=weight+1, last_used=? WHERE id=?",
-            (utcnow(), memory_id))
+    await dialog_repo.bump_memory(db, memory_id)
 
 
 async def _insert(db, tg_id: int, fact: str, kind: str,
                   vector: list[float] | None) -> None:
-    from ..data.session import transaction, utcnow
-    async with transaction(db):
-        await db.execute(
-            "INSERT INTO memories(tg_id, fact, kind, weight, embedding, embed_model, "
-            "created_at) VALUES(?,?,?,1,?,?,?)",
-            (tg_id, fact, kind,
-             ("[" + ",".join(format(item, ".9g") for item in vector) + "]"
-              if vector and getattr(db, "is_postgres", False)
-              else pack(vector) if vector else None),
-             embed_model() if vector else None, utcnow()))
+    await dialog_repo.insert_memory(db, tg_id, fact, kind, vector=vector,
+                                    embed_model_name=embed_model() if vector else None)
 
 
 # ─────────────────────────────── поиск ────────────────────────────────────────
@@ -344,17 +303,12 @@ async def _semantic(db, tg_id: int, query: str, limit: int) -> list[str] | None:
     if not vectors:
         return None
     qv = vectors[0]
-    cur = await db.execute(
-        "SELECT id, fact, weight, embedding FROM memories "
-        "WHERE tg_id=? AND embedding IS NOT NULL "
-        "ORDER BY COALESCE(last_used,'') DESC, weight DESC LIMIT ?",
-        (tg_id, CANDIDATE_POOL))
-    rows = await cur.fetchall()
+    rows = await dialog_repo.candidate_embeddings(db, tg_id, CANDIDATE_POOL)
     if not rows:
         return None
     scored = []
     for row in rows:
-        score = cosine(qv, unpack(row["embedding"]))
+        score = cosine(qv, dialog_repo.unpack(row["embedding"]))
         if score < RELEVANCE_FLOOR:
             continue
         # вес слегка поднимает то, что она повторяла: это её постоянные темы
@@ -371,30 +325,20 @@ SUMMARY_REBUILD_AFTER = 10          # новых фактов с прошлой 
 
 async def get_summary(db, tg_id: int) -> str:
     try:
-        cur = await db.execute(
-            "SELECT summary FROM profile_summaries WHERE tg_id=?", (tg_id,))
-        row = await cur.fetchone()
+        return await dialog_repo.get_profile_summary(db, tg_id)
     except Exception as e:  # noqa: BLE001
         log.debug("сводка профиля недоступна: %s", e)
         return ""
-    return (row["summary"] or "") if row else ""
-
-
-async def _facts_count(db, tg_id: int) -> int:
-    cur = await db.execute("SELECT COUNT(*) c FROM memories WHERE tg_id=?", (tg_id,))
-    return (await cur.fetchone())["c"]
 
 
 async def needs_summary(db, tg_id: int) -> bool:
-    total = await _facts_count(db, tg_id)
+    total = await dialog_repo.facts_count(db, tg_id)
     if total < SUMMARY_MIN_FACTS:
         return False
-    cur = await db.execute(
-        "SELECT facts_count FROM profile_summaries WHERE tg_id=?", (tg_id,))
-    row = await cur.fetchone()
-    if not row:
+    prev = await dialog_repo.profile_summary_facts_count(db, tg_id)
+    if prev is None:
         return True
-    return total - (row["facts_count"] or 0) >= SUMMARY_REBUILD_AFTER
+    return total - prev >= SUMMARY_REBUILD_AFTER
 
 
 async def build_summary(db, user) -> str:
@@ -424,12 +368,6 @@ async def build_summary(db, user) -> str:
     if len(text) < 40:
         return ""
 
-    from ..data.session import transaction, utcnow
-    async with transaction(db):
-        await db.execute(
-            "INSERT INTO profile_summaries(tg_id, summary, facts_count, built_at) "
-            "VALUES(?,?,?,?) ON CONFLICT(tg_id) DO UPDATE SET "
-            "summary=excluded.summary, facts_count=excluded.facts_count, "
-            "built_at=excluded.built_at",
-            (tg_id, text, await _facts_count(db, tg_id), utcnow()))
+    await dialog_repo.upsert_profile_summary(
+        db, tg_id, text, await dialog_repo.facts_count(db, tg_id))
     return text
