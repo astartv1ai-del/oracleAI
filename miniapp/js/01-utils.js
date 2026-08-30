@@ -54,7 +54,8 @@ async function api(path, opts = {}) {
   const dev = new URLSearchParams(location.search).get('dev_user');
   if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + dev;
   const doFetch = async () => {
-    const res = await fetch(url, Object.assign({ headers }, opts));
+    const res = await fetch(url, { ...opts, headers: Object.assign(
+      { 'Content-Type': 'application/json' }, opts.headers || {}) });
     let body = null;
     try { body = await res.json(); } catch (e) { /* пустое тело */ }
     if (!res.ok) {
