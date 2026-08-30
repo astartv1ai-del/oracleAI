@@ -17,7 +17,7 @@ Scanned files:
 | --------------------------------------------- | --------- | --------- | ---------------- | ------------- | -------------- | --------- | -------- | --- | ---- | ----------- | ------------- |
 | `app/repo/__init__.py                       ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/repo/admin.py` **✅ DB-001**                |        10 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
-| `app/repo/analytics.py                      ` |        20 |        61 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             1 |
+| `app/repo/analytics.py` **✅ DB-001**            |        20 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
 | `app/repo/billing.py` **✅ DB-001**              |        45 |         0 |                0 |             0 |              0 |         0 |        6 |   0 |    0 |           0 |             0 |
 | `app/repo/comms.py` **✅ DB-001**                |        18 |         0 |                0 |             0 |              0 |         0 |        4 |   0 |    0 |           1 |             0 |
 | `app/repo/content.py` **✅ DB-001**              |        11 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
@@ -25,17 +25,17 @@ Scanned files:
 | `app/repo/dialog.py` **✅ DB-001**               |        36 |         0 |                0 |             0 |              0 |         0 |        3 |   0 |    0 |           0 |             0 |
 | `app/repo/growth.py` **✅ DB-001**               |        12 |         0 |                0 |             0 |              0 |         0 |        3 |   0 |    0 |           0 |             0 |
 | `app/repo/jobs.py` **✅ DB-001**                 |         8 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
-| `app/repo/monetization.py                   ` |        21 |        72 |                1 |             0 |              0 |         2 |        5 |   0 |    0 |           0 |             2 |
-| `app/repo/notifications.py                  ` |         5 |        14 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
-| `app/repo/palm.py                           ` |         5 |        18 |                0 |             0 |              0 |         1 |        1 |   0 |    0 |           0 |             0 |
-| `app/repo/readings.py                       ` |        29 |        96 |                0 |             0 |              0 |         5 |        3 |   0 |    0 |           0 |             0 |
+| `app/repo/monetization.py` **✅ DB-001**         |        21 |         0 |                0 |             0 |              0 |         0 |        5 |   0 |    0 |           0 |             0 |
+| `app/repo/notifications.py` **✅ DB-001**        |         5 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
+| `app/repo/palm.py` **✅ DB-001**                 |         5 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
+| `app/repo/readings.py` **✅ DB-001**             |        29 |         0 |                0 |             0 |              0 |         0 |        3 |   0 |    0 |           0 |             0 |
 | `app/repo/users.py` **✅ DB-001**                |        19 |         0 |                0 |             0 |              0 |         0 |        1 |   0 |    0 |           0 |             0 |
 | `app/services/__init__.py                   ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/analytics.py                  ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/billing.py                    ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/broadcast.py                  ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/catalog.py                    ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
-| `app/services/chat.py                       ` |         1 |         2 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
+| `app/services/chat.py` **✅ DB-001**             |         1 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/compatibility.py              ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/cryptobot.py                  ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/eligibility.py                ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
@@ -51,8 +51,8 @@ Scanned files:
 | `app/services/referrals.py                  ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
 | `app/services/scheduler.py` **✅ DB-001**        |         8 |         0 |                0 |             0 |              0 |         0 |        2 |   0 |    0 |           0 |             0 |
 | `app/services/telegram.py                   ` |         0 |         0 |                0 |             0 |              0 |         0 |        0 |   0 |    0 |           0 |             0 |
-| `app/data/seed.py                           ` |        14 |       147 |               14 |             0 |              0 |         0 |       14 |   0 |    0 |           0 |             0 |
-| ****TOTAL**                                ** | **284** | **410** | **15** | **0** | **0** | **8** | **47** | **0** | **0** | **1** | **3** |
+| `app/data/seed.py` **✅ DB-001**                 |        14 |         0 |                0 |             0 |              0 |         0 |       14 |   0 |    0 |           0 |             0 |
+| ****TOTAL**                                ** | **284** | **0** | **0** | **0** | **0** | **0** | **47** | **0** | **0** | **1** | **0** |
 
 ### Column Legend
 
@@ -97,7 +97,7 @@ Use this checklist when inlining the shim transformations into the SQL callsites
 
 ### Phase 5 — Dangerous `?` inside string literals
 
-- [ ] 3 SQL string literal(s) contain `?` — inspect each manually to ensure the shim did not corrupt intent (e.g., JSON pattern matching).
+- [x] No dangerous `?`-in-literal found.
 
 ### Phase 6 — executemany + rowcount semantics
 
@@ -105,25 +105,3 @@ Use this checklist when inlining the shim transformations into the SQL callsites
 - [ ] After ON CONFLICT DO NOTHING migration, verify that `rowcount == 0` on a conflicting INSERT is handled gracefully (seed.py uses `cur.rowcount or 0`).
 
 ## Detailed Findings
-
-### `app/repo/analytics.py`
-
-- **Dangerous `?` in literals**: 1 — manual review needed
-
-### `app/repo/monetization.py`
-
-- **INSERT OR IGNORE**: 1 occurrence(s)
-- **lastrowid**: 2 usage(s) — ensure RETURNING id is explicit post-migration
-- **Dangerous `?` in literals**: 2 — manual review needed
-
-### `app/repo/palm.py`
-
-- **lastrowid**: 1 usage(s) — ensure RETURNING id is explicit post-migration
-
-### `app/repo/readings.py`
-
-- **lastrowid**: 5 usage(s) — ensure RETURNING id is explicit post-migration
-
-### `app/data/seed.py`
-
-- **INSERT OR IGNORE**: 14 occurrence(s)
