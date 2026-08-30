@@ -1,8 +1,9 @@
 """Начальное наполнение: тарифы, товары, фиче-флаги, настройки, тексты.
 
-Принцип: `INSERT OR IGNORE` по первичному ключу. Сид — это *первое* состояние
-каталога, а не источник правды. Всё, что администратор поправил в панели,
-остаётся нетронутым при следующем деплое; новые позиции добавляются.
+Принцип: ``INSERT ... ON CONFLICT (<primary_key>) DO NOTHING`` per table. Сид —
+это *первое* состояние каталога, а не источник правды. Всё, что администратор
+поправил в панели, остаётся нетронутым при следующем деплое; новые позиции
+добавляются.
 
 Цены в Telegram Stars (XTR). Ориентир — «Монетизация и цены»: базовый уровень
 $9.99, основной VIP $24.99, эксперимент high-ticket $99, пакеты Кристаллов
@@ -227,14 +228,21 @@ async def _seed_plans(db) -> int:
     for (code, title, tagline, stars, usd, period, daily, weekly, memory, grant,
          features, badge, sort, public) in PLANS:
         cur = await db.execute(
-            "INSERT OR IGNORE INTO plans(code, title, tagline, price_stars, price_usd, "
+            "INSERT INTO plans(code, title, tagline, price_stars, price_usd, "
             "period_days, daily_questions, weekly_questions, memory_depth, "
             "crystals_grant, features_json, badge, sort, is_active, is_public, "
             "created_at, updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?)",
-            (code, title, tagline, stars, usd, period, daily, weekly, memory, grant,
-             json.dumps(features, ensure_ascii=False), badge, sort, public,
-             _now(), _now()))
+            "VALUES(:code, :title, :tagline, :price_stars, :price_usd, "
+            ":period_days, :daily_q, :weekly_q, :memory_depth, :crystals_grant, "
+            ":features_json, :badge, :sort, 1, :is_public, :created_at, :updated_at) "
+            "ON CONFLICT (code) DO NOTHING",
+            {"code": code, "title": title, "tagline": tagline,
+             "price_stars": stars, "price_usd": usd, "period_days": period,
+             "daily_q": daily, "weekly_q": weekly, "memory_depth": memory,
+             "crystals_grant": grant,
+             "features_json": json.dumps(features, ensure_ascii=False),
+             "badge": badge, "sort": sort, "is_public": public,
+             "created_at": _now(), "updated_at": _now()})
         n += cur.rowcount or 0
     return n
 
@@ -243,11 +251,18 @@ async def _seed_products(db) -> int:
     n = 0
     for (sku, kind, title, desc, stars, crystals, gk, gc, qty, valid, sort) in PRODUCTS:
         cur = await db.execute(
-            "INSERT OR IGNORE INTO products(sku, kind, title, description, price_stars, "
-            "price_crystals, grant_kind, grant_code, grant_qty, valid_days, sort, "
-            "is_active, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?,?)",
-            (sku, kind, title, desc, stars, crystals, gk, gc, qty, valid, sort,
-             _now(), _now()))
+            "INSERT INTO products(sku, kind, title, description, price_stars, "
+            "price_crystals, grant_kind, grant_code, grant_qty, valid_days, "
+            "sort, is_active, created_at, updated_at) "
+            "VALUES(:sku, :kind, :title, :description, :price_stars, "
+            ":price_crystals, :grant_kind, :grant_code, :grant_qty, "
+            ":valid_days, :sort, 1, :created_at, :updated_at) "
+            "ON CONFLICT (sku) DO NOTHING",
+            {"sku": sku, "kind": kind, "title": title, "description": desc,
+             "price_stars": stars, "price_crystals": crystals,
+             "grant_kind": gk, "grant_code": gc, "grant_qty": qty,
+             "valid_days": valid, "sort": sort,
+             "created_at": _now(), "updated_at": _now()})
         n += cur.rowcount or 0
     return n
 
@@ -256,8 +271,11 @@ async def _seed_flags(db) -> int:
     n = 0
     for code, is_on, pct, desc in FLAGS:
         cur = await db.execute(
-            "INSERT OR IGNORE INTO feature_flags(code, is_on, rollout_pct, description, "
-            "updated_at) VALUES(?,?,?,?,?)", (code, is_on, pct, desc, _now()))
+            "INSERT INTO feature_flags(code, is_on, rollout_pct, description, "
+            "updated_at) VALUES(:code, :is_on, :rollout_pct, :description, "
+            ":updated_at) ON CONFLICT (code) DO NOTHING",
+            {"code": code, "is_on": is_on, "rollout_pct": pct,
+             "description": desc, "updated_at": _now()})
         n += cur.rowcount or 0
     return n
 
@@ -266,8 +284,11 @@ async def _seed_settings(db) -> int:
     n = 0
     for key, value in SETTINGS.items():
         cur = await db.execute(
-            "INSERT OR IGNORE INTO settings(key, value_json, updated_at) VALUES(?,?,?)",
-            (key, json.dumps(value, ensure_ascii=False), _now()))
+            "INSERT INTO settings(key, value_json, updated_at) "
+            "VALUES(:key, :value_json, :updated_at) "
+            "ON CONFLICT (key) DO NOTHING",
+            {"key": key, "value_json": json.dumps(value, ensure_ascii=False),
+             "updated_at": _now()})
         n += cur.rowcount or 0
     return n
 
@@ -279,26 +300,36 @@ async def _seed_content(db) -> int:
     n = 0
     for code, p in PERSONAS.items():
         cur = await db.execute(
-            "INSERT OR IGNORE INTO content_items(kind, code, title, body, meta_json, "
-            "is_active, sort, created_at, updated_at) VALUES('persona',?,?,?,?,1,?,?,?)",
-            (code, p["title"], p["style"],
-             json.dumps({"emoji": p["emoji"]}, ensure_ascii=False),
-             p.get("sort", 100), _now(), _now()))
+            "INSERT INTO content_items(kind, code, title, body, meta_json, "
+            "is_active, sort, created_at, updated_at) "
+            "VALUES('persona', :code, :title, :body, :meta_json, 1, :sort, "
+            ":created_at, :updated_at) "
+            "ON CONFLICT (kind, code) DO NOTHING",
+            {"code": code, "title": p["title"], "body": p["style"],
+             "meta_json": json.dumps({"emoji": p["emoji"]}, ensure_ascii=False),
+             "sort": p.get("sort", 100),
+             "created_at": _now(), "updated_at": _now()})
         n += cur.rowcount or 0
 
     from ..core import tool_registry as sk
     for code, body in sk.DEFAULT_GUIDES.items():
         cur = await db.execute(
-            "INSERT OR IGNORE INTO content_items(kind, code, title, body, is_active, "
-            "sort, created_at, updated_at) VALUES('guide',?,?,?,1,100,?,?)",
-            (code, f"Правила трактовки: {code}", body, _now(), _now()))
+            "INSERT INTO content_items(kind, code, title, body, is_active, "
+            "sort, created_at, updated_at) "
+            "VALUES('guide', :code, :title, :body, 1, 100, :created_at, "
+            ":updated_at) ON CONFLICT (kind, code) DO NOTHING",
+            {"code": code, "title": f"Правила трактовки: {code}", "body": body,
+             "created_at": _now(), "updated_at": _now()})
         n += cur.rowcount or 0
 
     for kind, code, title, body in CONTENT:
         cur = await db.execute(
-            "INSERT OR IGNORE INTO content_items(kind, code, title, body, is_active, "
-            "sort, created_at, updated_at) VALUES(?,?,?,?,1,100,?,?)",
-            (kind, code, title, body, _now(), _now()))
+            "INSERT INTO content_items(kind, code, title, body, is_active, "
+            "sort, created_at, updated_at) "
+            "VALUES(:kind, :code, :title, :body, 1, 100, :created_at, "
+            ":updated_at) ON CONFLICT (kind, code) DO NOTHING",
+            {"kind": kind, "code": code, "title": title, "body": body,
+             "created_at": _now(), "updated_at": _now()})
         n += cur.rowcount or 0
 
     # Практики и мантры: структура (шаги, программа, знаки) уезжает в meta_json,
@@ -307,12 +338,15 @@ async def _seed_content(db) -> int:
     for code, item in pr.PRACTICES.items():
         category_sort = pr.CATEGORIES.get(item["category"], {}).get("sort", 100)
         cur = await db.execute(
-            "INSERT OR IGNORE INTO content_items(kind, code, title, body, meta_json, "
+            "INSERT INTO content_items(kind, code, title, body, meta_json, "
             "is_active, sort, created_at, updated_at) "
-            "VALUES('practice',?,?,?,?,1,?,?,?)",
-            (code, item["title"], item.get("about", ""),
-             json.dumps(pr.as_meta(item), ensure_ascii=False),
-             category_sort, _now(), _now()))
+            "VALUES('practice', :code, :title, :body, :meta_json, 1, :sort, "
+            ":created_at, :updated_at) "
+            "ON CONFLICT (kind, code) DO NOTHING",
+            {"code": code, "title": item["title"], "body": item.get("about", ""),
+             "meta_json": json.dumps(pr.as_meta(item), ensure_ascii=False),
+             "sort": category_sort,
+             "created_at": _now(), "updated_at": _now()})
         n += cur.rowcount or 0
     return n
 
@@ -323,8 +357,10 @@ async def _seed_admin(db) -> int:
     if not settings.admin_id:
         return 0
     cur = await db.execute(
-        "INSERT OR IGNORE INTO admins(tg_id, role, title, created_at) "
-        "VALUES(?,'owner','Владелец',?)", (settings.admin_id, _now()))
+        "INSERT INTO admins(tg_id, role, title, created_at) "
+        "VALUES(:tg_id, 'owner', 'Владелец', :created_at) "
+        "ON CONFLICT (tg_id) DO NOTHING",
+        {"tg_id": settings.admin_id, "created_at": _now()})
     return cur.rowcount or 0
 
 
@@ -332,8 +368,13 @@ async def _seed_monetization_v2(db) -> int:
     """Insert the active v2 price book without touching legacy catalog rows."""
     now = _now()
     cur = await db.execute(
-        "INSERT OR IGNORE INTO catalog_versions(version, price_book_version, status, effective_from, created_at) "
-        "VALUES(?,?, 'active', ?, ?)", (CATALOG_VERSION, PRICE_BOOK_VERSION, now, now))
+        "INSERT INTO catalog_versions(version, price_book_version, status, "
+        "effective_from, created_at) "
+        "VALUES(:version, :price_book_version, 'active', :effective_from, "
+        ":created_at) ON CONFLICT (version) DO NOTHING",
+        {"version": CATALOG_VERSION,
+         "price_book_version": PRICE_BOOK_VERSION,
+         "effective_from": now, "created_at": now})
     added = cur.rowcount or 0
     for plan in PLAN_DEFINITIONS:
         features = json.dumps(plan["features"], ensure_ascii=False)
@@ -342,15 +383,28 @@ async def _seed_monetization_v2(db) -> int:
             ("web", "USD", 0, round(plan["monthly_usd"] * 100), "plan", plan["period_days"]),
         ):
             cur = await db.execute(
-                "INSERT OR IGNORE INTO price_book_items("
-                "catalog_version, price_book_version, item_type, code, title, description, "
-                "tier_code, channel, currency, amount_minor, amount_stars, period_days, "
-                "expected_cost_usd, target_margin, features_json, is_active, is_public, sort, "
-                "effective_from, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (CATALOG_VERSION, PRICE_BOOK_VERSION, item_type, plan["code"], plan["title"],
-                 plan["tagline"], plan["code"], channel, currency, amount_minor, amount_stars,
-                 period_days, plan["compute_budget_usd"], 0.70, features, 1, 1,
-                 plan["sort"], now, now))
+                "INSERT INTO price_book_items("
+                "catalog_version, price_book_version, item_type, code, title, "
+                "description, tier_code, channel, currency, amount_minor, "
+                "amount_stars, period_days, expected_cost_usd, target_margin, "
+                "features_json, is_active, is_public, sort, effective_from, "
+                "created_at) VALUES(:catalog_version, :price_book_version, "
+                ":item_type, :code, :title, :description, :tier_code, :channel, "
+                ":currency, :amount_minor, :amount_stars, :period_days, "
+                ":expected_cost_usd, :target_margin, :features_json, 1, 1, "
+                ":sort, :effective_from, :created_at) "
+                "ON CONFLICT (price_book_version, item_type, code, channel) "
+                "DO NOTHING",
+                {"catalog_version": CATALOG_VERSION,
+                 "price_book_version": PRICE_BOOK_VERSION,
+                 "item_type": item_type, "code": plan["code"],
+                 "title": plan["title"], "description": plan["tagline"],
+                 "tier_code": plan["code"], "channel": channel,
+                 "currency": currency, "amount_minor": amount_minor,
+                 "amount_stars": amount_stars, "period_days": period_days,
+                 "expected_cost_usd": plan["compute_budget_usd"],
+                 "target_margin": 0.70, "features_json": features,
+                 "sort": plan["sort"], "effective_from": now, "created_at": now})
             added += cur.rowcount or 0
         if plan["annual_usd"]:
             for channel, currency, amount_stars, amount_minor in (
@@ -358,15 +412,31 @@ async def _seed_monetization_v2(db) -> int:
                 ("web", "USD", 0, round(plan["annual_usd"] * 100)),
             ):
                 cur = await db.execute(
-                    "INSERT OR IGNORE INTO price_book_items("
-                    "catalog_version, price_book_version, item_type, code, title, description, "
-                    "tier_code, channel, currency, amount_minor, amount_stars, period_days, "
-                    "expected_cost_usd, target_margin, features_json, is_active, is_public, sort, "
-                    "effective_from, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (CATALOG_VERSION, PRICE_BOOK_VERSION, "annual_plan", plan["code"],
-                     plan["title"] + " · год", plan["tagline"], plan["code"], channel, currency,
-                     amount_minor, amount_stars, 365, plan["compute_budget_usd"] * 10,
-                     0.70, features, 1, 1, plan["sort"], now, now))
+                    "INSERT INTO price_book_items("
+                    "catalog_version, price_book_version, item_type, code, "
+                    "title, description, tier_code, channel, currency, "
+                    "amount_minor, amount_stars, period_days, "
+                    "expected_cost_usd, target_margin, features_json, "
+                    "is_active, is_public, sort, effective_from, created_at) "
+                    "VALUES(:catalog_version, :price_book_version, "
+                    "'annual_plan', :code, :title, :description, :tier_code, "
+                    ":channel, :currency, :amount_minor, :amount_stars, 365, "
+                    ":expected_cost_usd, :target_margin, :features_json, 1, 1, "
+                    ":sort, :effective_from, :created_at) "
+                    "ON CONFLICT (price_book_version, item_type, code, channel) "
+                    "DO NOTHING",
+                    {"catalog_version": CATALOG_VERSION,
+                     "price_book_version": PRICE_BOOK_VERSION,
+                     "code": plan["code"],
+                     "title": plan["title"] + " · год",
+                     "description": plan["tagline"],
+                     "tier_code": plan["code"], "channel": channel,
+                     "currency": currency, "amount_minor": amount_minor,
+                     "amount_stars": amount_stars,
+                     "expected_cost_usd": plan["compute_budget_usd"] * 10,
+                     "target_margin": 0.70, "features_json": features,
+                     "sort": plan["sort"], "effective_from": now,
+                     "created_at": now})
                 added += cur.rowcount or 0
     for pack in CRYSTAL_PACKS:
         for channel, currency, amount_stars, amount_minor in (
@@ -374,28 +444,53 @@ async def _seed_monetization_v2(db) -> int:
             ("crypto", "USD", 0, round(pack["usd"] * 100)),
         ):
             cur = await db.execute(
-                "INSERT OR IGNORE INTO price_book_items("
-                "catalog_version, price_book_version, item_type, code, title, description, "
-                "channel, currency, amount_minor, amount_stars, crystal_qty, bonus_qty, "
-                "expected_cost_usd, target_margin, is_active, is_public, sort, effective_from, created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (CATALOG_VERSION, PRICE_BOOK_VERSION, "crystal_pack", pack["sku"],
-                 pack["title"], pack["description"], channel, currency, amount_minor,
-                 amount_stars, pack["crystals"], pack["bonus"], 0.01, 0.70, 1, 1,
-                 100 + pack["sort"], now, now))
+                "INSERT INTO price_book_items("
+                "catalog_version, price_book_version, item_type, code, title, "
+                "description, channel, currency, amount_minor, amount_stars, "
+                "crystal_qty, bonus_qty, expected_cost_usd, target_margin, "
+                "is_active, is_public, sort, effective_from, created_at) "
+                "VALUES(:catalog_version, :price_book_version, 'crystal_pack', "
+                ":sku, :title, :description, :channel, :currency, "
+                ":amount_minor, :amount_stars, :crystal_qty, :bonus_qty, "
+                "0.01, 0.70, 1, 1, :sort, :effective_from, :created_at) "
+                "ON CONFLICT (price_book_version, item_type, code, channel) "
+                "DO NOTHING",
+                {"catalog_version": CATALOG_VERSION,
+                 "price_book_version": PRICE_BOOK_VERSION,
+                 "sku": pack["sku"], "title": pack["title"],
+                 "description": pack["description"],
+                 "channel": channel, "currency": currency,
+                 "amount_minor": amount_minor, "amount_stars": amount_stars,
+                 "crystal_qty": pack["crystals"], "bonus_qty": pack["bonus"],
+                 "sort": 100 + pack["sort"],
+                 "effective_from": now, "created_at": now})
             added += cur.rowcount or 0
     for product in DEEP_PRODUCTS:
         cur = await db.execute(
-            "INSERT OR IGNORE INTO price_book_items("
-            "catalog_version, price_book_version, item_type, code, title, description, "
-            "channel, currency, crystal_qty, grant_kind, grant_code, grant_qty, valid_days, "
-            "expected_cost_usd, target_margin, is_active, is_public, sort, effective_from, created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (CATALOG_VERSION, PRICE_BOOK_VERSION, "deep_operation", product["sku"],
-             product["title"], product["description"], "internal", "CRYSTAL",
-             product["crystals"], product["grant_kind"], product["grant_code"],
-             product["grant_qty"], product["valid_days"], product["cost_budget_usd"],
-             0.70, 1, 1, 200 + product["sort"], now, now))
+            "INSERT INTO price_book_items("
+            "catalog_version, price_book_version, item_type, code, title, "
+            "description, channel, currency, crystal_qty, grant_kind, "
+            "grant_code, grant_qty, valid_days, expected_cost_usd, "
+            "target_margin, is_active, is_public, sort, effective_from, "
+            "created_at) VALUES(:catalog_version, :price_book_version, "
+            "'deep_operation', :sku, :title, :description, 'internal', "
+            "'CRYSTAL', :crystal_qty, :grant_kind, :grant_code, :grant_qty, "
+            ":valid_days, :expected_cost_usd, 0.70, 1, 1, :sort, "
+            ":effective_from, :created_at) "
+            "ON CONFLICT (price_book_version, item_type, code, channel) "
+            "DO NOTHING",
+            {"catalog_version": CATALOG_VERSION,
+             "price_book_version": PRICE_BOOK_VERSION,
+             "sku": product["sku"], "title": product["title"],
+             "description": product["description"],
+             "crystal_qty": product["crystals"],
+             "grant_kind": product["grant_kind"],
+             "grant_code": product["grant_code"],
+             "grant_qty": product["grant_qty"],
+             "valid_days": product["valid_days"],
+             "expected_cost_usd": product["cost_budget_usd"],
+             "sort": 200 + product["sort"],
+             "effective_from": now, "created_at": now})
         added += cur.rowcount or 0
     return added
 
