@@ -106,5 +106,5 @@ The semantic accuracy gate remains **blocked** until a consented or synthetic go
 [3]: ../../app/core/palm_landmarks.py "Optional hand geometry adapter"
 [4]: ../../app/core/palm_lines.py "Auxiliary ONNX line segmentation"
 [5]: ../../app/core/palm_full_scope.py "OpenCV candidate search and palm-region evidence"
-[6]: ../../app/core/skills.py "Mira palm handoff and limitations"
+[6]: ../../app/core/tool_registry.py "Mira palm handoff and limitations"
 [7]: ../../tests/test_palm_gauntlet.py "Adversarial and uncertainty regression tests"

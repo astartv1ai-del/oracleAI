@@ -16,9 +16,8 @@ from aiogram.types import CallbackQuery, Message
 from ..core import agent as agent_core
 from ..core import astro, cards, chart_rendering, memory, palm as palm_core
 from ..core.matrix import compute_matrix
-from ..repo import admin as admin_repo
-from ..repo import dialog, readings, users
-from ..services import analytics, catalog, chat as chat_svc, referrals
+from ..repo import users
+from ..services import access, analytics, bot_flows, catalog, chat as chat_svc, referrals
 from .chat import _deny, _send_long
 from .formatting import tg_esc, tg_rich
 from .keyboards import (back_menu, main_menu, reading_kb, spread_offer_kb,
@@ -45,7 +44,7 @@ class PalmUpload(StatesGroup):
 
 async def _menu(db, tg_id: int):
     user = await users.get(db, tg_id)
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+    return main_menu(is_admin=await access.is_admin(db, tg_id),
                      lang="en" if user and user["lang"] == "en" else "ru")
 
 
@@ -198,7 +197,7 @@ async def reading_card(cb: CallbackQuery, db):
     import json
 
     reading_id = int(cb.data.split(":", 1)[1])
-    row = await readings.get_reading(db, reading_id, cb.from_user.id)
+    row = await bot_flows.reading(db, reading_id, cb.from_user.id)
     if not row:
         await cb.answer("Расклад не найден", show_alert=True)
         return
@@ -276,7 +275,7 @@ async def _animate_reveal(message: Message, title: str, cards: list[dict],
 async def reading_outcome(cb: CallbackQuery, db):
     """Отметка «сбылось» — обратная связь и доказательство ценности."""
     _, reading_id, outcome = cb.data.split(":", 2)
-    ok = await readings.set_outcome(db, int(reading_id), cb.from_user.id, outcome)
+    ok = await bot_flows.set_reading_outcome(db, int(reading_id), cb.from_user.id, outcome)
     if ok:
         await analytics.track(db, "reading_outcome", cb.from_user.id,
                               props={"outcome": outcome})
@@ -339,7 +338,8 @@ async def chart_view(cb: CallbackQuery, db):
         )
     except Exception as exc:  # noqa: BLE001
         log.info("bot chart visual unavailable: %s", exc)
-    await _send_long(cb.message, "\n".join(lines), reply_markup=back_menu())
+    await _send_long(cb.message, "\n".join(lines),
+                     reply_markup=back_menu(ask=True))
 
 
 # ─────────────────────── МАТРИЦА СУДЬБЫ ──────────────────────────────────────
@@ -356,7 +356,7 @@ async def matrix_view(cb: CallbackQuery, db):
         lines.append(f"• {item['title']}: <b>{item['n']} — {item['arcana']}</b>\n"
                      f"  <i>{item['meaning']}</i>")
     lines.append("\nХочешь разбор любой позиции — просто спроси 💫")
-    await _send_long(cb.message, "\n".join(lines), reply_markup=back_menu())
+    await _send_long(cb.message, "\n".join(lines), reply_markup=back_menu(ask=True))
     await cb.answer()
 
 
@@ -439,7 +439,7 @@ async def today_cb(cb: CallbackQuery, db):
 
 @router.callback_query(F.data == "compat")
 async def compat_start(cb: CallbackQuery, state: FSMContext, db):
-    saved = await readings.list_partners(db, cb.from_user.id)
+    saved = await bot_flows.partners(db, cb.from_user.id)
     hint = ""
     if saved:
         hint = ("\n\n<i>Уже сохранены: " +
@@ -511,19 +511,17 @@ async def compat_date(message: Message, state: FSMContext, db):
         await _deny(message, db, verdict)
         return
     text = await agent_core.interpret_compat(db, user, partner_date, name)
-    thread = await dialog.ensure_thread(db, user["tg_id"], "astro")
-    await dialog.save_message(db, user["tg_id"], "user",
-                              f"Совместимость с {name or 'партнёром'}",
-                              is_question=limits.counts_toward_limit(verdict),
-                              thread_id=thread["id"], agent="astro")
-    await dialog.save_message(db, user["tg_id"], "assistant", text,
-                              thread_id=thread["id"], agent="astro")
+    thread = await bot_flows.astro_thread(db, user["tg_id"])
+    await bot_flows.save_exchange(
+        db, user["tg_id"], f"Совместимость с {name or 'партнёром'}", text,
+        thread_id=thread["id"], agent="astro",
+        is_question=limits.counts_toward_limit(verdict))
     if name:
         if bool(user["memory_enabled"]):
             await memory.remember(db, user["tg_id"],
                                   f"Партнёр {name}, дата рождения {partner_date}",
                                   kind="person")
-        await readings.add_partner(db, user["tg_id"], name, partner_date)
+        await bot_flows.add_partner(db, user["tg_id"], name, partner_date)
 
     try:
         await wait.delete()
@@ -536,8 +534,8 @@ async def compat_date(message: Message, state: FSMContext, db):
 
 @router.callback_query(F.data == "diary")
 async def diary_menu(cb: CallbackQuery, state: FSMContext, db):
-    entries = await dialog.get_diary(db, cb.from_user.id, limit=5)
-    streak = await dialog.diary_streak(db, cb.from_user.id)
+    diary = await bot_flows.diary_view(db, cb.from_user.id)
+    entries, streak = diary["entries"], diary["streak"]
     user = await users.get(db, cb.from_user.id)
     memory_copy = ("Запишу её в твою книгу и учту в прогнозах."
                    if user and bool(user["memory_enabled"])
@@ -560,16 +558,15 @@ async def diary_menu(cb: CallbackQuery, state: FSMContext, db):
 async def diary_write(message: Message, state: FSMContext, db):
     await state.clear()
     text = message.text.strip()[:1000]
-    await dialog.add_diary(db, message.from_user.id, text)
+    streak_after = await bot_flows.diary_add(db, message.from_user.id, text)
     user = await users.get(db, message.from_user.id)
     if user and bool(user["memory_enabled"]):
         await memory.remember(db, message.from_user.id, f"Из дневника: {text[:150]}",
                               kind="event")
-    streak = await dialog.diary_streak(db, message.from_user.id)
     await analytics.track(db, "diary_write", message.from_user.id,
-                          props={"streak": streak})
-    tail = (f"\n🔥 Ты пишешь {streak} дней подряд — я вижу, как ты меняешься."
-            if streak >= 3 else "")
+                          props={"streak": streak_after})
+    tail = (f"\n🔥 Ты пишешь {streak_after} дней подряд — я вижу, как ты меняешься."
+            if streak_after >= 3 else "")
     await message.answer(
         f"Записала в твою книгу судьбы 📖✨ Завтра утром учту это в прогнозе.{tail}",
         reply_markup=await _menu(db, message.from_user.id))
@@ -595,11 +592,10 @@ async def moon_cmd(message: Message, db):
 @router.message(Command("stats"))
 async def admin_stats(message: Message, db):
     """Короткая сводка владельцу. Полная аналитика — в веб-панели."""
-    role = await admin_repo.resolve_role(db, message.from_user.id)
+    role = await access.role(db, message.from_user.id)
     if not role:
         return
-    from ..repo import analytics as analytics_repo
-    o = await analytics_repo.overview(db)
+    o = (await access.admin_overview(db))['overview']
     await message.answer(
         "📊 <b>Оракул сегодня</b>\n\n"
         f"👥 Клиенток: {o['users_total']} (+{o['users_today']} за сутки)\n"
@@ -615,7 +611,7 @@ async def admin_stats(message: Message, db):
 @router.message(Command("admin"))
 async def admin_panel(message: Message, db):
     """Открыть веб-панель. Доступна только администраторам."""
-    role = await admin_repo.resolve_role(db, message.from_user.id)
+    role = await access.role(db, message.from_user.id)
     if not role:
         return
     from .keyboards import main_menu

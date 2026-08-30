@@ -13,12 +13,8 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, LabeledPrice, Message,
                            PreCheckoutQuery)
 
-from ..repo import admin as admin_repo
-from ..repo import billing as billing_repo
 from ..repo import users
-from ..services import analytics
-from ..services import billing as billing_svc
-from ..repo import monetization as monetization_repo
+from ..services import access, billing as billing_svc, analytics
 from ..services.entitlements import entitlements
 from .chat import _send_long
 from .keyboards import (back_menu, main_menu, plans_kb, products_kb, shop_kb)
@@ -41,7 +37,7 @@ KIND_TITLES = {
 
 async def _menu(db, tg_id: int):
     user = await users.get(db, tg_id)
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+    return main_menu(is_admin=await access.is_admin(db, tg_id),
                      lang="en" if user and user["lang"] == "en" else "ru")
 
 
@@ -63,7 +59,7 @@ async def shop(cb: CallbackQuery, db):
 @router.callback_query(F.data.in_({"plans", "plans:monthly", "plans:annual"}))
 async def plans(cb: CallbackQuery, db):
     user = await users.get(db, cb.from_user.id)
-    canonical = await monetization_repo.catalog_payload(db, current_state=await entitlements.snapshot(db, user))
+    canonical = await billing_svc.catalog_plans(db, user)
     available = [
         {**plan, "tagline": plan.get("tagline") or plan.get("description"),
          "features": plan.get("features") or []}
@@ -95,13 +91,13 @@ async def plans(cb: CallbackQuery, db):
 
 async def _show_products(cb: CallbackQuery, db, kind: str) -> None:
     if kind == "crystals":
-        canonical = await monetization_repo.catalog_payload(db)
+        canonical = await billing_svc.catalog_plans(db, None)
         products = [{**item, "price_crystals": 0, "grant_kind": "crystals",
                      "grant_code": item["sku"], "grant_qty": item["crystals"] + item.get("bonus", 0),
                      "valid_days": None, "price_stars": item["price_stars"]}
                     for item in canonical["crystal_packs"]]
     else:
-        products = await billing_repo.list_products(db, kind)
+        products = await billing_svc.list_products(db, kind)
     if not products:
         await cb.answer("Здесь пока пусто")
         return
@@ -149,7 +145,7 @@ async def shop_crystals(cb: CallbackQuery, db):
 async def product_card(cb: CallbackQuery, db):
     """Карточка товара — на случай, если название не влезло в кнопку."""
     sku = cb.data.split(":", 1)[1]
-    product = await billing_repo.get_product(db, sku)
+    product = await billing_svc.product(db, sku)
     if not product:
         await cb.answer("Товара больше нет")
         return
@@ -268,7 +264,7 @@ async def pre_checkout(query: PreCheckoutQuery, db):
     для клиентки как ложный сбой. Идемпотентность выдачи держит
     `apply_payment` — повторная доставка не выдаст товар дважды.
     """
-    order = await billing_repo.order_by_payload(db, query.invoice_payload)
+    order = await billing_svc.order_by_payload(db, query.invoice_payload)
     if not order:
         await query.answer(ok=False, error_message="Заказ не найден, создай его заново")
         return
@@ -310,7 +306,7 @@ async def paid(message: Message, db):
 
 @router.callback_query(F.data == "my_entitlements")
 async def my_entitlements(cb: CallbackQuery, db):
-    items = await billing_repo.list_entitlements(db, cb.from_user.id)
+    items = await billing_svc.user_entitlements(db, cb.from_user.id)
     if not items:
         await cb.answer("Открытых покупок нет", show_alert=True)
         return

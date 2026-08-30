@@ -51,7 +51,7 @@ Canonical owners: см. `docs/ARCHITECTURE.md#canonical-ownership`.
 | Path | Reason |
 | ---- | ------ |
 | `app/core/agent.py` (thin) | public API для внешних скриптов, планировщика, тестов; НЕТ бизнес-логики или promt-строк — только re-exports сценариев из `app/core/scenarios/*`. |
-| `app/data/postgres.py` `_translate_sql` | внешний контракт с историческим bind-style `?`; переводится в SQLAlchemy named params. Boundary layer. |
+| `app/data/postgres.py` `_translate_sql` | _удалён (DB-001 close-out, 2026-08-30; см. ADR-0003)._ Все call-sites переведены на native PostgreSQL dialect. |
 | Cryptobot / Paddle / Telegram webhook адаптеры в `app/services/` | external providers. |
 
 ## Agent Migration
@@ -181,6 +181,6 @@ Canonical owners: см. `docs/ARCHITECTURE.md#canonical-ownership`.
 
 - `app/core/agent.py` (~85 строк, thin facade без бизнес-логики) — public API для внешних скриптов и планировщика.
 - Monetization v1 `plans` table и `catalog_version='legacy'` строки — historical adapter для v1 покупок.
-- `_translate_sql` в `app/data/postgres.py` — boundary layer для исторического `?` bind-style.
+- `_translate_sql` в `app/data/postgres.py` — _удалён (DB-001 close-out, 2026-08-30; см. ADR-0003)._
 
 Ни один из этих слоёв не содержит дублирующей продуктовой логики; каждый явно помечен и подпадает под правило §46 плана «external contract / historical identifiers».

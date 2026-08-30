@@ -14,9 +14,9 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from ..core import agents
-from ..repo import admin as admin_repo
-from ..repo import billing, content, users
-from ..services import analytics, chat as chat_svc, limits
+from ..repo import content as content_repo, users
+from ..services import billing as billing_svc, analytics
+from ..services import access, chat as chat_svc, limits
 from .formatting import tg_esc, tg_rich
 from .keyboards import agents_kb, ask_starters_kb, back_menu, limit_kb, main_menu
 from .ui import BotStage, action_keyboard, begin_status, semantic_chunks
@@ -70,7 +70,7 @@ def split_message(text: str, limit: int = TG_LIMIT) -> list[str]:
 
 async def _menu(db, tg_id: int):
     user = await users.get(db, tg_id)
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+    return main_menu(is_admin=await access.is_admin(db, tg_id),
                      lang="en" if user and user["lang"] == "en" else "ru")
 
 
@@ -86,7 +86,7 @@ async def _deny(message: Message, db, verdict) -> None:
     user = await users.get(db, message.chat.id)
     lang = "en" if user and user["lang"] == "en" else "ru"
     if verdict.reason == "sub_over":
-        text = await content.get_text(
+        text = await content_repo.get_text(
             db, "copy", "sub_over",
             TRIAL_OVER_FALLBACK_EN if lang == "en" else TRIAL_OVER_FALLBACK,
             lang=lang)
@@ -95,7 +95,7 @@ async def _deny(message: Message, db, verdict) -> None:
     allowance = verdict.allowance
     cost = allowance.emergency_cost if allowance else 20
     has = bool(allowance and allowance.crystals >= cost)
-    text = await content.get_text(
+    text = await content_repo.get_text(
         db, "copy", "limit_reached",
         (LIMIT_REACHED_FALLBACK_EN if lang == "en" else
          "🌙 <i>Звёзды утомлены...</i>\n\nВопросы на сегодня исчерпаны, друг."),
@@ -203,7 +203,7 @@ async def _answer(message: Message, db, user, text: str, agent: str) -> None:
         await message.answer("I could not complete this reading. Try again in a moment." if lang == "en" else "Я не смогла завершить разбор. Попробуй ещё раз через минуту.", reply_markup=action_keyboard(lang_value=lang, followup=True))
         return
     await status.set(BotStage.SUCCESS)
-    await _send_long(message, result["answer"], reply_markup=action_keyboard(lang_value=lang, followup=True, share=False))
+    await _send_long(message, result["answer"], reply_markup=action_keyboard(lang_value=lang, followup=True))
 
 
 @router.message(F.voice)
@@ -215,7 +215,7 @@ async def voice_msg(message: Message, state: FSMContext, db):
 
     _vuser = await users.get(db, message.from_user.id)
     _ven = bool(_vuser and _vuser["lang"] == "en")
-    if not await content.is_on(db, "voice_questions", message.from_user.id,
+    if not await content_repo.is_on(db, "voice_questions", message.from_user.id,
                                default=True):
         await message.answer("Voice questions are off for now — please type 🌙" if _ven
                              else "Голосовые пока отключены — напиши текстом 🌙")
@@ -291,7 +291,7 @@ async def emergency(cb: CallbackQuery, state: FSMContext, db):
     """
     user = await users.get(db, cb.from_user.id)
     _en = bool(user and user["lang"] == "en")
-    cost = int(await content.get_setting(db, "limits.emergency_cost", 20) or 20)
+    cost = int(await content_repo.get_setting(db, "limits.emergency_cost", 20) or 20)
     if (user["crystals"] or 0) < cost:
         # BOT-012: покупка аварийного вопроса — на языке интерфейса.
         await cb.answer("Not enough Crystals ✦" if _en else "Не хватает Кристаллов ✦",
@@ -300,11 +300,11 @@ async def emergency(cb: CallbackQuery, state: FSMContext, db):
                                 "💎 Пополни запас Кристаллов:",
                                 reply_markup=limit_kb(cost, has_crystals=False))
         return
-    if not await billing.spend_crystals(db, user["tg_id"], cost, "emergency_question"):
+    if not await billing_svc.spend_crystals(db, user["tg_id"], cost, "emergency_question"):
         await cb.answer("Not enough Crystals ✦" if _en else "Не хватает Кристаллов ✦",
                         show_alert=True)
         return
-    await billing.grant_entitlement(db, user["tg_id"], "question", "*", qty=1,
+    await billing_svc.grant_entitlement(db, user["tg_id"], "question", "*", qty=1,
                                     valid_days=7, source="crystals")
     await analytics.track(db, "emergency_unlock", user["tg_id"],
                           props={"cost": cost})

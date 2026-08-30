@@ -7,13 +7,12 @@ history.
 """
 from __future__ import annotations
 import os
-CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
-
 import argparse
 import json
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 
 DEFAULT_VIEWPORTS = (
     ("desktop", 1280, 900),

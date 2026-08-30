@@ -149,7 +149,5 @@ The release packet contains the candidate SHA, CI URL and full local gate output
 
 * [Production Readiness and Launch Plan](PRODUCTION_READINESS.md)
 * [Task backlog](TASKS.md)
-* [Traceability Matrix](../EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md)
 * [Backup/Restore Drill](../BACKUP_RESTORE_DRILL.md)
-* [Performance Baseline](../EVIDENCE/PERFORMANCE_BASELINE_2026-08-27.md)
 * [Monetization Strategy](../MONETIZATION_STRATEGY.md)

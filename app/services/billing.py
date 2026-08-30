@@ -536,3 +536,45 @@ async def _referral_revenue_bonus(db, tg_id: int, stars: int) -> None:
                                     ref=str(tg_id))
             await analytics.track(db, "referral_revenue_bonus", referrer,
                                   props={"invitee": tg_id, "crystals": share})
+
+# ── presentation-facing reads (bot / api) ────────────────────────────────
+async def catalog_plans(db, user) -> dict:
+    """Канонический каталог планов; user=None — без персонального состояния."""
+    from ..repo import monetization as monetization_repo
+    from .entitlements import entitlements
+
+    current_state = await entitlements.snapshot(db, user) if user else None
+    return await monetization_repo.catalog_payload(db, current_state=current_state)
+
+
+async def product(db, sku: str):
+    return await repo.get_product(db, sku)
+
+
+async def order_by_payload(db, payload: str):
+    """Заказ по invoice-payload (pre_checkout / вебхуки провайдеров)."""
+    return await repo.order_by_payload(db, payload)
+
+
+async def user_entitlements(db, tg_id: int):
+    return await repo.list_entitlements(db, tg_id)
+
+
+async def list_products(db, kind: str | None = None):
+    return await repo.list_products(db, kind)
+
+
+async def spend_crystals(db, tg_id: int, amount: int, reason: str) -> bool:
+    return await repo.spend_crystals(db, tg_id, amount, reason)
+
+
+async def consume_entitlement(db, tg_id: int, kind: str, code: str = "*"):
+    return await repo.consume_entitlement(db, tg_id, kind, code)
+
+
+async def grant_entitlement(db, tg_id: int, kind: str, code: str = "*",
+                            *, qty: int = 1, valid_days: int | None = None,
+                            source: str = "manual", order_id: str | None = None):
+    await repo.grant_entitlement(db, tg_id, kind, code, qty=qty,
+                                 valid_days=valid_days, source=source,
+                                 order_id=order_id)

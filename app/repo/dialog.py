@@ -442,11 +442,13 @@ async def search_memories(db, tg_id: int, query: str, limit: int = 10) -> list[s
 
 
 async def forget_memory(db, memory_id: int, tg_id: int) -> bool:
-    """Удаляет факт. Инвалидация recall-кеша — обязанность вызывающего слоя."""
+    """Удаляет факт и инвалидирует recall-кеш владельца."""
     async with transaction(db):
         cur = await db.execute(
             "DELETE FROM memories WHERE id=:id AND tg_id=:tg_id",
             {"id": memory_id, "tg_id": tg_id})
+    from ..core import memory
+    memory.invalidate_recall_cache(tg_id)
     return bool(cur.rowcount)
 
 

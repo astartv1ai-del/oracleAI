@@ -6,7 +6,7 @@
 |---|---|
 | **Purpose** | Provide one navigable map of current product, engineering, operations, domain and release documentation. |
 | **Source of truth** | This map points to the canonical document for each subsystem; implementation truth remains in the referenced code and tests. |
-| **Scope** | Current contracts, operating procedures, feature/domain references, dated evidence and historical archive. |
+| **Scope** | Current contracts, operating procedures, feature and domain references. |
 | **Do not change** | Do not create a second backlog, audit, status or architecture source of truth. Do not promote evidence or research notes into current behavior without code validation. |
 | **Key files** | `README.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/AI_SYSTEM.md`, `docs/RELEASE/CURRENT_STATUS.md`. |
 | **Validation** | Follow [`CONTRIBUTING.md`](CONTRIBUTING.md), run the commands in [`TESTING.md`](TESTING.md), and check links before release. |
@@ -39,7 +39,6 @@
 | [SECURITY.md](SECURITY.md) | Разработка, support, legal | Чтобы работать с 16+, согласиями, личными данными и инцидентами. |
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md) | Product, analytics, privacy | Чтобы добавлять KPI-события без PII и трактовать funnel одинаково. |
 | [LLM_EVALUATION.md](LLM_EVALUATION.md) | LLM, QA, product | Чтобы проверять grounding, safety, language, next step и latency до релиза. |
-| [LLM_AGENT_TECHNICAL_AUDIT.md](EVIDENCE/LLM_AGENT_TECHNICAL_AUDIT_2026-08-27.md) | AI, backend, QA, privacy | Полная карта agent prompts, memory/context integrity, tools/skills, conflict handling и palm vision pipeline. |
 | [PALM_ENGINE_RESEARCH.md](PALM_ENGINE_RESEARCH.md) | AI, CV, legal, product | Исследование palm-line engines, лицензий, model contracts и безопасного integration boundary. |
 | [LAUNCH_GOVERNANCE.md](RELEASE/LAUNCH_GOVERNANCE.md) | Product, operations, legal, support | Чтобы вести P0/P1 launch gates, владельцев, SLO и go/no-go decisions. |
 | [PRODUCTION_READINESS.md](RELEASE/PRODUCTION_READINESS.md) | Все владельцы релиза | Чтобы пройти путь от beta до public launch и определить масштабирование. |
@@ -53,17 +52,15 @@
 | [MONETIZATION_UNIT_ECONOMICS.md](MONETIZATION_UNIT_ECONOMICS.md) | Product, finance, operations | Чтобы считать net revenue, variable COGS, contribution, ARPPU, CAC и break-even по сценариям. |
 | [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
 | [MONETIZATION_EXTERNAL_SOURCES.md](MONETIZATION_EXTERNAL_SOURCES.md) | Finance, legal, billing | Чтобы проверять официальные platform/payment sources и не подменять settlement data сниппетами. |
-| [ASTRONOMY_REFERENCE_QA.md](EVIDENCE/ASTRONOMY_REFERENCE_QA_2026-08-27.md) | Domain, astrology, QA | Чтобы воспроизвести cross-implementation проверки критических timezone, precision и boundary cases. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
 | [CONTRACTS.md](DOMAIN/CONTRACTS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](FEATURES/MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
 | [PDF_SYSTEM.md](PDF_SYSTEM.md), [PDF_TEMPLATE_CATALOG.md](PDF_TEMPLATE_CATALOG.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, product-specific template gates, visual regression и проверочные слои. |
-| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](RELEASE/TASKS.md), [TRACEABILITY_MATRIX.md](EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md), [BASELINE.md](EVIDENCE/BASELINE_2026-08-26.md), [NEXT_STEPS.md](ARCHIVE/NEXT_STEPS_2026-08-26.md), [ORACLEAI_CONTINUATION_REPORT.md](EVIDENCE/ORACLEAI_CONTINUATION_REPORT_2026-08-26.md) | Все владельцы | Surface matrix, backlog, evidence, next steps, baseline и итоговый implementation report. |
+| [FULL_PRODUCT_SURFACE.md](FULL_PRODUCT_SURFACE.md), [TASKS.md](RELEASE/TASKS.md) | Все владельцы | Surface matrix и текущий backlog. |
 | [HISTORY.md](FEATURES/HISTORY.md) | Frontend, backend, privacy, QA | Cross-tool archive read model, deep links, deletion ownership and palm boundary. |
 | [ANALYTICS_EVENT_DICTIONARY.md](ANALYTICS_EVENT_DICTIONARY.md), `product_cost_events` | Product, finance, privacy, operations | Privacy-safe product cost, delivery, refund and support dimensions without user content. |
 | [MEMORY_EVALUATION.md](MEMORY_EVALUATION.md) | AI, privacy, QA | Synthetic relevance, pause, isolation, contradiction and prompt-injection evaluation. |
 | [LOCALIZATION_GLOSSARY.md](LOCALIZATION_GLOSSARY.md) | Product, frontend, content, QA | RU/EN technical labels, truth states, Tarot terms and pluralization rules. |
 | [API_RESILIENCE_MATRIX.md](API_RESILIENCE_MATRIX.md) | Backend, frontend, QA | Negative-path, rate-limit, backend-error and owner-scope checks. |
-| [PERFORMANCE_BASELINE.md](EVIDENCE/PERFORMANCE_BASELINE_2026-08-27.md) | Performance, operations, QA | Local p50/p95 directional measurements and live LLM latency blocker. |
 | [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) | Operations, database, security | Disposable integrity, restore, snapshot and isolation drill. |
 | [PRODUCTION_GAUNTLET.md](PRODUCTION_GAUNTLET.md) | Release, security, reliability, operations | Full audit matrix, findings, local evidence and external gates. |
 | [PRODUCTION_FINAL_REVIEW.md](PRODUCTION_FINAL_REVIEW.md) | Release owner, product, operations | Evidence-based final review and exact BLOCKED/SHIP IT verdict. |
@@ -71,7 +68,7 @@
 | [COMPETITOR_MATRIX.md](COMPETITOR_MATRIX.md) | Product, strategy | First-party competitor benchmark и product gaps. |
 | [CHANGELOG.md](RELEASE/CHANGELOG.md) | Все стейкхолдеры | Чтобы сверить состав версии и пользовательские изменения. |
 | Domain index | [`DOMAIN/README.md`](DOMAIN/README.md) | `app/core/` |
-| Shared calculation/evidence policy | [`DOMAIN/CONTRACTS.md`](DOMAIN/CONTRACTS.md) | `app/core/astro.py`, `chart_contract.py`, `tarot.py`, `palm.py` |
+| Shared calculation/evidence policy | [`DOMAIN/CONTRACTS.md`](DOMAIN/CONTRACTS.md) | `app/core/astro.py`, `chart_contract.py`, `tarot.py`, `palm/` |
 | Astrology and chart products | [`DOMAIN/ASTROLOGY.md`](DOMAIN/ASTROLOGY.md) and [`CHART_PRODUCT_CONTRACTS.md`](CHART_PRODUCT_CONTRACTS.md) | `app/core/astro.py`, `vedic.py`, `chart_products.py` |
 | Tarot and card reflection | [`DOMAIN/TAROT.md`](DOMAIN/TAROT.md) | `app/core/tarot.py`, `app/api/routers/tarot.py` |
 | Palm and visual evidence | [`DOMAIN/PALM.md`](DOMAIN/PALM.md) | `app/core/palm*.py`, `app/api/routers/placements.py` |
@@ -88,13 +85,9 @@
 | Production readiness | [`RELEASE/PRODUCTION_READINESS.md`](RELEASE/PRODUCTION_READINESS.md) | Release process and readiness gates. |
 | Launch governance | [`RELEASE/LAUNCH_GOVERNANCE.md`](RELEASE/LAUNCH_GOVERNANCE.md) | Owners, gates, SLO placeholders and go/no-go rules. |
 | P0 execution | [`RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md`](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) | Owner-led procedures for the four public-launch blockers. |
-| P0-004 infrastructure evidence | [`EVIDENCE/P004_INFRASTRUCTURE_AUDIT_2026-08-27.md`](EVIDENCE/P004_INFRASTRUCTURE_AUDIT_2026-08-27.md) | Dated implementation evidence; current operating procedure remains in P0 execution and operations docs. |
 | Changelog | [`RELEASE/CHANGELOG.md`](RELEASE/CHANGELOG.md) | User- and engineering-visible release history. |
-| Documentation final review | [`EVIDENCE/DOCUMENTATION_FINAL_REVIEW_2026-08-27.md`](EVIDENCE/DOCUMENTATION_FINAL_REVIEW_2026-08-27.md) | Audit result, before/after shape, validation and remaining concerns. |
 | Final QA matrix | [`RELEASE/FINAL_QA_MATRIX.md`](RELEASE/FINAL_QA_MATRIX.md) | Functional, browser and red-team checks with reproducible evidence. |
 | Final release certification | [`RELEASE/FINAL_RELEASE_CERTIFICATION.md`](RELEASE/FINAL_RELEASE_CERTIFICATION.md) | Final build, QA, security scorecard, blockers and verdict. |
-| Dated evidence | [`EVIDENCE/`](EVIDENCE/) | Historical audits, QA baselines, traceability and benchmark records. Evidence is not current truth unless explicitly revalidated. |
-| Archive | [`ARCHIVE/`](ARCHIVE/) | Superseded plans and design proposals retained for context, each labeled historical. |
 
 ## Supporting references
 

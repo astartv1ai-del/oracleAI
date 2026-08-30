@@ -6,9 +6,9 @@ import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 
 ROOT = Path(__file__).resolve().parents[1]
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 OUT = ROOT / "artifacts" / "visual-qa"
 BASE_URL = os.getenv("ORACLEAI_QA_VISUAL_URL", "http://127.0.0.1:8080/?dev_user=10001&qa=1&qa_view=home")
 VIEWPORTS = {

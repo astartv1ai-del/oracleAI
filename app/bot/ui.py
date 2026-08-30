@@ -120,16 +120,15 @@ def semantic_chunks(text: str, limit: int = 3900) -> list[str]:
 
 
 def action_keyboard(*, lang_value: str = "ru", followup: bool = True,
-                    share: bool = True, deep: bool = False,
-                    menu: bool = True) -> InlineKeyboardMarkup:
+                    deep: bool = False, menu: bool = True) -> InlineKeyboardMarkup:
+    """Кнопки после разбора. Share убрали: без trackable-механики «поделиться»
+    вело в никуда (callback `share:last` не имел обработчика)."""
     en = lang(lang_value) == "en"
     rows = []
     if followup:
         rows.append([InlineKeyboardButton(text="Ask a follow-up" if en else "Задать уточняющий вопрос", callback_data="ask")])
     if deep:
         rows.append([InlineKeyboardButton(text="See a deeper reading" if en else "Посмотреть глубже", callback_data="shop_reports")])
-    if share:
-        rows.append([InlineKeyboardButton(text="Share" if en else "Поделиться", callback_data="share:last")])
     if menu:
         rows.append([InlineKeyboardButton(text="Menu" if en else "Меню", callback_data="menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)

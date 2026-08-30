@@ -71,6 +71,57 @@ def _coerce_pg(value):
     return value
 
 
+def _qmark_to_named(sql: str) -> str:
+    """Convert positional '?' placeholders to named :pN binds.
+
+    Only bare placeholders are translated; '?' inside string literals stays
+    untouched. App SQL is native named-param; this keeps positional call sites
+    (the test layer and legacy repo helpers) working on the native driver."""
+    out: list[str] = []
+    index = 0
+    counter = 0
+    quote = None
+    while index < len(sql):
+        ch = sql[index]
+        if quote:
+            if ch == quote:
+                quote = None
+            out.append(ch)
+            index += 1
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            out.append(ch)
+            index += 1
+        elif ch == "?":
+            counter += 1
+            out.append(f":p{counter}")
+            index += 1
+        else:
+            out.append(ch)
+            index += 1
+    return "".join(out)
+
+
+def _prepare_params(sql: str, params: Any) -> tuple[str, Any]:
+    if isinstance(params, dict):
+        return sql, params
+    values = list(params) if isinstance(params, (tuple, list)) else []
+    if "?" not in sql:
+        return sql, {}
+    sql = _qmark_to_named(sql)
+    return sql, {f"p{i}": value for i, value in enumerate(values, 1)}
+
+
+def _to_positional(sql: str, rows: list[Any]) -> tuple[str, list[dict]]:
+    if not rows or isinstance(rows[0], dict):
+        return sql, rows
+    bind_rows = []
+    for row in rows:
+        bind_rows.append({f"p{i}": value for i, value in enumerate(row, 1)})
+    return _qmark_to_named(sql), bind_rows
+
+
 class PostgresRow:
     """A row-compatible view over a SQLAlchemy Row (supports row["col"])."""
 
@@ -147,7 +198,7 @@ class PostgresDatabase:
             "oracle_pg_connection", default=None)
 
     async def execute(self, sql: str, params: Any = ()) -> PostgresCursor:
-        bind = params if isinstance(params, dict) else {}
+        sql, bind = _prepare_params(sql, params)
         connection = self._connection.get()
         if connection is not None:
             result = await connection.execute(text(sql), bind)
@@ -166,9 +217,10 @@ class PostgresDatabase:
         return PostgresCursor(rows, rowcount=result.rowcount)
 
     async def executemany(self, sql: str, rows: Iterable[Any]) -> PostgresCursor:
-        bind_rows = [row if isinstance(row, dict) else {} for row in rows]
-        if not bind_rows:
+        rows = list(rows)
+        if not rows:
             return PostgresCursor([], rowcount=0)
+        sql, bind_rows = _to_positional(sql, rows)
         connection = self._connection.get()
         if connection is not None:
             result = await connection.execute(text(sql), bind_rows)

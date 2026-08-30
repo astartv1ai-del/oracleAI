@@ -56,12 +56,9 @@ server-side kill-switch. Премиум: персистить `auth_date`/id с�
 `{keys}` строятся из allowlist — не инъектится, но один рефактор от дыры. Нужен комментарий-invariant
 и переход на ORM/native pg. [quick]
 
-### 🟡 1.10 SQLite→Postgres шайм `_translate_sql` — главный архитектурный долг
-`app/data/postgres.py` регэксп-переписывает SQLite-идиомы (`?`→`:pN`, `INSERT OR IGNORE`,
-`lastrowid` через allowlist `_ID_TABLES` ≈30). Любая новая идиома молча ломается/переводится
-неверно; новый INSERT с `lastrowid` вне allowlist даёт `None`→`int(None)` краш только в проде.
-`ON CONFLICT DO NOTHING` без цели глотает ЛЮБОЕ нарушение констрейнта, а `cur.rowcount` трактуется
-как "дубликат". Мигрировать репозитории на один диалект. [large]
+### ✅ 1.10 SQLite→Postgres шайм `_translate_sql` — УСТРАНЕНО (DB-001 close-out, 2026-08-30)
+Шайм, `_ID_TABLES` и `_INSERT_TABLE_RE` удалены из `app/data/postgres.py`; все репозитории
+переведены на native PostgreSQL dialect. См. [ADR-0003](ADR/ADR-0003-shim-removal.md).
 
 ### 🟡 1.11 `settings.ready` не блокирует старт
 `app/config.py:173`: нет `BOT_TOKEN`/`ADMIN_ID` — только печать. Вебхуки fail-closed (хорошо),

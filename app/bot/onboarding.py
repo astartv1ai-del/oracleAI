@@ -16,14 +16,13 @@ from aiogram.types import CallbackQuery, Message
 
 from ..core import astro, geo
 from ..core.personas import persona_list
-from ..repo import admin as admin_repo
-from ..repo import content, users
-from ..services import analytics, billing, referrals
+from ..services import access, analytics, billing as billing_svc, referrals
+from ..repo import content as content_repo, readings, users
 from .formatting import tg_esc
 from .onboarding_parsers import date_error_copy, parse_birth_date, parse_birth_time, time_error_copy
 from .keyboards import (ask_starters_kb, back_menu, confirmation_kb,
                         gender_kb, language_kb, main_menu, onboarding_edit_kb,
-                        personas_kb, technique_kb, time_kb)
+                        personas_kb, technique_kb, time_kb, welcome_kb)
 
 log = logging.getLogger("oracle.bot.onboarding")
 router = Router()
@@ -38,9 +37,11 @@ def _lang(user) -> str:
 
 
 def _step_label(step: str, lang: str) -> str:
-    """Прогресс онбординга «Шаг N/5» — пять шагов, считая от имени."""
-    numbers = {"name": 1, "gender": 2, "date": 2, "time": 3, "city": 4,
-               "confirm": 5}
+    """Прогресс онбординга «Шаг N/5» — честная нумерация шагов ввода.
+
+    Подтверждение (confirm) и пост-шаги (technique, oracle_name) не нумеруем:
+    это проверка данных и выбор способа чтения, а не шаги ввода."""
+    numbers = {"name": 1, "gender": 2, "date": 3, "time": 4, "city": 5}
     n = numbers.get(step)
     if not n:
         return ""
@@ -84,7 +85,7 @@ class DeleteMe(StatesGroup):
 
 
 async def _is_admin(db, tg_id: int) -> bool:
-    return bool(await admin_repo.resolve_role(db, tg_id))
+    return await access.is_admin(db, tg_id)
 
 
 async def _menu(db, tg_id: int):
@@ -124,7 +125,7 @@ async def start_deeplink(message: Message, command: CommandObject,
             except Exception as e:  # noqa: BLE001
                 log.info("не смогла уведомить пригласившую %s: %s", ref_id, e)
     elif arg:
-        granted = await billing.redeem_promo(db, message.from_user.id, arg)
+        granted = await billing_svc.redeem_promo(db, message.from_user.id, arg)
         if granted:
             await message.answer(_promo_text(granted))
 
@@ -146,11 +147,20 @@ async def _begin(message: Message, state: FSMContext, db):
     if user["onboarded"]:
         await state.clear()
         await analytics.track(db, "home_view", message.from_user.id, props={"returning": True}, surface="bot")
-        await message.answer(_copy(
-            user,
-            f"С возвращением, {tg_esc(user['name'])} 🌙\nПродолжим?",
-            f"Welcome back, {tg_esc(user['name'])} 🌙\nShall we continue?",
-        ), reply_markup=await _menu(db, message.from_user.id))
+        last = (await readings.recent_readings(db, message.from_user.id, limit=1) or [None])[0]
+        if last:
+            from ..core.tarot import SPREADS
+            kind = SPREADS.get(last["spread"], {}).get("title") or last["spread"]
+            last_line = (_copy(user, f"Последнее исследование: {kind}, {last['created_at'][:10]}",
+                               f"Last reading: {kind}, {last['created_at'][:10]}"))
+            text = _copy(user,
+                         f"С возвращением, {tg_esc(user['name'])} 🌙\n{last_line}\nРада видеть тебя снова 🌙",
+                         f"Welcome back, {tg_esc(user['name'])} 🌙\n{last_line}\nGood to see you again 🌙")
+        else:
+            text = _copy(user,
+                         f"С возвращением, {tg_esc(user['name'])} 🌙\nРада видеть тебя снова 🌙",
+                         f"Welcome back, {tg_esc(user['name'])} 🌙\nGood to see you again 🌙")
+        await message.answer(text, reply_markup=await _menu(db, message.from_user.id))
         return
     step = user["onboarding_step"]
     resume_states = {"name": Onb.name, "gender": Onb.gender, "date": Onb.date,
@@ -182,12 +192,49 @@ async def _begin(message: Message, state: FSMContext, db):
     await analytics.track(db, "onboarding_started", message.from_user.id, surface="bot")
     await message.answer(_copy(
         user,
-        "🌙 Рада тебя видеть. Сначала выберем язык — его можно изменить в любой момент.",
-        "🌙 I’m glad you’re here. First, choose your language — you can change it anytime.",
-    ), reply_markup=language_kb())
+        "✨ Добро пожаловать в Oracle\n\n"
+        "Я умею:\n"
+        "• отвечать на вопросы через оракула\n"
+        "• собирать твою натальную карту\n"
+        "• раскладывать Таро\n\n"
+        "Начнём знакомство?",
+        "✨ Welcome to Oracle\n\n"
+        "I can:\n"
+        "• answer your questions through the oracle\n"
+        "• build your natal chart\n"
+        "• lay out Tarot\n\n"
+        "Shall we begin?",
+    ), reply_markup=welcome_kb(_lang(user) if user else "ru"))
 
 
 # ─────────────────────────────── шаги FSM ─────────────────────────────────────
+
+@router.callback_query(F.data == "onb:begin")
+async def onb_begin(cb: CallbackQuery, state: FSMContext, db):
+    """[Начать] с welcome-экрана — тот же старт онбординга, что раньше с /start."""
+    user = await users.get(db, cb.from_user.id)
+    await state.set_state(Onb.language)
+    await analytics.track(db, "onboarding_started", cb.from_user.id, surface="bot")
+    await cb.message.edit_text(_copy(
+        user,
+        "🌙 Рада тебя видеть. Сначала выберем язык — его можно изменить в любой момент.",
+        "🌙 I’m glad you’re here. First, choose your language — you can change it anytime.",
+    ), reply_markup=language_kb())
+    await cb.answer()
+
+
+@router.callback_query(F.data == "onb:features")
+async def onb_features(cb: CallbackQuery, state: FSMContext, db):
+    """[Возможности] — показываем главное меню, FSM не трогаем."""
+    user = await users.get(db, cb.from_user.id)
+    await cb.message.edit_text(_copy(
+        user,
+        "Вот что я умею — выбери в любой момент:",
+        "Here is what I can do — pick any time:",
+    ), reply_markup=main_menu(is_admin=await _is_admin(db, cb.from_user.id),
+                              lang=_lang(user) if user else "ru"))
+    await cb.answer()
+
 
 @router.callback_query(F.data.startswith("language:"))
 async def onb_language(cb: CallbackQuery, state: FSMContext, db):
@@ -411,7 +458,15 @@ async def onb_city(message: Message, state: FSMContext, db):
                        birth_lon=lon, tz=tz,
                        chart_json=json.dumps(chart, ensure_ascii=False),
                        onboarding_step="confirm")
+    await wait.edit_text(_confirm_summary(user, city, chart),
+                         reply_markup=confirmation_kb(_lang(user)))
+    await state.set_state(Onb.confirm)
+    await analytics.track(db, "onboarding_step", message.from_user.id,
+                          props={"step": "confirm"}, surface="bot")
 
+
+def _confirm_summary(user, city: str, chart: dict) -> str:
+    """Суммари шага подтверждения — единый источник для onb_city и onb:back."""
     sun = chart["sun"]
     moon = next((item for item in chart.get("planets", [])
                  if item.get("name") in {"Луна", "Moon"}), None)
@@ -420,7 +475,7 @@ async def onb_city(message: Message, state: FSMContext, db):
                     else "Время приблизительное — дома и Асцендент не используются")
     precision_en = ("Exact birth time" if precision_value == "exact"
                     else "Approximate time — houses and Ascendant are not used")
-    summary = _step_label("confirm", _lang(user)) + _copy(
+    return _copy(
         user,
         "🌌 <b>Твои данные</b>\n\n"
         f"Имя: <b>{tg_esc(user['name'] or '—')}</b>\n"
@@ -439,10 +494,6 @@ async def onb_city(message: Message, state: FSMContext, db):
         f"Moon: <b>{tg_esc((moon or {}).get('sign', '—'))}</b>\n\n"
         "Does this look right? We will choose how to read your chart next.",
     )
-    await wait.edit_text(summary, reply_markup=confirmation_kb(_lang(user)))
-    await state.set_state(Onb.confirm)
-    await analytics.track(db, "onboarding_step", message.from_user.id,
-                          props={"step": "confirm"}, surface="bot")
 
 
 @router.callback_query(Onb.confirm, F.data == "onb:confirm")
@@ -499,10 +550,15 @@ async def onb_back(cb: CallbackQuery, state: FSMContext, db):
         await state.set_state(Onb.time)
         await users.update(db, cb.from_user.id, onboarding_step="time")
         text = _copy(user, "Вернёмся ко времени рождения.", "Let’s return to your birth time.")
-    elif current == Onb.confirm.state:
-        await state.set_state(Onb.city)
-        await users.update(db, cb.from_user.id, onboarding_step="city")
-        text = _copy(user, "Напиши город рождения ещё раз.", "Send your birth city again.")
+    elif current == Onb.confirm.state or current == Onb.name.state and user["onboarding_step"] == "name" and user["chart_json"]:
+        await state.set_state(Onb.confirm)
+        await users.update(db, cb.from_user.id, onboarding_step="confirm")
+        text = _confirm_summary(user, user["birth_city"] or "",
+                                users.chart_of(user) or {"sun": {"sign": "—", "element": "—"},
+                                                         "planets": []})
+        await cb.message.edit_text(text, reply_markup=confirmation_kb(_lang(user)))
+        await cb.answer()
+        return
     else:
         await state.clear()
         text = _copy(user, "Пауза сохранена. Нажми /start, когда захочешь продолжить.", "Paused here. Press /start when you want to continue.")
@@ -650,7 +706,7 @@ async def promo_enter(message: Message, state: FSMContext, db):
     await state.clear()
     user = await users.get(db, message.from_user.id)
     lang = _lang(user) if user else "ru"
-    granted = await billing.redeem_promo(db, message.from_user.id,
+    granted = await billing_svc.redeem_promo(db, message.from_user.id,
                                          message.text.strip())
     menu = await _menu(db, message.from_user.id)
     if granted:
@@ -670,14 +726,14 @@ async def promo_enter(message: Message, state: FSMContext, db):
 async def help_cmd(message: Message, db):
     user = await users.get(db, message.from_user.id)
     en = _lang(user) == "en" if user else False
-    disclaimer = await content.get_setting(
+    disclaimer = await content_repo.get_setting(
         db, "disclaimer_en" if en else "disclaimer",
         "Oracle is made for self-discovery and inspiration." if en else
         "Оракул создан для самопознания и вдохновения.")
-    faq = await content.list_content(db, "faq_en" if en else "faq",
+    faq = await content_repo.list_content(db, "faq_en" if en else "faq",
                                      active_only=True)
     if not faq and en:
-        faq = await content.list_content(db, "faq", active_only=True)
+        faq = await content_repo.list_content(db, "faq", active_only=True)
     if en:
         lines = ["🔮 <b>How I work</b>", ""]
         for item in faq[:4]:

@@ -26,7 +26,7 @@
 | F-002 | Production configuration | Runtime/release gate не проверяли PostgreSQL URL, шаблонный `POSTGRES_PASSWORD`, обязательный `RELEASE_ID` и Redis при включённом Celery; Compose имел dev-friendly defaults. | High | `app/api/main.py`, `scripts/release_gate.py`, `tests/test_release_gate.py` | **Fixed locally** |
 | F-003 | Privacy / logging | Несколько operational log calls интерполировали Telegram ID, invoice payload, charge ID или сырые Telegram exception messages. | High | `app/api/deps.py`, `app/bot/shop.py`, `app/services/{billing,broadcast,chat,scheduler,telegram}.py` | **Fixed locally** |
 | F-004 | Production evidence | Реальные Telegram device/signature, provider settlement/refund, encrypted off-site backup, production rollback, legal/privacy и licensing не доступны в локальном sandbox. | Critical | `docs/RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md`, `docs/LEGAL_REVIEW.md` | **External gate** |
-| F-005 | Live LLM SLO | Последний зафиксированный live synthetic run имеет p95 выше рабочей цели 15 секунд; live rerun без staging provider configuration не может быть достоверно выполнен. | High | `docs/EVIDENCE/PERFORMANCE_BASELINE_2026-08-27.md`, `docs/EVIDENCE/ORACLEAI_CONTINUATION_REPORT_2026-08-26.md` | **Partial / blocker** |
+| F-005 | Live LLM SLO | Последний зафиксированный live synthetic run имеет p95 выше рабочей цели 15 секунд; live rerun без staging provider configuration не может быть достоверно выполнен. | High | dated performance baseline reports (removed from tree) | **Partial / blocker** |
 | F-006 | Docker/game day | Docker Engine отсутствует в sandbox, поэтому container build, Compose healthchecks, SIGTERM, Postgres migration and production game day не получили runtime evidence. | High | command result: `docker: command not found` | **External environment gate** |
 
 ### F-001 — Admin CRM tags were not auditable
@@ -143,4 +143,3 @@ The matrix below records what was actually exercised. `Local pass` means reprodu
 [4]: [P0_PRODUCTION_EXECUTION_PLAN.md](RELEASE/P0_PRODUCTION_EXECUTION_PLAN.md) — signed external gate procedures.
 [5]: [TASKS.md](RELEASE/TASKS.md) — current backlog and P0 status.
 [6]: [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) — disposable restore evidence.  
-[7]: [PERFORMANCE_BASELINE.md](EVIDENCE/PERFORMANCE_BASELINE_2026-08-27.md) — directional performance and live LLM blocker.

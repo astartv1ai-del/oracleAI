@@ -6,10 +6,8 @@ screenshots plus aggregate DOM checks.
 """
 from __future__ import annotations
 import os
-CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -17,6 +15,7 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 OUT = ROOT / "artifacts" / "visual-baseline"
 BASE_URL_TEMPLATE = os.getenv("ORACLEAI_QA_BASE_URL", "http://127.0.0.1:8080/?dev_user={dev_user}")
 LOCALE_USERS = {"ru": 10001, "en": 10002}

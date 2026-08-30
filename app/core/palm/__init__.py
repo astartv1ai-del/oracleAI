@@ -3,6 +3,7 @@
 Реэкспорт прежнего публичного API: импортеры (`palm.analyze_and_save`,
 `palm.PALM_SYSTEM`, патчи `palm_core.llm` в тестах) работают без изменений.
 """
+# ruff: noqa: F401  # facade re-exports former app/core/palm.py API
 from .. import agents, llm, palm_evidence, palm_full_scope, palm_landmarks, palm_lines, palm_vision  # noqa: F401
 from .prompts import PALM_SYSTEM, PALM_SYSTEM_EN, PALM_USER, PALM_USER_EN, palm_prompts
 from .service import (

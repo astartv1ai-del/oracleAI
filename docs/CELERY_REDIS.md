@@ -72,7 +72,7 @@ docker compose -f infra/docker-compose.yml ps
 docker compose -f infra/docker-compose.yml logs --tail=100 worker beat redis
 # The worker name is shown at startup; use it for a targeted ping if needed.
 docker compose -f infra/docker-compose.yml exec worker \
-  celery -A app.tasks.celery_app:celery_app inspect ping
+  celery -A app.queue:celery_app inspect ping
 ```
 
 Run exactly one Beat service. Running two Beat instances will publish duplicate periodic tasks. Worker replicas are safe for queue processing, but each replica must use the same Redis and PostgreSQL settings. Keep the API at one process until the existing process-local rate limiter is moved to shared storage.
@@ -129,7 +129,7 @@ redis-server --port 6379 --daemonize yes
 DATABASE_URL=postgresql+asyncpg://oracle_test:oracle_test@127.0.0.1:5432/oracle_test \
 REDIS_URL=redis://127.0.0.1:6379/15 \
 CELERY_ENABLED=1 LLM_PROVIDER=off \
-celery -A app.tasks.celery_app:celery_app worker \
+celery -A app.queue:celery_app worker \
   --loglevel=INFO --pool=solo --queues=llm,maintenance
 ```
 

@@ -1,6 +1,6 @@
 # ADR-0001 — Target SQL dialect for DB-001 migration (SQLAlchemy named params)
 
-**Status:** accepted
+**Status:** accepted; superseded in outcome by [ADR-0003](ADR-0003-shim-removal.md) (2026-08-30) — the shim, `_ID_TABLES` and `_INSERT_TABLE_RE` have been removed; all call-sites use the native PostgreSQL dialect described below. Kept as historical record of the dialect decision.
 **Date:** 2026-08-29
 **Task:** DB-001, Etap 1
 

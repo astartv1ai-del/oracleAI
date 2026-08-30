@@ -20,8 +20,7 @@ from ..config import settings
 from ..core import flood, sentry
 from ..core.observability import configure_logging
 from ..data.session import connect
-from ..repo import content as content_repo, users as users_repo
-from ..services import analytics, broadcast, chat as chat_service, scheduler
+from ..services import access, analytics, broadcast, chat as chat_service, scheduler
 from . import chat, features, growth, onboarding, profile, shop
 
 configure_logging(level=settings.log_level, log_file=settings.log_file)
@@ -34,10 +33,9 @@ COMMANDS = [
     BotCommand(command="start", description="Начать / вернуться в меню"),
     BotCommand(command="today", description="Прогноз дня"),
     BotCommand(command="horoscope", description="Гороскоп на сегодня"),
-    BotCommand(command="practice", description="Практики и мантры"),
+    BotCommand(command="practice", description="Практики"),
     BotCommand(command="moon", description="Лунная неделя"),
     BotCommand(command="promo", description="Ввести промокод"),
-    BotCommand(command="admin", description="Панель управления (для команды)"),
     BotCommand(command="help", description="Как я работаю"),
 ]
 
@@ -47,10 +45,9 @@ COMMANDS_EN = [
     BotCommand(command="start", description="Start / back to menu"),
     BotCommand(command="today", description="Today's forecast"),
     BotCommand(command="horoscope", description="Today's horoscope"),
-    BotCommand(command="practice", description="Practices and mantras"),
+    BotCommand(command="practice", description="Practices"),
     BotCommand(command="moon", description="Moon week"),
     BotCommand(command="promo", description="Enter a promo code"),
-    BotCommand(command="admin", description="Admin panel (team only)"),
     BotCommand(command="help", description="How I work"),
 ]
 
@@ -137,9 +134,8 @@ async def _remember_username(bot: Bot, db) -> None:
     """Имя бота нужно Mini App для реферальных ссылок — кладём его в настройки."""
     try:
         me = await bot.get_me()
-        current = await content_repo.get_setting(db, "brand.bot_username", "")
-        if current != me.username:
-            await content_repo.set_setting(db, "brand.bot_username", me.username)
+        if me.username:
+            await access.set_brand_setting(db, "brand.bot_username", me.username)
         log.info("бот @%s готов", me.username)
     except Exception as e:  # noqa: BLE001
         log.warning("не удалось узнать имя бота: %s", e)
@@ -242,7 +238,7 @@ async def main() -> None:
         # analytics, memory extraction and last_seen updates durable on SIGTERM.
         await chat_service.drain_background()
         await analytics.drain()
-        await users_repo.drain_touch_tasks()
+        await access.drain_touch_tasks()
         await bot.session.close()
         await db.close()
         log.info("Оракул остановлен")

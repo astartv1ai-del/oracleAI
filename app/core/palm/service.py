@@ -19,7 +19,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ...repo import palm as palm_repo
 from .. import agents, llm, palm_evidence, palm_full_scope, palm_landmarks, palm_lines, palm_vision
-from .prompts import (
+from .prompts import (  # noqa: F401  # PALM_* re-exported via package facade
     PALM_SYSTEM, PALM_SYSTEM_EN, PALM_USER, PALM_USER_EN, palm_prompts,
 )
 

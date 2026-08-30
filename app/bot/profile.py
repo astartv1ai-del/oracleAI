@@ -7,10 +7,10 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
 from ..core.personas import persona_list
-from ..repo import admin as admin_repo
 from ..core import agent as agent_core
-from ..repo import billing, dialog, readings, users
-from ..services import analytics, limits, referrals
+from ..repo import dialog, readings, users
+from ..services import billing as billing_svc, analytics
+from ..services import access, limits, referrals
 from .chat import _send_long
 from .ui import BotStage, begin_status
 from .formatting import tg_esc
@@ -23,7 +23,7 @@ router = Router()
 
 async def _menu(db, tg_id: int):
     user = await users.get(db, tg_id)
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+    return main_menu(is_admin=await access.is_admin(db, tg_id),
                      lang="en" if user and user["lang"] == "en" else "ru")
 
 
@@ -35,7 +35,7 @@ async def profile(cb: CallbackQuery, db):
     streak = await dialog.diary_streak(db, cb.from_user.id)
     memories = await dialog.get_memories(db, cb.from_user.id, limit=5)
     ref = await referrals.stats(db, cb.from_user.id)
-    entitlements = await billing.list_entitlements(db, cb.from_user.id)
+    entitlements = await billing_svc.list_entitlements(db, cb.from_user.id)
 
     sub_line = (f"{allowance.plan['title']} · осталось "
                 f"{users.sub_days_left(user)} дн." if active else "доступ завершён")
@@ -131,7 +131,7 @@ async def invite(cb: CallbackQuery, db):
 @router.callback_query(F.data == "my_reports")
 async def my_reports(cb: CallbackQuery, db):
     ready = await readings.list_reports(db, cb.from_user.id)
-    available = [e for e in await billing.list_entitlements(db, cb.from_user.id)
+    available = [e for e in await billing_svc.list_entitlements(db, cb.from_user.id)
                  if e["kind"] == "report"]
     if not ready and not available:
         await cb.answer()
@@ -179,13 +179,13 @@ async def show_report(cb: CallbackQuery, db):
 @router.callback_query(F.data == "admin_stats")
 async def admin_stats_cb(cb: CallbackQuery, db):
     """Резерв, когда WEBAPP_URL не задан и веб-панель недоступна."""
-    role = await admin_repo.resolve_role(db, cb.from_user.id)
+    role = await access.role(db, cb.from_user.id)
     if not role:
         await cb.answer("Нет доступа")
         return
-    from ..repo import analytics as analytics_repo
-    o = await analytics_repo.overview(db)
-    funnel = await analytics_repo.funnel(db, 30)
+    o = await access.admin_overview(db)
+    funnel = o['funnel']
+    o = o['overview']
     lines = ["📊 <b>Оракул за 30 дней</b>", ""]
     for step in funnel:
         lines.append(f"{step['step']}: <b>{step['value']}</b> ({step['of_total']}%)")
@@ -273,6 +273,26 @@ async def history_home(cb: CallbackQuery, db):
     await cb.answer()
 
 
+@router.callback_query(F.data == "history:tarot")
+async def history_tarot(cb: CallbackQuery, db):
+    """Последние расклады — shelf, которую рисовали, но не открывали."""
+    user = await users.get(db, cb.from_user.id)
+    lang = "en" if user and user["lang"] == "en" else "ru"
+    items = await readings.recent_readings(db, cb.from_user.id, limit=8)
+    if not items:
+        text = ("No Tarot readings yet — the deck is waiting." if lang == "en"
+                else "Раскладов пока нет — колода ждёт.")
+    else:
+        title = "🎴 <b>Recent readings</b>" if lang == "en" else "🎴 <b>Последние расклады</b>"
+        lines = []
+        for r in items:
+            q = (r["question"] or r["spread"] or "").strip()[:60]
+            lines.append(f"• {tg_esc(q)} · {r['created_at'][:10]}")
+        text = title + "\n\n" + "\n".join(lines)
+    await cb.message.answer(text, reply_markup=history_kb(lang))
+    await cb.answer()
+
+
 @router.callback_query(F.data == "history:chat")
 async def history_chat(cb: CallbackQuery, db):
     user = await users.get(db, cb.from_user.id)
@@ -336,7 +356,7 @@ async def build_report_callback(cb: CallbackQuery, db):
     if not user or not kind:
         await cb.answer("Разбор больше недоступен" if not user or user["lang"] != "en" else "This report is no longer available", show_alert=True)
         return
-    consumed = await billing.consume_entitlement(db, user["tg_id"], "report", code)
+    consumed = await billing_svc.consume_entitlement(db, user["tg_id"], "report", code)
     if not consumed:
         await cb.answer("Покупка уже использована или истекла" if user["lang"] != "en" else "This purchase is already used or expired", show_alert=True)
         return
@@ -346,7 +366,7 @@ async def build_report_callback(cb: CallbackQuery, db):
         result = await agent_core.build_report(db, user, kind)
     except Exception as exc:  # noqa: BLE001
         log.exception("bot report build failed: %s", exc)
-        await billing.grant_entitlement(db, user["tg_id"], "report", code,
+        await billing_svc.grant_entitlement(db, user["tg_id"], "report", code,
                                         qty=1, valid_days=None, source="refund")
         await status.set(BotStage.RECOVERABLE_ERROR,
                          "Try again later; your purchase was returned." if user["lang"] == "en" else "Попробуй позже — покупка возвращена в доступ.")

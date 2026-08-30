@@ -56,6 +56,19 @@ KNOWN_ROUTER_REPO_IMPORTS = {
 REPO_IMPORT_RE = re.compile(
     r"^\s*(?:from\s+(?:\.{2,3}|app)\.repo[\s.]|import\s+(?:\.{2,3}|app)\.repo)"
 )
+# ARCH-004 (bot): admin/analytics/billing policy routed through services
+# (app/services/access.py, app/services/billing.py). Remaining repo imports
+# in bot handlers are thin data reads (users/content) — frozen counts; new
+# bot→repo imports in ANY file (including new files) are a hard failure.
+KNOWN_BOT_REPO_IMPORTS = {
+    "chat": 1,
+    "features": 1,
+    "growth": 1,
+    "onboarding": 1,
+    "profile": 1,
+    "shop": 1,
+}
+BOT_REPO_IMPORT_RE = re.compile(r"^\s*from\s+\.\.repo[\s.]")
 
 
 def test_routers_do_not_import_repo_directly() -> None:
@@ -90,6 +103,36 @@ def test_routers_do_not_import_repo_directly() -> None:
     assert not violations, "presentation→repo layering violations:\n" + "\n".join(
         violations
     )
+
+
+def test_bot_repo_imports_frozen() -> None:
+    """ARCH-004 (bot): freeze remaining bot→repo data-read imports.
+
+    Admin/analytics/billing went through app/services (access.py, billing.py,
+    bot_flows.py); the rest are thin users/content reads. Any new bot file or
+    additional repo import fails — counts may only go down.
+    """
+    violations = []
+    for path in sorted((ROOT / "app" / "bot").glob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        stem = path.stem
+        count = 0
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if BOT_REPO_IMPORT_RE.search(line):
+                count += 1
+                if stem not in KNOWN_BOT_REPO_IMPORTS:
+                    violations.append(
+                        f"{path.relative_to(ROOT)}:{number}: {line.strip()} "
+                        "(new bot→repo import — go through app/services)"
+                    )
+        expected = KNOWN_BOT_REPO_IMPORTS.get(stem, 0)
+        if count > expected:
+            violations.append(
+                f"{path.relative_to(ROOT)}: {count} repo imports exceed the "
+                f"frozen allowance of {expected} (ARCH-004)"
+            )
+    assert not violations, "bot→repo layering violations:\n" + "\n".join(violations)
 
 
 def test_services_and_repo_do_not_import_presentation() -> None:

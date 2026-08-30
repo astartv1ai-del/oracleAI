@@ -6,20 +6,19 @@ import pytest
 
 from pathlib import Path
 
-from app.data.postgres import PostgresDatabase, _split_script, _translate_sql
+from app.data.postgres import PostgresDatabase, _split_script
 
 BASELINE_SQL = (
     Path(__file__).resolve().parents[1] / "alembic" / "schema" / "baseline.sql"
 ).read_text(encoding="utf-8")
 
 
-def test_postgres_sql_translation_handles_ignore_and_placeholders():
-    sql, names = _translate_sql(
-        "INSERT OR IGNORE INTO users(tg_id, name) VALUES(?, ?)")
-    assert sql == (
-        "INSERT INTO users(tg_id, name) VALUES(:p0, :p1) "
-        "ON CONFLICT DO NOTHING")
-    assert names == ["p0", "p1"]
+def test_postgres_qmark_params_converted_to_named():
+    from app.data.postgres import _prepare_params
+    sql, bind = _prepare_params(
+        "INSERT INTO users(tg_id, name) VALUES(?, ?)", (1, "x"))
+    assert sql == "INSERT INTO users(tg_id, name) VALUES(:p1, :p2)"
+    assert bind == {"p1": 1, "p2": "x"}
 
 
 def test_postgres_schema_uses_native_numeric_type():

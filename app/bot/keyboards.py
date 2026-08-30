@@ -38,10 +38,10 @@ def main_menu(*, is_admin: bool = False, lang: str = "ru") -> InlineKeyboardMark
         [InlineKeyboardButton(text="✋ Mira" if en else "✋ Мира", callback_data="palm"),
          InlineKeyboardButton(text="📖 My research" if en else "📖 Мои исследования", callback_data="history")],
         [InlineKeyboardButton(text="🌙 Today" if en else "🌙 Сегодня", callback_data="today"),
-         InlineKeyboardButton(text="💎 Premium" if en else "💎 Premium", callback_data="shop")],
+         InlineKeyboardButton(text="? Help" if en else "? Помощь", callback_data="help")],
+        [InlineKeyboardButton(text="💎 Premium" if en else "💎 Premium", callback_data="shop")],
         [InlineKeyboardButton(text="👤 Profile" if en else "👤 Профиль", callback_data="profile"),
          InlineKeyboardButton(text="⚙️ Settings" if en else "⚙️ Настройки", callback_data="settings")],
-        [InlineKeyboardButton(text="? Help" if en else "? Помощь", callback_data="help")],
     ]
     if is_admin:
         admin_btn = _webapp_button("📊 Admin panel" if en else "📊 Панель управления", "/admin")
@@ -55,6 +55,16 @@ def language_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🇷🇺 Русский", callback_data="language:ru"),
          InlineKeyboardButton(text="🇬🇧 English", callback_data="language:en")],
+    ])
+
+
+def welcome_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Первый экран нового пользователя: начать знакомство или посмотреть меню."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✨ Начать" if lang != "en" else "✨ Begin",
+                              callback_data="onb:begin")],
+        [InlineKeyboardButton(text="Возможности" if lang != "en" else "Features",
+                              callback_data="onb:features")],
     ])
 
 
@@ -94,8 +104,7 @@ def onboarding_edit_kb(lang: str = "ru") -> InlineKeyboardMarkup:
 
 def history_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🌌 Astrology" if lang == "en" else "🌌 Астрология", callback_data="history:astro"),
-         InlineKeyboardButton(text="🎴 Tarot" if lang == "en" else "🎴 Таро", callback_data="history:tarot")],
+        [InlineKeyboardButton(text="🎴 Tarot" if lang == "en" else "🎴 Таро", callback_data="history:tarot")],
         [InlineKeyboardButton(text="📜 Reports" if lang == "en" else "📜 Разборы", callback_data="my_reports")],
         [InlineKeyboardButton(text="💬 Conversations" if lang == "en" else "💬 Разговоры", callback_data="history:chat")],
         [InlineKeyboardButton(text="← Menu" if lang == "en" else "← Меню", callback_data=CB_MENU)],
@@ -397,10 +406,17 @@ def career_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def back_menu() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="← Меню", callback_data=CB_MENU)]
-    ])
+def back_menu(*, ask: bool = False) -> InlineKeyboardMarkup:
+    """«← Меню», при ask — ещё и переход к вопросу Оракулу.
+
+    Контекстный next-action: после разбора карты/матрицы естественно
+    продолжить разговором, а не выходить в меню.
+    """
+    rows = [[InlineKeyboardButton(text="← Меню", callback_data=CB_MENU)]]
+    if ask:
+        rows.insert(0, [InlineKeyboardButton(
+            text="✨ Спросить Оракула", callback_data="ask")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def report_kb(reports: list[dict]) -> InlineKeyboardMarkup:

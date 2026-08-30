@@ -1,4 +1,4 @@
-"""Разделы, добавленные из исходной идеи: практики и мантры, карьера, гороскоп.
+"""Разделы, добавленные из исходной идеи: практики, карьера, гороскоп.
 
 Логика целиком в сервисах (`services.practices`, `services.horoscopes`,
 `core.tool_registry`) — здесь только Telegram: как показать, что нажать и что ответить.
@@ -14,9 +14,8 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from ..core import tool_registry as skills
-from ..repo import admin as admin_repo
 from ..repo import users
-from ..services import analytics, horoscopes
+from ..services import access, horoscopes, analytics
 from ..services import practices as practices_svc
 from .chat import _send_long
 from .keyboards import career_kb, main_menu, practice_kb, practices_kb
@@ -27,7 +26,7 @@ router = Router()
 
 async def _menu(db, tg_id: int):
     user = await users.get(db, tg_id)
-    return main_menu(is_admin=bool(await admin_repo.resolve_role(db, tg_id)),
+    return main_menu(is_admin=await access.is_admin(db, tg_id),
                      lang="en" if user and user["lang"] == "en" else "ru")
 
 

@@ -115,6 +115,5 @@ The production configuration gate is now stricter in code and tests, but real se
 [5]: [PRODUCTION_GAUNTLET.md](PRODUCTION_GAUNTLET.md) — logging findings and phase matrix.  
 [6]: [API_RESILIENCE_MATRIX.md](API_RESILIENCE_MATRIX.md) — negative-path and resilience contracts.  
 [7]: [BACKUP_RESTORE_DRILL.md](BACKUP_RESTORE_DRILL.md) — disposable backup/restore procedure.  
-[8]: [PERFORMANCE_BASELINE.md](EVIDENCE/PERFORMANCE_BASELINE_2026-08-27.md) — measured local baseline and LLM latency blocker.
 [9]: [DEPLOYMENT.md](DEPLOYMENT.md) — observability and incident procedures.  
 [10]: [LEGAL_REVIEW.md](LEGAL_REVIEW.md) — unresolved owner/legal launch facts.

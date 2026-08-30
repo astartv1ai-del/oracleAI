@@ -8,7 +8,7 @@
 | **Source of truth** | Current `master` code, tests, CI configuration and [`RELEASE/TASKS.md`](TASKS.md). |
 | **Scope** | Repository state observed on 2026-08-27; this document is updated as the merged master candidate changes. |
 | **Do not change** | Do not convert local, synthetic or historical evidence into staging or production claims. |
-| **Key files** | `app/`, `miniapp/`, `tests/`, `scripts/`, `infra/`, [`RELEASE/TASKS.md`](TASKS.md), [`EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md`](../EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md). |
+| **Key files** | `app/`, `miniapp/`, `tests/`, `scripts/`, `infra/`, [`RELEASE/TASKS.md`](TASKS.md). |
 | **Validation** | Use the commands in [`TESTING.md`](../TESTING.md) and the evidence record for each gate. |
 
 ## Verdict
@@ -41,7 +41,7 @@ The product boundary is explicit: chart and card calculations are deterministic 
 | P1-004 | Independent astrology comparison and licensing | Identical-settings comparison with an independent authority and legal confirmation of engine licensing. | **EXTERNAL** |
 | P2-002 | Manual accessibility and device review | Keyboard, screen reader, contrast, touch, safe-area and reduced-motion checks on intended devices. | **STAGING** |
 
-The authoritative task detail, acceptance criteria, evidence and blockers is [`RELEASE/TASKS.md`](TASKS.md). Historical snapshots and completed audit reports are kept under [`../EVIDENCE/`](../EVIDENCE/), explicitly separate from this current status.
+The authoritative task detail, acceptance criteria, evidence and blockers is [`RELEASE/TASKS.md`](TASKS.md).
 
 ## Update rule
 
@@ -52,4 +52,3 @@ Update this document in the same change that alters a release gate. Every status
 [1]: [RELEASE/TASKS.md](TASKS.md) — current backlog and acceptance criteria.
 [2]: [ARCHITECTURE.md](../ARCHITECTURE.md) — implementation map.
 [3]: [API.md](../API.md) — HTTP contracts.
-[4]: [EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md](../EVIDENCE/TRACEABILITY_MATRIX_2026-08-26.md) — dated evidence mapping.

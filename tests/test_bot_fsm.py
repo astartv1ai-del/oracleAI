@@ -33,10 +33,10 @@ def test_admin_panel_button_is_visible_only_to_admin_and_uses_https_url(monkeypa
                    for button in row)
 
 
-def test_admin_command_is_registered():
+def test_admin_command_is_hidden():
     from app.bot.main import COMMANDS
 
-    assert any(command.command == "admin" for command in COMMANDS)
+    assert not any(command.command == "admin" for command in COMMANDS)
 
 
 class _User:
@@ -221,13 +221,13 @@ async def test_onboarding_prompts_show_step_progress(db):
     await onb_name(name_message, state, db)
     assert "Шаг 2/5" in name_message.replied
     await onb_gender(_Callback(1010, "gender:f", name_message), state, db)
-    assert "Шаг 2/5" in name_message.replied
+    assert "Шаг 3/5" in name_message.replied
 
 
 def test_step_label_is_bilingual_and_empty_outside_flow():
     from app.bot.onboarding import _step_label
-    assert _step_label("city", "ru") == "Шаг 4/5\n"
-    assert _step_label("city", "en") == "Step 4/5\n"
+    assert _step_label("city", "ru") == "Шаг 5/5\n"
+    assert _step_label("city", "en") == "Step 5/5\n"
     assert _step_label("language", "ru") == ""
 
 

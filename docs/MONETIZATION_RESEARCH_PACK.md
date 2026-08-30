@@ -2,7 +2,7 @@
 
 **Дата исследования:** 13.08.2026.  
 **Автор:** Manus AI.  
-**Статус:** research pack и launch hypothesis; это не reviewed settlement model и не разрешение на публикацию цен без проверки платёжного канала, налоговой юрисдикции и фактической себестоимости.
+**Статус:** research pack и launch hypothesis; это не reviewed settlement model и не разрешение на публикацию цен без проверки платёжного канала, налоговой юрисдикции и фактической себестоимости. Superseded частично актуальными [MONETIZATION_V2_DESIGN.md](MONETIZATION_V2_DESIGN.md) (действующая модель монетизации v2) и [MONETIZATION_STRATEGY.md](MONETIZATION_STRATEGY.md).
 
 ## Executive conclusion
 

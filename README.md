@@ -43,6 +43,5 @@ Tests require a PostgreSQL server and `DATABASE_URL`; the SQLite dev/test fallba
 
 ## Documentation
 
-Start with the [documentation map](docs/README.md). It identifies one current source of truth for product, architecture, AI, UI, API, security, operations, testing, domain features and release status. Historical audits and dated QA evidence are isolated under [`docs/EVIDENCE/`](docs/EVIDENCE/); superseded plans are under [`docs/ARCHIVE/`](docs/ARCHIVE/).
-
+Start with the [documentation map](docs/README.md). It identifies one current source of truth for product, architecture, AI, UI, API, security, operations, testing, domain features and release status. 
 The repository is currently **BLOCKED** for public launch until the external gates in [`docs/RELEASE/CURRENT_STATUS.md`](docs/RELEASE/CURRENT_STATUS.md) are completed.
