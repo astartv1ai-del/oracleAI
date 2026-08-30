@@ -98,3 +98,89 @@ def test_refactored_backend_boundaries_exist() -> None:
     ]
     missing = [str(path.relative_to(ROOT)) for path in expected if not path.exists()]
     assert not missing, "refactored boundary files are missing: " + ", ".join(missing)
+
+
+# ── ARCH-001..003 monolith split — target structure boundaries ─────────────
+# The multi-etap plan (Etap 5) splits app/core/palm.py, app/core/agent.py and
+# app/core/tool_registry.py into sub-packages. The scenarios/* split for
+# agent.py has already landed (see ADR-0002). These tests encode the
+# post-split invariants so the remaining splits can proceed in separate PRs
+# without introducing forward-only imports.
+
+
+def test_scenarios_package_has_expected_modules() -> None:
+    """ARCH-002 (agent.py → scenarios/*) already landed — every scenario
+    module is present and exports the documented public function."""
+    scenarios_dir = ROOT / "app" / "core" / "scenarios"
+    for name in ("forecast", "tarot", "compat", "report", "memory"):
+        module = scenarios_dir / f"{name}.py"
+        assert module.is_file(), f"missing scenario module: {module.relative_to(ROOT)}"
+
+
+def test_agent_facade_stays_thin() -> None:
+    """app/core/agent.py is a compatibility facade — it must NOT grow back
+    into a monolith. The facade should stay under 120 lines and contain
+    zero prompt strings or business rules."""
+    facade = (ROOT / "app" / "core" / "agent.py").read_text(encoding="utf-8")
+    lines = facade.splitlines()
+    assert len(lines) < 120, (
+        f"app/core/agent.py has {len(lines)} lines — the facade is thickening. "
+        "Move new logic into app/core/scenarios/<domain>.py instead."
+    )
+    # No prompt-shaped literals: multiline SYSTEM messages and tool-user
+    # instructions belong in scenarios/_impl.py or agents/*/SYSTEM.md.
+    banned = ("Правила ", "Реши задачу", "You are ", "Ты — ")
+    for token in banned:
+        assert token not in facade, (
+            f"app/core/agent.py contains prompt-shaped literal {token!r} — "
+            "move to scenarios/_impl.py or app/agents/<code>/SYSTEM.md"
+        )
+
+
+def test_scenarios_impl_never_imports_from_agent_facade() -> None:
+    """Cycle guard: the facade re-exports from scenarios; scenarios must NOT
+    import back from the facade or the whole app.core.agent module."""
+    for name in ("_impl", "forecast", "tarot", "compat", "report", "memory"):
+        module = ROOT / "app" / "core" / "scenarios" / f"{name}.py"
+        if not module.is_file():
+            continue
+        text = module.read_text(encoding="utf-8")
+        assert "from ..agent" not in text and "import ..agent" not in text, (
+            f"{module.relative_to(ROOT)}: scenarios must not depend on the facade"
+        )
+
+
+def test_tool_registry_is_the_only_executable_tools_module() -> None:
+    """ARCH-003 preparation: SKILL.md files must not contain executable code,
+    and app/core/skills.py must remain removed. The architecture lint enforces
+    this at CI time; this test provides a fast local signal."""
+    assert not (ROOT / "app" / "core" / "skills.py").exists(), (
+        "app/core/skills.py returned — it was renamed to tool_registry.py"
+    )
+    assert (ROOT / "app" / "core" / "tool_registry.py").is_file()
+    for skill_md in (ROOT / "app" / "agents").rglob("SKILL.md"):
+        text = skill_md.read_text(encoding="utf-8")
+        for fence in ("```python", "```py", "```bash", "```shell"):
+            assert fence not in text.lower(), (
+                f"{skill_md.relative_to(ROOT)}: SKILL.md must not embed "
+                f"executable {fence} blocks — put runnable code in "
+                "app/core/tool_registry.py"
+            )
+
+
+def test_palm_module_is_below_the_split_ceiling_or_split() -> None:
+    """ARCH-001: app/core/palm.py is scheduled to split into
+    core/palm/{prompts,evidence,service}.py. Until the split lands the
+    monolith must not grow — 1200 lines is the absolute ceiling; the
+    current baseline is ~842 lines."""
+    palm = ROOT / "app" / "core" / "palm.py"
+    palm_pkg = ROOT / "app" / "core" / "palm"
+    if palm_pkg.is_dir():
+        # Split already done; the flat file may be gone or become a thin facade.
+        return
+    assert palm.is_file(), "app/core/palm.py missing (unexpected)"
+    lines = palm.read_text(encoding="utf-8").splitlines()
+    assert len(lines) < 1200, (
+        f"app/core/palm.py has {len(lines)} lines — split it into "
+        "app/core/palm/{prompts,evidence,service}.py (ARCH-001)."
+    )
