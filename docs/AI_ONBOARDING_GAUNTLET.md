@@ -15,7 +15,7 @@
 
 | Surface | Status | Owner | Acceptance criteria | Evidence | Last critic | Last verdict | Remaining risk |
 |---|---|---|---|---|---|---|---|
-| Agent identity and specialization | PASS локально | AI/backend | Каждый enabled agent имеет отдельную роль, правила и narrow tool set | [`app/core/agents/specs.py`](../app/core/agents/specs.py), [`tests/test_agent_context_integrity.py`](../tests/test_agent_context_integrity.py) | Fresh code review 2026-08-27 | PASS | Нужна live blind evaluation на выбранных production providers |
+| Agent identity and specialization | PASS локально | AI/backend | Каждый enabled agent имеет отдельную роль, правила и narrow tool set | [`app/core/agents/registry.py`](../app/core/agents/registry.py), [`tests/test_agent_context_integrity.py`](../tests/test_agent_context_integrity.py) | Fresh code review 2026-08-27 | PASS | Нужна live blind evaluation на выбранных production providers |
 | Deterministic routing | PASS локально | AI/backend | Ясные доменные сигналы маршрутизируются предсказуемо; смешанные hard domains не drift-ят молча | [`app/core/agents/routing.py`](../app/core/agents/routing.py), [`tests/test_agent_routing.py`](../tests/test_agent_routing.py) | Fresh code review 2026-08-27 | PASS | Нужна staging-выборка реальных пользовательских формулировок |
 | Prompt hierarchy and context integrity | PASS локально | AI/privacy | System rules выше profile, memory, diary, history, tool/model text; untrusted data явно размечено | [`app/core/agents/base.py`](../app/core/agents/base.py), [`tests/test_agent_context_integrity.py`](../tests/test_agent_context_integrity.py) | Fresh code review 2026-08-27 | PASS | Provider/model changes требуют повторной prompt-injection evaluation |
 | Tool schemas and progressive disclosure | PASS локально | AI/backend | В prompt попадает ограниченный index; specialist получает только allow-listed tools | [`app/core/agents/file_loader.py`](../app/core/agents/file_loader.py), [`app/core/skills.py`](../app/core/skills.py) | Fresh code review 2026-08-27 | PASS | Полная route-by-route schema matrix требует отдельного внешнего QA |
@@ -55,7 +55,7 @@ The targeted critic checked the changed code and regression tests without relyin
 
 ## References
 
-[1]: ../app/core/agents/specs.py "OracleAI agent specifications"
+[1]: ../app/core/agents/registry.py "OracleAI agent specifications"
 [2]: ../app/core/agents/runtime.py "OracleAI agent runtime"
 [3]: ../app/bot/onboarding.py "OracleAI Telegram onboarding"
 [4]: ../app/api/deps.py "OracleAI API authentication and admin dependencies"

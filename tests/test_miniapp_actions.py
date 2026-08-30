@@ -125,11 +125,11 @@ def test_chiromant_is_present_on_all_agent_surfaces() -> None:
     art = (JS_DIR / "02-art.js").read_text(encoding="utf-8")
     home = (JS_DIR / "06-home.js").read_text(encoding="utf-8")
     chat = (JS_DIR / "07-chat.js").read_text(encoding="utf-8")
-    specs = (ROOT / "app" / "core" / "agents" / "specs.py").read_text(encoding="utf-8")
-    for source in (data, app, art, home, chat, specs):
-        assert "chiromant" in source
+    mira = (ROOT / "app" / "agents" / "mira" / "agent.yaml").read_text(encoding="utf-8")
+    for source in (data, app, art, home, chat, mira):
+        assert "chiromant" in source or "mira" in source
     assert "chiromant.jpg" in app
-    assert "palm_scanner" in specs
+    assert "palm_scanner" in mira
     assert "agents.slice(0, 4)" in chat
 
 

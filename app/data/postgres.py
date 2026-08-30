@@ -1,6 +1,7 @@
 """Async SQLAlchemy/asyncpg backend behind the existing repository DB protocol."""
 from __future__ import annotations
 
+import logging
 import os
 import re
 from contextlib import asynccontextmanager
@@ -10,6 +11,16 @@ from typing import Any, Iterable
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
+log = logging.getLogger("oracle.db.shim")
+
+
+class LegacyShimUsageError(RuntimeError):
+    """Raised when SHIM_ENFORCED=1 and a call site still needs SQLite→PG translation.
+
+    See ADR-0003 (docs/ADR/ADR-0003-shim-removal.md) for policy: the flag defaults to
+    off in production (silent translate + WARNING log), on in CI + staging (fail fast).
+    """
 
 _ID_TABLES = {
     "admin_audit", "broadcasts", "content_items", "crystal_ledger",
@@ -72,6 +83,47 @@ def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
         return default
 
 
+def _shim_enforced() -> bool:
+    """SHIM_ENFORCED gate (ADR-0003).
+
+    ``SHIM_ENFORCED=1`` (CI + staging): translation is forbidden — legacy SQL raises
+    ``LegacyShimUsageError`` on the first call. ``0`` (production default): the shim
+    still translates but the call site is logged at WARNING for offline auditing.
+    """
+    return os.getenv("SHIM_ENFORCED", "0") == "1"
+
+
+def _needs_translation(sql: str) -> bool:
+    """Structural heuristic — see ADR-0003."""
+    stripped = sql.lstrip()
+    if stripped.upper().startswith("INSERT OR IGNORE"):
+        return True
+    # ? outside of any string literal counts as a legacy positional placeholder.
+    in_single = False
+    in_double = False
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        if in_single:
+            if ch == "'":
+                in_single = False
+            i += 1
+            continue
+        if in_double:
+            if ch == '"':
+                in_double = False
+            i += 1
+            continue
+        if ch == "'":
+            in_single = True
+        elif ch == '"':
+            in_double = True
+        elif ch == "?":
+            return True
+        i += 1
+    return False
+
+
 def _translate_sql(sql: str) -> tuple[str, list[str]]:
     """Convert the small SQLite SQL dialect used by repositories to PostgreSQL.
 
@@ -82,8 +134,21 @@ def _translate_sql(sql: str) -> tuple[str, list[str]]:
       - No 'INSERT OR IGNORE' prefix → the first branch is skipped.
     _bind_params then returns the caller-supplied dict directly (isinstance
     check), so execute() works correctly for both ported and legacy files.
+
+    When ``SHIM_ENFORCED=1`` and the SQL still requires translation, this
+    raises ``LegacyShimUsageError`` to fail the test/CI/staging boot fast.
+    See ``docs/ADR/ADR-0003-shim-removal.md``.
     """
     sql = sql.strip().rstrip(";")
+    if _needs_translation(sql):
+        if _shim_enforced():
+            raise LegacyShimUsageError(
+                "SHIM_ENFORCED=1 rejected legacy SQL — port this call site to native "
+                "PostgreSQL dialect per ADR-0001 (named :params + ON CONFLICT (<col>) "
+                f"DO NOTHING + explicit RETURNING id):\n{sql}"
+            )
+        log.warning("legacy SQL still using shim (see ADR-0003): %s", sql[:400])
+
     if sql.upper().startswith("INSERT OR IGNORE"):
         sql = re.sub(r"^INSERT\s+OR\s+IGNORE", "INSERT", sql, count=1, flags=re.I)
         sql += " ON CONFLICT DO NOTHING"

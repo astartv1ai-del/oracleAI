@@ -7,7 +7,7 @@ from app.core.agents.file_loader import (
     select_skills,
     skill_context,
 )
-from app.core.agents.specs import codes, get
+from app.core.agents.registry import codes, get
 
 
 def test_file_profiles_and_skills_are_discovered():

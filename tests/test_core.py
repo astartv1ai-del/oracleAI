@@ -7,7 +7,7 @@ import pytest
 
 from app.core import astro, tarot
 from app.core.matrix import compute_matrix
-from app.core.skills import _compat
+from app.core.tool_registry import _compat
 from app.core.stable import stable_seed
 
 
@@ -242,7 +242,7 @@ def test_synastry_skips_same_point():
 
 
 def test_synastry_bonus_sums_aspect_bonus():
-    from app.core.skills import synastry_bonus
+    from app.core.tool_registry import synastry_bonus
     assert synastry_bonus([{"code": "trine"}, {"code": "opposition"}]) == 3
     assert synastry_bonus([]) == 0
 

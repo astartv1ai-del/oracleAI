@@ -120,7 +120,7 @@ def test_typed_domain_failures_are_not_silent():
 
 @pytest.mark.asyncio
 async def test_skill_tarot_tool_rejects_invalid_sizes_instead_of_clamping():
-    from app.core import skills
+    from app.core import tool_registry as skills
 
     for raw in (0, 13, -1, 3.5, True, "3.5"):
         result = await skills._run_draw_tarot(None, {}, {"n": raw})
@@ -129,7 +129,7 @@ async def test_skill_tarot_tool_rejects_invalid_sizes_instead_of_clamping():
 
 @pytest.mark.asyncio
 async def test_skill_chart_tool_uses_calculated_precision_not_profile_flag():
-    from app.core import skills
+    from app.core import tool_registry as skills
 
     chart = astro.compute_chart(
         "1990-06-21", "14:30", "Kazan", 55.79, 49.12, None, time_known=True,
@@ -144,7 +144,7 @@ async def test_skill_chart_tool_uses_calculated_precision_not_profile_flag():
 
 @pytest.mark.asyncio
 async def test_skill_vimshottari_requires_confirmed_time_and_timezone():
-    from app.core import skills
+    from app.core import tool_registry as skills
 
     missing_confirmation = await skills._run_get_vimshottari_dasha(
         None,

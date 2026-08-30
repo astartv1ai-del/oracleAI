@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.core import memory, palm_lines, skills
 from app.core.agents.base import build_system_prompt
-from app.core.agents.specs import get
+from app.core.agents.registry import get
 from app.core.agents import runtime
 from PIL import Image, ImageDraw
 import io

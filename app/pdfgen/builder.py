@@ -1,7 +1,7 @@
 """Сбор персонального разбора: расчёты → тексты → HTML.
 
 Разбор строится на тех же расчётах, что и продукт: `core/astro` для карты,
-`core/matrix` для арканов, `core/skills.guide` для правил трактовки. Модель
+`core/matrix` для арканов, `core/tool_registry.guide` для правил трактовки. Модель
 пишет только текст разделов и получает на вход готовые цифры — поэтому PDF не
 может «выдумать» планету, которой нет в карте.
 
@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from ..config import settings
-from ..core import astro, chart_rendering, geo, llm, skills
+from ..core import astro, chart_rendering, geo, llm, tool_registry as skills
 from ..core.matrix import compute_matrix
 from ..repo import content
 from . import layout

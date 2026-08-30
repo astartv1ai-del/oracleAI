@@ -115,8 +115,8 @@ flowchart LR
 
 ## References
 
-[1]: [app/data/schema.py](../app/data/schema.py) и [app/api/routers/profile.py](../app/api/routers/profile.py) — `age_confirmed` и профильный контракт.
+[1]: [alembic/schema/baseline.sql](../alembic/schema/baseline.sql) и [app/api/routers/profile.py](../app/api/routers/profile.py) — `age_confirmed` и профильный контракт.
 [2]: [app/api/routers/profile.py](../app/api/routers/profile.py) — `POST /api/experiment-exposure`.
 [3]: [app/api/routers/profile.py](../app/api/routers/profile.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — серверные privacy guards.
 [4]: [app/api/routers/profile.py](../app/api/routers/profile.py) — RU/EN и валидация поля `lang`.
-[5]: [app/data/schema.py](../app/data/schema.py) — таблицы `events` и `llm_usage`.
+[5]: [alembic/schema/baseline.sql](../alembic/schema/baseline.sql) — таблицы `events` и `llm_usage`.

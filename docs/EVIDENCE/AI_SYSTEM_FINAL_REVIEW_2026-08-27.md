@@ -18,7 +18,7 @@
 
 ### Agents
 
-Проверены четыре enabled agents: Lilith/Oracle (`oracle`), Urania/Astrology (`astro`), Madame Lenormand/Tarot (`tarot`) и Mira/Palm (`chiromant`). Их identity, domain, skills, greetings, suggestions, language rules and risk contracts остаются отдельными; specialist agents не превращены в один general chatbot. Source of truth: [`app/core/agents/specs.py`](../../app/core/agents/specs.py) и [`app/core/agents/file_loader.py`](../../app/core/agents/file_loader.py).
+Проверены четыре enabled agents: Lilith/Oracle (`oracle`), Urania/Astrology (`astro`), Madame Lenormand/Tarot (`tarot`) и Mira/Palm (`chiromant`). Их identity, domain, skills, greetings, suggestions, language rules and risk contracts остаются отдельными; specialist agents не превращены в один general chatbot. Source of truth: [`app/core/agents/registry.py`](../../app/core/agents/registry.py) и [`app/core/agents/file_loader.py`](../../app/core/agents/file_loader.py).
 
 ### Skills and tools
 

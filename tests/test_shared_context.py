@@ -6,7 +6,7 @@ import pytest
 
 from app.core import shared_context
 from app.core.agents import runtime
-from app.core.agents.specs import codes, get
+from app.core.agents.registry import codes, get
 from app.repo import users
 
 

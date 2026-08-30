@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.core import palm  # noqa: E402
 from app.core.agents.base import build_system_prompt  # noqa: E402
-from app.core.agents.specs import get  # noqa: E402
+from app.core.agents.registry import get  # noqa: E402
 
 
 USER = {

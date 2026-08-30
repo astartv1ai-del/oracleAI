@@ -173,10 +173,25 @@ def _build_report(stats_list: list[FileStats]) -> str:
     lines.append(sep)
 
     totals = FileStats(path="**TOTAL**")
+
+    def _status_marker(stat: FileStats) -> str:
+        """Return a marker column entry: DONE when nothing legacy left, ELSE empty."""
+        legacy = (stat.q_placeholders + stat.insert_or_ignore + stat.autoincrement
+                  + stat.collate_nocase + stat.lastrowid_uses)
+        if stat.sql_calls == 0:
+            return ""  # module has no SQL at all
+        return "✅ DB-001" if legacy == 0 else ""
+
     for s in stats_list:
         rel = s.path
+        marker = _status_marker(s)
+        label = f"`{rel:<{col_w-2}}`"
+        if marker:
+            # keep column width readable while injecting the marker in-line
+            trimmed_path = f"`{rel.rstrip()}` **{marker}**"
+            label = trimmed_path.ljust(col_w + 2)
         lines.append(
-            f"| `{rel:<{col_w-2}}` | {s.sql_calls:>9} | {s.q_placeholders:>9} | "
+            f"| {label} | {s.sql_calls:>9} | {s.q_placeholders:>9} | "
             f"{s.insert_or_ignore:>16} | {s.autoincrement:>13} | {s.collate_nocase:>14} | "
             f"{s.lastrowid_uses:>9} | {s.rowcount_uses:>8} | {s.cte_count:>3} | "
             f"{s.window_func_count:>4} | {s.executemany_count:>11} | {s.dangerous_literals:>13} |"

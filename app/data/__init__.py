@@ -1,10 +1,13 @@
-"""Слой данных: DDL, подключение.
+"""Слой данных: подключение и seed.
 
 Разделение ответственности:
-- `schema.py`     — полный DDL (единственный источник правды по структуре);
-- `pg_schema.py`  — пострельский рендер схемы;
-- `postgres.py`   — PostgreSQL-адаптер репозиторного DB-протокола;
-- `session.py`    — подключение, применение схемы и транзакции.
+- `postgres.py` — PostgreSQL-адаптер репозиторного DB-протокола;
+- `session.py`  — подключение к БД, проверка миграционной ревизии, транзакции;
+- `seed.py`     — идемпотентные product seeds.
+
+DDL живёт исключительно в Alembic (`alembic/schema/baseline.sql` + версии в
+`alembic/versions/`). Историческая пара `schema.py` (SQLite-flavour) +
+`pg_schema.py` (SQLite→PostgreSQL transform) удалена.
 
 Репозитории (`app/repo/`) — единственные, кто пишет SQL поверх этого слоя.
 """

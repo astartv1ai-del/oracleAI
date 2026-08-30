@@ -13,14 +13,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core import skills
+from app.core import tool_registry as skills
 from app.core.agents.file_loader import (
     load_profiles,
     profile_for_legacy,
     resolve_skill_dependencies,
     select_skills,
 )
-from app.core.agents.specs import get
+from app.core.agents.registry import get
 from scripts.benchmark_skill_routing import CASES as ROUTING_CASES
 from scripts.benchmark_vedic_routing import CASES as VEDIC_ROUTING_CASES
 from scripts.benchmark_mira_lenormand import CASES as MIRA_LENORMAND_ROUTING_CASES

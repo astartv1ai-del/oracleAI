@@ -1,10 +1,10 @@
 # OracleAI — реестр агентов, инструментов и системных промптов
 
-Дата обновления: **2026-08-27**. Реестр описывает фактически подключённые file-backed профили, общий prompt builder и function-calling каталог. Источниками истины остаются `app/agents/*/SYSTEM.md`, `app/agents/*/agent.yaml`, `app/core/agents/base.py`, `app/core/agents/runtime.py`, `app/core/skills.py` и `app/core/palm.py`; этот документ фиксирует их контракт и не подменяет исходники.
+Дата обновления: **2026-08-27**. Реестр описывает фактически подключённые file-backed профили, общий prompt builder и function-calling каталог. Источниками истины остаются `app/agents/*/SYSTEM.md`, `app/agents/*/agent.yaml`, `app/core/agents/base.py`, `app/core/agents/runtime.py`, `app/core/tool_registry.py` и `app/core/palm.py`; этот документ фиксирует их контракт и не подменяет исходники.
 
 ## 1. Runtime-контракт и версия prompt layer
 
-`agents.system_for()` собирает системный prompt в фиксированном порядке: идентичность и голос → пользователь и compact natal JSON → Матрица → consented memory/profile summary → `[SHARED_CONTEXT]` → общие правила диалога и function calling → context-integrity/synthesis → domain rules → safety tail. File-backed `SYSTEM.md` загружается через `file_loader.py` и overlays legacy `AgentSpec`, поэтому редактирование только `specs.py` недостаточно.
+`agents.system_for()` собирает системный prompt в фиксированном порядке: идентичность и голос → пользователь и compact natal JSON → Матрица → consented memory/profile summary → `[SHARED_CONTEXT]` → общие правила диалога и function calling → context-integrity/synthesis → domain rules → safety tail. Идентичность агента живёт целиком в `app/agents/<code>/{agent.yaml,SYSTEM.md,skills/}`; `registry.py` собирает из них immutable `AgentSpec` при импорте.
 
 Версия контракта: **prompt-contract-v2 / shared-context-v1 / natal-json-v1**.
 
@@ -48,7 +48,7 @@
 
 ## 3. Function-calling registry
 
-Полный каталог schema находится в `app/core/skills.py`; `tools_for()` narrows набор по allow-list, `execute()` изолирует ошибки и возвращает безопасный fallback. Дублирование устранено следующими границами:
+Полный каталог schema находится в `app/core/tool_registry.py`; `tools_for()` narrows набор по allow-list, `execute()` изолирует ошибки и возвращает безопасный fallback. Дублирование устранено следующими границами:
 
 | Похожая группа | Каноническое различие |
 |---|---|
@@ -74,7 +74,7 @@
 
 [1]: ../app/core/agents/base.py "Shared prompt builder and safety protocols"
 [2]: ../app/core/agents/runtime.py "Agent runtime and bounded context"
-[3]: ../app/core/skills.py "Tool schemas and executors"
+[3]: ../app/core/tool_registry.py "Tool schemas and executors"
 [4]: ../app/core/shared_context.py "Shared Context Layer"
 [5]: ../app/core/palm.py "Mira multimodal pipeline"
 [6]: ../app/agents/mira/SYSTEM.md "Mira file-backed system prompt"

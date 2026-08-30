@@ -65,11 +65,11 @@ def imports_all():
     """Импортируем всё: так ловятся опечатки в именах и циклические импорты."""
     import importlib
     modules = [
-        "app.config", "app.data.session", "app.data.schema", "app.data.seed",
-        "app.data.pg_schema", "app.repo", "app.services", "app.core.agent",
-        "app.core.agents", "app.core.llm", "app.core.skills", "app.core.astro",
+        "app.config", "app.data.session", "app.data.seed",
+        "app.repo", "app.services", "app.core.agent",
+        "app.core.agents", "app.core.llm", "app.core.tool_registry", "app.core.astro",
         "app.core.tarot", "app.core.matrix", "app.core.memory", "app.core.safety",
-        "app.core.practices", "app.core.cards", "app.core.geo", "app.db",
+        "app.core.practices", "app.core.cards", "app.core.geo",
         "app.pdfgen", "app.services.practices", "app.services.horoscopes",
         "app.api.main", "app.api.deps", "app.api.security",
         "app.bot.main", "app.bot.chat", "app.bot.features", "app.bot.growth",
@@ -211,7 +211,7 @@ def core_smoke():
 
     from app.core import astro, tarot
     from app.core.matrix import compute_matrix
-    from app.core.skills import _compat
+    from app.core.tool_registry import _compat
 
     assert len(tarot.DECK) == 78, "в колоде должно быть 78 карт"
     cards = tarot.draw(3)

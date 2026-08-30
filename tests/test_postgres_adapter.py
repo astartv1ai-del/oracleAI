@@ -4,8 +4,13 @@ import os
 
 import pytest
 
-from app.data.pg_schema import POSTGRES_TABLES
+from pathlib import Path
+
 from app.data.postgres import PostgresDatabase, _split_script, _translate_sql
+
+BASELINE_SQL = (
+    Path(__file__).resolve().parents[1] / "alembic" / "schema" / "baseline.sql"
+).read_text(encoding="utf-8")
 
 
 def test_postgres_sql_translation_handles_ignore_and_placeholders():
@@ -18,8 +23,16 @@ def test_postgres_sql_translation_handles_ignore_and_placeholders():
 
 
 def test_postgres_schema_uses_native_numeric_type():
-    assert " REAL" not in POSTGRES_TABLES
-    assert "DOUBLE PRECISION" in POSTGRES_TABLES
+    assert " REAL " not in BASELINE_SQL
+    assert "DOUBLE PRECISION" in BASELINE_SQL
+
+
+def test_postgres_baseline_has_no_sqlite_types():
+    # The SQLite derivation pipeline (schema.py + pg_schema.py) is removed.
+    # The canonical Alembic baseline must speak native PostgreSQL DDL.
+    forbidden = ("AUTOINCREMENT", "INTEGER PRIMARY KEY AUTOINCREMENT", " BLOB")
+    for token in forbidden:
+        assert token not in BASELINE_SQL, f"legacy SQLite token leaked: {token!r}"
 
 
 def test_postgres_script_split_ignores_comment_and_literal_semicolons():

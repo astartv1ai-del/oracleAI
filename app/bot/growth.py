@@ -1,7 +1,7 @@
 """Разделы, добавленные из исходной идеи: практики и мантры, карьера, гороскоп.
 
 Логика целиком в сервисах (`services.practices`, `services.horoscopes`,
-`core.skills`) — здесь только Telegram: как показать, что нажать и что ответить.
+`core.tool_registry`) — здесь только Telegram: как показать, что нажать и что ответить.
 Те же данные отдаются в Mini App, поэтому бот и приложение не расходятся.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
-from ..core import skills
+from ..core import tool_registry as skills
 from ..repo import admin as admin_repo
 from ..repo import users
 from ..services import analytics, horoscopes

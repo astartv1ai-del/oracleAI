@@ -6,7 +6,7 @@ CompatibilityDenied. HTTP-статусы и тексты ошибок остаю
 from __future__ import annotations
 
 from ..core import agent as agent_core
-from ..core import memory, shared_context, skills
+from ..core import memory, shared_context, tool_registry as skills
 from ..repo import dialog, readings
 from . import analytics, limits
 

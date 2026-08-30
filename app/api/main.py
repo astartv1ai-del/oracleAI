@@ -100,6 +100,18 @@ def _validate_production_config() -> None:
         missing.append("REDIS_URL при CELERY_ENABLED=1")
     if not settings.release_id or settings.release_id == "local":
         missing.append("RELEASE_ID")
+    # FE-002: hashed Mini App bundle is the only production path. A missing or
+    # invalid manifest must not silently fall back to un-bundled source assets.
+    manifest_path = MINIAPP_DIR / "dist" / "manifest.json"
+    if not manifest_path.is_file():
+        missing.append("miniapp/dist/manifest.json (собрать node scripts/build_frontend.mjs)")
+    else:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not manifest.get("css") or not manifest.get("js"):
+                missing.append("miniapp/dist/manifest.json (нет css/js записей)")
+        except (OSError, ValueError):
+            missing.append("miniapp/dist/manifest.json (нечитаемый JSON)")
     if missing:
         raise RuntimeError("production-конфигурация не готова: " + ", ".join(missing))
 
@@ -273,20 +285,40 @@ def _file(directory: Path, name: str) -> FileResponse:
 
 
 def _miniapp_index_body() -> str:
+    """Serve the hashed production bundle by default; source modules only via opt-in.
+
+    FE-001/002 (per the multi-etap plan): bundle is the production path. Local
+    development can opt out of it with ``SOURCE_ASSETS=1`` to keep the 19 source
+    ``<script>`` tags visible for source-level debugging.
+
+    Fail-fast: in production (``APP_ENV=production``) the manifest MUST exist and
+    parse — silent fallback to un-bundled source assets would slip through cache
+    busting and unnecessarily inflate first-paint traffic. ``_validate_production_config``
+    also gates this at boot; this call site is the runtime backstop.
+    """
     body = (MINIAPP_DIR / "index.html").read_text(encoding="utf-8")
-    # Development keeps source modules visible by default. CI/browser QA may opt
-    # into the production bundle with BUNDLE_ASSETS=1 without weakening auth.
-    if settings.dev_mode and os.getenv("BUNDLE_ASSETS") != "1":
+    if settings.dev_mode and os.getenv("SOURCE_ASSETS") == "1":
         return body
     manifest_path = MINIAPP_DIR / "dist" / "manifest.json"
     if not manifest_path.is_file():
+        if settings.app_env == "production":
+            raise RuntimeError(
+                "miniapp/dist/manifest.json is missing in production. Run "
+                "'node scripts/build_frontend.mjs' before releasing. Fallback to "
+                "source assets is not allowed (FE-002)."
+            )
         return body
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         css = manifest["css"]
         js = manifest["js"]
-    except (OSError, KeyError, TypeError, json.JSONDecodeError):
+    except (OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
         log.exception("invalid Mini App asset manifest")
+        if settings.app_env == "production":
+            raise RuntimeError(
+                "miniapp/dist/manifest.json is invalid in production; rebuild the "
+                "frontend bundle before releasing."
+            ) from exc
         return body
     body = re.sub(r'/static/styles\.css\?v=\d+', f'/static/dist/{css}', body)
     body = re.sub(r'\n<script src="/static/js/[^"?]+\?v=\d+"></script>', '', body)

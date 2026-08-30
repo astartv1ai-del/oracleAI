@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from app.core import skills, vedic
+from app.core import tool_registry as skills, vedic
 
 
 BIRTH = ("1990-01-15", "12:30", "Moscow", 55.75, 37.62, "Europe/Moscow")
