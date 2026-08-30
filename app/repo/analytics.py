@@ -56,9 +56,16 @@ async def track(db, name: str, tg_id: int | None = None, *,
     async with transaction(db):
         await db.execute(
             "INSERT INTO events(tg_id, name, props_json, surface, day, created_at) "
-            "VALUES(?,?,?,?,?,?)",
-            (tg_id, name, json.dumps(props, ensure_ascii=False) if props else None,
-             surface, now.strftime("%Y-%m-%d"), now.isoformat()))
+            "VALUES(:tg_id, :name, :props_json, :surface, :day, :created_at)",
+            {
+                "tg_id": tg_id,
+                "name": name,
+                "props_json": json.dumps(props, ensure_ascii=False) if props else None,
+                "surface": surface,
+                "day": now.strftime("%Y-%m-%d"),
+                "created_at": now.isoformat(),
+            },
+        )
 
 
 async def track_once(db, name: str, tg_id: int, *,
@@ -72,16 +79,22 @@ async def track_once(db, name: str, tg_id: int, *,
     now = datetime.now(timezone.utc)
     async with transaction(db):
         cur = await db.execute(
-            "SELECT 1 FROM events WHERE tg_id=? AND name=? LIMIT 1",
-            (tg_id, name),
+            "SELECT 1 FROM events WHERE tg_id=:tg_id AND name=:name LIMIT 1",
+            {"tg_id": tg_id, "name": name},
         )
         if await cur.fetchone():
             return False
         await db.execute(
             "INSERT INTO events(tg_id, name, props_json, surface, day, created_at) "
-            "VALUES(?,?,?,?,?,?)",
-            (tg_id, name, json.dumps(props, ensure_ascii=False) if props else None,
-             surface, now.strftime("%Y-%m-%d"), now.isoformat()),
+            "VALUES(:tg_id, :name, :props_json, :surface, :day, :created_at)",
+            {
+                "tg_id": tg_id,
+                "name": name,
+                "props_json": json.dumps(props, ensure_ascii=False) if props else None,
+                "surface": surface,
+                "day": now.strftime("%Y-%m-%d"),
+                "created_at": now.isoformat(),
+            },
         )
     return True
 
@@ -129,6 +142,7 @@ async def record_product_cost_event(
     safe_reference = _safe_cost_token(reference_id, limit=96)
     safe_reason = _safe_cost_token(reason, limit=48)
     safe_price_variant = _safe_cost_token(price_variant, limit=48)
+
     def numeric(value) -> int:
         return max(0, int(value or 0))
 
@@ -140,18 +154,35 @@ async def record_product_cost_event(
             "tg_id,event_kind,sku,catalog_version,channel,purpose,provider,model,"
             "result_category,status,units,input_tokens,output_tokens,retry_count,"
             "latency_ms,duration_ms,artifact_bytes,cost_usd,reference_id,order_id,"
-            "reason,price_variant,day,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (tg_id, event_kind, safe_sku, safe_catalog, channel, safe_purpose,
-             safe_provider, safe_model, safe_result, status, numeric(units),
-             numeric(input_tokens), numeric(output_tokens), numeric(retry_count),
-             numeric(latency_ms), numeric(duration_ms), numeric(artifact_bytes),
-             safe_cost, safe_reference, order_id, safe_reason, safe_price_variant,
-             now.strftime("%Y-%m-%d"), now.isoformat()),
+            "reason,price_variant,day,created_at) "
+            "VALUES(:tg_id,:event_kind,:sku,:catalog_version,:channel,:purpose,"
+            ":provider,:model,:result_category,:status,:units,:input_tokens,"
+            ":output_tokens,:retry_count,:latency_ms,:duration_ms,:artifact_bytes,"
+            ":cost_usd,:reference_id,:order_id,:reason,:price_variant,:day,"
+            ":created_at)",
+            {
+                "tg_id": tg_id, "event_kind": event_kind, "sku": safe_sku,
+                "catalog_version": safe_catalog, "channel": channel,
+                "purpose": safe_purpose, "provider": safe_provider,
+                "model": safe_model, "result_category": safe_result,
+                "status": status, "units": numeric(units),
+                "input_tokens": numeric(input_tokens),
+                "output_tokens": numeric(output_tokens),
+                "retry_count": numeric(retry_count),
+                "latency_ms": numeric(latency_ms),
+                "duration_ms": numeric(duration_ms),
+                "artifact_bytes": numeric(artifact_bytes),
+                "cost_usd": safe_cost, "reference_id": safe_reference,
+                "order_id": order_id, "reason": safe_reason,
+                "price_variant": safe_price_variant,
+                "day": now.strftime("%Y-%m-%d"),
+                "created_at": now.isoformat(),
+            },
         )
 
 
-async def _scalar(db, sql: str, *args):
-    cur = await db.execute(sql, args)
+async def _scalar(db, sql: str, params: dict | None = None):
+    cur = await db.execute(sql, params or {})
     row = await cur.fetchone()
     return (row[0] if row else 0) or 0
 
@@ -191,9 +222,13 @@ async def prune_analytics(db, days: int = 120, *, batch_size: int = 5_000) -> in
         while True:
             async with transaction(db):
                 cur = await db.execute(
+                    # INVARIANT: table and key are drawn from the fixed dicts
+                    # above (no user input); named :params carry the values.
                     f"DELETE FROM {table} WHERE {key} IN ("
-                    f"SELECT {key} FROM {table} WHERE created_at < ? "
-                    f"ORDER BY {key} LIMIT ?)", (before, batch_size))
+                    f"SELECT {key} FROM {table} WHERE created_at < :before "
+                    f"ORDER BY {key} LIMIT :batch_size)",
+                    {"before": before, "batch_size": batch_size},
+                )
                 removed = cur.rowcount or 0
             total += removed
             if removed < batch_size:
@@ -214,38 +249,48 @@ async def overview(db) -> dict:
     return {
         "users_total": await _scalar(db, "SELECT COUNT(*) FROM users"),
         "users_today": await _scalar(
-            db, "SELECT COUNT(*) FROM users WHERE created_at>=?", _ago(1)),
+            db, "SELECT COUNT(*) FROM users WHERE created_at>=:since",
+            {"since": _ago(1)}),
         "users_7d": await _scalar(
-            db, "SELECT COUNT(*) FROM users WHERE created_at>=?", _ago(7)),
+            db, "SELECT COUNT(*) FROM users WHERE created_at>=:since",
+            {"since": _ago(7)}),
         "users_30d": await _scalar(
-            db, "SELECT COUNT(*) FROM users WHERE created_at>=?", _ago(30)),
+            db, "SELECT COUNT(*) FROM users WHERE created_at>=:since",
+            {"since": _ago(30)}),
         "onboarded": await _scalar(db, "SELECT COUNT(*) FROM users WHERE onboarded=1"),
         "subs_active": await _scalar(
-            db, "SELECT COUNT(*) FROM users WHERE sub_until>?", utcnow()),
+            db, "SELECT COUNT(*) FROM users WHERE sub_until>:now",
+            {"now": utcnow()}),
         "dau": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=?", _ago_day(1)),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=:since",
+            {"since": _ago_day(1)}),
         "wau": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=?", _ago_day(7)),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=:since",
+            {"since": _ago_day(7)}),
         "mau": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=?", _ago_day(30)),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day>=:since",
+            {"since": _ago_day(30)}),
         "questions_today": await _scalar(
-            db, "SELECT COUNT(*) FROM messages WHERE is_question=1 AND created_at>=?",
-            _ago(1)),
+            db, "SELECT COUNT(*) FROM messages WHERE is_question=1 "
+            "AND created_at>=:since", {"since": _ago(1)}),
         "questions_7d": await _scalar(
-            db, "SELECT COUNT(*) FROM messages WHERE is_question=1 AND created_at>=?",
-            _ago(7)),
+            db, "SELECT COUNT(*) FROM messages WHERE is_question=1 "
+            "AND created_at>=:since", {"since": _ago(7)}),
         "readings_total": await _scalar(db, "SELECT COUNT(*) FROM tarot_readings"),
         "readings_7d": await _scalar(
-            db, "SELECT COUNT(*) FROM tarot_readings WHERE created_at>=?", _ago(7)),
+            db, "SELECT COUNT(*) FROM tarot_readings WHERE created_at>=:since",
+            {"since": _ago(7)}),
         "diary_7d": await _scalar(
-            db, "SELECT COUNT(*) FROM diary WHERE created_at>=?", _ago(7)),
+            db, "SELECT COUNT(*) FROM diary WHERE created_at>=:since",
+            {"since": _ago(7)}),
         "stars_total": await _scalar(
             db, "SELECT SUM(amount_stars) FROM payments WHERE status='succeeded'"),
         "stars_30d": await _scalar(
             db, "SELECT SUM(amount_stars) FROM payments WHERE status='succeeded' "
-                "AND created_at>=?", _ago(30)),
+                "AND created_at>=:since", {"since": _ago(30)}),
         "payers": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM payments WHERE status='succeeded'"),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM payments "
+            "WHERE status='succeeded'"),
         "crystals_outstanding": await _scalar(
             db, "SELECT SUM(crystals) FROM users"),
     }
@@ -256,9 +301,12 @@ async def activation_funnel(db, days: int = 30) -> dict:
     since = _ago(days)
     cohort_sql = (
         "SELECT DISTINCT tg_id FROM events "
-        "WHERE name=? AND tg_id IS NOT NULL AND created_at>=?"
+        "WHERE name=:cohort_name AND tg_id IS NOT NULL AND created_at>=:since"
     )
-    cohort = await _scalar(db, f"SELECT COUNT(*) FROM ({cohort_sql})", E_MINIAPP_OPEN, since)
+    cohort = await _scalar(
+        db, f"SELECT COUNT(*) FROM ({cohort_sql}) AS cohort",
+        {"cohort_name": E_MINIAPP_OPEN, "since": since},
+    )
     names = [
         ("age_gate", E_AGE_CONFIRMED),
         ("first_ritual", E_FIRST_RITUAL),
@@ -270,9 +318,9 @@ async def activation_funnel(db, days: int = 30) -> dict:
     for label, event_name in names:
         value = await _scalar(
             db,
-            "SELECT COUNT(DISTINCT tg_id) FROM events WHERE name=? "
+            "SELECT COUNT(DISTINCT tg_id) FROM events WHERE name=:event_name "
             "AND tg_id IN (" + cohort_sql + ")",
-            event_name, E_MINIAPP_OPEN, since,
+            {"event_name": event_name, "cohort_name": E_MINIAPP_OPEN, "since": since},
         )
         steps.append({
             "step": label,
@@ -290,20 +338,26 @@ async def funnel(db, days: int = 30) -> list[dict]:
     прошлого года завышали бы конверсию свежего трафика.
     """
     since = _ago(days)
-    total = await _scalar(db, "SELECT COUNT(*) FROM users WHERE created_at>=?", since)
+    total = await _scalar(
+        db, "SELECT COUNT(*) FROM users WHERE created_at>=:since",
+        {"since": since})
     onboarded = await _scalar(
-        db, "SELECT COUNT(*) FROM users WHERE created_at>=? AND onboarded=1", since)
+        db, "SELECT COUNT(*) FROM users WHERE created_at>=:since AND onboarded=1",
+        {"since": since})
     asked = await _scalar(
         db, "SELECT COUNT(DISTINCT m.tg_id) FROM messages m JOIN users u "
-            "ON u.tg_id=m.tg_id WHERE u.created_at>=? AND m.is_question=1", since)
+            "ON u.tg_id=m.tg_id WHERE u.created_at>=:since AND m.is_question=1",
+        {"since": since})
     retained = await _scalar(
         db, "SELECT COUNT(*) FROM (SELECT m.tg_id FROM messages m JOIN users u "
-            "ON u.tg_id=m.tg_id WHERE u.created_at>=? AND m.is_question=1 "
-            "GROUP BY m.tg_id HAVING COUNT(DISTINCT substr(m.created_at,1,10)) >= 2)",
-        since)
+            "ON u.tg_id=m.tg_id WHERE u.created_at>=:since AND m.is_question=1 "
+            "GROUP BY m.tg_id HAVING COUNT(DISTINCT substr(m.created_at,1,10)) >= 2) "
+            "AS retained_users",
+        {"since": since})
     paid = await _scalar(
         db, "SELECT COUNT(DISTINCT p.tg_id) FROM payments p JOIN users u "
-            "ON u.tg_id=p.tg_id WHERE u.created_at>=? AND p.status='succeeded'", since)
+            "ON u.tg_id=p.tg_id WHERE u.created_at>=:since "
+            "AND p.status='succeeded'", {"since": since})
 
     steps = [("Пришли", total), ("Прошли знакомство", onboarded),
              ("Задали вопрос", asked), ("Вернулись на 2-й день", retained),
@@ -322,28 +376,34 @@ async def timeseries(db, days: int = 30) -> list[dict]:
     """Ряды по дням для графиков: регистрации, вопросы, расклады, Stars."""
     start = (date.today() - timedelta(days=days - 1)).isoformat()
 
-    async def by_day(sql: str, *args) -> dict:
-        cur = await db.execute(sql, args)
+    async def by_day(sql: str, params: dict) -> dict:
+        cur = await db.execute(sql, params)
         return {r[0]: r[1] for r in await cur.fetchall()}
 
     users = await by_day(
         "SELECT substr(created_at,1,10) d, COUNT(*) FROM users "
-        "WHERE substr(created_at,1,10)>=? GROUP BY d", start)
+        "WHERE substr(created_at,1,10)>=:start GROUP BY d",
+        {"start": start})
     questions = await by_day(
         "SELECT substr(created_at,1,10) d, COUNT(*) FROM messages "
-        "WHERE is_question=1 AND substr(created_at,1,10)>=? GROUP BY d", start)
+        "WHERE is_question=1 AND substr(created_at,1,10)>=:start GROUP BY d",
+        {"start": start})
     readings = await by_day(
         "SELECT substr(created_at,1,10) d, COUNT(*) FROM tarot_readings "
-        "WHERE substr(created_at,1,10)>=? GROUP BY d", start)
+        "WHERE substr(created_at,1,10)>=:start GROUP BY d",
+        {"start": start})
     stars = await by_day(
         "SELECT substr(created_at,1,10) d, SUM(amount_stars) FROM payments "
-        "WHERE status='succeeded' AND substr(created_at,1,10)>=? GROUP BY d", start)
+        "WHERE status='succeeded' AND substr(created_at,1,10)>=:start GROUP BY d",
+        {"start": start})
     active = await by_day(
-        "SELECT day d, COUNT(DISTINCT tg_id) FROM events WHERE day>=? GROUP BY day",
-        start)
+        "SELECT day d, COUNT(DISTINCT tg_id) FROM events WHERE day>=:start "
+        "GROUP BY day",
+        {"start": start})
     promos = await by_day(
         "SELECT substr(created_at,1,10) d, COUNT(*) FROM promo_redemptions "
-        "WHERE substr(created_at,1,10)>=? GROUP BY d", start)
+        "WHERE substr(created_at,1,10)>=:start GROUP BY d",
+        {"start": start})
 
     out = []
     for i in range(days):
@@ -371,19 +431,22 @@ async def retention(db, cohort_days: int = 7) -> list[dict]:
         start = (date.today() - timedelta(days=(week + 1) * 7)).isoformat()
         end = (date.today() - timedelta(days=week * 7)).isoformat()
         size = await _scalar(
-            db, "SELECT COUNT(*) FROM users WHERE substr(created_at,1,10)>=? "
-                "AND substr(created_at,1,10)<?", start, end)
+            db, "SELECT COUNT(*) FROM users WHERE substr(created_at,1,10)>=:start "
+                "AND substr(created_at,1,10)<:end",
+            {"start": start, "end": end})
         if not size:
             continue
         row = {"cohort": start, "size": size}
         for day_n in (1, 3, 7, 14, 30):
             back = await _scalar(
                 db,
-                f"SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
-                f"ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=? "
-                f"AND substr(u.created_at,1,10)<? "
-                f"AND {age_days_sql} BETWEEN ? AND ?",
-                start, end, day_n, day_n + 1)
+                # INVARIANT: age_days_sql is a fixed dialect-select above, not user input.
+                "SELECT COUNT(DISTINCT u.tg_id) FROM users u JOIN events e "
+                "ON e.tg_id=u.tg_id WHERE substr(u.created_at,1,10)>=:start "
+                "AND substr(u.created_at,1,10)<:end "
+                f"AND {age_days_sql} BETWEEN :day_low AND :day_high",
+                {"start": start, "end": end,
+                 "day_low": day_n, "day_high": day_n + 1})
             row[f"d{day_n}"] = round(back * 100 / size, 1)
         out.append(row)
     return out
@@ -392,23 +455,26 @@ async def retention(db, cohort_days: int = 7) -> list[dict]:
 async def top_events(db, days: int = 7, limit: int = 25) -> list[dict]:
     cur = await db.execute(
         "SELECT name, COUNT(*) n, COUNT(DISTINCT tg_id) users FROM events "
-        "WHERE created_at>=? GROUP BY name ORDER BY n DESC LIMIT ?", (_ago(days), limit))
+        "WHERE created_at>=:since GROUP BY name ORDER BY n DESC LIMIT :limit",
+        {"since": _ago(days), "limit": limit})
     return [dict(r) for r in await cur.fetchall()]
 
 
 async def surface_split(db, days: int = 30) -> list[dict]:
     """Где живёт активность — в боте или в Mini App. Решает, куда вкладываться."""
     cur = await db.execute(
-        "SELECT COALESCE(surface,'bot') surface, COUNT(*) n, COUNT(DISTINCT tg_id) users "
-        "FROM events WHERE created_at>=? GROUP BY surface ORDER BY n DESC",
-        (_ago(days),))
+        "SELECT COALESCE(surface,'bot') surface, COUNT(*) n, "
+        "COUNT(DISTINCT tg_id) users "
+        "FROM events WHERE created_at>=:since GROUP BY surface ORDER BY n DESC",
+        {"since": _ago(days)})
     return [dict(r) for r in await cur.fetchall()]
 
 
 async def user_events(db, tg_id: int, limit: int = 100) -> list[dict]:
     cur = await db.execute(
-        "SELECT name, props_json, surface, created_at FROM events WHERE tg_id=? "
-        "ORDER BY id DESC LIMIT ?", (tg_id, limit))
+        "SELECT name, props_json, surface, created_at FROM events "
+        "WHERE tg_id=:tg_id ORDER BY id DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
     return [dict(r) for r in await cur.fetchall()]
 
 
@@ -417,8 +483,9 @@ async def source_split(db, days: int = 30) -> list[dict]:
     cur = await db.execute(
         "SELECT COALESCE(source,'organic') source, COUNT(*) users, "
         "SUM(CASE WHEN ltv_stars > 0 THEN 1 ELSE 0 END) payers, "
-        "COALESCE(SUM(ltv_stars),0) stars FROM users WHERE created_at>=? "
-        "GROUP BY source ORDER BY users DESC", (_ago(days),))
+        "COALESCE(SUM(ltv_stars),0) stars FROM users WHERE created_at>=:since "
+        "GROUP BY source ORDER BY users DESC",
+        {"since": _ago(days)})
     return [dict(r) for r in await cur.fetchall()]
 
 
@@ -433,26 +500,31 @@ async def llm_costs(db, days: int = 30) -> dict:
     """
     since = _ago(days)
     total_cost = await _scalar(
-        db, "SELECT SUM(cost_usd) FROM llm_usage WHERE created_at>=?", since)
+        db, "SELECT SUM(cost_usd) FROM llm_usage WHERE created_at>=:since",
+        {"since": since})
     calls = await _scalar(
-        db, "SELECT COUNT(*) FROM llm_usage WHERE created_at>=?", since)
+        db, "SELECT COUNT(*) FROM llm_usage WHERE created_at>=:since",
+        {"since": since})
     failed = await _scalar(
-        db, "SELECT COUNT(*) FROM llm_usage WHERE ok=0 AND created_at>=?", since)
+        db, "SELECT COUNT(*) FROM llm_usage WHERE ok=0 AND created_at>=:since",
+        {"since": since})
     subs = await _scalar(
-        db, "SELECT COUNT(*) FROM users WHERE sub_until>?", utcnow())
+        db, "SELECT COUNT(*) FROM users WHERE sub_until>:now",
+        {"now": utcnow()})
 
     cur = await db.execute(
         "SELECT purpose, COUNT(*) calls, COALESCE(SUM(prompt_tokens),0) tokens_in, "
         "COALESCE(SUM(completion_tokens),0) tokens_out, "
         "COALESCE(SUM(cost_usd),0) cost, "
         "COALESCE(AVG(latency_ms),0) avg_ms FROM llm_usage "
-        "WHERE created_at>=? GROUP BY purpose ORDER BY cost DESC", (since,))
+        "WHERE created_at>=:since GROUP BY purpose ORDER BY cost DESC",
+        {"since": since})
     by_purpose = [dict(r) for r in await cur.fetchall()]
 
     cur = await db.execute(
         "SELECT provider, model, COUNT(*) calls, COALESCE(SUM(cost_usd),0) cost "
-        "FROM llm_usage WHERE created_at>=? GROUP BY provider, model "
-        "ORDER BY cost DESC LIMIT 10", (since,))
+        "FROM llm_usage WHERE created_at>=:since GROUP BY provider, model "
+        "ORDER BY cost DESC LIMIT 10", {"since": since})
     by_model = [dict(r) for r in await cur.fetchall()]
 
     return {
@@ -483,15 +555,16 @@ async def product_cost_kpis(db, days: int = 30) -> dict:
         "COALESCE(SUM(retry_count),0) retry_count, "
         "COALESCE(SUM(CASE WHEN event_kind='delivery' THEN 1 ELSE 0 END),0) deliveries, "
         "COALESCE(SUM(CASE WHEN status IN ('failed','pending') THEN 1 ELSE 0 END),0) failures "
-        "FROM product_cost_events WHERE created_at>=? GROUP BY sku, channel "
-        "ORDER BY variable_cost_usd DESC, event_count DESC", (since,))
+        "FROM product_cost_events WHERE created_at>=:since GROUP BY sku, channel "
+        "ORDER BY variable_cost_usd DESC, event_count DESC",
+        {"since": since})
     rows = [dict(row) for row in await cur.fetchall()]
     paid_cur = await db.execute(
         "SELECT COALESCE(sku, kind) sku, COALESCE(surface, 'system') channel, "
         "COALESCE(SUM(amount_stars),0) gross_stars FROM orders "
-        "WHERE status='paid' AND paid_at>=? "
+        "WHERE status='paid' AND paid_at>=:since "
         "GROUP BY COALESCE(sku, kind), COALESCE(surface, 'system')",
-        (since,))
+        {"since": since})
     paid_by_product_channel = {
         (row[0], row[1]): int(row[2] or 0)
         for row in await paid_cur.fetchall()
@@ -538,39 +611,44 @@ async def monetization_kpis(db, days: int = 30) -> dict:
     since = _ago(days)
     gross_stars = await _scalar(
         db, "SELECT SUM(amount_stars) FROM payments "
-        "WHERE status='succeeded' AND created_at>=?", since)
+        "WHERE status='succeeded' AND created_at>=:since", {"since": since})
     payers = await _scalar(
         db, "SELECT COUNT(DISTINCT tg_id) FROM payments "
-        "WHERE status='succeeded' AND created_at>=?", since)
+        "WHERE status='succeeded' AND created_at>=:since", {"since": since})
     paid_orders = await _scalar(
-        db, "SELECT COUNT(*) FROM orders WHERE status='paid' AND paid_at>=?", since)
+        db, "SELECT COUNT(*) FROM orders WHERE status='paid' AND paid_at>=:since",
+        {"since": since})
     refunded_orders = await _scalar(
-        db, "SELECT COUNT(*) FROM orders WHERE status='refunded' AND created_at>=?", since)
+        db, "SELECT COUNT(*) FROM orders WHERE status='refunded' "
+        "AND created_at>=:since", {"since": since})
     repeat_payers = await _scalar(
         db, "SELECT COUNT(*) FROM (SELECT tg_id FROM payments "
-        "WHERE status='succeeded' AND created_at>=? GROUP BY tg_id HAVING COUNT(*)>=2)",
-        since,
-    )
+        "WHERE status='succeeded' AND created_at>=:since GROUP BY tg_id "
+        "HAVING COUNT(*)>=2) AS repeat_users", {"since": since})
 
     async def event_count(name: str) -> int:
-        return await _scalar(db, "SELECT COUNT(*) FROM events WHERE name=? AND created_at>=?", name, since)
+        return await _scalar(
+            db, "SELECT COUNT(*) FROM events WHERE name=:name AND created_at>=:since",
+            {"name": name, "since": since})
 
     by_sku_cur = await db.execute(
         "SELECT COALESCE(sku, kind) sku, COUNT(*) orders, "
         "COUNT(DISTINCT tg_id) payers, COALESCE(SUM(amount_stars),0) gross_stars "
-        "FROM orders WHERE status='paid' AND paid_at>=? "
-        "GROUP BY COALESCE(sku, kind) ORDER BY gross_stars DESC, orders DESC", (since,))
+        "FROM orders WHERE status='paid' AND paid_at>=:since "
+        "GROUP BY COALESCE(sku, kind) ORDER BY gross_stars DESC, orders DESC",
+        {"since": since})
     by_sku = [dict(row) for row in await by_sku_cur.fetchall()]
 
     cost_cur = await db.execute(
         "SELECT purpose, provider, model, COUNT(*) calls, "
         "COALESCE(SUM(cost_usd),0) cost_usd, "
         "COALESCE(AVG(latency_ms),0) avg_latency_ms "
-        "FROM llm_usage WHERE created_at>=? GROUP BY purpose, provider, model "
-        "ORDER BY cost_usd DESC", (since,))
+        "FROM llm_usage WHERE created_at>=:since GROUP BY purpose, provider, model "
+        "ORDER BY cost_usd DESC", {"since": since})
     provider_cost = [dict(row) for row in await cost_cur.fetchall()]
     llm_cost = await _scalar(
-        db, "SELECT SUM(cost_usd) FROM llm_usage WHERE created_at>=?", since)
+        db, "SELECT SUM(cost_usd) FROM llm_usage WHERE created_at>=:since",
+        {"since": since})
 
     return {
         "days": days,
@@ -582,7 +660,8 @@ async def monetization_kpis(db, days: int = 30) -> dict:
         "repeat_payers": int(repeat_payers),
         "repeat_payer_rate": round(repeat_payers * 100 / payers, 1) if payers else 0.0,
         "refund_orders": int(refunded_orders),
-        "refund_rate": round(refunded_orders * 100 / paid_orders, 1) if paid_orders else 0.0,
+        "refund_rate": round(refunded_orders * 100 / paid_orders, 1)
+        if paid_orders else 0.0,
         "credit_pack_checkout_started": await event_count(E_CREDIT_PACK_CHECKOUT_STARTED),
         "credit_pack_paid": await event_count(E_CREDIT_PACK_PAID),
         "credit_spent": await event_count(E_CREDIT_SPENT),
@@ -606,11 +685,13 @@ async def safety_summary(db, days: int = 30, limit: int = 100) -> dict:
     since = _ago(days)
     cur = await db.execute(
         "SELECT category, action, COUNT(*) n FROM safety_events "
-        "WHERE created_at>=? GROUP BY category, action ORDER BY n DESC", (since,))
+        "WHERE created_at>=:since GROUP BY category, action ORDER BY n DESC",
+        {"since": since})
     summary = [dict(r) for r in await cur.fetchall()]
     cur = await db.execute(
         "SELECT category, action, created_at FROM safety_events "
-        "WHERE created_at>=? ORDER BY id DESC LIMIT ?", (since, limit))
+        "WHERE created_at>=:since ORDER BY id DESC LIMIT :limit",
+        {"since": since, "limit": limit})
     return {"summary": summary,
             "recent": [dict(r) for r in await cur.fetchall()],
             "redacted": True}
@@ -621,12 +702,14 @@ async def safety_events(db, days: int = 30, limit: int = 100) -> dict:
     since = _ago(days)
     cur = await db.execute(
         "SELECT category, action, COUNT(*) n FROM safety_events "
-        "WHERE created_at>=? GROUP BY category, action ORDER BY n DESC", (since,))
+        "WHERE created_at>=:since GROUP BY category, action ORDER BY n DESC",
+        {"since": since})
     summary = [dict(r) for r in await cur.fetchall()]
     cur = await db.execute(
         "SELECT s.tg_id, s.category, s.action, s.excerpt, s.created_at, u.name "
         "FROM safety_events s LEFT JOIN users u ON u.tg_id = s.tg_id "
-        "WHERE s.created_at>=? ORDER BY s.id DESC LIMIT ?", (since, limit))
+        "WHERE s.created_at>=:since ORDER BY s.id DESC LIMIT :limit",
+        {"since": since, "limit": limit})
     return {"summary": summary,
             "recent": [dict(r) for r in await cur.fetchall()],
             "restricted": True}
@@ -638,25 +721,31 @@ async def rollup_day(db, day: str | None = None) -> dict:
     day = day or date.today().isoformat()
     stats = {
         "users_new": await _scalar(
-            db, "SELECT COUNT(*) FROM users WHERE substr(created_at,1,10)=?", day),
+            db, "SELECT COUNT(*) FROM users WHERE substr(created_at,1,10)=:day",
+            {"day": day}),
         "active": await _scalar(
-            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day=?", day),
+            db, "SELECT COUNT(DISTINCT tg_id) FROM events WHERE day=:day",
+            {"day": day}),
         "questions": await _scalar(
             db, "SELECT COUNT(*) FROM messages WHERE is_question=1 "
-                "AND substr(created_at,1,10)=?", day),
+                "AND substr(created_at,1,10)=:day", {"day": day}),
         "readings": await _scalar(
-            db, "SELECT COUNT(*) FROM tarot_readings WHERE substr(created_at,1,10)=?",
-            day),
+            db, "SELECT COUNT(*) FROM tarot_readings "
+                "WHERE substr(created_at,1,10)=:day", {"day": day}),
         "stars": await _scalar(
             db, "SELECT SUM(amount_stars) FROM payments WHERE status='succeeded' "
-                "AND substr(created_at,1,10)=?", day),
+                "AND substr(created_at,1,10)=:day", {"day": day}),
         "orders": await _scalar(
             db, "SELECT COUNT(*) FROM orders WHERE status='paid' "
-                "AND substr(paid_at,1,10)=?", day),
+                "AND substr(paid_at,1,10)=:day", {"day": day}),
     }
     async with transaction(db):
         await db.execute(
-            "INSERT INTO daily_stats(day, stats_json, updated_at) VALUES(?,?,?) "
-            "ON CONFLICT(day) DO UPDATE SET stats_json=excluded.stats_json, "
-            "updated_at=excluded.updated_at", (day, json.dumps(stats, ensure_ascii=False), utcnow()))
+            "INSERT INTO daily_stats(day, stats_json, updated_at) "
+            "VALUES(:day, :stats_json, :updated_at) "
+            "ON CONFLICT (day) DO UPDATE SET stats_json=excluded.stats_json, "
+            "updated_at=excluded.updated_at",
+            {"day": day,
+             "stats_json": json.dumps(stats, ensure_ascii=False),
+             "updated_at": utcnow()})
     return stats

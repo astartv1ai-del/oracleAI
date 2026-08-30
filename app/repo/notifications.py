@@ -14,8 +14,9 @@ async def sync_daily_forecast(db, tg_id: int, *, lang: str = "ru", day: str | No
     """Materialize an existing cached forecast as one deduplicated inbox item."""
     day = day or _day()
     cur = await db.execute(
-        "SELECT text FROM forecasts WHERE tg_id=? AND day=? AND lang=? LIMIT 1",
-        (tg_id, day, lang),
+        "SELECT text FROM forecasts WHERE tg_id=:tg_id AND day=:day "
+        "AND lang=:lang LIMIT 1",
+        {"tg_id": tg_id, "day": day, "lang": lang},
     )
     row = await cur.fetchone()
     if not row or not row["text"]:
@@ -24,10 +25,17 @@ async def sync_daily_forecast(db, tg_id: int, *, lang: str = "ru", day: str | No
     async with transaction(db):
         await db.execute(
             "INSERT INTO user_notifications "
-            "(tg_id, kind, title, body, dedupe_key, created_at) VALUES(?,?,?,?,?,?) "
-            "ON CONFLICT(tg_id, dedupe_key) DO UPDATE SET body=excluded.body",
-            (tg_id, "forecast", titles.get(lang, titles["ru"]),
-             str(row["text"])[:4000], f"forecast:{day}:{lang}", utcnow()),
+            "(tg_id, kind, title, body, dedupe_key, created_at) "
+            "VALUES(:tg_id, :kind, :title, :body, :dedupe_key, :created_at) "
+            "ON CONFLICT (tg_id, dedupe_key) DO UPDATE SET body=excluded.body",
+            {
+                "tg_id": tg_id,
+                "kind": "forecast",
+                "title": titles.get(lang, titles["ru"]),
+                "body": str(row["text"])[:4000],
+                "dedupe_key": f"forecast:{day}:{lang}",
+                "created_at": utcnow(),
+            },
         )
 
 
@@ -35,13 +43,14 @@ async def list_for_user(db, tg_id: int, *, limit: int = 30) -> dict:
     limit = max(1, min(int(limit), 100))
     cur = await db.execute(
         "SELECT id, kind, title, body, read_at, created_at FROM user_notifications "
-        "WHERE tg_id=? ORDER BY created_at DESC, id DESC LIMIT ?",
-        (tg_id, limit),
+        "WHERE tg_id=:tg_id ORDER BY created_at DESC, id DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit},
     )
     items = [dict(row) for row in await cur.fetchall()]
     cur = await db.execute(
-        "SELECT COUNT(*) AS n FROM user_notifications WHERE tg_id=? AND read_at IS NULL",
-        (tg_id,),
+        "SELECT COUNT(*) AS n FROM user_notifications "
+        "WHERE tg_id=:tg_id AND read_at IS NULL",
+        {"tg_id": tg_id},
     )
     row = await cur.fetchone()
     return {
@@ -55,8 +64,8 @@ async def list_for_user(db, tg_id: int, *, limit: int = 30) -> dict:
 async def mark_all_read(db, tg_id: int) -> int:
     async with transaction(db):
         cur = await db.execute(
-            "UPDATE user_notifications SET read_at=? "
-            "WHERE tg_id=? AND read_at IS NULL",
-            (utcnow(), tg_id),
+            "UPDATE user_notifications SET read_at=:read_at "
+            "WHERE tg_id=:tg_id AND read_at IS NULL",
+            {"read_at": utcnow(), "tg_id": tg_id},
         )
         return int(cur.rowcount or 0)

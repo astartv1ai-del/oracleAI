@@ -19,12 +19,16 @@ async def start_reading(db, tg_id: int, spread: str, question: str, cards: list,
     """
     async with transaction(db):
         cur = await db.execute(
-            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, answer, "
-            "surface, paid_with, created_at) VALUES(?,?,?,?,'',?,?,?)",
-            (tg_id, spread, question, json.dumps(cards, ensure_ascii=False),
-             surface, paid_with, utcnow()))
-        reading_id = cur.lastrowid
-    return reading_id
+            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, "
+            "answer, surface, paid_with, created_at) "
+            "VALUES(:tg_id, :spread, :question, :cards_json, '', :surface, "
+            ":paid_with, :created_at) RETURNING id",
+            {"tg_id": tg_id, "spread": spread, "question": question,
+             "cards_json": json.dumps(cards, ensure_ascii=False),
+             "surface": surface, "paid_with": paid_with,
+             "created_at": utcnow()})
+        row = await cur.fetchone()
+        return int(row["id"]) if row else 0
 
 
 async def save_reading(db, tg_id: int, spread: str, question: str, cards: list,
@@ -32,17 +36,22 @@ async def save_reading(db, tg_id: int, spread: str, question: str, cards: list,
                        paid_with: str = "daily") -> int:
     async with transaction(db):
         cur = await db.execute(
-            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, answer, "
-            "surface, paid_with, created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (tg_id, spread, question, json.dumps(cards, ensure_ascii=False), answer,
-             surface, paid_with, utcnow()))
-        reading_id = cur.lastrowid
-    return reading_id
+            "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, "
+            "answer, surface, paid_with, created_at) "
+            "VALUES(:tg_id, :spread, :question, :cards_json, :answer, :surface, "
+            ":paid_with, :created_at) RETURNING id",
+            {"tg_id": tg_id, "spread": spread, "question": question,
+             "cards_json": json.dumps(cards, ensure_ascii=False),
+             "answer": answer, "surface": surface, "paid_with": paid_with,
+             "created_at": utcnow()})
+        row = await cur.fetchone()
+        return int(row["id"]) if row else 0
 
 
 async def get_reading(db, reading_id: int, tg_id: int):
     cur = await db.execute(
-        "SELECT * FROM tarot_readings WHERE id=? AND tg_id=?", (reading_id, tg_id))
+        "SELECT * FROM tarot_readings WHERE id=:reading_id AND tg_id=:tg_id",
+        {"reading_id": reading_id, "tg_id": tg_id})
     return await cur.fetchone()
 
 
@@ -55,9 +64,9 @@ async def finish_reading(db, reading_id: int, tg_id: int, answer: str) -> bool:
     """
     async with transaction(db):
         cur = await db.execute(
-            "UPDATE tarot_readings SET answer=? WHERE id=? AND tg_id=? "
-            "AND COALESCE(answer,'')=''",
-            (answer, reading_id, tg_id))
+            "UPDATE tarot_readings SET answer=:answer "
+            "WHERE id=:reading_id AND tg_id=:tg_id AND COALESCE(answer,'')=''",
+            {"answer": answer, "reading_id": reading_id, "tg_id": tg_id})
     return bool(cur.rowcount)
 
 
@@ -67,16 +76,19 @@ async def set_outcome(db, reading_id: int, tg_id: int, outcome: str) -> bool:
         return False
     async with transaction(db):
         cur = await db.execute(
-            "UPDATE tarot_readings SET outcome=?, outcome_at=? WHERE id=? AND tg_id=?",
-            (outcome, utcnow(), reading_id, tg_id))
+            "UPDATE tarot_readings SET outcome=:outcome, outcome_at=:outcome_at "
+            "WHERE id=:reading_id AND tg_id=:tg_id",
+            {"outcome": outcome, "outcome_at": utcnow(),
+             "reading_id": reading_id, "tg_id": tg_id})
     return bool(cur.rowcount)
 
 
 async def recent_readings(db, tg_id: int, limit: int = 20) -> list[dict]:
     cur = await db.execute(
         "SELECT id, spread, question, cards_json, answer, outcome, created_at "
-        "FROM tarot_readings WHERE tg_id=? AND answer<>'' ORDER BY id DESC LIMIT ?",
-        (tg_id, limit))
+        "FROM tarot_readings WHERE tg_id=:tg_id AND answer<>'' "
+        "ORDER BY id DESC LIMIT :limit",
+        {"tg_id": tg_id, "limit": limit})
     from ..core import tarot
 
     result = []
@@ -92,8 +104,9 @@ async def recent_readings(db, tg_id: int, limit: int = 20) -> list[dict]:
 async def readings_count_since(db, tg_id: int, days: int) -> int:
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     cur = await db.execute(
-        "SELECT COUNT(*) c FROM tarot_readings WHERE tg_id=? AND created_at>=?",
-        (tg_id, since))
+        "SELECT COUNT(*) c FROM tarot_readings "
+        "WHERE tg_id=:tg_id AND created_at>=:since",
+        {"tg_id": tg_id, "since": since})
     return (await cur.fetchone())["c"]
 
 
@@ -104,14 +117,16 @@ async def outcome_stats(db, tg_id: int) -> dict:
     """
     cur = await db.execute(
         "SELECT outcome, COUNT(*) c FROM tarot_readings "
-        "WHERE tg_id=? AND outcome IS NOT NULL GROUP BY outcome", (tg_id,))
+        "WHERE tg_id=:tg_id AND outcome IS NOT NULL GROUP BY outcome",
+        {"tg_id": tg_id})
     stats = {"came_true": 0, "partly": 0, "no": 0}
     for r in await cur.fetchall():
         if r["outcome"] in stats:
             stats[r["outcome"]] = r["c"]
     cur = await db.execute(
         "SELECT COUNT(*) c FROM tarot_readings "
-        "WHERE tg_id=? AND outcome IS NOT NULL", (tg_id,))
+        "WHERE tg_id=:tg_id AND outcome IS NOT NULL",
+        {"tg_id": tg_id})
     stats["marked"] = (await cur.fetchone())["c"]
     return stats
 
@@ -127,17 +142,24 @@ async def add_partner(db, tg_id: int, name: str, birth_date: str, *,
         cur = await db.execute(
             "INSERT INTO partners(tg_id, name, relation, birth_date, birth_time, "
             "birth_city, birth_lat, birth_lon, tz, chart_json, created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-            (tg_id, name, relation, birth_date, birth_time, birth_city, lat, lon, tz,
-             json.dumps(chart, ensure_ascii=False) if chart else None, utcnow()))
-        partner_id = cur.lastrowid
-    return partner_id
+            "VALUES(:tg_id, :name, :relation, :birth_date, :birth_time, "
+            ":birth_city, :lat, :lon, :tz, :chart_json, :created_at) "
+            "RETURNING id",
+            {"tg_id": tg_id, "name": name, "relation": relation,
+             "birth_date": birth_date, "birth_time": birth_time,
+             "birth_city": birth_city, "lat": lat, "lon": lon, "tz": tz,
+             "chart_json": (json.dumps(chart, ensure_ascii=False)
+                            if chart else None),
+             "created_at": utcnow()})
+        row = await cur.fetchone()
+        return int(row["id"]) if row else 0
 
 
 async def list_partners(db, tg_id: int) -> list[dict]:
     cur = await db.execute(
-        "SELECT id, name, relation, birth_date, birth_city, chart_json FROM partners "
-        "WHERE tg_id=? ORDER BY id DESC", (tg_id,))
+        "SELECT id, name, relation, birth_date, birth_city, chart_json "
+        "FROM partners WHERE tg_id=:tg_id ORDER BY id DESC",
+        {"tg_id": tg_id})
     result = []
     for row in await cur.fetchall():
         item = dict(row)
@@ -154,42 +176,52 @@ async def list_partners(db, tg_id: int) -> list[dict]:
 
 
 async def get_partner(db, partner_id: int, tg_id: int):
-    cur = await db.execute("SELECT * FROM partners WHERE id=? AND tg_id=?",
-                           (partner_id, tg_id))
+    cur = await db.execute(
+        "SELECT * FROM partners WHERE id=:partner_id AND tg_id=:tg_id",
+        {"partner_id": partner_id, "tg_id": tg_id})
     return await cur.fetchone()
 
 
 async def find_partner_by_date(db, tg_id: int, birth_date: str):
     """Сохранённый человек с этой датой рождения — чтобы взять его карту."""
     cur = await db.execute(
-        "SELECT * FROM partners WHERE tg_id=? AND birth_date=? "
-        "ORDER BY id DESC LIMIT 1", (tg_id, birth_date))
+        "SELECT * FROM partners WHERE tg_id=:tg_id AND birth_date=:birth_date "
+        "ORDER BY id DESC LIMIT 1",
+        {"tg_id": tg_id, "birth_date": birth_date})
     return await cur.fetchone()
 
 
 async def delete_partner(db, partner_id: int, tg_id: int) -> None:
     async with transaction(db):
-        await db.execute("DELETE FROM partners WHERE id=? AND tg_id=?",
-                         (partner_id, tg_id))
+        await db.execute(
+            "DELETE FROM partners WHERE id=:partner_id AND tg_id=:tg_id",
+            {"partner_id": partner_id, "tg_id": tg_id})
 
 
 async def cache_synastry(db, tg_id: int, partner_key: str, score: int,
                          breakdown: dict, answer: str = "") -> None:
     """Кеш разбора пары: генерация дорогая, а пара за день не меняется."""
     async with transaction(db):
-        await db.execute("DELETE FROM synastry_cache WHERE tg_id=? AND partner_key=?",
-                         (tg_id, partner_key))
         await db.execute(
-            "INSERT INTO synastry_cache(tg_id, partner_key, score, breakdown_json, "
-            "answer, created_at) VALUES(?,?,?,?,?,?)",
-            (tg_id, partner_key, score, json.dumps(breakdown, ensure_ascii=False),
-             answer, utcnow()))
+            "DELETE FROM synastry_cache "
+            "WHERE tg_id=:tg_id AND partner_key=:partner_key",
+            {"tg_id": tg_id, "partner_key": partner_key})
+        await db.execute(
+            "INSERT INTO synastry_cache(tg_id, partner_key, score, "
+            "breakdown_json, answer, created_at) "
+            "VALUES(:tg_id, :partner_key, :score, :breakdown_json, :answer, "
+            ":created_at)",
+            {"tg_id": tg_id, "partner_key": partner_key, "score": score,
+             "breakdown_json": json.dumps(breakdown, ensure_ascii=False),
+             "answer": answer, "created_at": utcnow()})
 
 
 async def get_synastry(db, tg_id: int, partner_key: str):
     cur = await db.execute(
-        "SELECT * FROM synastry_cache WHERE tg_id=? AND partner_key=? "
-        "ORDER BY id DESC LIMIT 1", (tg_id, partner_key))
+        "SELECT * FROM synastry_cache "
+        "WHERE tg_id=:tg_id AND partner_key=:partner_key "
+        "ORDER BY id DESC LIMIT 1",
+        {"tg_id": tg_id, "partner_key": partner_key})
     return await cur.fetchone()
 
 
@@ -203,8 +235,9 @@ async def get_forecast(db, tg_id: int, day: str, *, lang: str = "ru") -> str | N
     локали и перезапишет персональный дневной кэш.
     """
     cur = await db.execute(
-        "SELECT text FROM forecasts WHERE tg_id=? AND day=? AND lang=?",
-        (tg_id, day, lang))
+        "SELECT text FROM forecasts "
+        "WHERE tg_id=:tg_id AND day=:day AND lang=:lang",
+        {"tg_id": tg_id, "day": day, "lang": lang})
     row = await cur.fetchone()
     return row["text"] if row else None
 
@@ -213,40 +246,51 @@ async def save_forecast(db, tg_id: int, day: str, text: str, *, lang: str = "ru"
     async with transaction(db):
         await db.execute(
             "INSERT INTO forecasts(tg_id, day, text, lang, created_at) "
-            "VALUES(?,?,?,?,?) ON CONFLICT(tg_id, day, lang) DO UPDATE SET "
-            "text=excluded.text, created_at=excluded.created_at", (tg_id, day, text, lang, utcnow()))
+            "VALUES(:tg_id, :day, :text, :lang, :created_at) "
+            "ON CONFLICT (tg_id, day, lang) DO UPDATE SET "
+            "text=excluded.text, created_at=excluded.created_at",
+            {"tg_id": tg_id, "day": day, "text": text, "lang": lang,
+             "created_at": utcnow()})
 
 
 async def save_report(db, tg_id: int, kind: str, title: str, body: str, *,
                       period: str | None = None, meta: dict | None = None) -> int:
     async with transaction(db):
         cur = await db.execute(
-            "INSERT INTO reports(tg_id, kind, period, title, body, "
-            "meta_json, created_at) VALUES(?,?,?,?,?,?,?)",
-            (tg_id, kind, period, title, body,
-             json.dumps(meta, ensure_ascii=False) if meta else None, utcnow()))
-        return int(cur.lastrowid)
+            "INSERT INTO reports(tg_id, kind, period, title, body, meta_json, "
+            "created_at) VALUES(:tg_id, :kind, :period, :title, :body, "
+            ":meta_json, :created_at) RETURNING id",
+            {"tg_id": tg_id, "kind": kind, "period": period, "title": title,
+             "body": body,
+             "meta_json": (json.dumps(meta, ensure_ascii=False)
+                           if meta else None),
+             "created_at": utcnow()})
+        row = await cur.fetchone()
+        return int(row["id"]) if row else 0
 
 
 async def get_report(db, tg_id: int, kind: str, period: str | None = None):
     cur = await db.execute(
-        "SELECT * FROM reports WHERE tg_id=? AND kind=? AND COALESCE(period,'')=? "
-        "ORDER BY id DESC LIMIT 1", (tg_id, kind, period or ""))
+        "SELECT * FROM reports WHERE tg_id=:tg_id AND kind=:kind "
+        "AND COALESCE(period,'')=:period ORDER BY id DESC LIMIT 1",
+        {"tg_id": tg_id, "kind": kind, "period": period or ""})
     return await cur.fetchone()
 
 
 async def get_report_by_id(db, tg_id: int, kind: str, report_id: int):
     """Read one immutable report version without crossing user or kind scope."""
     cur = await db.execute(
-        "SELECT * FROM reports WHERE id=? AND tg_id=? AND kind=? LIMIT 1",
-        (report_id, tg_id, kind))
+        "SELECT * FROM reports "
+        "WHERE id=:report_id AND tg_id=:tg_id AND kind=:kind LIMIT 1",
+        {"report_id": report_id, "tg_id": tg_id, "kind": kind})
     return await cur.fetchone()
 
 
 async def list_reports(db, tg_id: int) -> list[dict]:
     cur = await db.execute(
-        "SELECT id, kind, period, title, created_at FROM reports WHERE tg_id=? "
-        "ORDER BY id DESC LIMIT 50", (tg_id,))
+        "SELECT id, kind, period, title, created_at FROM reports "
+        "WHERE tg_id=:tg_id ORDER BY id DESC LIMIT 50",
+        {"tg_id": tg_id})
     return [dict(r) for r in await cur.fetchall()]
 
 
@@ -255,23 +299,27 @@ async def list_reports(db, tg_id: int) -> list[dict]:
 async def start_practice(db, tg_id: int, code: str) -> int:
     """Начинает практику. Повторный старт возвращает уже идущую — программа одна."""
     cur = await db.execute(
-        "SELECT id FROM practices WHERE tg_id=? AND code=? AND finished_at IS NULL",
-        (tg_id, code))
+        "SELECT id FROM practices "
+        "WHERE tg_id=:tg_id AND code=:code AND finished_at IS NULL",
+        {"tg_id": tg_id, "code": code})
     row = await cur.fetchone()
     if row:
         return row["id"]
     async with transaction(db):
         cur = await db.execute(
-            "INSERT INTO practices(tg_id, code, started_at) VALUES(?,?,?)",
-            (tg_id, code, utcnow()))
-        practice_id = cur.lastrowid
-    return practice_id
+            "INSERT INTO practices(tg_id, code, started_at) "
+            "VALUES(:tg_id, :code, :started_at) RETURNING id",
+            {"tg_id": tg_id, "code": code, "started_at": utcnow()})
+        row = await cur.fetchone()
+        return int(row["id"]) if row else 0
 
 
 async def active_practice(db, tg_id: int, code: str):
     cur = await db.execute(
-        "SELECT * FROM practices WHERE tg_id=? AND code=? AND finished_at IS NULL "
-        "ORDER BY id DESC LIMIT 1", (tg_id, code))
+        "SELECT * FROM practices "
+        "WHERE tg_id=:tg_id AND code=:code AND finished_at IS NULL "
+        "ORDER BY id DESC LIMIT 1",
+        {"tg_id": tg_id, "code": code})
     return await cur.fetchone()
 
 
@@ -279,8 +327,9 @@ async def stop_practice(db, tg_id: int, code: str) -> bool:
     """Завершает программу досрочно. История дней остаётся."""
     async with transaction(db):
         cur = await db.execute(
-            "UPDATE practices SET finished_at=? WHERE tg_id=? AND code=? "
-            "AND finished_at IS NULL", (utcnow(), tg_id, code))
+            "UPDATE practices SET finished_at=:finished_at "
+            "WHERE tg_id=:tg_id AND code=:code AND finished_at IS NULL",
+            {"finished_at": utcnow(), "tg_id": tg_id, "code": code})
     return bool(cur.rowcount)
 
 
@@ -314,19 +363,22 @@ async def mark_practice_done(db, tg_id: int, code: str, *,
 
     async with transaction(db):
         await db.execute(
-            "UPDATE practices SET day_index=?, streak=?, last_done=?, finished_at=? "
-            "WHERE id=?",
-            (day_index, streak, today, utcnow() if finished else None, row["id"]))
+            "UPDATE practices SET day_index=:day_index, streak=:streak, "
+            "last_done=:last_done, finished_at=:finished_at "
+            "WHERE id=:id",
+            {"day_index": day_index, "streak": streak, "last_done": today,
+             "finished_at": utcnow() if finished else None,
+             "id": row["id"]})
     return {"day_index": day_index, "streak": streak, "already": False,
             "finished": finished}
 
 
 async def list_practices(db, tg_id: int, *, active_only: bool = False) -> list[dict]:
-    sql = "SELECT * FROM practices WHERE tg_id=?"
+    sql = "SELECT * FROM practices WHERE tg_id=:tg_id"
     if active_only:
         sql += " AND finished_at IS NULL"
     sql += " ORDER BY id DESC LIMIT 40"
-    cur = await db.execute(sql, (tg_id,))
+    cur = await db.execute(sql, {"tg_id": tg_id})
     return [dict(r) for r in await cur.fetchall()]
 
 
@@ -336,5 +388,6 @@ async def practice_reminder_targets(db, today: str) -> list[dict]:
         "SELECT p.tg_id, p.code, p.day_index, p.streak FROM practices p "
         "JOIN users u ON u.tg_id = p.tg_id "
         "WHERE p.finished_at IS NULL AND u.status='active' AND u.morning_push=1 "
-        "AND COALESCE(substr(p.last_done,1,10),'') <> ?", (today,))
+        "AND COALESCE(substr(p.last_done,1,10),'') <> :today",
+        {"today": today})
     return [dict(r) for r in await cur.fetchall()]
