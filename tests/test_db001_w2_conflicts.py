@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
-
 from app.repo import billing as billing_repo
-from app.repo import comms, growth, users
+from app.repo import comms, growth
 from app.repo.crm import add_tag, tags_of
 from app.repo.jobs import create as create_job
 from app.repo.jobs import get as get_job
