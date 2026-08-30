@@ -837,14 +837,33 @@ async def test_no_cache_on_html_and_api(client):
 
 
 async def test_miniapp_index_uses_source_assets_in_dev(client, monkeypatch):
+    """FE-001/002: dev opts INTO source assets with SOURCE_ASSETS=1;
+    the default is the bundled path (see test_miniapp_index_uses_hashed_bundles_in_dev_default)."""
     from app.config import settings
 
     monkeypatch.setattr(settings, "dev_mode", True)
-    monkeypatch.delenv("BUNDLE_ASSETS", raising=False)
+    monkeypatch.setenv("SOURCE_ASSETS", "1")
     html = (await client.get("/")).text
     assert re.search(r'/static/styles\.css\?v=\d+', html)
     assert re.search(r'/static/js/00-runtime\.js\?v=\d+', html)
     assert '/static/dist/' not in html
+
+
+async def test_miniapp_index_bundles_by_default_in_dev(client, monkeypatch):
+    """FE-002 flip: without SOURCE_ASSETS=1 dev must ALSO serve the bundle so
+    devs see what production users see. Opt-in to source assets is deliberate."""
+    from pathlib import Path
+
+    from app.config import settings
+
+    manifest_path = Path(__file__).resolve().parents[1] / "miniapp" / "dist" / "manifest.json"
+    if not manifest_path.is_file():
+        pytest.skip("frontend bundle not built in this environment")
+    monkeypatch.setattr(settings, "dev_mode", True)
+    monkeypatch.delenv("SOURCE_ASSETS", raising=False)
+    html = (await client.get("/")).text
+    assert '/static/dist/' in html
+    assert not re.search(r'/static/js/00-runtime\.js\?v=\d+', html)
 
 
 async def test_miniapp_index_uses_hashed_bundles_in_production(client, monkeypatch):
