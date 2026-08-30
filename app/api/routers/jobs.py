@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ...core import agents
-from ...repo import jobs as jobs_repo
+from ...services.repo_gateway import jobs as jobs_repo
 from ...services import jobs as jobs_service
 from ..contracts.chat import AskIn
 from ..deps import confirmed_age_user, current_user, get_db, rate_limit

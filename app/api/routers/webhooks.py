@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from ...config import settings
 from ...data.session import transaction, utcnow
-from ...repo import billing as billing_repo
+from ...services.repo_gateway import billing as billing_repo
 from ...services import analytics
 from ...services import billing as billing_svc
 from ...services import cryptobot

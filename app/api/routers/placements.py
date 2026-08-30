@@ -77,7 +77,7 @@ async def calculate_placement(item: PlacementIn, user=Depends(confirmed_age_user
 
 @router.get("/palm")
 async def list_palm(user=Depends(confirmed_age_user), db=Depends(get_db)):
-    from ...repo import palm as palm_repo
+    from ...services.repo_gateway import palm as palm_repo
     return {"items": await palm_repo.list_readings(db, user["tg_id"], limit=20),
             "raw_image_stored": False}
 
@@ -119,7 +119,7 @@ async def get_palm(reading_id: int, user=Depends(confirmed_age_user), db=Depends
 
 @router.delete("/palm/{reading_id}", dependencies=[Depends(rate_limit("write"))])
 async def delete_palm(reading_id: int, user=Depends(confirmed_age_user), db=Depends(get_db)):
-    from ...repo import palm as palm_repo
+    from ...services.repo_gateway import palm as palm_repo
     if not await palm_repo.delete_reading(db, reading_id, user["tg_id"]):
         raise HTTPException(404, "чтение ладони не найдено")
     return {"ok": True}

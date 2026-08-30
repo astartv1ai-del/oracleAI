@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from ...core import agents
-from ...repo import dialog
 from ...services import chat as chat_svc
+from ...services.repo_gateway import dialog
 from ..common.errors import access_denied
 from ..contracts.chat import AskIn
 from ..deps import confirmed_age_user, get_db, rate_limit

@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 
 from ...core import agent as agent_core
 from ...core import astro, cards, tool_registry as skills
-from ...repo import content, readings, users
+from ...services.repo_gateway import content, readings, users
 from ...services import analytics, catalog
 from ..common.validation import parse_birth_date
 from ..deps import confirmed_age_user, get_db, rate_limit

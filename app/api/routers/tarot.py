@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from ...core import tarot
-from ...repo import readings
+from ...services.repo_gateway import readings
 from ...services import catalog
 from ...services import chat as chat_svc
 from ..common.errors import access_denied

@@ -6,7 +6,7 @@ import re
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from ...repo import notifications, users
+from ...services.repo_gateway import notifications, users
 from ..deps import confirmed_age_user, get_db, rate_limit
 
 router = APIRouter(prefix="/api", tags=["notifications"])

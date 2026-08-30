@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 
 from ..deps import confirmed_age_user, get_db
-from ...repo import dialog, readings
+from ...services.repo_gateway import dialog, readings
 
 router = APIRouter(prefix="/api", tags=["history"])
 

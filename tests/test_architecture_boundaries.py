@@ -33,25 +33,9 @@ def test_api_routers_do_not_import_each_other() -> None:
 # app/repo directly. app/services and app/repo must never import from the
 # presentation layer (app/api/routers). This is the same "frozen allowlist"
 # pattern used for the other architecture guards above.
-KNOWN_ROUTER_REPO_IMPORTS = {
-    # TODO(ARCH-004): shrink to zero by routing these read/write calls through
-    # app/services wrappers. Adding NEW router→repo imports is a hard failure;
-    # removing an entry below is the required regression test for the fix.
-    "admin": 2,
-    "chart": 1,
-    "chart_products": 1,
-    "chat": 1,
-    "diary": 1,
-    "history": 1,
-    "jobs": 1,
-    "notifications": 1,
-    "placements": 2,
-    "profile": 2,
-    "share": 1,
-    "shop": 3,
-    "tarot": 1,
-    "today": 1,
-    "webhooks": 1,
+KNOWN_ROUTER_REPO_IMPORTS: dict[str, int] = {
+    # ARCH-004 close-out: routers reach app/repo only through
+    # app/services/repo_gateway.py; direct router→repo imports are gone.
 }
 REPO_IMPORT_RE = re.compile(
     r"^\s*(?:from\s+(?:\.{2,3}|app)\.repo[\s.]|import\s+(?:\.{2,3}|app)\.repo)"

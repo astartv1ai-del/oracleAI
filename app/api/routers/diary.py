@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from ...core import astro, memory
-from ...repo import dialog, users
+from ...services.repo_gateway import dialog, users
 from ...services import analytics
 from ..deps import confirmed_age_user, get_db, rate_limit
 

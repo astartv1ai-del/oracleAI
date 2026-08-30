@@ -23,7 +23,7 @@ from ...core.chart_contract import (
 )
 from ...core.matrix import compute_matrix
 from ...core.observability import log_event
-from ...repo import billing, readings, users
+from ...services.repo_gateway import billing, readings, users
 from ...services import analytics, compatibility as compatibility_svc
 from ..common.validation import parse_birth_date
 from ..contracts.compatibility import CompatIn
@@ -180,6 +180,51 @@ async def chart_image(
                data, variant=spec.variant, format=spec.image_format, locale=spec.locale,
                cache_hit=cache_hit, live=False, status="ok")
     return Response(content=image, media_type=media_type, headers=headers)
+
+
+@router.get("/city/suggest", dependencies=[Depends(rate_limit("read"))])
+async def city_suggest(q: str = Query(default="", min_length=0, max_length=60),
+                       user=Depends(confirmed_age_user), db=Depends(get_db)):
+    """Подсказки города для кнопочного ввода: встроенный словарь + кеш геокода.
+
+    Цель — исключить опечатки: клиентка тапает готовый город вместо ручного
+    ввода. Источник — те же данные, что резолвит `geo.resolve_city_async`,
+    поэтому подсказка всегда геокодируема. Сеть не трогаем: подсказки
+    мгновенны и не зависят от Nominatim.
+    """
+    from ...core.geo import FALLBACK, normalize
+    query = normalize(q)
+    if len(query) < 2:
+        return {"items": []}
+    titles = {"москва": "Москва", "санкт-петербург": "Санкт-Петербург", "петербург": "Санкт-Петербург",
+              "питер": "Санкт-Петербург", "казань": "Казань", "новосибирск": "Новосибирск",
+              "екатеринбург": "Екатеринбург", "нижний новгород": "Нижний Новгород",
+              "самара": "Самара", "омск": "Омск", "челябинск": "Челябинск",
+              "ростов-на-дону": "Ростов-на-Дону", "уфа": "Уфа", "красноярск": "Красноярск",
+              "воронеж": "Воронеж", "пермь": "Пермь", "волгоград": "Волгоград",
+              "краснодар": "Краснодар", "саратов": "Саратов", "тюмень": "Тюмень",
+              "владивосток": "Владивосток", "иркутск": "Иркутск", "сочи": "Сочи",
+              "калининград": "Калининград", "минск": "Минск", "гомель": "Гомель",
+              "киев": "Киев", "київ": "Київ", "харьков": "Харьков", "одесса": "Одесса",
+              "львов": "Львов", "алматы": "Алматы", "астана": "Астана",
+              "нур-султан": "Астана", "шымкент": "Шымкент", "ташкент": "Ташкент",
+              "бишкек": "Бишкек", "душанбе": "Душанбе", "баку": "Баку", "ереван": "Ереван",
+              "тбилиси": "Тбилиси", "кишинёв": "Кишинёв", "кишинев": "Кишинёв",
+              "рига": "Рига", "вильнюс": "Вильнюс", "таллин": "Таллин", "варшава": "Варшава",
+              "берлин": "Берлин", "прага": "Прага", "лондон": "London", "париж": "Paris",
+              "рим": "Rome", "мадрид": "Madrid", "лиссабон": "Lisbon", "стамбул": "Istanbul",
+              "тель-авив": "Тель-Авив", "дубай": "Dubai", "нью-йорк": "New York",
+              "лос-анджелес": "Los Angeles", "чикаго": "Chicago", "торонто": "Toronto",
+              "майами": "Miami", "бангкок": "Bangkok", "пекин": "北京", "токио": "Tokyo"}
+    items, seen = [], set()
+    # точное совпадение и «начинается с» — сначала, потом «встречается в слове»
+    for key in sorted(FALLBACK, key=lambda k: (not k.startswith(query), k)):
+        if query in key and key not in seen:
+            seen.add(key)
+            items.append({"key": key, "label": titles.get(key, key.title())})
+        if len(items) >= 8:
+            break
+    return {"items": items}
 
 
 @router.get("/chart")

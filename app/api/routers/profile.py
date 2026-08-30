@@ -12,8 +12,8 @@ from ...config import settings
 from ...core import agents
 from ...core.personas import persona_list
 from ...data.session import healthcheck
-from ...repo import billing, content, dialog, readings, users
-from ...repo import monetization as monetization_repo
+from ...services.repo_gateway import billing, content, dialog, readings, users
+from ...services.repo_gateway import monetization as monetization_repo
 from ...services import analytics, chat, limits, referrals
 from ...services.entitlements import entitlements
 from ..deps import (

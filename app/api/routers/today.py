@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ...core import agent as agent_core
 from ...core import astro
-from ...repo import readings, users
+from ...services.repo_gateway import readings, users
 from ...services import analytics, horoscopes
 from ..deps import confirmed_age_user, active_user, get_db, rate_limit
 

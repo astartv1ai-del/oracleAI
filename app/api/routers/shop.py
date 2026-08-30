@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field
 
 from ...services.billing import CRYPTO_ASSETS
 
-from ...repo import billing as billing_repo
-from ...repo import monetization as monetization_repo
+from ...services.repo_gateway import billing as billing_repo
+from ...services.repo_gateway import monetization as monetization_repo
 from ...services import analytics
 from ...services import billing as billing_svc
 from ...services import invoices
@@ -75,7 +75,7 @@ async def web_checkout(item: InvoiceIn, user=Depends(confirmed_age_user),
     какой тариф выбрала, передаём в `custom_data`: вебхук вернёт это обратно.
     """
     from ...config import settings
-    from ...repo import content
+    from ...services.repo_gateway import content
 
     if not await content.is_on(db, "web_payments", user["tg_id"], default=False):
         raise HTTPException(404, "web-оплата пока недоступна")

@@ -8,8 +8,8 @@ import logging
 from fastapi import Depends, Header, HTTPException, Query, Request
 
 from ..config import settings
-from ..repo import admin as admin_repo
-from ..repo import users as users_repo
+from ..services.repo_gateway import admin as admin_repo
+from ..services.repo_gateway import users as users_repo
 from ..services import rate_limit as rate_limit_service
 from .security import parse_init_data
 

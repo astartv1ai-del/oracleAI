@@ -8,7 +8,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...core import chart_products
-from ...repo import readings, users
+from ...services.repo_gateway import readings, users
 from ..contracts.chart_products import CompositeIn, ReturnsIn, SynastryIn, TransitIn
 from ..deps import active_user, get_db, rate_limit
 

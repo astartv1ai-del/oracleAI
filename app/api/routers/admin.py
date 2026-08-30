@@ -16,14 +16,14 @@ from pydantic import BaseModel, Field
 from ...config import settings
 from ...core import product_cost
 from ...data.session import healthcheck
-from ...repo import admin as admin_repo
-from ...repo import (analytics as analytics_repo, billing, comms, content, crm,
-                     growth, users)
 from ...services import analytics as analytics_svc
 from ...services import billing as billing_svc
 from ...services import broadcast as broadcast_svc
 from ...services import payment_monitor
 from ...services import telegram
+from ...services.admin import (analytics_repo, billing, comms, content, crm,
+                               growth, users)
+from ...services.admin import admin_repo
 from ..deps import current_admin, get_db, rate_limit, require
 
 log = logging.getLogger("oracle.api.admin")
