@@ -49,9 +49,6 @@
 | [CHART_PRODUCT_CONTRACTS.md](CHART_PRODUCT_CONTRACTS.md) | Frontend, backend, agent, QA | Чтобы вызывать текущие natal, synastry и transit contracts одинаково. |
 | [CHART_TYPE_CAPABILITIES.md](CHART_TYPE_CAPABILITIES.md) | Product, astrology, release owner | Чтобы отличать enabled product paths от upstream capabilities. |
 | [BILLING.md](FEATURES/BILLING.md) | Product, billing, finance | Чтобы сверить текущие планы, SKU, платёжные пути и открытые gaps без PII. |
-| [MONETIZATION_UNIT_ECONOMICS.md](MONETIZATION_UNIT_ECONOMICS.md) | Product, finance, operations | Чтобы считать net revenue, variable COGS, contribution, ARPPU, CAC и break-even по сценариям. |
-| [MONETIZATION_RESEARCH_PACK.md](MONETIZATION_RESEARCH_PACK.md) | Product, finance, growth | Чтобы сверить verified market anchors, price ladder 1 490/4 990/9 990 ₽, scenario model, sensitivity и rollout gates. |
-| [MONETIZATION_EXTERNAL_SOURCES.md](MONETIZATION_EXTERNAL_SOURCES.md) | Finance, legal, billing | Чтобы проверять официальные platform/payment sources и не подменять settlement data сниппетами. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Все участники разработки | Чтобы подготовить ветку, изменения и pull request. |
 | [CONTRACTS.md](DOMAIN/CONTRACTS.md), [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md), [MEMORY.md](FEATURES/MEMORY.md) | Domain, AI, product | Расчётные школы, evidence-first агенты и memory policy. |
 | [PDF_SYSTEM.md](PDF_SYSTEM.md), [PDF_TEMPLATE_CATALOG.md](PDF_TEMPLATE_CATALOG.md), [TESTING.md](TESTING.md) | QA, backend, product | Отчёты, product-specific template gates, visual regression и проверочные слои. |
@@ -97,9 +94,9 @@ These documents provide focused implementation, research or operational context 
 |---|---|
 | Observability | [`OBSERVABILITY.md`](OBSERVABILITY.md) |
 | AI evaluation and agent quality | [`LLM_EVALUATION.md`](LLM_EVALUATION.md), [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md), [`AGENT_QUALITY_STANDARD.md`](AGENT_QUALITY_STANDARD.md), [`INTERPRETATION_QUALITY_STANDARD.md`](INTERPRETATION_QUALITY_STANDARD.md) |
-| AI onboarding and skills | [`AI_ONBOARDING_GAUNTLET.md`](AI_ONBOARDING_GAUNTLET.md), [`AGENTS.md`](AGENTS.md), [`AGENT_SKILL_LIBRARY.md`](AGENT_SKILL_LIBRARY.md) |
+| AI onboarding and skills | [`AGENTS.md`](AGENTS.md), [`AGENT_SKILL_LIBRARY.md`](AGENT_SKILL_LIBRARY.md) |
 | Chart and product boundaries | [`CHART_ENGINE_DECISION.md`](CHART_ENGINE_DECISION.md), [`CHART_ENGINE_LICENSING.md`](CHART_ENGINE_LICENSING.md), [`CHART_TYPE_CAPABILITIES.md`](CHART_TYPE_CAPABILITIES.md), [`COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md`](COMPOSITE_AND_RETURNS_PRODUCT_SPEC.md) |
-| Astronomy and visual domain research | [`DOMAIN/ACCURACY_MATRIX.md`](DOMAIN/ACCURACY_MATRIX.md), [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md), [`CHIROMANT_AVATAR_BRIEF.md`](CHIROMANT_AVATAR_BRIEF.md) |
+| Astronomy and visual domain research | [`DOMAIN/ACCURACY_MATRIX.md`](DOMAIN/ACCURACY_MATRIX.md), [`PALM_ENGINE_RESEARCH.md`](PALM_ENGINE_RESEARCH.md) |
 | API, memory and localization | [`API_RESILIENCE_MATRIX.md`](API_RESILIENCE_MATRIX.md), [`MEMORY_EVALUATION.md`](MEMORY_EVALUATION.md), [`LOCALIZATION_GLOSSARY.md`](LOCALIZATION_GLOSSARY.md) |
 | Analytics and payments | [`ANALYTICS_EVENT_DICTIONARY.md`](ANALYTICS_EVENT_DICTIONARY.md), [`PAYMENTS_UX_AND_INTEGRATION.md`](PAYMENTS_UX_AND_INTEGRATION.md), [`PAYMENT_MONITORING.md`](PAYMENT_MONITORING.md) |
 | PDF, backup and visual QA | [`PDF_SYSTEM.md`](PDF_SYSTEM.md), [`PDF_TEMPLATE_CATALOG.md`](PDF_TEMPLATE_CATALOG.md), [`BACKUP_RESTORE_DRILL.md`](BACKUP_RESTORE_DRILL.md), [`VISUAL_QA.md`](VISUAL_QA.md) |

@@ -18,7 +18,7 @@
 | Start the complete local stack | [`DEPLOYMENT.md`](DEPLOYMENT.md), then `make up`. |
 | Inspect services and logs | `make ps`, `make logs`, `docker compose -f infra/docker-compose.yml ps`. |
 | Validate configuration and contracts | `make selfcheck`, `python3 -m scripts.release_gate`. |
-| Apply PostgreSQL migrations | The Compose `migrate` service and [`POSTGRES_MIGRATION.md`](POSTGRES_MIGRATION.md). |
+| Apply PostgreSQL migrations | The Compose `migrate` service (see `DEPLOYMENT.md`). |
 | Operate background jobs | [`CELERY_REDIS.md`](CELERY_REDIS.md), `make worker-scale N=3`. |
 | Back up or restore | [`BACKUP_RESTORE_DRILL.md`](BACKUP_RESTORE_DRILL.md) and [`DEPLOYMENT.md`](DEPLOYMENT.md). |
 | Respond to an incident | [`INCIDENT_RESPONSE_RUNBOOK.md`](INCIDENT_RESPONSE_RUNBOOK.md). |

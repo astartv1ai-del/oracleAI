@@ -4,7 +4,6 @@
 
 **Ветка:** `master`
 **Текущий backend:** `OracleAI Engine` v2 → Kerykeion 5.12.9 → Swiss Ephemeris
-**Полный completion plan:** [ENGINE_COMPLETION_PLAN.md](ENGINE_COMPLETION_PLAN.md)
 
 ## 1. Результат проверки `engine_provenance`
 
@@ -68,7 +67,7 @@ Frontend не должен копировать provenance в localStorage, user
 
 ### Phase A — frontend transparency — completed
 
-`chartProvenanceHtml(c)` is used in chat and full-chart surfaces, RU/EN keys are present, values are escaped, fallback behavior is bounded, keyboard focus is visible, the hashed bundle was rebuilt, and CI now runs the provenance contract checker. Browser evidence is recorded in `FRONTEND_PROVENANCE_BROWSER_TEST.md`.
+`chartProvenanceHtml(c)` is used in chat and full-chart surfaces, RU/EN keys are present, values are escaped, fallback behavior is bounded, keyboard focus is visible, the hashed bundle was rebuilt, and CI now runs the provenance contract checker. Browser evidence was recorded in the dated frontend provenance browser test (removed from tree).
 
 ### Phase B — normalization correctness — v2 completed
 
@@ -106,7 +105,6 @@ The current browser audit finds the frontend disclosure visible and localized. T
 
 [3] [OracleAI improved engine](../../app/core/astrology_engine.py) — request normalization, fingerprint, bounded cache and post-calculation validation hook.
 
-[6] [Frontend provenance browser test notes](FRONTEND_PROVENANCE_BROWSER_TEST.md) — RU/EN interactive smoke evidence and cache-bust finding.
 
 [4] [Kerykeion upstream repository](https://github.com/g-battaglia/kerykeion) — disclosed backend provenance and upstream license source.
 
