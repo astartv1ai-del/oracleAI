@@ -230,6 +230,7 @@
         ${values.error ? `<div class="chart-form-error" role="alert"><b>Нужна маленькая поправка</b><span>${esc(values.error)}</span></div>` : ''}
         <label class="chart-form__field" for="ch-date"><span>Дата рождения <em>обязательно</em></span><input class="ipt" id="ch-date" type="date" value="${esc(date)}" required${disabled}></label>
         <label class="chart-form__field" for="ch-city"><span>Город рождения <em>обязательно</em></span><input class="ipt" id="ch-city" value="${esc(city)}" placeholder="Например, Москва" autocomplete="address-level2"${disabled}></label>
+        <div class="city-suggest" data-for="ch-city" role="listbox" aria-label="Подсказки города"></div>
         <label class="chart-form__field" for="ch-time"><span>Время рождения <em>если знаешь</em></span><input class="ipt" id="ch-time" type="time" value="${esc(time)}" placeholder="14:30"${disabled}></label>
         <button class="btn btn-primary chart-form__submit${loading ? ' is-loading' : ''}" data-act="build"${disabled}${loading ? ' aria-busy="true"' : ''}>${loading ? '<span class="chart-form__spinner" aria-hidden="true"></span><span>Собираю твою карту…</span>' : '<span>Рассчитать мою карту</span><span aria-hidden="true">✦</span>'}</button>
         ${loading ? this.chartLoadingHtml('build') : ''}
@@ -376,6 +377,34 @@
     }
   };
   // стихия-фильтр: тап подсвечивает планеты этой стихии в колесе, повторный тап — сброс
+
+  /* ── подсказки города: тап по готовому городу вместо ручного ввода ──────── */
+  app.citySuggestTimer = null;
+  app.citySuggest = function(input) {
+    const box = document.querySelector('.city-suggest[data-for="' + input.id + '"]');
+    if (!box) return;
+    clearTimeout(this.citySuggestTimer);
+    const q = input.value.trim();
+    if (q.length < 2) { box.innerHTML = ''; return; }
+    this.citySuggestTimer = setTimeout(async () => {
+      try {
+        const r = await api('/api/city/suggest?q=' + encodeURIComponent(q));
+        const items = (r && r.items) || [];
+        box.innerHTML = items.map(it =>
+          `<button type="button" class="chip city-suggest__chip" data-act="city-pick" data-for="${esc(input.id)}" data-val="${esc(it.label)}" role="option">${esc(it.label)}</button>`
+        ).join('');
+      } catch (e) { box.innerHTML = ''; }
+    }, 250);
+  };
+  app.pickCitySuggestion = function(el) {
+    const input = document.getElementById(el.dataset.for);
+    if (input) {
+      input.value = el.dataset.val;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    document.querySelectorAll('.city-suggest').forEach(b => { b.innerHTML = ''; });
+    haptic('light');
+  };
 
   app.filterElement = function(el) {
     haptic('light');

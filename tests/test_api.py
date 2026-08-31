@@ -259,6 +259,18 @@ async def test_today_returns_forecast_and_card(client, user):
     assert again.json()["forecast"] == data["forecast"]
 
 
+async def test_city_suggest_returns_matched_and_typo_tolerant(client, user):
+    res = await client.get("/api/city/suggest", params=as_user(user, {"q": "моск"}))
+    assert res.status_code == 200
+    assert {"key": "москва", "label": "Москва"} in res.json()["items"]
+    # опечатка («Масква») всё равно подсказывает нужный город
+    typo = await client.get("/api/city/suggest", params=as_user(user, {"q": "Масква"}))
+    assert "Москва" in [i["label"] for i in typo.json()["items"]]
+    # слишком короткий запрос — пусто
+    short = await client.get("/api/city/suggest", params=as_user(user, {"q": "м"}))
+    assert short.json()["items"] == []
+
+
 async def test_chart_and_matrix(client, user):
     chart = await client.get("/api/chart", params=as_user(user))
     assert chart.status_code == 200

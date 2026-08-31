@@ -15,6 +15,68 @@ from ..config import settings
 
 CB_MENU = "menu"
 
+# Онбординг: кнопочный выбор даты рождения. Год — с 1955 (аудитория 20–50),
+# города — крупные из встроенного словаря geo.FALLBACK, остальное — текстом.
+DATE_PICK_MIN_YEAR = 1955
+CITY_PICKS = ["москва", "санкт-петербург", "казань", "новосибирск", "екатеринбург",
+              "киев", "минск", "алматы", "лондон", "нью-йорк"]
+
+
+def date_decades_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    en = lang == "en"
+    decades = list(range(2005, DATE_PICK_MIN_YEAR - 1, -10))
+    rows = [[InlineKeyboardButton(text=f"{d}–{d + 9}", callback_data=f"bd:yg:{d}")]
+            for d in decades]
+    rows.append([InlineKeyboardButton(text="✍ Ввести текстом" if not en else "✍ Type it",
+                                      callback_data="bd:text")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def date_years_kb(decade: int, lang: str = "ru") -> InlineKeyboardMarkup:
+    rows = [[InlineKeyboardButton(text=str(y), callback_data=f"bd:y:{y}")
+             for y in range(decade, decade + 5)],
+            [InlineKeyboardButton(text=str(y), callback_data=f"bd:y:{y}")
+             for y in range(decade + 5, decade + 10)]]
+    rows.append([InlineKeyboardButton(text="←", callback_data="bd:decades")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+_MONTHS_RU = ["янв", "фев", "мар", "апр", "май", "июн",
+              "июл", "авг", "сен", "окт", "ноя", "дек"]
+_MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def date_months_kb(year: int, lang: str = "ru") -> InlineKeyboardMarkup:
+    months = _MONTHS_EN if lang == "en" else _MONTHS_RU
+    rows = [[InlineKeyboardButton(text=months[m - 1], callback_data=f"bd:m:{year}:{m}")
+             for m in range(start, start + 3)]
+            for start in range(1, 13, 3)]
+    rows.append([InlineKeyboardButton(text="←", callback_data=f"bd:yg:{year - year % 10}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def date_days_kb(year: int, month: int, lang: str = "ru") -> InlineKeyboardMarkup:
+    import calendar
+    days = calendar.monthrange(year, month)[1]
+    rows = [[InlineKeyboardButton(text=str(d), callback_data=f"bd:day:{year}:{month}:{d}")
+             for d in range(start, min(start + 7, days + 1))]
+            for start in range(1, days + 1, 7)]
+    rows.append([InlineKeyboardButton(text="←", callback_data=f"bd:m:{year}:{month}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def city_pick_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    en = lang == "en"
+    titles = {"москва": "Москва", "санкт-петербург": "Санкт-Петербург", "казань": "Казань",
+              "новосибирск": "Новосибирск", "екатеринбург": "Екатеринбург", "киев": "Київ",
+              "минск": "Минск", "алматы": "Алматы", "лондон": "London", "нью-йорк": "New York"}
+    rows = [[InlineKeyboardButton(text=titles.get(c, c.title()), callback_data=f"city:{i}")]
+            for i, c in enumerate(CITY_PICKS)]
+    rows.append([InlineKeyboardButton(text="✍ Другой город" if not en else "✍ Other city",
+                                      callback_data="city:other")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 def _webapp_button(text: str, path: str = "") -> InlineKeyboardButton | None:
     """Кнопка Mini App. Без https-адреса Telegram её просто не примет."""

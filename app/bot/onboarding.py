@@ -20,8 +20,10 @@ from ..services import access, analytics, billing as billing_svc, referrals
 from ..repo import content as content_repo, readings, users
 from .formatting import tg_esc
 from .onboarding_parsers import date_error_copy, parse_birth_date, parse_birth_time, time_error_copy
-from .keyboards import (ask_starters_kb, back_menu, confirmation_kb,
-                        gender_kb, language_kb, main_menu, onboarding_edit_kb,
+from .keyboards import (ask_starters_kb, back_menu, city_pick_kb,
+                        confirmation_kb, date_decades_kb, date_days_kb,
+                        date_months_kb, date_years_kb, gender_kb, language_kb,
+                        main_menu, onboarding_edit_kb,
                         personas_kb, technique_kb, time_kb, welcome_kb)
 
 log = logging.getLogger("oracle.bot.onboarding")
@@ -326,9 +328,10 @@ async def onb_gender(cb: CallbackQuery, state: FSMContext, db):
     await cb.message.edit_text(
         _step_label("date", _lang(user)) + _copy(
             user,
-            "Спасибо. Теперь — дата рождения в формате <b>ДД.ММ.ГГГГ</b>, например 21.06.1999:",
-            "Thank you. Now send your birth date in <b>DD.MM.YYYY</b> format, for example 21.06.1999:",
-        )
+            "Спасибо. Теперь — дата рождения. Выбери декаду, а дальше подскажу:",
+            "Thank you. Now your birth date. Pick a decade and I will guide you:",
+        ),
+        reply_markup=date_decades_kb(_lang(user)),
     )
     await cb.answer()
 
@@ -343,21 +346,8 @@ async def onb_date(message: Message, state: FSMContext, db):
                               props={"step": "date", "reason": str(exc)}, surface="bot")
         await message.answer(date_error_copy(str(exc), _lang(user)))
         return
-    # SEC-010: онбординг бота знает настоящую дату рождения — это более сильная
-    # аттестация возраста, чем самоподтверждение, поэтому хеш доказательства
-    # вычисляем из неё (год при этом в открытом виде в новой колонке не хранится).
-    await users.update(db, message.from_user.id, birth_date=parsed.normalized,
-                       age_proof_hash=users.age_proof_hash(message.from_user.id,
-                                                           parsed.value.year),
-                       onboarding_step="time")
-    await analytics.track(db, "onboarding_step", message.from_user.id,
-                          props={"step": "date"}, surface="bot")
-    await state.set_state(Onb.time)
-    await message.answer(_step_label("time", _lang(user)) + _copy(
-        user,
-        f"Поняла: <b>{tg_esc(parsed.label)}</b> 🌙\n\nЗнаешь ли ты время рождения? Выбери вариант или напиши его текстом.",
-        f"Got it: <b>{tg_esc(parsed.label)}</b> 🌙\n\nDo you know your birth time? Choose an option or type it.",
-    ), reply_markup=time_kb(_lang(user)))
+    await _save_birth_date(message, state, db, user,
+                           parsed.value.day, parsed.value.month, parsed.value.year)
 
 
 async def _advance_from_time(target: Message, state: FSMContext, db, parsed) -> None:
@@ -371,9 +361,83 @@ async def _advance_from_time(target: Message, state: FSMContext, db, parsed) -> 
     city_question = _g(user, "город, где ты родилась", "город, где ты родился", "город рождения")
     await target.answer(_step_label("city", _lang(user)) + _copy(
         user,
-        f"Поняла: <b>{tg_esc(parsed.label)}</b>. И последнее — {city_question}? 🏙\n\nМожно написать город на русском, английском или в транслитерации.",
-        f"Got it: <b>{tg_esc(parsed.label)}</b>. One last detail — your birth city? 🏙\n\nYou can write it in your local language, English, or transliteration.",
-    ), reply_markup=back_menu())
+        f"Поняла: <b>{tg_esc(parsed.label)}</b>. И последнее — {city_question}? 🏙\n\nВыбери город или напиши свой.",
+        f"Got it: <b>{tg_esc(parsed.label)}</b>. One last detail — your birth city? 🏙\n\nPick a city or type your own.",
+    ), reply_markup=city_pick_kb(_lang(user)))
+
+
+async def _save_birth_date(target, state, db, user, day: int, month: int, year: int) -> None:
+    """Общая запись даты рождения для кнопочного выбора и текстового ввода."""
+    from datetime import date as _date
+    try:
+        parsed_date = _date(year, month, day)
+    except ValueError:
+        await target.answer(date_error_copy("invalid_calendar_date", _lang(user)))
+        return
+    # SEC-010: онбординг бота знает настоящую дату рождения — это более сильная
+    # аттестация возраста, чем самоподтверждение, поэтому хеш доказательства
+    # вычисляем из неё (год при этом в открытом виде в новой колонке не хранится).
+    await users.update(db, target.from_user.id, birth_date=parsed_date.isoformat(),
+                       age_proof_hash=users.age_proof_hash(target.from_user.id,
+                                                           parsed_date.year),
+                       onboarding_step="time")
+    await analytics.track(db, "onboarding_step", target.from_user.id,
+                          props={"step": "date"}, surface="bot")
+    await state.set_state(Onb.time)
+    label = parsed_date.strftime("%d.%m.%Y")
+    await target.answer(_step_label("time", _lang(user)) + _copy(
+        user,
+        f"Поняла: <b>{tg_esc(label)}</b> 🌙\n\nЗнаешь ли ты время рождения? Выбери вариант или напиши его текстом.",
+        f"Got it: <b>{tg_esc(label)}</b> 🌙\n\nDo you know your birth time? Choose an option or type it.",
+    ), reply_markup=time_kb(_lang(user)))
+
+
+@router.callback_query(Onb.date, F.data.startswith("bd:"))
+async def onb_date_pick(cb: CallbackQuery, state: FSMContext, db):
+    """Кнопочный выбор даты: декада → год → месяц → день. Текст — всегда fallback."""
+    user = await users.get(db, cb.from_user.id)
+    lang = _lang(user)
+    parts = cb.data.split(":")
+    kind = parts[1]
+    if kind == "text":
+        await cb.message.edit_text(_copy(
+            user,
+            "Напиши дату рождения — например 21.06.1999 или 21 июня 1999.",
+            "Send your birth date — for example 21.06.1999 or June 21 1999.",
+        ), reply_markup=back_menu())
+        await cb.answer()
+        return
+    if kind == "decades":
+        await cb.message.edit_reply_markup(reply_markup=date_decades_kb(lang))
+        await cb.answer()
+        return
+    if kind == "yg":
+        decade = int(parts[2])
+        await cb.message.edit_text(_step_label("date", lang) + _copy(
+            user, "Выбери год рождения:", "Pick your birth year:"),
+            reply_markup=date_years_kb(decade, lang))
+        await cb.answer()
+        return
+    if kind == "y":
+        year = int(parts[2])
+        await cb.message.edit_text(_step_label("date", lang) + _copy(
+            user, "Выбери месяц:", "Pick the month:"),
+            reply_markup=date_months_kb(year, lang))
+        await cb.answer()
+        return
+    if kind == "m":
+        year, month = int(parts[2]), int(parts[3])
+        await cb.message.edit_text(_step_label("date", lang) + _copy(
+            user, "Выбери день:", "Pick the day:"),
+            reply_markup=date_days_kb(year, month, lang))
+        await cb.answer()
+        return
+    if kind == "day":
+        await cb.answer()
+        await _save_birth_date(cb.message, state, db, user,
+                               int(parts[4]), int(parts[3]), int(parts[2]))
+        return
+    await cb.answer("Invalid choice", show_alert=True)
 
 
 @router.callback_query(Onb.time, F.data.startswith("time:"))
@@ -408,9 +472,30 @@ async def onb_time(message: Message, state: FSMContext, db):
     await _advance_from_time(message, state, db, parsed)
 
 
+@router.callback_query(Onb.city, F.data.startswith("city:"))
+async def onb_city_pick(cb: CallbackQuery, state: FSMContext, db):
+    from .keyboards import CITY_PICKS
+    user = await users.get(db, cb.from_user.id)
+    choice = cb.data.split(":", 1)[1]
+    if choice == "other":
+        await cb.message.edit_text(_copy(
+            user,
+            "Напиши город рождения — на русском, английском или в транслитерации.",
+            "Send your birth city — in your local language, English, or transliteration.",
+        ), reply_markup=back_menu())
+        await cb.answer()
+        return
+    idx = int(choice)
+    if not 0 <= idx < len(CITY_PICKS):
+        await cb.answer("Invalid choice", show_alert=True)
+        return
+    await cb.answer()
+    await onb_city(cb.message, state, db, city=CITY_PICKS[idx])
+
+
 @router.message(Onb.city, F.text)
-async def onb_city(message: Message, state: FSMContext, db):
-    city = message.text.strip()[:60]
+async def onb_city(message: Message, state: FSMContext, db, city: str | None = None):
+    city = (city or message.text or "").strip()[:60]
     user = await users.get(db, message.from_user.id)
     wait = await message.answer(_copy(
         user,
@@ -529,12 +614,15 @@ async def onb_edit_field(cb: CallbackQuery, state: FSMContext, db):
     await users.update(db, cb.from_user.id, onboarding_step=field)
     prompts = {
         "name": ("Как тебя называть?", "What should I call you?"),
-        "date": ("Напиши дату рождения — например 21 июня 1999.", "Send your birth date — for example June 21 1999."),
+        "date": ("Выбери дату рождения или напиши её — например 21 июня 1999.",
+                 "Pick your birth date or type it — for example June 21 1999."),
         "time": ("Выбери или напиши время рождения.", "Choose or type your birth time."),
-        "city": ("Напиши город рождения.", "Send your birth city."),
+        "city": ("Выбери город рождения или напиши свой.", "Pick your birth city or type your own."),
     }
     text = _copy(user, *prompts[field])
-    await cb.message.edit_text(text, reply_markup=time_kb(_lang(user)) if field == "time" else back_menu())
+    keyboards = {"time": time_kb(_lang(user)), "date": date_decades_kb(_lang(user)),
+                 "city": city_pick_kb(_lang(user))}
+    await cb.message.edit_text(text, reply_markup=keyboards.get(field, back_menu()))
     await cb.answer()
 
 
@@ -545,11 +633,17 @@ async def onb_back(cb: CallbackQuery, state: FSMContext, db):
     if current == Onb.time.state:
         await state.set_state(Onb.date)
         await users.update(db, cb.from_user.id, onboarding_step="date")
-        text = _copy(user, "Вернёмся к дате рождения. Напиши её в любом понятном формате.", "Let’s return to your birth date. Send it in any clear format.")
+        text = _step_label("date", _lang(user)) + _copy(
+            user,
+            "Вернёмся к дате рождения. Выбери декаду или напиши её.",
+            "Let’s return to your birth date. Pick a decade or type it.")
+        markup = date_decades_kb(_lang(user))
     elif current == Onb.city.state:
         await state.set_state(Onb.time)
         await users.update(db, cb.from_user.id, onboarding_step="time")
-        text = _copy(user, "Вернёмся ко времени рождения.", "Let’s return to your birth time.")
+        text = _step_label("time", _lang(user)) + _copy(
+            user, "Вернёмся ко времени рождения.", "Let’s return to your birth time.")
+        markup = time_kb(_lang(user))
     elif current == Onb.confirm.state or current == Onb.name.state and user["onboarding_step"] == "name" and user["chart_json"]:
         await state.set_state(Onb.confirm)
         await users.update(db, cb.from_user.id, onboarding_step="confirm")
@@ -562,7 +656,8 @@ async def onb_back(cb: CallbackQuery, state: FSMContext, db):
     else:
         await state.clear()
         text = _copy(user, "Пауза сохранена. Нажми /start, когда захочешь продолжить.", "Paused here. Press /start when you want to continue.")
-    await cb.message.edit_text(text, reply_markup=back_menu())
+        markup = back_menu()
+    await cb.message.edit_text(text, reply_markup=markup)
     await cb.answer()
 
 

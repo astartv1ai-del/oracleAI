@@ -865,6 +865,9 @@ button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon
 .chart-form__field em { margin-left: 4px; color: var(--text-muted); font-size: 10px; font-style: normal; font-weight: 600; }
 .chart-form__field .ipt { min-height: 44px; color-scheme: dark; }
 .chart-form__submit { width: 100%; margin-top: 2px; }
+.city-suggest { display: flex; flex-wrap: wrap; gap: 6px; }
+.city-suggest:empty { display: none; }
+.city-suggest .chip { min-height: 32px; padding: 6px 10px; font-size: 11.5px; }
 .chart-form-error {
   display: grid;
   gap: 7px;

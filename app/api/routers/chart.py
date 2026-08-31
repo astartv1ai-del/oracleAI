@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import json
 import logging
 import re
@@ -215,11 +216,24 @@ async def city_suggest(q: str = Query(default="", min_length=0, max_length=60),
               "рим": "Rome", "мадрид": "Madrid", "лиссабон": "Lisbon", "стамбул": "Istanbul",
               "тель-авив": "Тель-Авив", "дубай": "Dubai", "нью-йорк": "New York",
               "лос-анджелес": "Los Angeles", "чикаго": "Chicago", "торонто": "Toronto",
-              "майами": "Miami", "бангкок": "Bangkok", "пекин": "北京", "токио": "Tokyo"}
+              "майами": "Miami", "бангкок": "Bangkok", "пекин": "Beijing", "токио": "Tokyo"}
     items, seen = [], set()
-    # точное совпадение и «начинается с» — сначала, потом «встречается в слове»
-    for key in sorted(FALLBACK, key=lambda k: (not k.startswith(query), k)):
-        if query in key and key not in seen:
+    query_words = query.replace(",", " ").split()
+    # «Масква» и другие опечатки — нечёткое совпадение по встроенному словарю
+    typo_keys = set(difflib.get_close_matches(query, FALLBACK, n=4, cutoff=0.6))
+    for w in query_words:
+        typo_keys.update(difflib.get_close_matches(w, FALLBACK, n=4, cutoff=0.75))
+    # точное совпадение и «начинается с» — сначала, потом «встречается в слове», затем опечатки
+    def rank(key: str) -> tuple:
+        if key == query or key.startswith(query):
+            return (0, key)
+        if any(key in w or w in key for w in query_words):
+            return (1, key)
+        if key in typo_keys:
+            return (2, key)
+        return (3, key)
+    for key in sorted(FALLBACK, key=rank):
+        if rank(key)[0] < 3 and key not in seen:
             seen.add(key)
             items.append({"key": key, "label": titles.get(key, key.title())})
         if len(items) >= 8:

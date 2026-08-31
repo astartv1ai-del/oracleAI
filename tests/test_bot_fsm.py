@@ -13,7 +13,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot.onboarding import (
     DeleteMe, Onb, delete_me, delete_me_confirm, onb_age_confirm, onb_age_decline,
-    onb_city, onb_gender, onb_name, onb_time,
+    onb_city, onb_city_pick, onb_date, onb_date_pick, onb_gender, onb_name, onb_time,
 )
 
 from app.repo import users
@@ -132,6 +132,57 @@ async def test_onboarding_gender_skip_keeps_neutral_fallback(db):
     await onb_gender(_Callback(1004, "gender:skip", message), state, db)
     assert (await users.get(db, 1004))["gender"] is None
     assert await state.get_state() == Onb.date.state
+
+
+async def test_onboarding_date_picker_saves_date_and_advances_to_time(db):
+    await users.ensure(db, 1010, "Аня")
+    state = _state_for()
+    await state.set_state(Onb.date)
+    message = _Message(1010, "")
+
+    # декада → год → месяц → день
+    await onb_date_pick(_Callback(1010, "bd:yg:1990", message), state, db)
+    assert "Выбери год" in message.replied
+    await onb_date_pick(_Callback(1010, "bd:y:1999", message), state, db)
+    assert "Выбери месяц" in message.replied
+    await onb_date_pick(_Callback(1010, "bd:m:1999:6", message), state, db)
+    assert "Выбери день" in message.replied
+    await onb_date_pick(_Callback(1010, "bd:day:1999:6:21", message), state, db)
+
+    user = await users.get(db, 1010)
+    assert user["birth_date"] == "1999-06-21"
+    assert await state.get_state() == Onb.time.state
+    assert user["age_proof_hash"]  # SEC-010: хеш возраста вычислен
+
+
+async def test_onboarding_date_text_fallback_button(db):
+    await users.ensure(db, 1011, "Аня")
+    state = _state_for()
+    await state.set_state(Onb.date)
+    message = _Message(1011, "")
+
+    await onb_date_pick(_Callback(1011, "bd:text", message), state, db)
+    assert "21.06.1999" in message.replied
+    assert await state.get_state() == Onb.date.state
+
+    await onb_date(_Message(1011, "21.06.1999"), state, db)
+    assert (await users.get(db, 1011))["birth_date"] == "1999-06-21"
+    assert await state.get_state() == Onb.time.state
+
+
+async def test_onboarding_city_pick_uses_fallback_dictionary(db):
+    await users.ensure(db, 1012, "Аня")
+    await users.update(db, 1012, birth_date="1990-06-21", birth_time="12:00", birth_time_known=0)
+    state = _state_for()
+    await state.set_state(Onb.city)
+    message = _Message(1012, "")
+
+    await onb_city_pick(_Callback(1012, "city:0", message), state, db)  # Москва
+
+    user = await users.get(db, 1012)
+    assert user["birth_city"] == "москва"
+    assert user["chart_json"]
+    assert await state.get_state() == Onb.confirm.state
 
 
 async def test_onboarding_invalid_time_stays_on_time_step(db):

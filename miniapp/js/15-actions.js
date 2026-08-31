@@ -126,7 +126,8 @@
     'confirm-no': () => { app._confirmCb = null; call('closeModal'); },
     'account-delete': () => call('deleteAccount'),
     'account-privacy': () => call('openPrivacyCenter'),
-    'account-export': () => call('exportAccount')
+    'account-export': () => call('exportAccount'),
+    'city-pick': (el) => call('pickCitySuggestion', el)
   };
 
   app.actionHandlers = actionHandlers;

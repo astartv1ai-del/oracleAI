@@ -38,6 +38,10 @@ document.addEventListener('input', function (event) {
   if (event.target && event.target.id === 'chat-input') {
     app.chat.draft = event.target.value;
   }
+  if (event.target && event.target.classList && event.target.classList.contains('ipt') &&
+      ['ch-city', 'sp-city'].includes(event.target.id)) {
+    app.citySuggest(event.target);
+  }
 });
 
 

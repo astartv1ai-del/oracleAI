@@ -32,6 +32,7 @@
         <input class="ipt" id="sp-date" type="date" aria-label="Дата рождения">
         <input class="ipt" id="sp-time" type="time" aria-label="Время рождения">
         <input class="ipt" id="sp-city" placeholder="Город рождения" autocomplete="address-level2">
+        <div class="city-suggest" data-for="sp-city" role="listbox" aria-label="Подсказки города"></div>
       </div>
       <p class="product-muted">Время и город нужны, чтобы корректно проверить точность карты. Эти данные не попадают в URL результата.</p>
       <button class="btn btn-primary" data-act="synastry-create">Сохранить и рассчитать</button>
