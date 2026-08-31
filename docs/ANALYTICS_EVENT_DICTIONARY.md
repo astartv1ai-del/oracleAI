@@ -21,7 +21,7 @@
 | Event | Момент | Allowed props | Surface | Owner | KPI |
 |---|---|---|---|---|---|
 | `miniapp_open` | Сервер успешно обработал `GET /api/me` для владельца. | none | `miniapp` | Product | Open rate, cohort start. |
-| `age_confirmed` | Переход `age_confirmed=false → true` через authenticated profile update. | `source`: `miniapp` | `miniapp` | Trust/Product | Age-gate completion. |
+| ~~`age_confirmed`~~ | ~~Возраст-гейт завершён.~~ Удалено (GAUNTLET v2): возрастная проверка больше не выполняется. | — | — | — | Removed |
 | `first_ritual` | Первая успешная отметка дневной практики, не повторная отметка за день. | `surface_action`: `practice_done` | `bot`/`miniapp` | Product | First ritual completion, time-to-first-value. |
 | `first_question` | Первый завершённый обычный или crisis-safe вопрос с ответом. | `agent`, optional `safety=crisis` | caller surface | AI/Product | First question completion, first-value rate. |
 | `return_d1` | Open on or after UTC day +1 from first Mini App open; atomically recorded once. | `cohort_day`: `1` | `miniapp` | Product | D1 voluntary return. |
@@ -72,9 +72,9 @@ Monetization events are emitted only from authenticated server-owned transitions
 
 | KPI | Definition | Exclusions |
 |---|---|---|
-| Age-gate completion | Unique users with `age_confirmed` divided by unique users with first `miniapp_open` in cohort window. | No age value or birth data. |
-| First ritual rate | Unique users with `first_ritual` divided by age-confirmed users in same cohort. | Do not count `practice_start` alone. |
-| First question rate | Unique users with `first_question` divided by age-confirmed users in same cohort. | Failed/denied question is not completion. |
+| ~~Age-gate completion~~ | ~~Этап воронки удалён~~ (GAUNTLET v2). Воронка активации начинается с `first_ritual`. | — |
+| First ritual rate | Unique users with `first_ritual` divided by cohort users. | Do not count `practice_start` alone. |
+| First question rate | Unique users with `first_question` divided by cohort users. | Failed/denied question is not completion. |
 | D1 / D7 return | Cohort users with milestone event divided by cohort users with first open. | No push/open pressure interpretation. |
 | Fallback rate | `llm_fallback` operational records divided by successful provider completions, segmented by purpose/provider/language outside event table. | Never attach prompt, answer or memory. |
 

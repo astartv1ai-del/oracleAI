@@ -83,7 +83,7 @@ docker compose -f infra/docker-compose.yml ps
 curl --fail --silent --show-error https://YOUR_DOMAIN/api/health
 ```
 
-Минимальный smoke test включает: успешный `migrate`, `GET /api/health` с ответом `{"ok":true}`, `celery -A app.queue:celery_app inspect ping`, открытие русского и английского лендинга, запуск Mini App из Telegram, подтверждение 16+ тестовой учётной записью, смену языка, выключение/включение памяти и один ответ проводника. Для web checkout сначала создайте Paddle transaction через серверный API и проверьте sandbox webhook только по `transaction.completed`; не подставляйте `tg_id` или тариф вручную в hosted URL.
+Минимальный smoke test включает: успешный `migrate`, `GET /api/health` с ответом `{"ok":true}`, `celery -A app.queue:celery_app inspect ping`, открытие русского и английского лендинга, запуск Mini App из Telegram, смену языка, выключение/включение памяти и один ответ проводника. Для web checkout сначала создайте Paddle transaction через серверный API и проверьте sandbox webhook только по `transaction.completed`; не подставляйте `tg_id` или тариф вручную в hosted URL.
 
 ## Обновление версии
 

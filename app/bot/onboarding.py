@@ -65,8 +65,8 @@ def _g(user, feminine: str, masculine: str, neutral: str) -> str:
 
 class Onb(StatesGroup):
     # BOT-004: legacy-состояние `age` удалено — поток его не использовал, а
-    # висящее состояние путало чтение FSM. Старые инлайн-кнопки age:confirm
-    # обрабатывает отдельный legacy-хендлер (см. ниже), состояние ему не нужно.
+    # висящее состояние путало чтение FSM; обрабатывавшие его кнопки age:confirm
+    # также удалены (GAUNTLET v2).
     language = State()
     name = State()
     gender = State()

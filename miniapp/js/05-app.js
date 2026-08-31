@@ -108,9 +108,6 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
       else composer.style.paddingBottom = '';
     }, { passive: true });
   };
-  // Аттестация 16+ с годом рождения (аудит SEC-010): сервер проверяет год и
-  // хранит только его keyed-хеш. Это не верификация личности, а ясная граница
-  // продукта и путь к безопасным настройкам приватности.
   app.maybeIntro = function() {
     if (localStorage.getItem('oracle_intro_seen')) return;
     // первый день + дата рождения уже есть, а карты нет — в финал интро

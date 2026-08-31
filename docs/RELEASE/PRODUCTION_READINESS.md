@@ -16,7 +16,7 @@
 
 Довести OracleAI — Telegram-бот и Mini App с четырьмя самостоятельными проводниками, расширенными астрологическими калькуляторами и palm-reading pipeline Миры — до безопасного, наблюдаемого и коммерчески готового состояния. Результатом должен стать повторяемый процесс запуска: от закрытой проверки на реальных устройствах до управляемого публичного трафика с понятными SLO, поддержкой, аналитикой, резервным копированием и планом отката.
 
-План исходит из текущего состояния проекта: FastAPI, aiogram, SQLite в WAL-режиме, Docker Compose, Caddy, backup service, Sentry/JSONL logging, серверная Telegram auth, 16+ gate, opt-in memory, четыре агента, 19 calculator entries и отдельный vision/persistence контур Миры. Полный тестовый набор уже проходит, но массовая готовность требует закрыть не только кодовые задачи, но и риски эксплуатации, качества LLM, данных, устройств Telegram, поддержки и платежей.
+План исходит из текущего состояния проекта: FastAPI, aiogram, PostgreSQL, Docker Compose, Caddy, backup service, Sentry/JSONL logging, серверная Telegram auth, opt-in memory, четыре агента, 19 calculator entries и отдельный vision/persistence контур Миры. Возрастная проверка (16+) удалена как продуктовая граница (GAUNTLET v2). Полный тестовый набор уже проходит, но массовая готовность требует закрыть не только кодовые задачи, но и риски эксплуатации, качества LLM, данных, устройств Telegram, поддержки и платежей.
 
 ## Стартовая оценка
 
@@ -24,7 +24,7 @@
 |---|---|---|
 | Функциональность | Четыре агента, калькуляторы, Таро, дневник, Mini App, API и bot surfaces. | Реальный device QA всех критических путей, product documentation Миры, release regression matrix. |
 | Palm vision | Валидация изображений, quality gates, safety sanitization, raw image не хранится, mocked E2E зелёный. | Надёжный live provider fallback, strict structured response, latency budget, manual quality benchmark на согласованном датасете. |
-| Безопасность | Server-side auth/ownership, rate limits, 16+, memory privacy guard, CSP, webhook principles, backup guidance. | Внешний security review, секреты и доступы, legal review, verified restore drill, abuse/incident rehearsal. |
+| Безопасность | Server-side auth/ownership, rate limits, memory privacy guard, CSP, webhook principles, backup guidance. | Внешний security review, секреты и доступы, legal review, verified restore drill, abuse/incident rehearsal. |
 | Инфраструктура | Compose с bot/api/Caddy/backup, HTTPS runbook, healthcheck, Sentry, rollback notes. | Staging, CI/CD, production secrets, off-site backups, operational dashboard, capacity/load proof. |
 | Масштабирование | PostgreSQL 16 + pgvector, pooled connections, Alembic migrations и single API worker — контролируемая стартовая конфигурация. | Измерить пределы; для роста подготовить distributed rate limiting, очередь задач и object-storage policy без хранения raw palm images. |
 | Монетизация и рост | Платёжная модель и Paddle webhook safeguards описаны. | Sandbox-to-production payment certification, price/entitlement review, support/refund workflow, acquisition funnel и lifecycle messaging. |
@@ -73,13 +73,13 @@ Vision pipeline Миры должен перейти от prompt-only JSON disci
 
 ## Фаза 2. UX, Mobile QA и accessibility
 
-Нужно провести реальное тестирование не только в sandbox browser, но и в Telegram на iOS, Android и Desktop. Матрица должна покрыть first launch, 16+ acceptance/exit, onboarding, смену RU/EN, memory on/off, все четыре агента, астрологические calculators, upload/preview/permission flow Миры, чат, ошибки сети, slow LLM, offline fallback, support/deletion, checkout и возврат из внешней оплаты.
+Нужно провести реальное тестирование не только в sandbox browser, но и в Telegram на iOS, Android и Desktop. Матрица должна покрыть first launch, onboarding, смену RU/EN, memory on/off, все четыре агента, астрологические calculators, upload/preview/permission flow Миры, чат, ошибки сети, slow LLM, offline fallback, support/deletion, checkout и возврат из внешней оплаты.
 
 Следует устранить product friction: сократить путь до первого полезного результата, объяснить, что Мира читает лишь видимые признаки, добавить доступный пример корректного фото, показать status upload/vision, сделать retry и delete очевидными. Для calculator explorer важны ясные термины и distinction между date-only и exact calculation. Необходимо завершить accessibility audit: контраст, крупные touch targets, keyboard navigation, screen-reader labels, reduced motion, Telegram safe areas и локализация без обрезания текста.
 
 | Поверхность | P0 критерий | Метод проверки |
 |---|---|---|
-| Первое открытие | Пользователь понимает 16+ границу, ценность и следующий шаг без обязательной даты рождения. | Moderated usability sessions + device QA. |
+| Первое открытие | Пользователь понимает ценность и следующий шаг без обязательной даты рождения. | Moderated usability sessions + device QA. |
 | Чат и проводники | Роль каждого агента ясна, UI не создаёт впечатления, что Мира — ветка Таро. | Task-based test и UI regression screenshots. |
 | Palm scan | Фото можно выбрать/заменить, видны privacy note, progress, quality result и следующий шаг. | iOS/Android camera/gallery QA. |
 | Ошибка LLM/сети | Нет пустого экрана, бесконечного spinner или потери draft. | Network throttling и forced provider failure. |
@@ -87,7 +87,7 @@ Vision pipeline Миры должен перейти от prompt-only JSON disci
 
 ## Фаза 3. Data, privacy, legal и trust
 
-До внешнего трафика нужно завершить независимую юридическую проверку Privacy Policy, Terms, 16+ wording, consent language, cookies/analytics, data deletion, cross-border data transfer, платёжных условий и refund process для стран первой волны. Этот пункт требует внешнего квалифицированного юриста; инженерная документация не заменяет правовое заключение.
+До внешнего трафика нужно завершить независимую юридическую проверку Privacy Policy, Terms, consent language, cookies/analytics, data deletion, cross-border data transfer, платёжных условий и refund process для стран первой волны. Этот пункт требует внешнего квалифицированного юриста; инженерная документация не заменяет правовое заключение.
 
 На инженерном уровне следует реализовать и протестировать self-service data controls: экспорт сведений по запросу, deletion request flow с SLA, полное удаление связанных palm analysis и memory data согласно policy, support audit trail без раскрытия личных текстов. Необходимо зафиксировать retention для технических журналов, LLM usage, платежных событий, backup и deleted records. Следует провести privacy threat model: кто имеет доступ к базе, backup, Sentry, provider logs и admin panel; как этот доступ выдается, отзывается и проверяется.
 
@@ -127,7 +127,7 @@ Support readiness включает public help center/FAQ, in-app contact route,
 
 Нужно утвердить event taxonomy, запрещающую записывать в аналитику текст вопросов, дневников и анализов ладони. События должны измерять только технически необходимые шаги: acquisition source, bot start, age confirmation, onboarding step completion, selected guide, feature open, upload started/completed/failed, provider fallback, payment step, subscription status, retention and support contact. Каждое событие получает owner, purpose, retention и privacy review.
 
-Воронка запуска должна быть инструментирована до первой рекламной кампании: landing → bot start → 16+ confirmation → first value event → D1/D7 return → retained active user → optional conversion. Нужны cohort dashboards и qualitative feedback mechanism, а A/B experiments запускаются ограниченно, с pre-registered hypothesis, guardrail metric и automatic stop condition. Запрещается экспериментировать с safety wording, age gate, consent или crisis routing ради конверсии.
+Воронка запуска должна быть инструментирована до первой рекламной кампании: landing → bot start → first value event → D1/D7 return → retained active user → optional conversion. Нужны cohort dashboards и qualitative feedback mechanism, а A/B experiments запускаются ограниченно, с pre-registered hypothesis, guardrail metric и automatic stop condition. Запрещается экспериментировать с safety wording, consent или crisis routing ради конверсии.
 
 Growth plan строится из четырёх потоков: Telegram referral/share mechanics с privacy-safe assets, creator/community partnerships, ASO/landing SEO для discovery и retention communications, которые пользовательница явно включила. Перед масштабной платной рекламой необходимо показать, что retention, support load, LLM cost и failure rate укладываются в утверждённые пороги на beta cohort.
 
@@ -190,7 +190,7 @@ Growth plan строится из четырёх потоков: Telegram referr
 
 ## Предпосылки и открытые решения
 
-1. План предполагает, что первая публичная версия будет обслуживать русско- и англоязычных пользователей Telegram и сохранит позиционирование 16+ self-reflection, а не медицинского, юридического, финансового или психологического сервиса.
+1. План предполагает, что первая публичная версия будет обслуживать русско- и англоязычных пользователей Telegram и сохранит позиционирование self-reflection, а не медицинского, юридического, финансового или психологического сервиса.
 2. До Gate 0 нужно выбрать маршрут: controlled beta либо public-scale preparation. Оба маршрута используют PostgreSQL; различаются только уровнем доказанной capacity, distributed rate limiting и фоновой очереди.
 3. До включения платежей требуется отдельное подтверждение владельца продукта и завершённая sandbox certification; данный план не предусматривает реальных платежных действий без такого подтверждения.
 4. Правовые документы и трансграничная обработка данных требуют external legal review в странах запуска.

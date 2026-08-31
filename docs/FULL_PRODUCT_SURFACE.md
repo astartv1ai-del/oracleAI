@@ -19,7 +19,7 @@
 | Surface | Текущее состояние | Evidence / gap |
 |---|---|---|
 | Registration / first identity | **Enabled with limitation** | Telegram identity и dev-user режим реализованы в `app/api/deps.py`; самостоятельной email-регистрации нет. |
-| Onboarding | **Enabled** | Mini App onboarding, age gate и профильный intake в `miniapp/js/05-app.js`, `miniapp/js/12-misc.js`. |
+| Onboarding | **Enabled** | Mini App onboarding и профильный intake в `miniapp/js/05-app.js`, `miniapp/js/12-misc.js`. Возрастной гейт удалён (GAUNTLET v2). |
 | Login / logout | **Enabled with limitation** | Авторизация через Telegram `initData`; logout как отдельная серверная сессия не нужен, но нужна device QA. |
 | Profile | **Enabled** | `/api/me`, `/api/profile`, профильные поля и UI. |
 | Birth data | **Enabled** | Дата, время, точность времени, место и координаты используются расчётным контрактом. |

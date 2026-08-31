@@ -16,12 +16,12 @@
 
 | ID | Статус | Предусловие | Действия | Ожидаемый результат |
 |---|---|---|---|---|
-| A-01 | AUTO/BLOCKER | User существует, `age_confirmed=0`. | POST normal chat и POST `/api/jobs/chat/{agent}`. | Оба ответа `403` с `age_confirmation_required`; нет job, charge, LLM call или message. |
-| A-02 | AUTO/BLOCKER | Age-confirmed active user. | Enqueue valid chat. | `202`; job `queued`; только owner видит status; prompt не возвращается status API. |
-| A-03 | AUTO/BLOCKER | Job queued; затем user age reset to `0`. | Запустить worker. | Worker переводит job в `rejected`, не вызывает LLM/billing, не сохраняет assistant message и не retries policy denial. |
+| A-01 | ~~AUTO/BLOCKER~~ | ~~Age-gate тест удалён~~ (GAUNTLET v2): возрастная проверка больше не выполняется. | — | — |
+| A-02 | AUTO/BLOCKER | Active user. | Enqueue valid chat. | `202`; job `queued`; только owner видит status; prompt не возвращается status API. |
+| A-03 | ~~AUTO/BLOCKER~~ | ~~Age-reset-mid-job тест удалён~~ (GAUNTLET v2); удаление аккаунта mid-job покрывает A-04. | — | — |
 | A-04 | AUTO/BLOCKER | User status changes to `deleted` or `blocked` after enqueue. | Запустить worker. | Job rejected/terminal; no LLM, charge or content write. Другой owner не видит job. |
 | A-05 | AUTO/BLOCKER | Valid queued job. | Deliver same Celery task twice. | Один charge максимум, одна user message, один assistant result, второй delivery harmless. |
-| A-06 | AUTO/BLOCKER | Unconfirmed user. | Call `app.services.chat.ask` directly from bot/service test. | Shared service raises typed non-retryable eligibility denial before routing, thread creation, billing or LLM. |
+| A-06 | ~~AUTO/BLOCKER~~ | ~~Age-gate тест удалён~~ (GAUNTLET v2); account_not_active still raised for deleted/blocked. | — | — |
 | A-07 | AUTO | Unknown/deleted user ID. | Call worker with task ID and owner ID. | No uncaught retry loop for policy denial; status is terminal and error is bounded/non-sensitive. |
 | A-08 | AUTO | Crisis-like text, confirmed active user. | Send through normal and queued paths. | Code-generated crisis response, no LLM charge; safety event follows existing contract. |
 | A-09 | STAGE/BLOCKER | Signed Telegram identity for another user. | Alter user ID while preserving invalid signature/body. | `401`/safe rejection; no rate-limit identity confusion, job creation or data access. |

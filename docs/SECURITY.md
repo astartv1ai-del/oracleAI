@@ -7,7 +7,7 @@
 | **Purpose** | Trust boundaries and privacy controls. |
 | **Source of truth** | `app/api/security.py`, `app/api/deps.py`, `app/core/safety.py`. |
 | **Scope** | Telegram identity, owner scope, consent, uploads, memory, payments and safety. |
-| **Do not change** | Do not expose secrets or PII, weaken production fail-closed checks, or treat 16+ self-confirmation as identity verification. |
+| **Do not change** | Do not expose secrets or PII, or weaken production fail-closed checks. |
 | **Key files** | `app/api/deps.py`, `app/api/security.py`, `app/core/safety.py`, `tests/test_security_regressions.py`. |
 | **Validation** | `pytest -q tests/test_security_regressions.py tests/test_safety.py`. |
 
@@ -25,23 +25,18 @@ OracleAI обрабатывает личный контекст, поэтому 
 | Идентификаторы | Telegram ID, username, отображаемое имя. | Нужны для сессии и продукта; не выводить в аналитике/логах без необходимости. |
 | Профиль | Имя проводника, язык, часовой пояс, цель, данные рождения. | Запрашивать только для ясной функции; ограничивать доступ владельцем записи. |
 | Чувствительный контекст | Дневник, сообщения, память, совместимость. | Не использовать вне выбранного сценария; исключать из событий и URL. |
-| Согласия | `age_confirmed`, `memory_enabled`, уведомления. | Хранить и применять на сервере, а не только в UI. |
+| Согласия | `memory_enabled`, уведомления. | Хранить и применять на сервере, а не только в UI. |
 | Технические данные | IP/HTTP metadata, response time, usage, ошибки. | Минимизировать, ограничивать retention и исключать текст личных запросов. |
 | Коммерция | Заказы, entitlements, статусы платежей. | Не хранить необязательные платёжные реквизиты; доверять только подписанным webhook. |
 
-## Возраст 16+
+## Возраст
 
-Mini App использует **self-confirmation 16+**, а не верификацию личности или даты рождения. Перед обычным входом пользовательница видит понятную возрастную границу; подтверждение сохраняется в `users.age_confirmed` и проверяется общей server-side dependency на чувствительных API surfaces. До подтверждения `/api/me` возвращает только минимальный pre-consent payload.[1]
+Возрастная проверка как продуктовая граница **удалена** (GAUNTLET v2). Сервис не собирает самоподтверждение 16+, не хранит факт согласия и не отсекает пользователей по возрасту ни в UI, ни на сервере. Дата рождения, если пользовательница её указала для астрономического расчёта, — исключительно исходник карты; она никогда не используется как аттестация и не блокирует функциональность.
 
 | Требование | Реализация | Проверка |
 |---|---|---|
-| Ясное объяснение | Age-gate до основного сценария. | Открыть чистый профиль в Mini App. |
-| Серверное хранение | `age_confirmed` доступно через `POST /api/profile`. | Проверить `GET /api/me`. |
-| Нет скрытого сбора возраста | Хранится boolean-согласие, не дата рождения для age-gate. | Проверить запрос и schema. |
 | Ограничение тона | Нет сексуализированного, эксплуатирующего или опасного контента. | Контент-review и safety-тесты. |
-| Реальный выход | Пользовательница может закрыть приложение/отказаться без обхода. | UX QA. |
-
-Данные рождения могут существовать для астрологических расчётов, но они не должны маскироваться под проверку возраста и не могут быть обязательными для базового безопасного сценария.
+| Дата рождения — не аттестация | `birth_date` явно отделён от любых permission-проверок. | Код: подтверждения не существует в репо/сервисах. |
 
 ## Приватность и память
 
@@ -60,7 +55,7 @@ Server-side privacy guard присутствует в profile router, chat servi
 1. Идентичность Mini App определяется верификацией Telegram `initData` на сервере.
 2. Development-параметр `dev_user` допустим только при `APP_ENV=dev` и `DEV_MODE=1`; production-startup намеренно запрещает этот режим.[3]
 3. API валидирует тела Pydantic-моделями и назначает `read`, `write` или `llm` rate limit по операции.
-4. Все запросы с персональными ресурсами получают пользователя через dependency и проверяют ownership в репозитории/сервисе; чувствительные product routes дополнительно требуют server-side `age_confirmed`.
+4. Все запросы с персональными ресурсами получают пользователя через dependency и проверяют ownership в репозитории/сервисе.
 5. Admin API требует отдельную авторизацию и фиксирует действия в `admin_audit`; raw safety incidents выделены в permission `safety:read`.[4]
 6. Ответы не включают stack trace, секреты конфигурации, внутренние SQL-ошибки или данные другой пользовательницы.
 7. Каждое чувствительное административное изменение, включая добавление и удаление CRM-тегов, оставляет server-owned запись в `admin_audit`; payload ограничен нормализованными операционными полями.
@@ -120,21 +115,20 @@ Mini App раздаётся с CSP, запрещающим unsafe inline JavaScr
 - [ ] `APP_ENV=production`, `DEV_MODE=0`.
 - [ ] HTTPS и production-домен настроены.
 - [ ] Secrets отсутствуют в diff, логах и клиентском bundle.
-- [ ] Age-gate отображается, `age_confirmed` сохраняется для чистого профиля, а прямые sensitive API calls до подтверждения получают 403.
 - [ ] Memory default равен 0; memory-off исключает список, сохранение и агентный контекст.
-- [ ] New API routes имеют auth, ownership, server-side age/business rules, validation и rate limit.
+- [ ] New API routes имеют auth, ownership, validation и rate limit.
 - [ ] `/api/admin/safety` не отдаёт raw excerpts, support не имеет `grants`, а sensitive CRM views разделены по ролям.
 - [ ] Telegram user/AI text escaped; upload body/pixel limits проверены.
 - [ ] Критические действия не доверяют данным браузера.
 - [ ] Webhook signature, `transaction.completed`, server-side order binding и idempotency проверены в sandbox.
 - [ ] Зашифрованный PostgreSQL-бэкап создан, checksum проверен и restore drill выполнен через `infra/restore-postgres.sh`.
 - [ ] JSONL logs redacted; `ops_alerts.py` проверяет 5xx, webhook failures, LLM fallback rate и backup freshness.
-- [ ] Публичные Privacy Policy, Terms, 16+ wording и deletion/support flow доступны и прошли юридическую проверку.
+- [ ] Публичные Privacy Policy, Terms и deletion/support flow доступны и прошли юридическую проверку.
 - [ ] Нет новых unsafe inline, утечек личного текста или недоступных CTA.
 
 ## References
 
-[1]: [alembic/schema/baseline.sql](../alembic/schema/baseline.sql), [app/api/routers/profile.py](../app/api/routers/profile.py) и [miniapp/js/05-app.js](../miniapp/js/05-app.js) — age-gate и профильное согласие.
+[1]: [app/api/deps.py](../app/api/deps.py) и [app/repo/users.py](../app/repo/users.py) — auth и профильное согласие. Возрастная проверка удалена (GAUNTLET v2).
 [2]: [app/api/routers/diary.py](../app/api/routers/diary.py), [app/services/chat.py](../app/services/chat.py), [app/core/agents/runtime.py](../app/core/agents/runtime.py) — privacy guard по памяти.
 [3]: [app/api/main.py](../app/api/main.py) — ограничение dev-режима.
 [4]: [app/api/routers/admin.py](../app/api/routers/admin.py) и [alembic/schema/baseline.sql](../alembic/schema/baseline.sql) — административные маршруты и `admin_audit`.

@@ -14,7 +14,7 @@
 | Chat composer | `07-chat.js`, composer CSS | empty, typing, sending, error, keyboard-open | send one message | textarea keeps draft after error; Enter behavior is explicit; visualViewport safe area. |
 | Session list | `07-chat.js` | empty, active, max-five, delete/recovery | continue or start new | title is generic category by default; deletion has clear label; no hidden memory recap. |
 | Tool sheet | `07-chat.js`, `13-toolbar-sheet.css` | closed, opening, open, closing | close or launch tool | modal label, focus/escape path, reduced motion, no second toolbar duplicate. |
-| Age gate | `05-app.js`, ritual CSS | default, accepted, declined, error | accept 16+ or exit | says self-confirmation, not identity verification; exit is real and safe. |
+| Age gate | — | — | — | Удалён (GAUNTLET v2): никакого оверлея 16+ не существует. |
 | Memory control | profile/settings modules | on, off, saving, error | enable/disable/delete | explains what changes server-side; memory-off never relies on client hiding. |
 | Tarot widget | `07-chat.js`, `09-tarot.js` | picker, drawing, partial reveal, complete, error | choose spread/draw/interpret | progress is textual and aria-live; no exact future/mind-reading promise. |
 | Chart widget | `10-chart.js` | loading, date-only, full-time, empty, error | read one evidence block | date-only never shows ASC/houses; facts separated from interpretation. |
@@ -36,7 +36,7 @@
 
 ## Screenshot baseline set
 
-Staging screenshot baselines should cover `home-empty`, `home-complete`, `chat-empty`, `chat-tools`, `chat-sending`, `chat-error`, `profile-memory-off`, `age-gate`, `tarot-picker`, `tarot-reveal`, `chart-date-only`, `chart-full`, `compat-input`, `compat-result`, and `safety-support`. Each baseline records viewport, locale, theme, seed/test account state and commit. Personal data must be synthetic; do not save screenshots with Telegram IDs, diary text or birth data from real users.
+Staging screenshot baselines should cover `home-empty`, `home-complete`, `chat-empty`, `chat-tools`, `chat-sending`, `chat-error`, `profile-memory-off`, `tarot-picker`, `tarot-reveal`, `chart-date-only`, `chart-full`, `compat-input`, `compat-result`, and `safety-support`. Each baseline records viewport, locale, theme, seed/test account state and commit. Personal data must be synthetic; do not save screenshots with Telegram IDs, diary text or birth data from real users.
 
 ## Review checklist
 

@@ -56,7 +56,7 @@ HTTP API обслуживает Telegram Mini App, административн�
 |---|---|---|---|
 | `GET` | `/api/health` | Здоровье БД и LLM-цепочки. | — |
 | `GET` | `/api/me` | Bootstrap профиля, лимитов, флагов, памяти и агентов. | — |
-| `POST` | `/api/profile` | Настройки профиля. | `oracle_name`, `persona`, `morning_push`, `memory_enabled`, `age_confirmed`, `lang`, `tz`, `goal` |
+| `POST` | `/api/profile` | Настройки профиля. | `oracle_name`, `persona`, `morning_push`, `memory_enabled`, `lang`, `tz`, `goal` |
 | `POST` | `/api/experiment-exposure` | Техническая отметка показа A/B-варианта. | `experiment`, `variant` |
 | `GET` | `/api/personas` | Доступные образы проводника. | — |
 | `GET` | `/api/referral` | Ссылка и реферальная статистика. | — |
@@ -84,8 +84,7 @@ HTTP API обслуживает Telegram Mini App, административн�
 ```json
 POST /api/profile
 {
-  "age_confirmed": true,
-  "memory_enabled": false,
+  "memory_enabled": true,
   "lang": "ru"
 }
 ```

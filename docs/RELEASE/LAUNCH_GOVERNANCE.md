@@ -14,7 +14,7 @@
 
 | Поле | Утверждённое значение / действие |
 |---|---|
-| Аудитория | Telegram users 16+, первая волна: RU/EN; country scope проходит отдельный legal review. |
+| Аудитория | Telegram users (без возрастной границы), первая волна: RU/EN; country scope проходит отдельный legal review. |
 | Позиционирование | Бережная self-reflection через четыре проводника; не медицинская, юридическая, финансовая или психологическая помощь. |
 | First value | Первый завершённый ритуал, первый безопасный ответ или quality result Миры. |
 | Palm promise | Только видимые признаки на снимке, с quality/limitations; исходное фото не хранится. |
@@ -34,7 +34,7 @@
 | LLM safety | Versioned eval set, red-team suite, strict schema, provider fallback/circuit breaker, zero critical safety failures. | AI/Safety | OPEN |
 | Palm quality | Approved image benchmark, valid enum/schema rate ≥99%, p95 vision latency budget and `needs_photo` fallback. | AI/Product | OPEN |
 | Device UX | iOS, Android, Desktop Telegram matrix including first launch, permissions, RU/EN, offline and slow provider. | Product/QA | OPEN |
-| Privacy/legal | Privacy Policy, Terms, 16+, deletion, retention and cross-border review for first-wave countries. | Product/Legal | EXTERNAL |
+| Privacy/legal | Privacy Policy, Terms, deletion, retention and cross-border review for first-wave countries. | Product/Legal | EXTERNAL |
 | Backup/restore | Encrypted off-site copy, checksum, isolated restore drill and post-restore selfcheck. Disposable plaintext/encrypted restore now passes locally; off-site and scheduled production drill remain open. | Operations | OPEN |
 | Incident response | Severity matrix, contact tree, on-call owner, provider/payment/data incident tabletop. | Operations | OPEN |
 | Monitoring | Health, HTTP, LLM/provider, scheduler and business funnel dashboards plus test alerts. Local scheduler lease/status and alert parsing are now verified; production routing remains open. | Operations | OPEN |

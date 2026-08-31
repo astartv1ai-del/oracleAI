@@ -8,7 +8,7 @@
 |---|---|
 | Оператор | Юридическое лицо/ИП, адрес, privacy contact, support contact и ответственное лицо за запросы. |
 | Юрисдикция | Применимое право, порядок разрешения споров, трансграничные передачи и обязательные уведомления. |
-| Возраст | Self-confirmation 16+ действительно является продуктовой границей; не называть её identity/age verification. |
+| Возраст | Самоподтверждение 16+ удалено как продуктовая граница (GAUNTLET v2); сервис не собирает возрастное согласие. Если возрастной оверлей возвращается, 16+ следует вводить как явный самоаттестационный шаг, а не как identity/age verification. |
 | Privacy | Категории данных, LLM subprocessors, retention по каждой категории, deletion/export process, backup retention и incident notification. |
 | Payments | Актуальные цены, trial, renewal, cancellation, refund, tax/VAT wording и условия Paddle/другого PSP. |
 | Safety | Crisis/medical/legal/financial escalation copy и локальные emergency resources для стран присутствия. |

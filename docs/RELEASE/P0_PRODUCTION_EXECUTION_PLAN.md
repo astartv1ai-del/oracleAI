@@ -30,7 +30,7 @@
 ### Процедура
 
 1. Deploy the candidate to staging with a staging bot token and staging Mini App URL. Record release SHA, config fingerprint without secret values and UTC test window.
-2. Run the same key journey on Telegram iOS, Android and Desktop/WebView with a disposable test account: first launch, age gate, onboarding, chart read, chat, history and account deletion request. Confirm that all successful requests carry server-validated signed Telegram `initData`.
+2. Run the same key journey on Telegram iOS, Android and Desktop/WebView with a disposable test account: first launch, onboarding, chart read, chat, history and account deletion request. Confirm that all successful requests carry server-validated signed Telegram `initData`.
 3. Replay the matrix with tampered hash, expired `auth_date`, wrong bot token, missing `user`, malformed percent-encoding, duplicated fields, mismatched user identity and a valid signature from a different staging account. Each must return the documented 401/403 response and must not create or mutate user-owned data.
 4. Verify owner isolation by attempting to read/update report, Tarot, memory, diary, payment/order and deletion resources using another test account's IDs. Expected result is a safe 404/403 without existence leakage.
 5. Inspect access, error and correlation logs for absence of raw `initData`, Telegram phone/name payload, birth details, question text, authorization hash and tokens. Capture device/version, route, status and correlation ID only.
