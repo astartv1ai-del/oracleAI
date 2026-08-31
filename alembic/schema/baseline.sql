@@ -177,6 +177,7 @@ CREATE TABLE IF NOT EXISTS tarot_readings (
     paid_with  TEXT,                          -- daily|crystals|stars|entitlement
     outcome    TEXT,                           -- came_true|partly|no (отметка клиентки)
     outcome_at TEXT,
+    deck       TEXT DEFAULT 'tarot',            -- tarot|lenormand (migration 0007)
     created_at TEXT
 );
 CREATE TABLE IF NOT EXISTS palm_readings (

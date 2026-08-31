@@ -10,7 +10,8 @@ from ..data.session import transaction, utcnow
 
 
 async def start_reading(db, tg_id: int, spread: str, question: str, cards: list,
-                        *, surface: str = "bot", paid_with: str = "daily") -> int:
+                        *, surface: str = "bot", paid_with: str = "daily",
+                        deck: str = "tarot") -> int:
     """Кладёт расклад без трактовки и отдаёт id.
 
     Разделение на два шага нужно клиенту: Mini App сначала показывает анимацию
@@ -20,12 +21,12 @@ async def start_reading(db, tg_id: int, spread: str, question: str, cards: list,
     async with transaction(db):
         cur = await db.execute(
             "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, "
-            "answer, surface, paid_with, created_at) "
+            "answer, surface, paid_with, deck, created_at) "
             "VALUES(:tg_id, :spread, :question, :cards_json, '', :surface, "
-            ":paid_with, :created_at) RETURNING id",
+            ":paid_with, :deck, :created_at) RETURNING id",
             {"tg_id": tg_id, "spread": spread, "question": question,
              "cards_json": json.dumps(cards, ensure_ascii=False),
-             "surface": surface, "paid_with": paid_with,
+             "surface": surface, "paid_with": paid_with, "deck": deck,
              "created_at": utcnow()})
         row = await cur.fetchone()
         return int(row["id"]) if row else 0
@@ -33,17 +34,17 @@ async def start_reading(db, tg_id: int, spread: str, question: str, cards: list,
 
 async def save_reading(db, tg_id: int, spread: str, question: str, cards: list,
                        answer: str, *, surface: str = "bot",
-                       paid_with: str = "daily") -> int:
+                       paid_with: str = "daily", deck: str = "tarot") -> int:
     async with transaction(db):
         cur = await db.execute(
             "INSERT INTO tarot_readings(tg_id, spread, question, cards_json, "
-            "answer, surface, paid_with, created_at) "
+            "answer, surface, paid_with, deck, created_at) "
             "VALUES(:tg_id, :spread, :question, :cards_json, :answer, :surface, "
-            ":paid_with, :created_at) RETURNING id",
+            ":paid_with, :deck, :created_at) RETURNING id",
             {"tg_id": tg_id, "spread": spread, "question": question,
              "cards_json": json.dumps(cards, ensure_ascii=False),
              "answer": answer, "surface": surface, "paid_with": paid_with,
-             "created_at": utcnow()})
+             "deck": deck, "created_at": utcnow()})
         row = await cur.fetchone()
         return int(row["id"]) if row else 0
 

@@ -38,6 +38,7 @@ async def spreads_full(user=Depends(confirmed_age_user)):
 
 class DrawIn(BaseModel):
     question: str | None = None
+    deck: str | None = None
 
 
 @router.post("/draw", dependencies=[Depends(rate_limit("write"))])
@@ -49,10 +50,16 @@ async def draw(spread: str = Query(default="three"), item: DrawIn | None = None,
     `question` — формулировка клиентки «что спросить у карт»: сохраняется в
     раскладе и на трактовке читается моделью (карты отвечают на конкретное).
     Принимаем и из query, и из тела — фронтенд шлёт в теле, старые вызовы в query.
+    `deck` — выбранная колода (tarot|lenormand): сохраняется в раскладе, чтобы
+    история/воспроизведение использовали ту же художественную школу.
     """
     q = (item.question if item and item.question else question or "").strip() or None
+    deck = (item.deck if item and item.deck else "tarot").strip() or "tarot"
+    if deck not in ("tarot", "lenormand"):
+        deck = "tarot"
     try:
-        result = await chat_svc.draw(db, user, spread, surface="miniapp", question=q)
+        result = await chat_svc.draw(db, user, spread, surface="miniapp",
+                                     question=q, deck=deck)
     except chat_svc.ChatDenied as e:
         raise access_denied(e.verdict, lang=user["lang"] or "ru") from e
     # короткое описание расклада для страницы выбора / карточки результата
@@ -80,11 +87,13 @@ async def history_item(reading_id: int, user=Depends(confirmed_age_user), db=Dep
     if not row or not row["answer"]:
         raise HTTPException(404, "расклад не найден")
     cards = json.loads(row["cards_json"] or "[]")
+    deck = row.get("deck") or "tarot"
     return {
         "id": row["id"], "spread": row["spread"], "question": row["question"],
         "answer": row["answer"], "outcome": row["outcome"],
-        "created_at": row["created_at"], "cards": cards,
-        "ledger": tarot.reading_ledger(cards, row["spread"] or "three"),
+        "created_at": row["created_at"], "cards": cards, "deck": deck,
+        "ledger": tarot.reading_ledger(cards, row["spread"] or "three",
+                                       deck=deck),
     }
 
 

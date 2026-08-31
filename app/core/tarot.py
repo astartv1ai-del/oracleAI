@@ -443,9 +443,18 @@ def _combination_rule(left: dict, right: dict) -> str:
     return "adjacent_cards_read_together"
 
 
+DECK_META = {
+    "tarot": {"id": "rws-78-v1", "tradition": "Rider-Waite-Smith"},
+    "lenormand": {"id": "mary-el-78-v1", "tradition": "Mary-El / Lenormand"},
+}
+
+
 def reading_ledger(cards: list[dict], spread_code: str = "three",
-                   positions: list[str] | None = None) -> dict:
+                   positions: list[str] | None = None,
+                   deck: str = "tarot") -> dict:
     """Create user-safe deterministic evidence for a validated draw."""
+    meta = DECK_META.get(deck or "tarot", DECK_META["tarot"])
+    deck_id = meta["id"]
     canonical_cards = _canonical_cards(cards)
     item = spread(spread_code)
     canonical_spread = item["code"]
@@ -469,13 +478,14 @@ def reading_ledger(cards: list[dict], spread_code: str = "three",
             "rule": _combination_rule(left, right),
             "type": "adjacent_pair",
         })
-    canonical = json.dumps({"deck_id": "rws-78-v1", "spread": canonical_spread,
+    canonical = json.dumps({"deck_id": deck_id, "spread": canonical_spread,
                             "entries": entries}, ensure_ascii=False,
                            sort_keys=True, separators=(",", ":"))
     return {
         "version": "tarot-ledger-v1",
-        "deck_id": "rws-78-v1",
-        "tradition": "Rider-Waite-Smith",
+        "deck_id": deck_id,
+        "deck": deck or "tarot",
+        "tradition": meta["tradition"],
         "spread": canonical_spread,
         "entries": entries,
         "adjacent_combinations": combinations,
@@ -485,7 +495,9 @@ def reading_ledger(cards: list[dict], spread_code: str = "three",
     }
 
 
-def replay_ledger(cards: list[dict], spread_code: str, expected_checksum: str | None = None) -> dict:
+def replay_ledger(cards: list[dict], spread_code: str,
+                  expected_checksum: str | None = None,
+                  deck: str = "tarot") -> dict:
     """Rebuild a draw ledger without drawing again and verify its checksum.
 
     The database stores the drawn cards before interpretation. A replay therefore
@@ -493,7 +505,7 @@ def replay_ledger(cards: list[dict], spread_code: str, expected_checksum: str | 
     the random generator. The optional checksum lets callers detect tampering or
     accidental changes to a historical payload.
     """
-    ledger = reading_ledger(cards, spread_code)
+    ledger = reading_ledger(cards, spread_code, deck=deck)
     if expected_checksum is not None and ledger["checksum"] != expected_checksum:
         raise ValueError("tarot ledger checksum mismatch")
     return ledger

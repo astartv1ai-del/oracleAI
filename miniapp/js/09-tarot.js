@@ -194,12 +194,13 @@ const tarotPositionText = (code, position, index) =>
     try {
       const r = await api('/api/tarot/draw?spread=' + spread, {
         method: 'POST',
-        body: JSON.stringify({ question: qv }),
+        body: JSON.stringify({ question: qv, deck: this.currentDeck() }),
       });
       this.chat.messages.push({ role: 'user', text: tarotT('savedQuestion') + qv });
+      if (r.deck) { try { localStorage.setItem('oracle_tarot_deck', r.deck); } catch (e) {} }
       this.chat.pending = {
         kind: 'tarot-cards', question: qv, cards: r.cards, spread,
-        positions: r.positions, ledger: r.ledger || null,
+        positions: r.positions, ledger: r.ledger || null, deck: r.deck || this.currentDeck(),
         revealed: r.cards.map(() => false), nextReveal: 0,
         turning: false, allRevealed: false, reading_id: r.reading_id,
       };

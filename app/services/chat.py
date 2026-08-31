@@ -302,7 +302,7 @@ def _allowance_line(verdict) -> str:
 # ──────────────────────────────── расклады ────────────────────────────────────
 
 async def draw(db, user, spread_code: str, *, surface: str = "bot",
-               question: str | None = None) -> dict:
+               question: str | None = None, deck: str = "tarot") -> dict:
     """Тянет карты: проверяет доступ, списывает и сохраняет расклад без трактовки.
 
     Трактовка — вторым шагом (`interpret`), чтобы интерфейс успел показать
@@ -336,14 +336,17 @@ async def draw(db, user, spread_code: str, *, surface: str = "bot",
             thread_id=thread["id"], agent="tarot", surface=surface)
         reading_id = await readings.start_reading(
             db, user["tg_id"], code, label, cards, surface=surface,
-            paid_with=limits.PAID_WITH.get(verdict.charge, "daily"))
+            paid_with=limits.PAID_WITH.get(verdict.charge, "daily"),
+            deck=deck)
 
     await analytics.track(db, analytics.E_TAROT, user["tg_id"],
-                          props={"spread": code, "charge": verdict.charge},
+                          props={"spread": code, "deck": deck,
+                                 "charge": verdict.charge},
                           surface=surface)
     return {"reading_id": reading_id, "title": title, "positions": positions,
-            "cards": cards, "spread": code, "thread_id": thread["id"],
-            "ledger": tarot.reading_ledger(cards, code),
+            "cards": cards, "spread": code, "deck": deck,
+            "thread_id": thread["id"],
+            "ledger": tarot.reading_ledger(cards, code, deck=deck),
             "charge": verdict.charge}
 
 
