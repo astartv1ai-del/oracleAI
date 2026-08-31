@@ -194,17 +194,13 @@
 .tool-t,
 .tool-d { overflow-wrap: anywhere; }
 
-/* Chat and long-form surfaces reserve a real scroll inset below fixed chrome. */
-.chat-shell,
-.chat-messages,
+/* Long-form surfaces reserve a real scroll inset below fixed chrome. */
 .pay-screen,
 .profile-screen,
 .diary-screen,
 .memory-screen {
   padding-bottom: calc(var(--ui-nav-clearance) + env(safe-area-inset-bottom));
 }
-.chat-messages { scroll-padding-bottom: calc(var(--ui-nav-clearance) + 24px); }
-.composer { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 
 /* Bottom navigation is one measured object rather than four independent buttons. */
 .app-nav {
