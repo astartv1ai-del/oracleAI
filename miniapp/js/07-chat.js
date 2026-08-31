@@ -485,6 +485,9 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
                 style="margin-top:10px;resize:none">${q(p.q || '')}</textarea>
               <div class="tarot-draw-status" aria-live="polite">${p.drawing ? `<span class="tarot-draw-orbit" aria-hidden="true"></span><span>${esc(tarotT('drawingStatus'))}</span>` : `<span class="tarot-draw-dot" aria-hidden="true"></span><span>${esc(tarotT('readyStatus'))}</span>`}</div>
               <button class="btn btn-primary tarot-draw-btn" style="margin-top:10px" data-act="draw" ${p.drawing ? 'disabled aria-busy="true"' : ''}>${esc(p.drawing ? tarotT('drawingButton') : tarotT('drawButton'))}</button>
+              <div class="tarot-deck-bar" style="margin-top:8px; display:flex; gap:6px; justify-content:center">
+                <button class="chip" data-act="deck-open" style="font-size:11px; opacity:.7">🂠 ${esc(app.currentDeck ? (app.currentDeck() === 'lenormand' ? tarotT('deckSecond') : tarotT('deckDefault')) : tarotT('deckDefault'))}</button>
+              </div>
             </div></div>`;
         })();
 
@@ -510,7 +513,7 @@ const chatAgentField = (agent, field) => (chatLang() === 'en' ? CHAT_AGENT_EN[ag
                   <button type="button" class="tcard ${p.revealed[i] ? 'open' : 'dealt'}" style="${p.revealed[i] ? '' : 'animation-delay:' + (i * 80) + 'ms'}" data-act="flip" data-i="${i}" aria-label="${p.revealed[i] ? esc(c.name) : tarotT('ariaOpenCard') + ': ' + esc(tarotPositionText(p.spread, pos, i))}" ${p.revealed[i] ? 'aria-pressed="true"' : 'aria-pressed="false"'}>
                     <span class="tcard-inner">
                       <span class="tcard-face tcard-back"><img src="/static/img/card-back.jpg" alt="" loading="lazy"></span>
-                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="/static/img/tarot/${esc(c.img || 'm00')}.jpg" alt="${esc(c.name)}" loading="lazy">
+                      <span class="tcard-face tcard-front${c.reversed ? ' rev' : ''}"><img src="${app.tarotImagePath ? app.tarotImagePath(c.img || 'm00') : '/static/img/tarot/' + esc(c.img || 'm00') + '.jpg'}" alt="${esc(c.name)}" loading="lazy">
                         ${c.reversed ? `<span class="t-rev">↺ ${esc(tarotT('reversed'))}</span>` : ''}</span>
                     </span>
                   </button>

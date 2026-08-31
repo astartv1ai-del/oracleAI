@@ -10,6 +10,7 @@ const TAROT_I18N = {
     proof: 'Доказательная карточка', deck: 'Колода', ledger: 'Ledger', notSpecified: 'не указан', proofCopy: 'Это подтверждает состав и порядок расклада; теперь раскрой его сюжет через позиции и свой вопрос.',
     interpret: 'Собрать личный смысл', revealing: '✨ Раскрываю смысл карт по очереди…', historyEmpty: 'Расклад', schemesLoading: 'Схемы ещё подгружаются…',
     ritualKicker: 'ЛИЧНЫЙ РИТУАЛ', chooseTitle: 'Выбери схему и задай вопрос', pickerCopy: 'Карты не дают готовых приказов — они помогают заметить то, что уже просится в твоё внимание.', tapToBrowse: 'Тапни — откроется весь список раскладов', askAbout: 'О чём хочешь спросить?', ariaQuestion: 'Сформулируй вопрос к картам', placeholder: 'Твой вопрос к картам…', drawingStatus: 'Колода собирает твой расклад…', readyStatus: 'После вопроса вытянем карты по одной.', drawingButton: 'Собираем расклад…', drawButton: 'Потянуть карты', cardKicker: 'ТВОЙ РАСКЛАД', openCards: 'Открой карты по одной', questionLabel: 'Твой вопрос:', ariaOpenCard: 'Открыть карту', reversed: 'перевёрнута', threadHint: 'Открывай карты по порядку: каждая роль подскажет, как читать следующую.',
+    deckLabel: 'Колода', deckDefault: 'Классическое Таро', deckSecond: 'Таро Мэри-Эль (Ленорман)', deckPickerTitle: 'Выбери колоду', deckPickerSub: 'Художественная школа карт для раскладов',
   },
   en: {
     pickerTitle: '🎴 Reading spread', pickerSub: 'Browse the options, read the details and choose', pickerNote: 'Your choice returns you to the question — ask it and draw the cards ✨',
@@ -21,6 +22,7 @@ const TAROT_I18N = {
     proof: 'Evidence card', deck: 'Deck', ledger: 'Ledger', notSpecified: 'not specified', proofCopy: 'This confirms the reading composition and order; now explore its story through the positions and your question.',
     interpret: 'Gather the meaning', revealing: '✨ Unfolding the meaning of the cards…', historyEmpty: 'Reading', schemesLoading: 'The spreads are still loading…',
     ritualKicker: 'PERSONAL RITUAL', chooseTitle: 'Choose a spread and ask a question', pickerCopy: 'Cards do not give ready-made orders — they help you notice what is already asking for your attention.', tapToBrowse: 'Tap to browse all reading spreads', askAbout: 'What would you like to ask?', ariaQuestion: 'Write a question for the cards', placeholder: 'Your question for the cards…', drawingStatus: 'The deck is gathering your reading…', readyStatus: 'After your question, the cards will open one by one.', drawingButton: 'Gathering the reading…', drawButton: 'Draw the cards', cardKicker: 'YOUR READING', openCards: 'Open the cards one by one', questionLabel: 'Your question:', ariaOpenCard: 'Open card', reversed: 'reversed', threadHint: 'Open the cards in order: each role will guide how to read the next one.',
+    deckLabel: 'Deck', deckDefault: 'Classic Tarot', deckSecond: 'Mary-El Tarot (Lenormand)', deckPickerTitle: 'Choose a deck', deckPickerSub: 'Artistic card school for readings',
   },
 };
 const TAROT_CATALOG_EN = {
@@ -93,6 +95,49 @@ const tarotPositionText = (code, position, index) =>
       <div class="picker-note">${esc(tarotT('pickerNote'))}</div>`, 'full');
   };
   // Выбор схемы из полноэкранного списка (премиум → мягкий модал «как открыть»)
+
+  app.currentDeck = function() {
+    try { return localStorage.getItem('oracle_tarot_deck') || 'tarot'; }
+    catch (e) { return 'tarot'; }
+  };
+  app.tarotImagePath = function(slug) {
+    const deck = this.currentDeck();
+    const base = deck === 'lenormand' ? 'lenormand' : 'tarot';
+    return `/static/img/${base}/${esc(slug || 'm00')}.jpg`;
+  };
+
+  app.openDeckPicker = function() {
+    haptic('light');
+    const decks = [
+      { id: 'tarot', title: tarotT('deckDefault'), sub: tarotLang() === 'en' ? 'Classic Rider–Waite' : 'Классика Райдера-Уэйта' },
+      { id: 'lenormand', title: tarotT('deckSecond'), sub: tarotLang() === 'en' ? 'Mary-El Tarot (Lenormand school)' : 'Таро Мэри-Эль (школа Ленорман)' },
+    ];
+    const sel = this.currentDeck();
+    const rows = decks.map(d => `
+      <div class="sp-pick-row ${d.id === sel ? 'sel' : ''}" data-act="deck-choose" data-deck="${d.id}">
+        <div class="sp-pick-ico sp-pick-scheme">🂠</div>
+        <div class="sp-pick-main">
+          <div class="sp-pick-title">${esc(d.title)}</div>
+          <div class="sp-pick-desc">${esc(d.sub)}</div>
+        </div>
+        <div class="sp-pick-meta">${d.id === sel ? '<span class="sp-pick-check">✓</span>' : '<span class="sp-pick-radio"></span>'}</div>
+      </div>`).join('');
+    this.showModal(`
+      <div class="picker-head">
+        <div>
+          <div class="picker-title">${esc(tarotT('deckPickerTitle'))}</div>
+          <div class="picker-sub">${esc(tarotT('deckPickerSub'))}</div>
+        </div>
+        <button class="m-close" data-act="modal-close">✕</button>
+      </div>
+      <div class="picker-schemes">${rows}</div>`, 'full');
+  };
+
+  app.chooseDeck = function(id) {
+    haptic('soft');
+    try { localStorage.setItem('oracle_tarot_deck', id); } catch (e) {}
+    this.closeModal();
+  };
 
   app.chooseSpread = function(code) {
     const p = this.chat.pending;
