@@ -66,52 +66,16 @@ def test_dev_key_gate(monkeypatch):
     assert deps._dev_identity_allowed(FakeRequest({"x-dev-key": "local-dev-key"})) is False
 
 
-# ─────────────────────────── SEC-010: age gate ────────────────────────────────
-
-async def test_age_confirmation_requires_birth_year(client, db, unconfirmed):
+# ──────────────────── GAUNTLET v2 §1-2: age semantics ────────────────────────
+async def test_profile_api_no_longer_accepts_age_confirmation(client, db, unconfirmed):
+    """Подтверждение возраста больше не клиентский флаг: его ставит только
+    реальная дата рождения в онбординге бота (SEC-010). API поле игнорирует."""
     res = await client.post("/api/profile", params={"dev_user": unconfirmed["tg_id"]},
-                            json={"age_confirmed": True})
-    assert res.status_code == 400
-    assert res.json()["detail"]["code"] == "birth_year_required"
-    row = await users.get(db, unconfirmed["tg_id"])
-    assert row["age_confirmed"] == 0
-
-
-async def test_age_confirmation_rejects_under_16(client, db, unconfirmed):
-    from datetime import date
-    young_year = date.today().year - 15
-    res = await client.post("/api/profile", params={"dev_user": unconfirmed["tg_id"]},
-                            json={"age_confirmed": True, "birth_year": young_year})
-    assert res.status_code == 403
-    assert res.json()["detail"]["code"] == "age_requirement_not_met"
+                            json={"age_confirmed": True, "birth_year": 2000})
+    assert res.status_code == 200
     row = await users.get(db, unconfirmed["tg_id"])
     assert row["age_confirmed"] == 0
     assert not row["age_proof_hash"]
-
-
-async def test_age_confirmation_stores_only_hash(client, db, unconfirmed):
-    from datetime import date
-    year = date.today().year - 30
-    res = await client.post("/api/profile", params={"dev_user": unconfirmed["tg_id"]},
-                            json={"age_confirmed": True, "birth_year": year})
-    assert res.status_code == 200
-    row = await users.get(db, unconfirmed["tg_id"])
-    assert row["age_confirmed"] == 1
-    assert row["age_proof_hash"]
-    assert str(year) not in row["age_proof_hash"]
-    assert row["age_proof_hash"] == users.age_proof_hash(unconfirmed["tg_id"], year)
-
-
-async def test_age_confirmation_idempotent_retry(client, unconfirmed):
-    """Повторный ретрай уже подтверждённого аккаунта не требует года заново."""
-    from datetime import date
-    year = date.today().year - 30
-    first = await client.post("/api/profile", params={"dev_user": unconfirmed["tg_id"]},
-                              json={"age_confirmed": True, "birth_year": year})
-    assert first.status_code == 200
-    retry = await client.post("/api/profile", params={"dev_user": unconfirmed["tg_id"]},
-                              json={"age_confirmed": True})
-    assert retry.status_code == 200
 
 
 # ─────────────────────────── UX-009: public config ────────────────────────────

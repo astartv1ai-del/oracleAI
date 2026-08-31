@@ -58,8 +58,7 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     }
     this.initSwipe();
     this.initViewport();
-    if (!qaMode && this.me && !this.me.age_confirmed) this.showAgeGate();
-    else if (!qaMode) this.maybeIntro();
+    if (!qaMode) this.maybeIntro();
   };
   app.renderAuthRequired = function(err) {
     const main = document.getElementById('app-main');
@@ -112,66 +111,6 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
   // Аттестация 16+ с годом рождения (аудит SEC-010): сервер проверяет год и
   // хранит только его keyed-хеш. Это не верификация личности, а ясная граница
   // продукта и путь к безопасным настройкам приватности.
-  app.showAgeGate = function() {
-    if (document.getElementById('age-gate')) return;
-    const currentYear = new Date().getFullYear();
-    const ov = document.createElement('div');
-    ov.id = 'age-gate';
-    ov.innerHTML = `<div class="age-gate-card">
-      <div class="age-gate-mark age-gate-sigil" aria-label="OracleAI">${sigilIcon('brand')}</div>
-      <div class="age-gate-kicker">${esc(t('ageKicker'))}</div>
-      <h2>${esc(t('ageTitle'))}</h2>
-      <p>${esc(t('ageCopy'))}</p>
-      <label class="age-gate-field">
-        <span>${esc(t('ageYearLabel'))}</span>
-        <input class="ipt" id="age-gate-year" type="number" inputmode="numeric"
-               min="1900" max="${currentYear}" placeholder="${esc(t('ageYearPlaceholder'))}">
-      </label>
-      <div class="age-gate-error" data-age-error role="alert" hidden></div>
-      <button class="btn btn-primary" data-age-accept>${esc(t('ageAccept'))}</button>
-      <button class="age-gate-leave" data-age-leave>${esc(t('ageLeave'))}</button>
-      <div class="age-gate-note">${esc(t('ageNote'))}</div>
-    </div>`;
-    document.body.appendChild(ov);
-    const errorBox = ov.querySelector('[data-age-error]');
-    const showError = msg => {
-      errorBox.textContent = msg || '';
-      errorBox.hidden = !msg;
-      if (msg) haptic('error');
-    };
-    // FE-006: вместо системного alert() — инлайн-ошибка в карточке.
-    const showComeBack = () => {
-      ov.querySelector('.age-gate-card').innerHTML =
-        `<div class="age-gate-kicker">${esc(t('ageThanks'))}</div><h2>${esc(t('ageComeBack'))}</h2><p>${esc(t('ageComeBackCopy'))}</p>`;
-    };
-    ov.querySelector('[data-age-accept]').addEventListener('click', async () => {
-      const yearField = ov.querySelector('#age-gate-year');
-      const year = parseInt(yearField && yearField.value, 10);
-      if (!year || year < 1900 || year > currentYear) {
-        showError(t('ageYearInvalid'));
-        yearField && yearField.focus();
-        return;
-      }
-      showError('');
-      try {
-        await api('/api/profile', { method: 'POST', body: JSON.stringify({ age_confirmed: true, birth_year: year }) });
-        this.me = await api('/api/me');
-        ov.remove();
-        haptic('success');
-        this.maybeIntro();
-      } catch (e) {
-        if (e && e.status === 403) { showComeBack(); return; }
-        showError(friendlyError(e, t('ageErrorRetry')));
-      }
-    });
-    ov.querySelector('[data-age-leave]').addEventListener('click', () => {
-      try { tg() && tg().close && tg().close(); } catch (e) {}
-      showComeBack();
-    });
-  };
-
-  // G002 Онбординг: вау-интро 3 скрина для первого входа (1 раз на клиента)
-
   app.maybeIntro = function() {
     if (localStorage.getItem('oracle_intro_seen')) return;
     // первый день + дата рождения уже есть, а карты нет — в финал интро

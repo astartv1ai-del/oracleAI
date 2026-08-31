@@ -12,7 +12,7 @@ from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot.onboarding import (
-    DeleteMe, Onb, delete_me, delete_me_confirm, onb_age_confirm, onb_age_decline,
+    DeleteMe, Onb, delete_me, delete_me_confirm,
     onb_city, onb_city_pick, onb_date, onb_date_pick, onb_gender, onb_name, onb_time,
 )
 
@@ -85,29 +85,23 @@ def _state_for() -> FSMContext:
     return FSMContext(storage=storage, key=key)
 
 
-async def test_onboarding_age_confirm_sets_consent_and_advances(db):
+async def test_onboarding_birth_date_under_16_is_declined(db):
+    """GAUNTLET v2 §1: отдельного age-confirmation шага нет — дата рождения сама аттестация."""
     await users.ensure(db, 1005, "Аня")
     state = _state_for()
-    message = _Message(1005, "/start")
-    callback = _Callback(1005, "age:confirm", message)
+    await state.set_state(Onb.date)
+    from datetime import date
+    d = date.today()
+    young = date(d.year - 12, d.month, max(1, d.day - 1)).strftime("%d.%m.%Y")
+    message = _Message(1005, young)
 
-    await onb_age_confirm(callback, state, db)
-
-    assert (await users.get(db, 1005))["age_confirmed"] == 1
-    assert await state.get_state() == Onb.name.state
-
-
-async def test_onboarding_age_decline_clears_state(db):
-    await users.ensure(db, 1006, "Вера")
-    state = _state_for()
-    message = _Message(1006, "/start")
-    callback = _Callback(1006, "age:decline", message)
-
-    await onb_age_decline(callback, state, db)
+    await onb_date(message, state, db)
 
     assert await state.get_state() is None
-    assert "Доступ закрыт" in message.replied
-    assert (await users.get(db, 1006))["age_confirmed"] == 0
+    assert "16" in message.replied
+    row = await users.get(db, 1005)
+    assert row["age_confirmed"] == 0
+    assert not row["birth_date"]
 
 
 async def test_onboarding_gender_is_saved_and_advances_to_date(db):
@@ -264,10 +258,6 @@ async def test_onboarding_prompts_show_step_progress(db):
     """Онбординг показывает «Шаг N/5», чтобы клиентка видела, сколько осталось."""
     await users.ensure(db, 1010, "Аня")
     state = _state_for()
-    callback = _Callback(1010, "age:confirm", _Message(1010, "/start"))
-    await onb_age_confirm(callback, state, db)
-    assert "Шаг 1/5" in callback.message.replied
-
     name_message = _Message(1010, "Аня")
     await onb_name(name_message, state, db)
     assert "Шаг 2/5" in name_message.replied

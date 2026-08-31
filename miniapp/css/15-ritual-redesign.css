@@ -531,39 +531,6 @@ button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon
 }
 
 /* P0 · Возрастная граница 16+: спокойная, ясная, без стигматизации */
-#age-gate {
-  position: fixed;
-  z-index: 10020;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: calc(22px + env(safe-area-inset-top, 0px)) 22px calc(22px + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  background:
-    radial-gradient(circle at 50% 10%, rgba(221, 177, 95, .18), transparent 35%),
-    rgba(6, 5, 15, .94);
-  backdrop-filter: blur(16px);
-}
-.age-gate-card {
-  width: min(100%, 402px);
-  box-sizing: border-box;
-  padding: 28px 22px 24px;
-  border: 1px solid rgba(245, 212, 139, .28);
-  border-radius: 26px;
-  text-align: center;
-  color: var(--text-main);
-  background: linear-gradient(145deg, rgba(35, 25, 55, .97), rgba(15, 12, 27, .98));
-  box-shadow: 0 26px 70px rgba(0,0,0,.48), inset 0 1px rgba(255,255,255,.07);
-}
-.age-gate-mark { display:block; width:54px; height:54px; margin:0 auto 12px; filter: drop-shadow(0 8px 16px rgba(222, 181, 91, .25)); }
-.age-gate-kicker { margin:0 0 8px; color:var(--champagne-300); font-size:10.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
-.age-gate-card h2 { margin:0; font-family:var(--font-serif); font-size:26px; line-height:1.08; }
-.age-gate-card p { margin:12px 0 18px; color:var(--text-soft); font-size:13px; line-height:1.58; }
-.age-gate-card .btn { width:100%; min-height:47px; }
-.age-gate-leave { display:block; width:100%; margin:10px 0 0; padding:9px; border:0; background:transparent; color:var(--text-dim); font:inherit; font-size:12px; }
-.age-gate-note { margin-top:13px; color:var(--text-faint); font-size:10.5px; line-height:1.45; }
-/* SEC-010: поле года рождения и инлайн-ошибка вместо системного alert() */
-.age-gate-field { display:block; margin:0 0 12px; text-align:left; }
 .age-gate-field span { display:block; margin:0 0 6px; color:var(--text-dim); font-size:10.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
 .age-gate-field .ipt { width:100%; box-sizing:border-box; text-align:center; }
 .age-gate-error { margin:0 0 12px; padding:10px 12px; border-radius:12px; background:rgba(255,120,120,.10); border:1px solid rgba(255,120,120,.26); color:#ffb9b9; font-size:12px; line-height:1.45; }

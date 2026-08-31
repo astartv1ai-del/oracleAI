@@ -265,34 +265,6 @@ async def onb_language(cb: CallbackQuery, state: FSMContext, db):
     await cb.answer()
 
 
-@router.callback_query(F.data == "age:confirm")
-async def onb_age_confirm(cb: CallbackQuery, state: FSMContext, db):
-    user = await users.get(db, cb.from_user.id)
-    if not user:
-        await cb.answer("Сначала нажми /start", show_alert=True)
-        return
-    await users.update(db, cb.from_user.id, age_confirmed=1, onboarding_step="name")
-    await cb.answer()
-    await cb.message.edit_reply_markup(reply_markup=None)
-    await state.set_state(Onb.name)
-    await cb.message.answer(_step_label("name", _lang(user)) + _copy(
-        user,
-        "Как мне тебя называть? Имя можно изменить позже.",
-        "What should I call you? You can change it later.",
-    ))
-
-
-@router.callback_query(F.data == "age:decline")
-async def onb_age_decline(cb: CallbackQuery, state: FSMContext, db):
-    await state.clear()
-    await cb.answer()
-    await cb.message.edit_text(_copy(
-        await users.get(db, cb.from_user.id),
-        "Доступ закрыт. Если тебе исполнится 16 лет, снова нажми /start.",
-        "Access closed. If you turn 16 later, press /start again.",
-    ))
-
-
 @router.message(Onb.name, F.text)
 async def onb_name(message: Message, state: FSMContext, db):
     name = message.text.strip()[:40]
@@ -378,11 +350,22 @@ async def _save_birth_date(target, state, db, user, day: int, month: int,
     except ValueError:
         await target.answer(date_error_copy("invalid_calendar_date", _lang(user)))
         return
-    # SEC-010: онбординг бота знает настоящую дату рождения — это более сильная
-    # аттестация возраста, чем самоподтверждение, поэтому хеш доказательства
-    # вычисляем из неё (год при этом в открытом виде в новой колонке не хранится).
-    # tg_id передаётся явно: у cb.message.from_user это бот, не человек.
+    # SEC-010 + GAUNTLET v2 §1: отдельного шага «подтверди 16 лет» нет нигде.
+    # Реальная дата рождения — сама аттестация: младше 16 — вежливый отказ,
+    # иначе флаг и keyed-хеш доказательства ставятся автоматически.
+    today = _date.today()
+    years = today.year - parsed_date.year - (
+        (today.month, today.day) < (parsed_date.month, parsed_date.day))
+    if years < users.MIN_AGE_YEARS:
+        await state.clear()
+        await target.answer(_copy(
+            user,
+            "OracleAI создан для тех, кому уже есть 16. Возвращайся, когда исполнится 🌙",
+            "OracleAI is designed for people aged 16 and over. Come back when you turn 16 🌙",
+        ))
+        return
     await users.update(db, tg_id, birth_date=parsed_date.isoformat(),
+                       age_confirmed=1,
                        age_proof_hash=users.age_proof_hash(tg_id, parsed_date.year),
                        onboarding_step="time")
     await analytics.track(db, "onboarding_step", tg_id,
