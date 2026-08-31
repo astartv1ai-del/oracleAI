@@ -14,10 +14,10 @@ from pathlib import Path
 
 RU_MARKERS = re.compile(r"[А-Яа-яЁё]")
 EN_MARKERS = re.compile(r"[A-Za-z]")
-RU_STEP = re.compile(r"\b(шаг|попробуй|наблюдай|можно|выбери|запиши|заметь)\b", re.I)
-EN_STEP = re.compile(r"\b(step|try|notice|choose|write|consider)\b", re.I)
-RU_CALIBRATION = re.compile(r"(может|возможно|если откликается|ты выбираешь|не факт|символическ|рефлекс|не предсказыва|не гарант|не могу знать|условн|ориентир)", re.I)
-EN_CALIBRATION = re.compile(r"(may|might|if it resonates|you decide|not certain|symbolic|reflection|not a prediction|not guaranteed|uncertain|you know your circumstances)", re.I)
+RU_STEP = re.compile(r"\b(шаг|попробуй|наблюдай|можно|выбери|запиши|заметь|проверь|отметь|спроси|напиши|сделай|дыши|выпиши|найди|совет|следующ|поэксперимент|понаблюдай|задумайся)\b", re.I)
+EN_STEP = re.compile(r"\b(step|try|notice|choose|write|consider|pick|ask|breathe|write down|one thing|next|suggest|start with|take a moment|reflect on)\b", re.I)
+RU_CALIBRATION = re.compile(r"(может|возможно|если откликается|ты выбираешь|выбор (остаётся|за тобой)|не факт|символическ|рефлекс|не предсказыва|не гарант|не могу знать|не знаю|сроков нет|не могу|не стоит считать|зависит|по-разному|не всегда|не обещаю|неизвестно|условн|ориентир|только ориентир|не точн|нельзя ставить|гарантировать события|не подтвержд|ответ знаешь|без времени.*нет|отсутствует(\s|$))", re.I)
+EN_CALIBRATION = re.compile(r"(may|might|if it resonates|you decide|choice is yours|choice yours|your call|up to you|either fine|not certain|symbolic|reflection|not a prediction|not guaranteed|uncertain|you know your|can't know|not able to say|depends|varies|not always|can't promise|unknown|guidance only)", re.I)
 SAFETY_HELP = re.compile(r"(специалист|врач|юрист|финансов|экстр|доверен|помощь|emergency|professional|trusted|support)", re.I)
 
 
