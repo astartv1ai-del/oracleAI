@@ -8,21 +8,26 @@ Date: 2026-08-31 · Branch: `master` · Scope: local verification only
 static gates. Remaining blockers are exclusively external gates (staging /
 real-device / provider / licensing), unchanged in scope from the previous pass.
 
-## §1–2 Age policy (critical rule) — DONE
+## §1–2 Age policy (critical rule) — DONE (superseded)
 
-- No user-facing age-confirmation step exists anywhere: not in the Telegram bot,
-  not in the Mini App, not before AI/domain features.
-- The real birth date collected in bot onboarding **is** the attestation
-  (SEC-010): under-16 → polite decline and FSM cleared; otherwise
-  `age_confirmed=1` + keyed `age_proof_hash` are set automatically at
-  `app/bot/onboarding.py` (`_save_birth_date`), the single derivation point.
-- Removed: legacy `age:confirm`/`age:decline` handlers, `age_gate_kb`,
+**FINAL state (commit `148149d`): the age check was removed entirely, not just
+the UX.** Earlier passes removed the user-facing confirmation step but retained a
+server-side guard (`confirmed_age_user`), `eligibility.require_age`, and the
+`age_confirmed` / `age_proof_hash` columns. Follow-up removed all of it:
+
+- `confirmed_age_user` is now a pure alias of `current_user` (no 403 by age);
+  `eligibility.require_age` deleted from the service.
+- Bot onboarding saves any birth date without an under-16 refusal; birth date is
+  only an astronomy input, never an attestation.
+- The `age_gate` funnel stage and `E_AGE_CONFIRMED` event are deleted.
+- Alembic `0006_drop_age_columns` drops `users.age_confirmed` /
+  `age_proof_hash`; repo allowlist, anonymization reset, `/api/me` and seed
+  loader no longer reference them. Baseline schema updated.
+- Docs (PRODUCT / SECURITY / API / analytics / legal / P0 cases / launch) reflect
+  "no age boundary"; historical CHANGELOG lines struck through.
+- Removed earlier: legacy `age:confirm`/`age:decline` handlers, `age_gate_kb`,
   Mini App age-gate overlay (`showAgeGate` + i18n keys + dead CSS),
   `POST /api/profile {age_confirmed,birth_year}` client path.
-- Retained: server-side `confirmed_age_user` guard, `eligibility.require_age`,
-  `age_proof_hash` (keyed, year never stored), deletion anonymization reset.
-- Funnel continuity: stage `age_gate` is emitted by the bot on real birth-date
-  capture (`source: "bot"`) instead of the removed button.
 
 ## §Verification evidence
 

@@ -26,7 +26,7 @@ async def seed() -> None:
         for tg_id, lang in ((10001, "ru"), (10002, "en")):
             await users.ensure(db, tg_id, "Synthetic Oracle", "synthetic_oracle", lang=lang)
             await users.update(
-                db, tg_id, onboarded=1, age_confirmed=1, birth_date="1990-06-21",
+                db, tg_id, onboarded=1, birth_date="1990-06-21",
                 birth_time="14:30", birth_time_known=1, birth_city="Казань",
                 birth_lat=55.79, birth_lon=49.12, tz="Europe/Moscow",
                 chart_json=json.dumps(chart, ensure_ascii=False), memory_enabled=1,
