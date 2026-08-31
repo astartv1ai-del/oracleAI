@@ -127,7 +127,6 @@ async def me(user=Depends(touched_user), db=Depends(get_db)):
         "global_streak": await _global_streak(db, user["tg_id"]),
         "morning_push": bool(user["morning_push"]),
         "memory_enabled": bool(user["memory_enabled"]),
-        "age_confirmed": bool(user["age_confirmed"]),
         "lang": user["lang"] or "ru",
         "gender": user["gender"],
         "entitlements": await billing.list_entitlements(db, user["tg_id"]),

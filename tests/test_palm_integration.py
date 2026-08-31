@@ -201,7 +201,6 @@ async def test_palm_reading_is_private_and_deleted_from_other_user(client, db, u
     reading_id = created.json()["id"]
 
     await users.ensure(db, 1003, "Другой пользователь")
-    await users.update(db, 1003, age_confirmed=1)
     other_get = await client.get(f"/api/palm/{reading_id}", params={"dev_user": 1003})
     other_delete = await client.delete(f"/api/palm/{reading_id}", params={"dev_user": 1003})
     assert other_get.status_code == 404

@@ -180,9 +180,7 @@ async def test_confirmed_age_dependency_is_plain_auth_alias(user):
     """Возрастной гейт удалён: confirmed_age_user ≡ current_user, ошибок 403 нет."""
     from app.api import deps
 
-    active = dict(user)
-    active["age_confirmed"] = 0
-    result = await deps.confirmed_age_user(active)
+    result = await deps.confirmed_age_user(dict(user))
     assert result["tg_id"] == user["tg_id"]
 
 
@@ -233,7 +231,6 @@ async def test_anonymize_cleans_sensitive_rows_and_pseudonymizes_finance(db, use
     row = await users.get(db, tg_id)
     assert row["name"] == "удалено"
     assert row["memory_enabled"] == 0
-    assert row["age_confirmed"] == 0
 
 
 async def test_safety_summary_redacts_crisis_identity_and_excerpt(db, user):

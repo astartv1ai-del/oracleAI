@@ -19,13 +19,12 @@ WRITABLE = {
     "birth_date", "birth_time", "birth_time_known", "birth_time_precision", "birth_city",
     "birth_lat", "birth_lon", "chart_json", "natal_technique", "natal_technique_version", "onboarding_step",
     "sub_level", "sub_until", "crystals",
-    "onboarded", "morning_push", "memory_enabled", "age_confirmed", "ref_by", "goal", "source", "status",
-    "ltv_stars", "expiry_notified", "last_seen", "deleted_at", "age_proof_hash",
+    "onboarded", "morning_push", "memory_enabled", "ref_by", "goal", "source", "status",
+    "ltv_stars", "expiry_notified", "last_seen", "deleted_at",
 }
 
 # Возрастная проверка полностью удалена (GAUNTLET v2): дата рождения — просто
-# астрономический исходник для расчёта карты, а не аттестация. Колонки
-# age_confirmed / age_proof_hash остаются в схеме как мёртвые данные.
+# астрономический исходник для расчёта карты, а не аттестация.
 
 
 async def get(db, tg_id: int):
@@ -212,7 +211,7 @@ async def anonymize(db, tg_id: int) -> None:
             "UPDATE users SET name='удалено', username=NULL, birth_date=NULL, "
             "birth_time=NULL, birth_city=NULL, birth_lat=NULL, birth_lon=NULL, "
             "chart_json=NULL, natal_technique='astrology', natal_technique_version='v1', "
-            "onboarding_step=NULL, birth_time_precision='unknown', goal=NULL, memory_enabled=0, age_confirmed=0, "
+            "onboarding_step=NULL, birth_time_precision='unknown', goal=NULL, memory_enabled=0, "
             "status='deleted', deleted_at=:deleted_at, onboarded=0, morning_push=0 "
             "WHERE tg_id=:tg_id",
             {"deleted_at": utcnow(), "tg_id": tg_id})

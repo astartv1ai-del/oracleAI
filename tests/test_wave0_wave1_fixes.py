@@ -28,9 +28,9 @@ async def client(db):
 
 @pytest.fixture
 async def unconfirmed(db):
-    """Пользователь без подтверждения возраста."""
+    """Обычный активный пользователь (возрастной гейт удалён)."""
     await users.ensure(db, 1007, "Без гейта")
-    await users.update(db, 1007, onboarded=1, age_confirmed=0)
+    await users.update(db, 1007, onboarded=1)
     return await users.get(db, 1007)
 
 
@@ -73,9 +73,6 @@ async def test_profile_api_no_longer_accepts_age_confirmation(client, db, unconf
     res = await client.post("/api/profile", params={"dev_user": unconfirmed["tg_id"]},
                             json={"age_confirmed": True, "birth_year": 2000})
     assert res.status_code == 200
-    row = await users.get(db, unconfirmed["tg_id"])
-    assert row["age_confirmed"] == 0
-    assert not row["age_proof_hash"]
 
 
 # ─────────────────────────── UX-009: public config ────────────────────────────
@@ -181,7 +178,7 @@ async def test_crm_search_name_order_runs_on_postgres(db):
 async def test_question_too_long_is_explicit_error():
     """API-003: превышение контракта — ошибка, а не тихая обрезка."""
     from app.services import chat as chat_svc
-    fake_user = {"tg_id": 1, "status": "active", "age_confirmed": 1,
+    fake_user = {"tg_id": 1, "status": "active",
                  "deleted_at": None, "lang": "ru"}
     with pytest.raises(chat_svc.QuestionTooLong):
         await chat_svc.ask(None, fake_user, "x" * 1001, surface="bot")

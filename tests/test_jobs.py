@@ -54,14 +54,13 @@ async def test_task_jobs_status_lifecycle(db, user):
 
 
 async def test_jobs_api_does_not_block_on_age_confirmation(client, db, user, monkeypatch):
-    """Возрастной гейт удалён: запрос проходит возрастную проверку и уходит дальше.
+    """Возрастной гейт удалён: запрос уходит дальше без возрастной проверки.
 
     Раньше этот путь падал на 403 age_confirmation_required до постановки в
-    очередь. Теперь age_confirmed=0 не блокирует: ответ либо подтверждает
-    постановку (200/202), либо падает 503 из-за недоступного Celery/Redis
-    в этом окружении — но никогда не 401/403 по возрасту."""
+    очередь. Теперь ответ либо подтверждает постановку (200/202), либо падает
+    503 из-за недоступного Celery/Redis в этом окружении — но никогда
+    не 401/403 по возрасту."""
     monkeypatch.setattr(settings, "celery_enabled", True)
-    await users.update(db, user["tg_id"], age_confirmed=0)
 
     response = await client.post(
         "/api/jobs/chat/oracle",

@@ -64,7 +64,7 @@ def _birth(rnd: random.Random) -> tuple[str, str, int]:
     return birth_date, birth_time, int(known)
 
 
-def _rows(count: int, *, all_active: bool = False, age_confirmed: bool = False,
+def _rows(count: int, *, all_active: bool = False,
           active_subscription: bool = False, force_onboarded: bool = False) -> list[tuple]:
     rnd = random.Random(42)
     now = datetime.now(timezone.utc)
@@ -86,7 +86,7 @@ def _rows(count: int, *, all_active: bool = False, age_confirmed: bool = False,
         rows.append((
             tg_id, name, f"user_{tg_id}", "ru", tz, birth_date, birth_time,
             time_known, city, lat, lon, sub_level, sub_until,
-            5, onboarded, morning_push, 0, int(age_confirmed),
+            5, onboarded, morning_push, 0,
             rnd.choice(GOALS), rnd.choice(SOURCES),
             (now - timedelta(days=rnd.randint(0, 30))).isoformat() if onboarded else None,
             "active" if all_active or rnd.random() > 0.02 else "blocked",
@@ -96,14 +96,14 @@ def _rows(count: int, *, all_active: bool = False, age_confirmed: bool = False,
 
 
 async def _seed(db, count: int, *, all_active: bool = False,
-               age_confirmed: bool = False, active_subscription: bool = False,
+               active_subscription: bool = False,
                force_onboarded: bool = False) -> None:
     await db.executemany(
         "INSERT INTO users(tg_id, name, username, lang, tz, birth_date, "
         "birth_time, birth_time_known, birth_city, birth_lat, birth_lon, sub_level, "
-        "sub_until, crystals, onboarded, morning_push, memory_enabled, age_confirmed, "
+        "sub_until, crystals, onboarded, morning_push, memory_enabled, "
         "goal, source, last_seen, status, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
         "ON CONFLICT(tg_id) DO UPDATE SET "
         "name=EXCLUDED.name, username=EXCLUDED.username, lang=EXCLUDED.lang, "
         "tz=EXCLUDED.tz, birth_date=EXCLUDED.birth_date, "
@@ -114,19 +114,19 @@ async def _seed(db, count: int, *, all_active: bool = False,
         "sub_until=EXCLUDED.sub_until, crystals=EXCLUDED.crystals, "
         "onboarded=EXCLUDED.onboarded, morning_push=EXCLUDED.morning_push, "
         "memory_enabled=EXCLUDED.memory_enabled, "
-        "age_confirmed=EXCLUDED.age_confirmed, goal=EXCLUDED.goal, "
+        "goal=EXCLUDED.goal, "
         "source=EXCLUDED.source, last_seen=EXCLUDED.last_seen, "
         "status=EXCLUDED.status, created_at=EXCLUDED.created_at)",
-        _rows(count, all_active=all_active, age_confirmed=age_confirmed,
+        _rows(count, all_active=all_active,
               active_subscription=active_subscription, force_onboarded=force_onboarded))
     await db.commit()
 
 
-async def main(count: int, all_active: bool, age_confirmed: bool,
+async def main(count: int, all_active: bool,
                active_subscription: bool, force_onboarded: bool) -> None:
     db = await connect()
     try:
-        await _seed(db, count, all_active=all_active, age_confirmed=age_confirmed,
+        await _seed(db, count, all_active=all_active,
                     active_subscription=active_subscription, force_onboarded=force_onboarded)
     finally:
         await db.close()
@@ -138,13 +138,11 @@ if __name__ == "__main__":
     ap.add_argument("--count", type=int, default=10_000)
     ap.add_argument("--all-active", action="store_true",
                     help="не добавлять заблокированные профили (для HTTP-потока)")
-    ap.add_argument("--age-confirmed", action="store_true",
-                    help="подтвердить возраст synthetic users для protected API probes")
     ap.add_argument("--active-subscription", action="store_true",
                     help="дать synthetic users future VIP entitlement для paid API probes")
     ap.add_argument("--onboarded", action="store_true",
                     help="пометить synthetic users как прошедших onboarding")
     args = ap.parse_args()
     import asyncio
-    asyncio.run(main(args.count, args.all_active, args.age_confirmed,
+    asyncio.run(main(args.count, args.all_active,
                       args.active_subscription, args.onboarded))

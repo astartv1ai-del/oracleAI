@@ -129,7 +129,6 @@ async def test_share_reading_requires_ownership(client, db, user):
     from app.services import chat as chat_svc
     drawn = await chat_svc.draw(db, user, "one")
     await users.ensure(db, 4242, "Чужая")
-    await users.update(db, 4242, age_confirmed=1)
     res = await client.get(f"/api/share/reading/{drawn['reading_id']}.png",
                            params={"dev_user": 4242})
     assert res.status_code == 404

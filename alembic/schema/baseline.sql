@@ -35,8 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
     onboarded        BIGINT DEFAULT 0,
     morning_push     BIGINT DEFAULT 1,
     memory_enabled   BIGINT DEFAULT 0,   -- память включается только явным согласием
-    age_confirmed    BIGINT DEFAULT 0,   -- добровольное самоподтверждение «мне есть 16 лет»
-    age_proof_hash   TEXT,                -- SEC-010: keyed-хеш года рождения из age-gate (сам год не храним)
+    -- age_confirmed / age_proof_hash dropped in 0006_drop_age_columns (GAUNTLET v2)
     ref_by           BIGINT,
     goal             TEXT,                   -- главный запрос: love|career|practice
     source           TEXT,                   -- канал привлечения (utm/ref/organic)

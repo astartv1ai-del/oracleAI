@@ -140,13 +140,12 @@ async def test_deleted_user_cannot_reenter_product_surfaces_but_delete_is_idempo
 
     profile = await client.patch(
         "/api/profile", params=as_user(user),
-        json={"memory_enabled": True, "age_confirmed": True},
+        json={"memory_enabled": True},
     )
     assert profile.status_code == 410
     deleted = await users.get(db, user["tg_id"])
     assert deleted["status"] == "deleted"
     assert deleted["memory_enabled"] == 0
-    assert deleted["age_confirmed"] == 0
 
     repeated = await client.post(
         "/api/account/delete", params=as_user(user), json={"confirm": True},
@@ -1127,12 +1126,10 @@ async def test_palm_rejects_malformed_content_length_without_500(client, user):
     assert "размер" in response.json()["detail"]
 
 
-async def test_sensitive_api_serves_without_age_confirmation(client, db, user):
-    """Возрастной гейт удалён: rutчки отдают данные независимо от age_confirmed."""
-    await users.update(db, user["tg_id"], age_confirmed=0)
+async def test_sensitive_api_serves_for_active_user(client, db, user):
+    """Стабильный пользователь получает данные контракта."""
     res = await client.get("/api/chart", params=as_user(user))
     assert res.status_code == 200
-    await users.update(db, user["tg_id"], age_confirmed=1)
 
 
 async def test_account_delete_requires_confirmation_and_anonymizes(client, db, user):
@@ -1162,7 +1159,6 @@ async def test_account_delete_requires_confirmation_and_anonymizes(client, db, u
 
 async def test_account_delete_cannot_be_triggered_for_another_owner(client, db, user):
     other = await users.ensure(db, 12002, "Other")
-    await users.update(db, other["tg_id"], age_confirmed=1)
     response = await client.post("/api/account/delete", json={"confirm": True},
                                  params=as_user(other))
     assert response.status_code == 200

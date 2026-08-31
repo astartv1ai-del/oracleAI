@@ -25,13 +25,12 @@ def test_committed_qa_scripts_are_syntax_valid_and_data_safe():
 
 
 def test_seed_load_full_http_profile_is_explicit_and_deterministic():
-    rows = _rows(4, all_active=True, age_confirmed=True,
+    rows = _rows(4, all_active=True,
                  active_subscription=True, force_onboarded=True)
     assert len(rows) == 4
     assert all(row[14] == 1 for row in rows)  # onboarded
-    assert all(row[17] == 1 for row in rows)  # age_confirmed
     assert all(row[11] == "vip" for row in rows)
-    assert all(row[21] == "active" for row in rows)
+    assert all(row[20] == "active" for row in rows)
     assert [row[0] for row in rows] == [100_000_000 + i for i in range(4)]
 
 
