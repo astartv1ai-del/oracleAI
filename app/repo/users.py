@@ -23,19 +23,9 @@ WRITABLE = {
     "ltv_stars", "expiry_notified", "last_seen", "deleted_at", "age_proof_hash",
 }
 
-#: Возрастная граница продукта (16+) — аудит SEC-010.
-MIN_AGE_YEARS = 16
-
-
-def age_proof_hash(tg_id: int, birth_year: int) -> str:
-    """Keyed-хеш аттестации возраста: доказательство без хранения самого года.
-
-    Сырой год рождения из age-gate — лишний PII; хеш с солью позволяет
-    сверить повторную аттестацию и доказать её наличие, не раскрывая год.
-    """
-    import hashlib
-    salt = settings.age_proof_salt or settings.bot_token or "oracleai-age-proof"
-    return hashlib.sha256(f"{salt}:{tg_id}:{birth_year}".encode()).hexdigest()
+# Возрастная проверка полностью удалена (GAUNTLET v2): дата рождения — просто
+# астрономический исходник для расчёта карты, а не аттестация. Колонки
+# age_confirmed / age_proof_hash остаются в схеме как мёртвые данные.
 
 
 async def get(db, tg_id: int):

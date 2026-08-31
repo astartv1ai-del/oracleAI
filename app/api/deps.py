@@ -145,19 +145,11 @@ async def deletion_user(request: Request, db=Depends(get_db),
 
 
 async def confirmed_age_user(user=Depends(current_user)):
-    """Пользователь, подтвердивший возраст 16+ на сервере.
+    """Авторизованный пользователь (возрастной гейт полностью удалён).
 
-    Age-gate must not rely on a Mini App overlay: every sensitive product
-    surface depends on this guard so direct API calls cannot bypass consent.
+    Имя сохранено как стабильный алиас `current_user`, чтобы не менять
+    десятки ручек; возрастная проверка больше не выполняется.
     """
-    if not user["age_confirmed"]:
-        raise HTTPException(
-            403,
-            detail={
-                "code": "age_confirmation_required",
-                "message": "подтверди, что тебе уже исполнилось 16 лет",
-            },
-        )
     return user
 
 

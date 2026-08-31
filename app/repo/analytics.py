@@ -31,7 +31,6 @@ E_MINIAPP_OPEN = "miniapp_open"
 E_CHURN_WARN = "expiry_notified"
 # Privacy-safe activation/retention milestones. Props for these events must stay
 # categorical and never contain user text, memory, birth data or model output.
-E_AGE_CONFIRMED = "age_confirmed"
 E_FIRST_RITUAL = "first_ritual"
 E_FIRST_QUESTION = "first_question"
 E_RETURN_D1 = "return_d1"
@@ -322,7 +321,6 @@ async def activation_funnel(db, days: int = 30) -> dict:
         {"cohort_name": E_MINIAPP_OPEN, "since": since},
     )
     names = [
-        ("age_gate", E_AGE_CONFIRMED),
         ("first_ritual", E_FIRST_RITUAL),
         ("first_question", E_FIRST_QUESTION),
         ("d1_return", E_RETURN_D1),

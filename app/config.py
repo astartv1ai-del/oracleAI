@@ -66,10 +66,7 @@ class Settings:
     # на уровне приложения, а не только на edge (Caddy). Пусто = как раньше.
     metrics_token: str = os.getenv("METRICS_TOKEN", "")
 
-    # ── age-gate (аудит SEC-010): соль для хеша подтверждения возраста.
-    # Сырой год рождения не храним — только keyed-хеш как доказательство аттестации.
-    age_proof_salt: str = os.getenv("AGE_PROOF_SALT", "")
-
+    # ── возрастная проверка полностью удалена (GAUNTLET v2); соль не нужна.
     # ── защита LLM от всплеска: сколько вызовов одновременно и в минуту ──
     llm_max_concurrency: int = _int("LLM_MAX_CONCURRENCY", 8)
     llm_rate_per_min: int = _int("LLM_RATE_PER_MIN", 240)

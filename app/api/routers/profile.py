@@ -91,21 +91,6 @@ async def public_config(db=Depends(get_db)):
 @router.get("/me")
 async def me(user=Depends(touched_user), db=Depends(get_db)):
     """Всё, что нужно интерфейсу на старте: профиль, лимиты, тариф, фичи."""
-    if not user["age_confirmed"]:
-        return {
-            "tg_id": user["tg_id"],
-            "name": user["name"],
-            "username": user["username"],
-            "onboarded": bool(user["onboarded"]),
-            "age_confirmed": False,
-            "lang": user["lang"] or "ru",
-            "memory_enabled": False,
-            "sub_active": users.sub_active(user),
-            "sub_days_left": users.sub_days_left(user),
-            "webapp_url": settings.webapp_url,
-            "pre_consent": True,
-        }
-
     chart = users.chart_of(user)
     allowance = await limits.allowance(db, user, check_followup=False)
     canonical_entitlements = await entitlements.snapshot(db, user)

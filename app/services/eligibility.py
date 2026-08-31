@@ -35,14 +35,13 @@ def _value(user: Mapping[str, object], key: str, default=None):
         return default
 
 
-def require_eligible_user(user: Mapping[str, object] | None, *, operation: str = "chat", require_age: bool = True) -> None:
+def require_eligible_user(user: Mapping[str, object] | None, *, operation: str = "chat") -> None:
     """Raise :class:`EligibilityDenied` unless a user may use *operation*.
 
     This is deliberately transport-agnostic: HTTP routers, bot handlers and
     background workers can share the same rule without importing FastAPI or
     Celery. The check fails closed for missing users and every status other than
-    the schema's active value. Age confirmation is checked as an integer because
-    SQLite returns boolean-like columns as ``0``/``1``.
+    the schema's active value.
     """
     if not user:
         raise EligibilityDenied("user_not_found", "пользователь не найден")
@@ -51,10 +50,4 @@ def require_eligible_user(user: Mapping[str, object] | None, *, operation: str =
         raise EligibilityDenied(
             "account_not_active",
             f"операция {operation} недоступна для неактивного аккаунта",
-        )
-
-    if require_age and not bool(_value(user, "age_confirmed")):
-        raise EligibilityDenied(
-            "age_confirmation_required",
-            "подтверди, что тебе уже исполнилось 16 лет",
         )

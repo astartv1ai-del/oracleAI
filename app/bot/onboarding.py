@@ -350,28 +350,8 @@ async def _save_birth_date(target, state, db, user, day: int, month: int,
     except ValueError:
         await target.answer(date_error_copy("invalid_calendar_date", _lang(user)))
         return
-    # SEC-010 + GAUNTLET v2 §1: отдельного шага «подтверди 16 лет» нет нигде.
-    # Реальная дата рождения — сама аттестация: младше 16 — вежливый отказ,
-    # иначе флаг и keyed-хеш доказательства ставятся автоматически.
-    today = _date.today()
-    years = today.year - parsed_date.year - (
-        (today.month, today.day) < (parsed_date.month, parsed_date.day))
-    if years < users.MIN_AGE_YEARS:
-        await state.clear()
-        await target.answer(_copy(
-            user,
-            "OracleAI создан для тех, кому уже есть 16. Возвращайся, когда исполнится 🌙",
-            "OracleAI is designed for people aged 16 and over. Come back when you turn 16 🌙",
-        ))
-        return
     await users.update(db, tg_id, birth_date=parsed_date.isoformat(),
-                       age_confirmed=1,
-                       age_proof_hash=users.age_proof_hash(tg_id, parsed_date.year),
                        onboarding_step="time")
-    # GAUNTLET v2: событие воронки сохранено — этап «age_gate» теперь
-    # означает «возраст подтверждён реальной датой рождения», а не кнопкой.
-    await analytics.track_once(db, analytics.E_AGE_CONFIRMED, tg_id,
-                               props={"source": "bot"}, surface="bot")
     await analytics.track(db, "onboarding_step", tg_id,
                           props={"step": "date"}, surface="bot")
     await state.set_state(Onb.time)

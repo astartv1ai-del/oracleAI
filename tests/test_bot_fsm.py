@@ -85,8 +85,8 @@ def _state_for() -> FSMContext:
     return FSMContext(storage=storage, key=key)
 
 
-async def test_onboarding_birth_date_under_16_is_declined(db):
-    """GAUNTLET v2 §1: отдельного age-confirmation шага нет — дата рождения сама аттестация."""
+async def test_onboarding_birth_date_saves_even_when_young(db):
+    """Возрастной гейт удалён полностью: дата рождения сохраняется без отказа."""
     await users.ensure(db, 1005, "Аня")
     state = _state_for()
     await state.set_state(Onb.date)
@@ -97,11 +97,10 @@ async def test_onboarding_birth_date_under_16_is_declined(db):
 
     await onb_date(message, state, db)
 
-    assert await state.get_state() is None
-    assert "16" in message.replied
-    row = await users.get(db, 1005)
-    assert row["age_confirmed"] == 0
-    assert not row["birth_date"]
+    assert await state.get_state() == Onb.time.state
+    from datetime import datetime as _dt
+    expect = _dt.strptime(young, "%d.%m.%Y").date().isoformat()
+    assert (await users.get(db, 1005))["birth_date"] == expect
 
 
 async def test_onboarding_gender_is_saved_and_advances_to_date(db):
@@ -146,7 +145,6 @@ async def test_onboarding_date_picker_saves_date_and_advances_to_time(db):
     user = await users.get(db, 1010)
     assert user["birth_date"] == "1999-06-21"
     assert await state.get_state() == Onb.time.state
-    assert user["age_proof_hash"]  # SEC-010: хеш возраста вычислен
 
 
 async def test_onboarding_date_text_fallback_button(db):

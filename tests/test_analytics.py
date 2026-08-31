@@ -67,15 +67,10 @@ async def test_activation_funnel_uses_first_open_cohort(db):
     await analytics.track_now(
         db, analytics.E_MINIAPP_OPEN, 1001, surface="miniapp",
     )
-    await analytics.track_once(
-        db, analytics.E_AGE_CONFIRMED, 1001,
-        props={"source": "miniapp"}, surface="miniapp",
-    )
     funnel = await analytics_repo.activation_funnel(db, days=30)
     assert funnel["cohort"] == 1
     steps = {step["step"]: step for step in funnel["steps"]}
-    assert steps["age_gate"]["value"] == 1
-    assert steps["age_gate"]["of_cohort"] == 100.0
+    assert "age_gate" not in steps
     assert steps["first_question"]["value"] == 0
 
 

@@ -53,7 +53,13 @@ async def test_task_jobs_status_lifecycle(db, user):
     assert (await jobs.get(db, task_id))["status"] == "succeeded"
 
 
-async def test_jobs_api_rejects_unconfirmed_user_before_enqueue(client, db, user, monkeypatch):
+async def test_jobs_api_does_not_block_on_age_confirmation(client, db, user, monkeypatch):
+    """Возрастной гейт удалён: запрос проходит возрастную проверку и уходит дальше.
+
+    Раньше этот путь падал на 403 age_confirmation_required до постановки в
+    очередь. Теперь age_confirmed=0 не блокирует: ответ либо подтверждает
+    постановку (200/202), либо падает 503 из-за недоступного Celery/Redis
+    в этом окружении — но никогда не 401/403 по возрасту."""
     monkeypatch.setattr(settings, "celery_enabled", True)
     await users.update(db, user["tg_id"], age_confirmed=0)
 
@@ -63,20 +69,17 @@ async def test_jobs_api_rejects_unconfirmed_user_before_enqueue(client, db, user
         json={"text": "queued question"},
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"]["code"] == "age_confirmation_required"
-    cur = await db.execute("SELECT COUNT(*) AS count FROM task_jobs")
-    assert (await cur.fetchone())["count"] == 0
+    assert response.status_code not in (401, 403)
 
 
-async def test_worker_rejects_stale_age_without_calling_chat(db, user, monkeypatch):
+async def test_worker_rejects_deleted_without_calling_chat(db, user, monkeypatch):
     from app.services import chat as chat_service
     from app.tasks import tasks
 
-    task_id = "job-age-revoked-1"
+    task_id = "job-account-revoked-1"
     await jobs.create(db, task_id, "llm.chat", tg_id=user["tg_id"],
                       payload={"text": "private prompt", "agent": "oracle"})
-    await users.update(db, user["tg_id"], age_confirmed=0)
+    await users.update(db, user["tg_id"], status="deleted")
 
     class NonClosingConnection:
         def __getattr__(self, name):
@@ -104,10 +107,10 @@ async def test_worker_rejects_stale_age_without_calling_chat(db, user, monkeypat
     )
 
     row = await jobs.get(db, task_id)
-    assert result == {"status": "rejected", "code": "age_confirmation_required"}
+    assert result == {"status": "rejected", "code": "account_not_active"}
     assert row["status"] == "rejected"
     assert row["result"] is None
-    assert row["error"].startswith("age_confirmation_required:")
+    assert row["error"].startswith("account_not_active:")
     assert called is False
 
 

@@ -169,12 +169,6 @@ async def test_tarot_finalization_is_owner_scoped_and_append_only(db):
 async def test_shared_chat_service_blocks_unconfirmed_and_deleted_users(db, user):
     from app.services import chat, eligibility
 
-    unconfirmed = dict(user)
-    unconfirmed["age_confirmed"] = 0
-    with pytest.raises(eligibility.EligibilityDenied) as unconfirmed_error:
-        await chat.ask(db, unconfirmed, "безопасный тест")
-    assert unconfirmed_error.value.code == "age_confirmation_required"
-
     deleted = dict(user)
     deleted["status"] = "deleted"
     with pytest.raises(eligibility.EligibilityDenied) as deleted_error:
@@ -182,17 +176,14 @@ async def test_shared_chat_service_blocks_unconfirmed_and_deleted_users(db, user
     assert deleted_error.value.code == "account_not_active"
 
 
-async def test_confirmed_age_dependency_blocks_unconfirmed_user(user):
+async def test_confirmed_age_dependency_is_plain_auth_alias(user):
+    """Возрастной гейт удалён: confirmed_age_user ≡ current_user, ошибок 403 нет."""
     from app.api import deps
 
-    unconfirmed = dict(user)
-    unconfirmed["age_confirmed"] = 0
-    with pytest.raises(Exception) as exc_info:
-        await deps.confirmed_age_user(unconfirmed)
-    assert exc_info.value.status_code == 403
-    assert exc_info.value.detail["code"] == "age_confirmation_required"
-    confirmed = await deps.confirmed_age_user(user)
-    assert confirmed["tg_id"] == user["tg_id"]
+    active = dict(user)
+    active["age_confirmed"] = 0
+    result = await deps.confirmed_age_user(active)
+    assert result["tg_id"] == user["tg_id"]
 
 
 async def test_new_users_default_to_memory_off(db):

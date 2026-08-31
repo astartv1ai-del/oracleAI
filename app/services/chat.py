@@ -108,7 +108,7 @@ async def ask(db, user, text: str, *, agent: str = agents.DEFAULT_AGENT,
     активный тред агента (один диалог на агента, как в боте). Direct callers default to
     the fail-closed API policy; the Bot passes `surface="bot"` explicitly.
     """
-    eligibility.require_eligible_user(user, operation="chat", require_age=surface != "bot")
+    eligibility.require_eligible_user(user, operation="chat")
     # Аудит API-003: тихая обрезка text[:1000] теряла хвост вопроса без слова
     # клиентке. Теперь превышение контракта — явная ошибка, которую поверхность
     # показывает пользователю (API режет pydantic-валидацией раньше, 422).
