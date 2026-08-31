@@ -347,15 +347,18 @@ async def onb_date(message: Message, state: FSMContext, db):
         await message.answer(date_error_copy(str(exc), _lang(user)))
         return
     await _save_birth_date(message, state, db, user,
-                           parsed.value.day, parsed.value.month, parsed.value.year)
+                           parsed.value.day, parsed.value.month, parsed.value.year,
+                           tg_id=message.from_user.id)
 
 
-async def _advance_from_time(target: Message, state: FSMContext, db, parsed) -> None:
-    user = await users.get(db, target.from_user.id)
-    await users.update(db, target.from_user.id, birth_time=parsed.value,
+async def _advance_from_time(target: Message, state: FSMContext, db, parsed,
+                             tg_id: int) -> None:
+    # tg_id передаётся явно: у cb.message.from_user это бот, не человек
+    user = await users.get(db, tg_id)
+    await users.update(db, tg_id, birth_time=parsed.value,
                        birth_time_known=int(parsed.known), birth_time_precision=parsed.precision,
                        onboarding_step="city")
-    await analytics.track(db, "onboarding_step", target.from_user.id,
+    await analytics.track(db, "onboarding_step", tg_id,
                           props={"step": "time", "precision": parsed.precision}, surface="bot")
     await state.set_state(Onb.city)
     city_question = _g(user, "город, где ты родилась", "город, где ты родился", "город рождения")
@@ -366,7 +369,8 @@ async def _advance_from_time(target: Message, state: FSMContext, db, parsed) -> 
     ), reply_markup=city_pick_kb(_lang(user)))
 
 
-async def _save_birth_date(target, state, db, user, day: int, month: int, year: int) -> None:
+async def _save_birth_date(target, state, db, user, day: int, month: int,
+                           year: int, tg_id: int) -> None:
     """Общая запись даты рождения для кнопочного выбора и текстового ввода."""
     from datetime import date as _date
     try:
@@ -377,11 +381,11 @@ async def _save_birth_date(target, state, db, user, day: int, month: int, year: 
     # SEC-010: онбординг бота знает настоящую дату рождения — это более сильная
     # аттестация возраста, чем самоподтверждение, поэтому хеш доказательства
     # вычисляем из неё (год при этом в открытом виде в новой колонке не хранится).
-    await users.update(db, target.from_user.id, birth_date=parsed_date.isoformat(),
-                       age_proof_hash=users.age_proof_hash(target.from_user.id,
-                                                           parsed_date.year),
+    # tg_id передаётся явно: у cb.message.from_user это бот, не человек.
+    await users.update(db, tg_id, birth_date=parsed_date.isoformat(),
+                       age_proof_hash=users.age_proof_hash(tg_id, parsed_date.year),
                        onboarding_step="time")
-    await analytics.track(db, "onboarding_step", target.from_user.id,
+    await analytics.track(db, "onboarding_step", tg_id,
                           props={"step": "date"}, surface="bot")
     await state.set_state(Onb.time)
     label = parsed_date.strftime("%d.%m.%Y")
@@ -435,7 +439,8 @@ async def onb_date_pick(cb: CallbackQuery, state: FSMContext, db):
     if kind == "day":
         await cb.answer()
         await _save_birth_date(cb.message, state, db, user,
-                               int(parts[4]), int(parts[3]), int(parts[2]))
+                               int(parts[4]), int(parts[3]), int(parts[2]),
+                               tg_id=cb.from_user.id)
         return
     await cb.answer("Invalid choice", show_alert=True)
 
@@ -455,7 +460,7 @@ async def onb_time_choice(cb: CallbackQuery, state: FSMContext, db):
         return
     from .onboarding_parsers import ParsedTime
     parsed = ParsedTime(*labels[value])
-    await _advance_from_time(cb.message, state, db, parsed)
+    await _advance_from_time(cb.message, state, db, parsed, tg_id=cb.from_user.id)
     await cb.answer()
 
 
@@ -469,7 +474,7 @@ async def onb_time(message: Message, state: FSMContext, db):
                               props={"step": "time", "reason": str(exc)}, surface="bot")
         await message.answer(time_error_copy(str(exc), _lang(user)), reply_markup=time_kb(_lang(user)))
         return
-    await _advance_from_time(message, state, db, parsed)
+    await _advance_from_time(message, state, db, parsed, tg_id=message.from_user.id)
 
 
 @router.callback_query(Onb.city, F.data.startswith("city:"))
@@ -490,13 +495,16 @@ async def onb_city_pick(cb: CallbackQuery, state: FSMContext, db):
         await cb.answer("Invalid choice", show_alert=True)
         return
     await cb.answer()
-    await onb_city(cb.message, state, db, city=CITY_PICKS[idx])
+    await onb_city(cb.message, state, db, city=CITY_PICKS[idx], tg_id=cb.from_user.id)
 
 
 @router.message(Onb.city, F.text)
-async def onb_city(message: Message, state: FSMContext, db, city: str | None = None):
+async def onb_city(message: Message, state: FSMContext, db, city: str | None = None,
+                   tg_id: int | None = None):
     city = (city or message.text or "").strip()[:60]
-    user = await users.get(db, message.from_user.id)
+    # tg_id передаётся явно из колбэка: cb.message.from_user — это бот
+    tg_id = tg_id or message.from_user.id
+    user = await users.get(db, tg_id)
     wait = await message.answer(_copy(
         user,
         "🌌 <i>Собираю звёзды в твою карту...</i>",
@@ -529,7 +537,7 @@ async def onb_city(message: Message, state: FSMContext, db, city: str | None = N
             time_known=bool(user["birth_time_known"]),
         )
     except Exception:  # noqa: BLE001
-        log.exception("onboarding chart build failed for %s", message.from_user.id)
+        log.exception("onboarding chart build failed for %s", tg_id)
         await wait.edit_text(_copy(
             user,
             "Не получилось собрать карту сейчас. Данные не потерялись — попробуй ещё раз через минуту "
@@ -539,14 +547,14 @@ async def onb_city(message: Message, state: FSMContext, db, city: str | None = N
         ))
         return
 
-    await users.update(db, message.from_user.id, birth_city=city, birth_lat=lat,
+    await users.update(db, tg_id, birth_city=city, birth_lat=lat,
                        birth_lon=lon, tz=tz,
                        chart_json=json.dumps(chart, ensure_ascii=False),
                        onboarding_step="confirm")
     await wait.edit_text(_confirm_summary(user, city, chart),
                          reply_markup=confirmation_kb(_lang(user)))
     await state.set_state(Onb.confirm)
-    await analytics.track(db, "onboarding_step", message.from_user.id,
+    await analytics.track(db, "onboarding_step", tg_id,
                           props={"step": "confirm"}, surface="bot")
 
 
