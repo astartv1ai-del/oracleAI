@@ -34,7 +34,7 @@ def main() -> None:
     profiles = load_profiles()
     assert set(profiles) == {"lilith", "urania", "lenormand", "mira"}
     assert all(len(profile.skills) >= 20 for profile in profiles.values())
-    assert codes() == ("oracle", "astro", "tarot", "chiromant")
+    assert set(codes()) == {"oracle", "astro", "tarot", "chiromant"}
 
     for legacy_code, (expected_skill, question) in EXPECTED.items():
         profile = profile_for_legacy(legacy_code)

@@ -146,7 +146,7 @@ button:disabled,
   border-radius: var(--radius-card);
   border-color: var(--color-border);
 }
-.modal, .te-sheet, .age-gate-card, .cg-card { border-radius: var(--radius-sheet); }
+.modal, .te-sheet, .cg-card { border-radius: var(--radius-sheet); }
 .modal-overlay, .age-overlay, .intro-overlay {
   background: rgba(5, 4, 16, .72);
   backdrop-filter: blur(12px);

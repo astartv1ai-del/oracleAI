@@ -173,7 +173,6 @@
      (Полная привязка оверлеев к frame — задача фазы 3 плана: рендер в #app-root.) */
   .modal-overlay { padding: 0; }
   .modal-overlay .modal,
-  #age-gate .age-gate-card,
   #chat-guide .cg-card {
     width: min(420px, calc(100vw - 48px));
     box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .85);

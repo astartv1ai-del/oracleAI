@@ -368,6 +368,10 @@ async def _save_birth_date(target, state, db, user, day: int, month: int,
                        age_confirmed=1,
                        age_proof_hash=users.age_proof_hash(tg_id, parsed_date.year),
                        onboarding_step="time")
+    # GAUNTLET v2: событие воронки сохранено — этап «age_gate» теперь
+    # означает «возраст подтверждён реальной датой рождения», а не кнопкой.
+    await analytics.track_once(db, analytics.E_AGE_CONFIRMED, tg_id,
+                               props={"source": "bot"}, surface="bot")
     await analytics.track(db, "onboarding_step", tg_id,
                           props={"step": "date"}, surface="bot")
     await state.set_state(Onb.time)

@@ -530,12 +530,6 @@ button, .btn, .nav-btn, .chip, .ask-chip, .tool, .dock-item, .moon-toggle, .moon
   .brand-title { font-size: 14px; letter-spacing: .085em; }
 }
 
-/* P0 · Возрастная граница 16+: спокойная, ясная, без стигматизации */
-.age-gate-field span { display:block; margin:0 0 6px; color:var(--text-dim); font-size:10.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
-.age-gate-field .ipt { width:100%; box-sizing:border-box; text-align:center; }
-.age-gate-error { margin:0 0 12px; padding:10px 12px; border-radius:12px; background:rgba(255,120,120,.10); border:1px solid rgba(255,120,120,.26); color:#ffb9b9; font-size:12px; line-height:1.45; }
-@media (max-width:360px) { .age-gate-card { padding:22px 17px 19px; border-radius:22px; } .age-gate-card h2 { font-size:23px; } }
-
 /* P1 · Ежедневный ритм: две маленькие точки опоры без давления на стрик */
 .daily-ritual { margin: 14px 0 4px; padding: 17px 15px 13px; overflow:hidden; border:1px solid rgba(185,166,255,.21); border-radius:var(--r-lg); background:linear-gradient(145deg, rgba(135,112,215,.15), rgba(23,18,49,.76)); box-shadow:var(--shadow-ritual); }
 .daily-ritual-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
@@ -1706,19 +1700,6 @@ html { scroll-behavior: smooth; }
   box-shadow: 0 7px 18px -12px rgba(245,212,139,.95), inset 0 1px 0 rgba(255,255,255,.13);
 }
 .brand-mark .sigil { width: 21px; height: 21px; stroke-width: 1.55; filter: drop-shadow(0 0 6px rgba(245,212,139,.35)); }
-.age-gate-sigil {
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  margin: 0 auto 15px;
-  border: 1px solid rgba(245,212,139,.42);
-  border-radius: 19px;
-  color: var(--champagne-200);
-  background: radial-gradient(circle at 32% 28%, rgba(255,244,204,.18), transparent 43%), linear-gradient(145deg, rgba(89,72,143,.96), rgba(23,19,53,.98));
-  box-shadow: 0 16px 36px -22px rgba(245,212,139,.78), inset 0 1px 0 rgba(255,255,255,.14);
-}
-.age-gate-sigil .sigil { width: 35px; height: 35px; stroke-width: 1.45; }
 .agent-sprite .as-prop {
   display: grid;
   place-items: center;

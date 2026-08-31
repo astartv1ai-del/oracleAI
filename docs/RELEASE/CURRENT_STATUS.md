@@ -34,7 +34,7 @@ The product boundary is explicit: chart and card calculations are deterministic 
 
 | ID | Gate | Evidence required | Current status |
 |---|---|---|---|
-| P0-001 | Telegram identity, onboarding and 16+ device journey | Real signed `initData`, invalid/tampered cases, real WebView/device evidence and owner isolation. | **EXTERNAL** |
+| P0-001 | Telegram identity, onboarding and device journey | Real signed `initData`, invalid/tampered cases, real WebView/device evidence and owner isolation. Age policy since GAUNTLET v2: no separate confirmation step — the real birth date collected in bot onboarding is the attestation. | **EXTERNAL** |
 | P0-002 | Payments | Provider sandbox invoice, duplicate webhook, refund, chargeback/error and reconciliation evidence. | **EXTERNAL** |
 | P0-003 | Live AI | Grounding/safety/language evaluation with approved provider plus p95 latency within the owner-approved target. | **STAGING/EXTERNAL** |
 | P0-004 | Operations | Encrypted backup/restore, storage permissions, migration and rollback rehearsal in disposable production-like infrastructure. | **STAGING/EXTERNAL** |
