@@ -12,6 +12,9 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 CANONICAL_MAX_SIDE = 1280
 CANONICAL_JPEG_QUALITY = 90
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_IMAGE_PIXELS = 20_000_000
+MIN_IMAGE_SIDE = 480
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
 FORMAT_TO_MIME = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 PHOTO_INVALID = "PHOTO_INVALID"
@@ -39,9 +42,7 @@ class PalmImage:
     precheck: dict[str, Any]
 
 
-_PRECHECK_CACHE: ContextVar[dict[str, dict[str, Any]] | None] = ContextVar(
-    "oracle_palm_precheck_cache", default=None
-)
+_PRECHECK_CACHE: ContextVar[dict[str, dict[str, Any]] | None] = ContextVar("oracle_palm_precheck_cache", default=None)
 _ORIGINAL_PRECHECK = None
 _INSTALLED = False
 
@@ -71,6 +72,8 @@ def cached_precheck(image: bytes) -> dict[str, Any]:
 def canonicalize(image: bytes, declared_content_type: str | None = None) -> PalmImage:
     if not image:
         raise ValueError("фото пустое")
+    if len(image) > MAX_IMAGE_BYTES:
+        raise ValueError("фото слишком большое; максимум 8 МБ")
     declared = (declared_content_type or "").split(";", 1)[0].strip().lower()
     if declared and declared not in ALLOWED_MIME:
         raise ValueError("отправь изображение JPEG, PNG или WebP")
@@ -88,20 +91,30 @@ def canonicalize(image: bytes, declared_content_type: str | None = None) -> Palm
             if getattr(source, "n_frames", 1) > 1:
                 raise ValueError("анимированные изображения не поддерживаются")
             original_width, original_height = source.size
+            if original_width * original_height > MAX_IMAGE_PIXELS:
+                raise ValueError("разрешение изображения слишком большое")
             frame = ImageOps.exif_transpose(source).convert("RGB")
             width, height = frame.size
+            if min(width, height) < MIN_IMAGE_SIDE:
+                raise ValueError(f"минимальная сторона фото — {MIN_IMAGE_SIDE}px")
             if max(width, height) > CANONICAL_MAX_SIDE:
                 scale = CANONICAL_MAX_SIDE / float(max(width, height))
-                frame = frame.resize(
-                    (max(1, round(width * scale)), max(1, round(height * scale))),
-                    Image.Resampling.LANCZOS,
-                )
+                frame = frame.resize((max(1, round(width * scale)), max(1, round(height * scale))), Image.Resampling.LANCZOS)
             width, height = frame.size
             out = io.BytesIO()
             frame.save(out, format="JPEG", quality=CANONICAL_JPEG_QUALITY, optimize=True)
             normalized = out.getvalue()
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
         raise ValueError("изображение повреждено или не поддерживается") from exc
+    precheck = cached_precheck(normalized)
+    hard_quality_issues = {
+        "underexposed", "overexposed", "low_contrast_or_flat_light", "soft_or_blurred_edges", "extreme_crop_or_aspect",
+    }
+    if precheck.get("status") == "invalid_image":
+        raise ValueError("изображение повреждено или не читается")
+    if precheck.get("status") == "reshoot_recommended" and (hard_quality_issues & set(precheck.get("issues") or [])):
+        reasons = ", ".join(str(x) for x in (precheck.get("issues") or [])[:3])
+        raise ValueError(f"кадр требует пересъёмки: {reasons or 'низкое качество'}")
     return PalmImage(
         raw_sha256=raw_sha256,
         normalized_sha256=hashlib.sha256(normalized).hexdigest(),
@@ -112,7 +125,7 @@ def canonicalize(image: bytes, declared_content_type: str | None = None) -> Palm
         format="JPEG",
         original_width=original_width,
         original_height=original_height,
-        precheck=cached_precheck(normalized),
+        precheck=precheck,
     )
 
 
@@ -219,15 +232,12 @@ def classify_result(result: dict[str, Any]) -> str | None:
     return None
 
 
-async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "miniapp",
-                           content_type: str | None = None) -> dict[str, Any]:
+async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "miniapp", content_type: str | None = None) -> dict[str, Any]:
     reset_request_cache()
     install()
     from . import service
     canonical = canonicalize(image, content_type)
-    result = await service.analyze_and_save(
-        db, user, canonical.normalized_bytes, surface=surface, content_type="image/jpeg"
-    )
+    result = await service.analyze_and_save(db, user, canonical.normalized_bytes, surface=surface, content_type="image/jpeg")
     result["image_contract"] = {
         "raw_sha256": canonical.raw_sha256,
         "normalized_sha256": canonical.normalized_sha256,
@@ -244,13 +254,9 @@ async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "mini
     if error_code:
         result["error_code"] = error_code
         if error_code == VISION_SCHEMA_INVALID:
-            result["limitations"] = list(dict.fromkeys((result.get("limitations") or []) + [
-                "Фото прошло capture/CV-проверки, но структурированный vision-ответ не прошёл локальную проверку."
-            ]))[:12]
+            result["limitations"] = list(dict.fromkeys((result.get("limitations") or []) + ["Фото прошло capture/CV-проверки, но структурированный vision-ответ не прошёл локальную проверку."]))[:12]
         elif error_code == VISION_UNAVAILABLE:
-            result["limitations"] = list(dict.fromkeys((result.get("limitations") or []) + [
-                "Фото уже принято; vision-провайдер сейчас недоступен. Пересъёмка не требуется."
-            ]))[:12]
+            result["limitations"] = list(dict.fromkeys((result.get("limitations") or []) + ["Фото уже принято; vision-провайдер сейчас недоступен. Пересъёмка не требуется."]))[:12]
     return result
 
 
