@@ -54,6 +54,10 @@ def _cache() -> dict[str, dict[str, Any]]:
     return value
 
 
+def reset_request_cache() -> None:
+    _PRECHECK_CACHE.set({})
+
+
 def cached_precheck(image: bytes) -> dict[str, Any]:
     digest = hashlib.sha256(image).hexdigest()
     cache = _cache()
@@ -62,10 +66,6 @@ def cached_precheck(image: bytes) -> dict[str, Any]:
             raise RuntimeError("palm precheck runtime is not installed")
         cache[digest] = _ORIGINAL_PRECHECK(image)
     return dict(cache[digest])
-
-
-def reset_request_cache() -> None:
-    _PRECHECK_CACHE.set({})
 
 
 def canonicalize(image: bytes, declared_content_type: str | None = None) -> PalmImage:
@@ -102,10 +102,9 @@ def canonicalize(image: bytes, declared_content_type: str | None = None) -> Palm
             normalized = out.getvalue()
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
         raise ValueError("изображение повреждено или не поддерживается") from exc
-    normalized_sha256 = hashlib.sha256(normalized).hexdigest()
     return PalmImage(
         raw_sha256=raw_sha256,
-        normalized_sha256=normalized_sha256,
+        normalized_sha256=hashlib.sha256(normalized).hexdigest(),
         normalized_bytes=normalized,
         mime="image/jpeg",
         width=width,
@@ -220,6 +219,41 @@ def classify_result(result: dict[str, Any]) -> str | None:
     return None
 
 
+async def analyze_and_save(db, user: dict, image: bytes, *, surface: str = "miniapp",
+                           content_type: str | None = None) -> dict[str, Any]:
+    reset_request_cache()
+    install()
+    from . import service
+    canonical = canonicalize(image, content_type)
+    result = await service.analyze_and_save(
+        db, user, canonical.normalized_bytes, surface=surface, content_type="image/jpeg"
+    )
+    result["image_contract"] = {
+        "raw_sha256": canonical.raw_sha256,
+        "normalized_sha256": canonical.normalized_sha256,
+        "mime": canonical.mime,
+        "format": canonical.format,
+        "width": canonical.width,
+        "height": canonical.height,
+        "original_width": canonical.original_width,
+        "original_height": canonical.original_height,
+        "normalized_size": len(canonical.normalized_bytes),
+        "precheck": canonical.precheck,
+    }
+    error_code = classify_result(result)
+    if error_code:
+        result["error_code"] = error_code
+        if error_code == VISION_SCHEMA_INVALID:
+            result["limitations"] = list(dict.fromkeys((result.get("limitations") or []) + [
+                "Фото прошло capture/CV-проверки, но структурированный vision-ответ не прошёл локальную проверку."
+            ]))[:12]
+        elif error_code == VISION_UNAVAILABLE:
+            result["limitations"] = list(dict.fromkeys((result.get("limitations") or []) + [
+                "Фото уже принято; vision-провайдер сейчас недоступен. Пересъёмка не требуется."
+            ]))[:12]
+    return result
+
+
 def install() -> None:
     global _ORIGINAL_PRECHECK, _INSTALLED
     if _INSTALLED:
@@ -228,12 +262,11 @@ def install() -> None:
     from . import service
     _ORIGINAL_PRECHECK = palm_vision.analyze
     palm_vision.analyze = cached_precheck
-    # The service and the CV adapters all import this same module object, so one
-    # permanent wrapper removes duplicate prechecks without request-global swaps.
-    palm_landmarks.analyze = __import__("app.core.palm.mediapipe_runtime", fromlist=["analyze"]).analyze
+    from . import mediapipe_runtime
+    palm_landmarks.analyze = mediapipe_runtime.analyze
     palm_lines.analyze_ensemble = adaptive_line_ensemble
     service._data_url = canonical_data_url
-    service.PALM_JSON_ATTEMPTS = 2  # initial structured call + one repair
+    service.PALM_JSON_ATTEMPTS = 2
     _INSTALLED = True
 
 
@@ -241,5 +274,4 @@ def is_installed() -> bool:
     return _INSTALLED
 
 
-# Safe, one-time runtime installation. It is deliberately idempotent.
 install()
