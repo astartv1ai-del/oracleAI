@@ -934,3 +934,21 @@ async def generate(db, order: Order, *, bot_username: str = "",
         + _ticket_block(order.promo_code, bot_username, language)
         + f'<p class="disclaimer">{layout.esc(brand["disclaimer"])}</p></div>')
     return layout.document(f"{cover_title} — {order.name}", blocks, lang=language)
+
+
+async def build_natal_pdf_bytes(db, user: dict) -> bytes:
+    """Собрать PDF-разбор натальной карты из профиля пользователя.
+
+    Используется API-эндпоинтом и ботом (ТГ / миниап). Генерирует HTML
+    через builder.generate(), затем рендерит PDF через WeasyPrint.
+    """
+    from . import render
+    order = Order(
+        name=user["name"] or "—",
+        birth_date=user["birth_date"],
+        birth_time=user.get("birth_time") or None,
+        birth_city=user.get("birth_city") or None,
+        lang=user.get("lang") or "ru",
+    )
+    html = await generate(db, order, bot_username="oracleAI")
+    return render.to_pdf_bytes(html)

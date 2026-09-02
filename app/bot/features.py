@@ -333,21 +333,32 @@ async def chart_view(cb: CallbackQuery, db):
     lines.append("\nСпроси меня о любой планете или аспекте — расскажу, "
                  "что он значит именно для тебя 💫")
     await cb.answer()
+    # Отправляем PDF-разбор вместо маленького колеса
     try:
-        image, _spec, _cached, _key = await asyncio.to_thread(
-            chart_rendering.render_chart_image,
-            chart,
-            birth_date=user["birth_date"], birth_time=user["birth_time"],
-            lat=user["birth_lat"], lon=user["birth_lon"], tz=user["tz"],
-            variant="compact", locale="en" if user["lang"] == "en" else "ru",
-        )
+        from ..pdfgen import builder, render
+        pdf = await builder.build_natal_pdf_bytes(db, user)
         from aiogram.types import BufferedInputFile
-        await cb.message.answer_photo(
-            BufferedInputFile(image, filename="oracle-natal-chart.png"),
-            caption="Your natal chart" if user["lang"] == "en" else "Твоя натальная карта",
+        await cb.message.answer_document(
+            BufferedInputFile(pdf, filename="oracle-natal-chart.pdf"),
+            caption="Твой PDF-разбор натальной карты" if user["lang"] != "en" else "Your natal chart PDF report",
         )
-    except Exception as exc:  # noqa: BLE001
-        log.info("bot chart visual unavailable: %s", exc)
+    except (render.PdfUnavailable, Exception) as exc:
+        log.info("PDF для чата недоступен (%s), отправляю текстовую карту", exc)
+        try:
+            image, _spec, _cached, _key = await asyncio.to_thread(
+                chart_rendering.render_chart_image,
+                chart,
+                birth_date=user["birth_date"], birth_time=user["birth_time"],
+                lat=user["birth_lat"], lon=user["birth_lon"], tz=user["tz"],
+                variant="compact", locale="en" if user["lang"] == "en" else "ru",
+            )
+            from aiogram.types import BufferedInputFile
+            await cb.message.answer_photo(
+                BufferedInputFile(image, filename="oracle-natal-chart.png"),
+                caption="Your natal chart" if user["lang"] == "en" else "Твоя натальная карта",
+            )
+        except Exception as exc2:  # noqa: BLE001
+            log.info("bot chart visual also unavailable: %s", exc2)
     await _send_long(cb.message, "\n".join(lines),
                      reply_markup=back_menu(ask=True))
 

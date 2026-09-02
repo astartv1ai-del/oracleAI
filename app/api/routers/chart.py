@@ -400,24 +400,14 @@ async def chart_pdf(user=Depends(confirmed_age_user), db=Depends(get_db)):
     """Полный PDF-разбор натальной карты через pdfgen."""
     if not user["birth_date"]:
         raise HTTPException(400, "сначала укажи дату рождения в профиле")
-    order = Order(
-        name=user["name"] or "—",
-        birth_date=user["birth_date"],
-        birth_time=user.get("birth_time") or None,
-        birth_city=user.get("birth_city") or None,
-        lang=user.get("lang") or "ru",
-    )
     try:
-        html = await builder.generate(db, order, bot_username="oracleAI")
-        pdf = render.to_pdf_bytes(html)
+        pdf = await builder.build_natal_pdf_bytes(db, user)
     except render.PdfUnavailable:
         raise HTTPException(503, "PDF-генератор временно недоступен: установите WeasyPrint")
     except Exception as exc:
         raise HTTPException(500, "не удалось собрать PDF-разбор") from exc
     filename = f"oracle-natal-{user['tg_id']}.pdf"
-    headers = {
-        "Content-Disposition": f'attachment; filename="{filename}"',
-    }
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return Response(content=pdf, media_type="application/pdf", headers=headers)
 
 
