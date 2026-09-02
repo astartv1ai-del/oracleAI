@@ -88,41 +88,50 @@ def analyze(image_bytes: bytes, *, model_path: str | None = None) -> dict[str, A
                     (max(1, round(original_width * scale)), max(1, round(original_height * scale))),
                     Image.Resampling.LANCZOS,
                 )
-            width, height = rgb.size
-            with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
-                rgb.save(tmp, format="JPEG", quality=92)
-                tmp.flush()
-                detector = _get_detector(path)
-                mp_image = python_image_from_path(tmp.name)
-                result = detector.detect(mp_image)
-    except Exception as exc:  # noqa: BLE001
-        return _empty("detection_error", [type(exc).__name__])
+            detector = _get_detector(path)
+            with tempfile.NamedTemporaryFile(suffix=".jpg") as detector_file:
+                rgb.save(detector_file, format="JPEG", quality=92, optimize=True)
+                detector_file.flush()
+                mp_image = __import__("mediapipe").Image.create_from_file(detector_file.name)
+                # MediaPipe Tasks Python bindings are not documented as concurrent;
+                # serialize calls through the same lock used for model lifecycle.
+                with _LOCK:
+                    detected = detector.detect(mp_image)
 
-    hands = []
-    for idx, landmarks in enumerate(result.hand_landmarks or []):
-        handedness = "unknown"
-        if idx < len(result.handedness):
-            try:
-                handedness = str(result.handedness[idx][0].category_name or "unknown")
-            except (IndexError, AttributeError):
-                pass
-        hands.append({
-            "handedness": handedness,
-            "landmarks": [_landmark(item) for item in landmarks],
-        })
-    return {
-        "version": ADAPTER_VERSION,
-        "status": "ok" if hands else "no_hand",
-        "hands": hands,
-        "hand_count": len(hands),
-        "issues": sorted(issues)[:8],
-        "model": "hand_landmarker_full_float16",
-        "image_size": {"width": width, "height": height},
-        "source_size": {"width": original_width, "height": original_height},
-    }
-
-
-def python_image_from_path(path: str):
-    from mediapipe import Image as MpImage, ImageFormat  # type: ignore[import-not-found]
-
-    return MpImage.create_from_file(path)
+        hands: list[dict[str, Any]] = []
+        for index, landmarks in enumerate(detected.hand_landmarks):
+            points = [_landmark(point) for point in landmarks]
+            xs = [point["x"] for point in points]
+            ys = [point["y"] for point in points]
+            handedness = "unknown"
+            score = None
+            if index < len(detected.handedness) and detected.handedness[index]:
+                category = detected.handedness[index][0]
+                handedness = str(getattr(category, "category_name", None) or "unknown").lower()
+                raw_score = getattr(category, "score", None)
+                score = round(float(raw_score), 4) if raw_score is not None else None
+            hands.append({
+                "index": index,
+                "handedness": handedness,
+                "handedness_score": score,
+                "landmarks": points,
+                "landmark_count": len(points),
+                "normalized_bbox": {
+                    "x_min": round(min(xs), 6), "y_min": round(min(ys), 6),
+                    "x_max": round(max(xs), 6), "y_max": round(max(ys), 6),
+                },
+            })
+        return {
+            "version": ADAPTER_VERSION,
+            "status": "multiple_hands" if len(hands) > 1 else ("detected" if hands else "no_hand"),
+            "hands": hands,
+            "hand_count": len(hands),
+            "issues": ["multiple_hands_in_frame"] if len(hands) > 1 else ([] if hands else ["hand_not_detected"]),
+            "model": "hand_landmarker_full_float16",
+            "model_key": str(path.resolve()),
+            "image_size": {"width": original_width, "height": original_height},
+        }
+    except ImportError:
+        return _empty("unavailable", ["mediapipe_not_installed"])
+    except Exception:
+        return _empty("runtime_error", ["mediapipe_runtime_error"])
