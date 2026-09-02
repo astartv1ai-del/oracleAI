@@ -58,7 +58,40 @@ if (window.OracleRuntime) window.OracleRuntime.bindLegacyState(app, app.state);
     }
     this.initSwipe();
     this.initViewport();
-    if (!qaMode) this.maybeIntro();
+    if (!qaMode) this.maybeLanguage();
+  };
+  // При первом запуске язык выбирается первым — до приветствия и онбординга.
+  app.maybeLanguage = function() {
+    try { if (localStorage.getItem('oracle_lang')) { this.maybeIntro(); return; } } catch (e) {}
+    const ov = document.createElement('div');
+    ov.id = 'intro';
+    ov.className = 'intro';
+    ov.innerHTML = `
+      <div class="intro-track">
+        <div class="intro-slide" style="text-align:center">
+          <div class="intro-emoji">🌌</div>
+          <div class="intro-title">OracleAI</div>
+          <div class="intro-sub" data-lang-sub>Выбери язык, чтобы продолжить</div>
+          <div class="lang-pick-btns" style="margin-top:22px;display:flex;flex-direction:column;gap:12px;max-width:280px;margin-left:auto;margin-right:auto">
+            <button class="btn btn-primary" data-lang="ru" style="font-size:16px">🇷🇺 Русский</button>
+            <button class="btn btn-ghost" data-lang="en" style="font-size:16px">🇬🇧 English</button>
+          </div>
+        </div>
+      </div>`;
+    const pick = (lang) => {
+      try { localStorage.setItem('oracle_lang', lang); } catch (e) {}
+      document.documentElement.lang = lang;
+      syncDocumentLocale();
+      ov.querySelector('[data-lang-sub]').textContent =
+        lang === 'en' ? 'Choose your language to continue' : 'Выбери язык, чтобы продолжить';
+      setTimeout(() => {
+        ov.remove();
+        this.maybeIntro();
+      }, 150);
+    };
+    ov.querySelector('[data-lang="ru"]').addEventListener('click', () => pick('ru'));
+    ov.querySelector('[data-lang="en"]').addEventListener('click', () => pick('en'));
+    document.body.appendChild(ov);
   };
   app.renderAuthRequired = function(err) {
     const main = document.getElementById('app-main');
