@@ -5,7 +5,7 @@ adds the canonical image/precheck/CV guards around the legacy service.
 """
 # ruff: noqa: F401
 from .. import agents, llm, palm_evidence, palm_full_scope, palm_landmarks, palm_lines, palm_vision  # noqa: F401
-from ..config import settings
+from ...config import settings
 from .prompts import PALM_SYSTEM, PALM_SYSTEM_EN, PALM_USER, PALM_USER_EN, palm_prompts
 from .service import (
     ALLOWED_MIME, EVIDENCE_CONTRACT_VERSION, EVIDENCE_STATES, IMAGE_FORMATS,
