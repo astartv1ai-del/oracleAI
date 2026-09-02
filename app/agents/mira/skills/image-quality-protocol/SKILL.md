@@ -1,16 +1,16 @@
 ---
 name: image-quality-protocol
-version: 1.0.0
-description: Score focus, lighting, framing, resolution and distortion before reading a palm.
+version: 1.1.0
+description: Assess palm-photo focus, lighting, framing, resolution and view coverage before interpretation.
 depends_on:
   - anti-barnum-protocol
 requires_tools: palm_scanner palm_photo_guide
 tags: ['image', 'quality']
 license: Proprietary
-compatibility: OracleAI file-backed agent harness.
+compatibility: OracleAI palm evidence schema and capture precheck.
 metadata:
   oracleai_agent: mira
-  oracleai_domain: specialist-domain
+  oracleai_domain: palmistry
   oracleai_loading: on_demand
   oracleai_output_contract: agent_response.v1
 ---
@@ -19,28 +19,22 @@ metadata:
 
 ## Purpose
 
-Score focus, lighting, framing, resolution and distortion before reading a palm. This skill is a focused capability, not a replacement for deterministic tools, safety policy or professional services.
+Use this skill when the user asks whether a palm photo is good enough, why a reshoot was requested, or how to photograph a missing zone. This skill evaluates capture quality; it must not turn low-quality pixels into a palmistry interpretation.
 
-## Evidence contract
+## Required sequence
 
-Use only this evidence class: **palm image and requested zone**. Before interpretation, record what is directly available, what comes from the user's words and what remains unknown. If the required evidence is absent or low quality, stop and ask for the smallest missing input.
+1. Call `palm_scanner` to inspect the saved quality/evidence state.
+2. Read `image_quality`, `visual_precheck`, `photo_assessment`, `requires_view` and limitations.
+3. Separate objective capture issues from semantic hand/line detection. Precheck measures conditions such as brightness, contrast, edge sharpness and crop; it does not prove a hand or palm line exists.
+4. If another angle is required, call `palm_photo_guide` and give one concrete reshoot recipe.
+5. Do not promise that a better score guarantees a successful reading; it only improves capture conditions.
 
-## Workflow
+## Quality checklist
 
-1. Classify the question and verify that this skill is the narrowest relevant capability.
-2. Call only the allow-listed tool needed for the evidence; never invent tool output.
-3. Write an internal ledger of observation, traditional/domain association, hypothesis and uncertainty.
-4. Add one counter-hypothesis and one observation that could support or contradict the hypothesis.
-5. Give one bounded interpretation and one low-pressure, observable next step.
+Check focus/sharpness, lighting and glare, full framing, visible wrist/fingertips, single-hand framing, and correct open/folded view. Treat a low-resolution, clipped, overexposed, underexposed or blurred frame as a capture problem, not a personality signal.
 
-## Domain-specific failure mode
+## Output
 
-Never fill unreadable areas with imagination.
+`quality findings → quality gate → exact reshoot instruction → what the next photo enables`.
 
-## Anti-Barnum gate
-
-Do not use universal personality labels, third-party mind reading, diagnosis, or unsupported claims. Tie every concrete sentence to evidence and speak with a clear, confident expert voice. If the user rejects an interpretation, explore the alternate reading without arguing.
-
-## Output contract
-
-Return: evidence → bounded interpretation → limitation → alternative explanation → user-agency step. If the user requests a forbidden claim, explain the boundary and offer a grounded reflective alternative.
+Never guess what a blurred line means. Never claim health, age, fertility, death, future or character from capture artifacts.

@@ -38,10 +38,12 @@ skills:
   tags: []
   path: app/agents/mira/skills/evidence-confidence/SKILL.md
 - name: fate-line
-  version: 1.0.0
+  version: 1.1.0
   depends_on: []
-  requires_tools: []
-  tags: []
+  requires_tools:
+  - palm_scanner
+  tags:
+  - fate-line
   path: app/agents/mira/skills/fate-line/SKILL.md
 - name: fate-line-context
   version: 1.0.0
@@ -67,16 +69,19 @@ skills:
   tags: []
   path: app/agents/mira/skills/hand-shape-elements/SKILL.md
 - name: hand-side-context
-  version: 1.0.0
+  version: 1.1.0
   depends_on: []
-  requires_tools: []
+  requires_tools:
+  - palm_scanner
   tags: []
   path: app/agents/mira/skills/hand-side-context/SKILL.md
 - name: head-line
-  version: 1.0.0
+  version: 1.1.0
   depends_on: []
-  requires_tools: []
-  tags: []
+  requires_tools:
+  - palm_scanner
+  tags:
+  - head-line
   path: app/agents/mira/skills/head-line/SKILL.md
 - name: head-line-depth
   version: 1.0.0
@@ -90,10 +95,12 @@ skills:
   - lines
   path: app/agents/mira/skills/head-line-depth/SKILL.md
 - name: heart-line
-  version: 1.0.0
+  version: 1.1.0
   depends_on: []
-  requires_tools: []
-  tags: []
+  requires_tools:
+  - palm_scanner
+  tags:
+  - heart-line
   path: app/agents/mira/skills/heart-line/SKILL.md
 - name: heart-line-depth
   version: 1.0.0
@@ -107,7 +114,7 @@ skills:
   - relationships
   path: app/agents/mira/skills/heart-line-depth/SKILL.md
 - name: image-quality-protocol
-  version: 1.0.0
+  version: 1.1.0
   depends_on:
   - anti-barnum-protocol
   requires_tools:
@@ -118,10 +125,12 @@ skills:
   - quality
   path: app/agents/mira/skills/image-quality-protocol/SKILL.md
 - name: life-line
-  version: 1.0.0
+  version: 1.1.0
   depends_on: []
-  requires_tools: []
-  tags: []
+  requires_tools:
+  - palm_scanner
+  tags:
+  - life-line
   path: app/agents/mira/skills/life-line/SKILL.md
 - name: life-line-continuity
   version: 1.0.0
@@ -222,10 +231,14 @@ skills:
   - image
   path: app/agents/mira/skills/photo-comparison/SKILL.md
 - name: relationship-lines
-  version: 1.0.0
+  version: 1.1.0
   depends_on: []
-  requires_tools: []
-  tags: []
+  requires_tools:
+  - palm_scanner
+  - palm_photo_guide
+  tags:
+  - relationship
+  - edge_view
   path: app/agents/mira/skills/relationship-lines/SKILL.md
 - name: sun-line
   version: 1.0.0
