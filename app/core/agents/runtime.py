@@ -30,17 +30,11 @@ from .registry import DEFAULT_AGENT, REGISTRY, get
 
 log = logging.getLogger("oracle.agents")
 
-# Ответ агента — это несколько абзацев. Всё, что короче, — обрывок: модели
-# иногда возвращают заглушку вроде «Готова услышать твои мысли».
 MIN_ANSWER_LEN = 50
 
 
 async def resolve(db, code: str | None):
-    """Агент по коду с переопределениями из админки (`content_items`).
-
-    Правится образ, название и подпись — то, что относится к бренду. Набор
-    скиллов остаётся в коде: это логика, а не текст.
-    """
+    """Агент по коду с переопределениями из админки (`content_items`)."""
     spec = get(code)
     if db is None:
         return spec, spec.style, spec.rules
@@ -56,12 +50,7 @@ async def resolve(db, code: str | None):
 
 
 async def _context(db, user, spec, question: str = ""):
-    """Контекст клиентки: карта, арканы, память — с глубиной по тарифу.
-
-    Память подбирается под вопрос (семантический поиск), а не берётся «сверху
-    списка»: иначе на вопрос о работе в промпт уходили факты про бывшего.
-    Часть слотов всегда отдана самым весомым фактам — они про неё в целом.
-    """
+    """Контекст клиентки: карта, арканы, память — с глубиной по тарифу."""
     chart = users_repo.chart_of(user)
     brief = (astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))
              if chart else "карта ещё не построена")
@@ -75,7 +64,6 @@ async def _context(db, user, spec, question: str = ""):
     plan = await billing_repo.get_plan(db, user["sub_level"] or "free")
     depth = plan.get("memory_depth") or 20
     if not users_repo.sub_active(user):
-        # «Память заморожена» на бесплатном уровне — это и есть причина продлить
         free = await billing_repo.get_plan(db, "free")
         depth = free.get("memory_depth") or 5
 
@@ -96,8 +84,6 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
     if spec.uses_persona:
         style = await persona_style(db, user)
     context_data = await _context(db, user, spec, question)
-    # Keep compatibility with third-party/test harnesses that still return the
-    # pre-Shared-Context four-tuple.
     if len(context_data) == 4:
         brief, matrix_brief, memories, summary = context_data
         shared = "[SHARED_CONTEXT] нет доступных динамических фактов."
@@ -236,18 +222,24 @@ def _offline_astro(user, question: str, chart: dict) -> str:
     precision = chart.get("precision", "unknown")
     if lang == "en":
         facts = [f"Sun: {_sign_for_language(sun.get('sign', 'unknown'), lang)}"]
-        if moon: facts.append(f"Moon: {_sign_for_language(moon.get('sign', 'unknown'), lang)}")
-        if rahu: facts.append(f"Rahu / north node: {_sign_for_language(rahu.get('sign', 'unknown'), lang)}")
-        if ketu: facts.append(f"Ketu / south node: {_sign_for_language(ketu.get('sign', 'unknown'), lang)}")
+        if moon:
+            facts.append(f"Moon: {_sign_for_language(moon.get('sign', 'unknown'), lang)}")
+        if rahu:
+            facts.append(f"Rahu / north node: {_sign_for_language(rahu.get('sign', 'unknown'), lang)}")
+        if ketu:
+            facts.append(f"Ketu / south node: {_sign_for_language(ketu.get('sign', 'unknown'), lang)}")
         limitation = ("Birth time is not confirmed, so houses, Ascendant and MC are not used."
                       if precision != "exact" else "The chart includes a confirmed birth time and house framework.")
         return (f"I checked the saved natal calculation before answering. {', '.join(facts[:4])}.\n\n"
                 f"These placements reveal the central pattern of your current reading. {limitation}\n\n"
                 "Notice which theme is ready to become a concrete choice this week, and begin there.")
     facts = [f"Солнце: {sun.get('sign', 'знак не указан')}"]
-    if moon: facts.append(f"Луна: {moon.get('sign', 'знак не указан')}")
-    if rahu: facts.append(f"Раху: {rahu.get('sign', 'знак не указан')}")
-    if ketu: facts.append(f"Кету: {ketu.get('sign', 'знак не указан')}")
+    if moon:
+        facts.append(f"Луна: {moon.get('sign', 'знак не указан')}")
+    if rahu:
+        facts.append(f"Раху: {rahu.get('sign', 'знак не указан')}")
+    if ketu:
+        facts.append(f"Кету: {ketu.get('sign', 'знак не указан')}")
     limitation = ("Время рождения не подтверждено, поэтому дома, Асцендент и MC не используются."
                   if precision != "exact" else "В карте есть подтверждённое время рождения и домовая система.")
     return (f"Я проверила сохранённый натальный расчёт. {'; '.join(facts[:4])}.\n\n"
