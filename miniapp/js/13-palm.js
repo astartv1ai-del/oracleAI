@@ -11,6 +11,20 @@
     sun_line: 'Sun line', relationship_line: 'Relationship lines', mount_venus: 'Mount of Venus',
     mount_moon: 'Mount of Moon', fingers: 'Fingers', unknown: 'Observation'
   };
+  const PALM_DETAIL_LABELS = {
+    life: 'Линия жизни', head: 'Линия головы', heart: 'Линия сердца', fate: 'Линия судьбы', sun: 'Линия Солнца',
+    relationship: 'Линии отношений', children: 'Линии детей', travel: 'Линии путешествий', mercury: 'Линия Меркурия',
+    venus: 'Холм Венеры', jupiter: 'Холм Юпитера', saturn: 'Холм Сатурна', apollo: 'Холм Аполлона',
+    moon: 'Холм Луны', mars: 'Холм Марса', thumb: 'Большой палец', index: 'Указательный палец',
+    middle: 'Средний палец', ring: 'Безымянный палец', little: 'Мизинец'
+  };
+  const PALM_DETAIL_LABELS_EN = {
+    life: 'Life line', head: 'Head line', heart: 'Heart line', fate: 'Fate line', sun: 'Sun line',
+    relationship: 'Relationship lines', children: 'Children lines', travel: 'Travel lines', mercury: 'Mercury line',
+    venus: 'Mount of Venus', jupiter: 'Mount of Jupiter', saturn: 'Mount of Saturn', apollo: 'Mount of Apollo',
+    moon: 'Mount of Moon', mars: 'Mount of Mars', thumb: 'Thumb', index: 'Index finger',
+    middle: 'Middle finger', ring: 'Ring finger', little: 'Little finger'
+  };
   const VISIBILITY = { clear: 'видно', partial: 'частично', unclear: 'неясно', not_visible: 'не видно' };
   const VISIBILITY_EN = { clear: 'visible', partial: 'partial', unclear: 'unclear', not_visible: 'not visible' };
   const PALM_I18N = {
@@ -23,7 +37,7 @@
       result: 'Что видно на ладони', needs: 'Нужен более ясный кадр', qualityLabel: 'Качество кадра', boundaries: 'Границы чтения', prompts: 'Вопросы к себе', more: 'Подробнее с Мирой', newPhoto: 'Новое фото', retry: 'Переснять фото', change: 'Изменить', usable: 'свет/резкость пригодны', checkFrame: 'нужна проверка кадра', precheck: 'детерминированная проверка изображения', viewUnknown: 'ракурс не указан', details: 'Показать карту зон и техник',
       typeError: 'Выбери JPEG, PNG или WebP. Другие форматы не отправляются.', sizeError: 'Выбери изображение до 8 МБ.', failTitle: 'Не получилось прочитать фото', failCopy: 'Проверь кадр и попробуй ещё раз.',
       privacyLabel: 'Приватность изображения', detected: 'ладонь распознана', notDetected: 'ладонь не подтверждена', observed: 'наблюдается', inferred: 'осторожная интерпретация', unknown: 'не подтверждено', notSupported: 'не поддерживается', openPalm: 'раскрытая ладонь', foldedEdge: 'согнутый край',
-      photoAdvice: 'Какой кадр дослать',
+      photoAdvice: 'Какой кадр дослать', sourceLabel: 'Источник фотографии', noDetails: 'На этом кадре пока недостаточно деталей для уверенного чтения.', noDescription: 'Описание отсутствует', noDetailDescription: 'Отдельное описание не передано', requestFailed: 'Не удалось прочитать фото',
     },
     en: {
       title: 'Palm reading', subtitle: 'I will describe only visible zones in the photo and connect them to questions that matter to you.',
@@ -34,7 +48,7 @@
       result: 'What is visible on your palm', needs: 'A clearer photo is needed', qualityLabel: 'Image quality', boundaries: 'Reading boundaries', prompts: 'Questions for reflection', more: 'Ask Mira for more', newPhoto: 'New photo', retry: 'Retake photo', change: 'Change', usable: 'light/sharpness are usable', checkFrame: 'frame needs checking', precheck: 'deterministic image check', viewUnknown: 'view not specified', details: 'Show zone and technique map',
       typeError: 'Choose JPEG, PNG or WebP. Other formats are not sent.', sizeError: 'Choose an image up to 8 MB.', failTitle: 'The photo could not be read', failCopy: 'Check the frame and try again.',
       privacyLabel: 'Image privacy', detected: 'palm detected', notDetected: 'palm not confirmed', observed: 'observed', inferred: 'qualified inference', unknown: 'not confirmed', notSupported: 'not supported', openPalm: 'open palm', foldedEdge: 'folded edge',
-      photoAdvice: 'Which photo to send next',
+      photoAdvice: 'Which photo to send next', sourceLabel: 'Photo source', noDetails: 'This frame does not yet contain enough detail for a confident reading.', noDescription: 'No description available', noDetailDescription: 'No separate description was provided', requestFailed: 'The photo could not be read',
     },
   };
   const pt = key => (PALM_I18N[oracleLang()] || PALM_I18N.ru)[key] || PALM_I18N.ru[key] || key;
@@ -60,7 +74,7 @@
       <p class="w-sub">${esc(pt('subtitle'))}</p>
       ${preview}
       ${palmGuide()}
-      <div class="palm-upload-actions" role="group" aria-label="Источник фотографии">
+      <div class="palm-upload-actions" role="group" aria-label="${esc(pt('sourceLabel'))}">
         <label class="palm-upload palm-upload--primary" for="palm-camera">
           <span class="palm-upload__icon" aria-hidden="true">⌾</span>
           <b>${esc(pt('camera'))}</b>
@@ -103,7 +117,7 @@
       return `<p class="palm-narrative">${esc(narrative)}</p>${topics}`;
     }
     const obs = Array.isArray(result.observations) ? result.observations : [];
-    if (!obs.length) return '<p class="palm-muted">На этом кадре пока недостаточно деталей для уверенного чтения.</p>';
+    if (!obs.length) return `<p class="palm-muted">${esc(pt('noDetails'))}</p>`;
     return obs.slice(0, 6).map(item => {
       const topic = (oracleLang() === 'en' ? PALM_TOPICS_EN[item.topic] : PALM_TOPICS[item.topic]) || item.topic || pt('unknown');
       const visibility = (oracleLang() === 'en' ? VISIBILITY_EN[item.visibility] : VISIBILITY[item.visibility]) || pt('unknown');
@@ -112,13 +126,13 @@
       <div class="palm-observation">
         <div><b>${esc(topic)}</b><span>${esc(visibility)} · ${esc(evidenceStateLabel(item.evidence_state))} · ${confidence}%</span></div>
         <div class="palm-confidence"><i style="width:${confidence}%"></i></div>
-        <p>${esc(item.summary || 'Описание отсутствует')}</p>
+        <p>${esc(item.summary || pt('noDescription'))}</p>
       </div>`;
     }).join('');
   }
 
   function detailRows(result) {
-    const labels = { life: 'Линия жизни', head: 'Линия головы', heart: 'Линия сердца', fate: 'Линия судьбы', sun: 'Линия Солнца', relationship: 'Линии отношений', children: 'Линии детей', travel: 'Линии путешествий', mercury: 'Линия Меркурия', venus: 'Холм Венеры', jupiter: 'Холм Юпитера', saturn: 'Холм Сатурна', apollo: 'Холм Аполлона', moon: 'Холм Луны', mars: 'Холм Марса', thumb: 'Большой палец', index: 'Указательный палец', middle: 'Средний палец', ring: 'Безымянный палец', little: 'Мизинец' };
+    const labels = oracleLang() === 'en' ? PALM_DETAIL_LABELS_EN : PALM_DETAIL_LABELS;
     const items = [];
     ['lines', 'mounts', 'fingers'].forEach(group => {
       Object.entries(result[group] || {}).forEach(([key, value]) => {
@@ -132,7 +146,7 @@
     return items.slice(0, 12).map(({ label, detail }) => {
       const visibility = (oracleLang() === 'en' ? VISIBILITY_EN[detail.visibility] : VISIBILITY[detail.visibility]) || pt('unknown');
       const confidence = Math.round(Number(detail.confidence || 0) * 100);
-      return `<div class="palm-detail-row"><div><b>${esc(label)}</b><span>${esc(visibility)} · ${esc(evidenceStateLabel(detail.evidence_state))} · ${confidence}%</span></div><div class="palm-confidence"><i style="width:${confidence}%"></i></div><p>${esc(detail.summary || detail.shape || 'Отдельное описание не передано')}</p></div>`;
+      return `<div class="palm-detail-row"><div><b>${esc(label)}</b><span>${esc(visibility)} · ${esc(evidenceStateLabel(detail.evidence_state))} · ${confidence}%</span></div><div class="palm-confidence"><i style="width:${confidence}%"></i></div><p>${esc(detail.summary || detail.shape || pt('noDetailDescription'))}</p></div>`;
     }).join('');
   }
 
@@ -149,12 +163,13 @@
     const pa = result.photo_assessment || {};
     const detected = result.hand_detected ? pt('detected') : pt('notDetected');
     const preCopy = pre.width ? `${pre.width}×${pre.height} · ${pre.status === 'usable' ? pt('usable') : pt('checkFrame')}` : pt('precheck');
+    const details = detailRows(result);
     return `<section class="palm-result" aria-live="polite">
       <div class="w-title">✋ ${needs ? esc(pt('needs')) : esc(pt('result'))}</div>
       <div class="palm-quality" style="--quality:${Math.round(Number(q.score || 0) * 100)}"><b>${esc(pt('qualityLabel'))}</b><span>${Math.round(Number(q.score || 0) * 100)}%</span></div>
       <div class="palm-evidence-strip"><span>◉ ${esc(detected)}</span><span>⌁ ${esc(viewTypeLabel(pa.view_type))}</span><span>✦ ${esc(preCopy)}</span></div>
       ${textFromResult(result)}
-      ${detailRows(result) ? `<details class="palm-details"><summary>${esc(pt('details'))} <span>⌄</span></summary><div class="palm-detail-list">${detailRows(result)}</div></details>` : ''}
+      ${details ? `<details class="palm-details"><summary>${esc(pt('details'))} <span>⌄</span></summary><div class="palm-detail-list">${details}</div></details>` : ''}
       ${needs && Array.isArray(pa.advice) && pa.advice.length ? `<div class="palm-limitations"><b>${esc(pt('photoAdvice'))}</b><p>${pa.advice.map(esc).join('<br>')}</p></div>` : ''}
       ${limitations.length ? `<div class="palm-limitations"><b>${esc(pt('boundaries'))}</b><p>${limitations.map(esc).join('<br>')}</p></div>` : ''}
       ${prompts.length ? `<div class="palm-prompts"><b>${esc(pt('prompts'))}</b>${prompts.slice(0, 3).map(p => `<p>“${esc(p)}”</p>`).join('')}</div>` : ''}
@@ -207,7 +222,7 @@
       });
       let body = null;
       try { body = await response.json(); } catch (e) {}
-      if (!response.ok) throw new Error((body && body.detail) || 'Не удалось прочитать фото');
+      if (!response.ok) throw new Error((body && body.detail) || pt('requestFailed'));
       if (!widAlive(key, view, pend)) return;
       app._palmResult = body;
       app.chat.pending = { kind: 'palm', loading: false, html: app.palmHtml(body) };
