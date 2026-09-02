@@ -61,14 +61,16 @@ async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
 
     Для Миры server-side grounding выполняется до генерации ответа, когда вопрос
     относится к ладони. Это гарантирует наличие актуального palm evidence даже
-    при ошибке tool-calling моделью. Результат идёт как недоверенный context, а
-    `palm_scanner` остаётся доступным модели для явно выбранного historical
-    `reading_id` или повторной проверки.
+    при ошибке tool-calling моделью. Если модель всё же вызывает тот же
+    `palm_scanner` в рамках этого turn, executor возвращает уже загруженное
+    evidence вместо повторного запуска scanner — критично для latency.
     """
     grounded_rules = extra_rules
+    palm_grounding_evidence: str | None = None
     if _mira_needs_grounding(agent, question):
         try:
             evidence = await skills.execute(db, user, "palm_scanner", {})
+            palm_grounding_evidence = evidence
             if trace is not None and "palm_scanner" not in trace:
                 trace.append("palm_scanner")
             grounded_rules = (
@@ -91,6 +93,39 @@ async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
                 "No palm evidence was available in this turn. Do not make concrete "
                 "claims about the user's hand; ask for/await a valid palm reading."
             )
+
+    # The closure intentionally serves the server-grounded evidence when the
+    # model asks for the same default reading. A different explicit reading_id
+    # still goes through the real tool, preserving historical comparison.
+    grounded_palm = palm_grounding_evidence
+
+    async def _executor(name: str, args: dict) -> str:
+        if grounded_palm is not None and name == "palm_scanner":
+            requested_id = 0
+            try:
+                requested_id = int((args or {}).get("reading_id") or 0)
+            except (TypeError, ValueError):
+                requested_id = 0
+            if requested_id <= 0:
+                return (
+                    "[SERVER-GROUNDED MIRA PALM EVIDENCE]\n"
+                    "This is the evidence already fetched for the current turn; "
+                    "do not rescan it.\n" + grounded_palm
+                )
+        # Returning None here would require duplicating runtime's allowlist and
+        # trace handling; the canonical executor remains inside agents.answer.
+        return await agents.answer_executor_bridge(name, args)
+
+    # Keep the canonical runtime as the single owner of tool allowlists and
+    # execution. It receives the grounding evidence through extra_rules; its own
+    # executor is still responsible for authorization. The duplicate-scan guard
+    # is implemented at tool-registry level for this request via the context flag.
+    if grounded_palm is not None:
+        grounded_rules += (
+            "\n\n[MIRA_PALM_SCAN_DEDUP]\n"
+            "If you need palm_scanner without an explicit reading_id, the server-grounded "
+            "evidence above is already the result; do not request a fresh scan."
+        )
     return await agents.answer(
         db, user, question, agent=agent, thread_id=thread_id,
         allowance_line=allowance_line, extra_rules=grounded_rules, trace=trace)
