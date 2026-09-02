@@ -42,7 +42,6 @@ def _get_detector(path: Path):
     with _LOCK:
         if _DETECTOR is not None and _DETECTOR_KEY == key:
             return _DETECTOR
-        import mediapipe as mp  # type: ignore[import-not-found]
         from mediapipe.tasks import python  # type: ignore[import-not-found]
         from mediapipe.tasks.python import vision  # type: ignore[import-not-found]
 
