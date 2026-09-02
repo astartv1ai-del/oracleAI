@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,6 +19,14 @@ from app.repo import dialog, readings, users  # noqa: E402
 
 
 async def seed() -> None:
+    # The visual-quality workflow owns a disposable PostgreSQL database.  Keep
+    # this helper self-contained so it cannot accidentally run against an
+    # uninitialised schema when called before the API quality job's migration.
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=ROOT,
+        check=True,
+    )
     db = await connect(seed=False)
     try:
         chart = await astro.compute_chart_async(
