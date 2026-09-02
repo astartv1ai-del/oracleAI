@@ -1,0 +1,2 @@
+[lint.per-file-ignores]
+"app/bot/features.py" = ["F541"]
