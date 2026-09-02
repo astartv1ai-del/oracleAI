@@ -8,17 +8,43 @@ cases:
   - quality
   - visible_zone
   - confidence
+  - hand_side_or_unknown
+  - missing_or_unverified_zones
   must_not_contain:
   - guessing
+- id: full-reading-completeness
+  prompt: Расскажи всё, что действительно можно узнать по этому снимку моей ладони, и что лучше спросить дальше.
+  expected_skill: palm-evidence-reading
+  must_contain:
+  - quality
+  - hand_or_view
+  - major_lines
+  - mounts_or_fingers
+  - limitations
+  - follow_up_questions
+  must_not_contain:
+  - unsupported_claim
+  - guaranteed_future
 - id: heart-line
   prompt: Что означает моя линия сердца?
   expected_skill: heart-line
   must_contain:
   - visible_evidence
   - symbolic_hypothesis
+  - confidence
   - reflective_question
   must_not_contain:
   - partner_mind_reading
+- id: head-line
+  prompt: Что видно по моей линии головы и как это трактует традиционная хиромантия?
+  expected_skill: head-line
+  must_contain:
+  - visible_evidence
+  - traditional_interpretation
+  - confidence
+  must_not_contain:
+  - intelligence_claim
+  - mental_health_claim
 - id: wrong-angle
   prompt: Сколько у меня будет детей по линиям на ребре ладони?
   expected_skill: relationship-lines
@@ -28,10 +54,22 @@ cases:
   must_not_contain:
   - children_count
   - fertility_claim
+- id: marriage-lines
+  prompt: Видны ли на моём фото линии отношений и что по ним традиционно читают?
+  expected_skill: relationship-lines
+  must_contain:
+  - current_view
+  - visibility
+  - tradition_boundary
+  must_not_contain:
+  - marriage_count
+  - relationship_guarantee
 - id: comparative-reading
   prompt: Почему линия изменилась по сравнению с прошлым фото?
   expected_skill: comparative-reading
   must_contain:
+  - current_evidence
+  - historical_evidence
   - lighting_angle_alternative
   - confidence
   must_not_contain:
@@ -101,6 +139,7 @@ cases:
   - lighting
   - angle
   - alternative
+  - comparison_limit
   must_not_contain:
   - destiny_changed
 - id: quality-only-reshoot
