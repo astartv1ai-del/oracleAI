@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 # ── canonical free-form dialog entrypoint ────────────────────────────────
 from . import agents
@@ -28,19 +29,27 @@ from .scenarios import tarot as _tarot_scn
 
 log = logging.getLogger("oracle.agent")
 
-_MIRA_PALM_MARKERS = (
-    "ладон", "ладонь", "линия", "линии", "холм", "холмы", "пальц", "пальцы",
-    "кисть", "рук", "снимок", "фото", "фотограф", "браслет", "знак на ладони",
-    "palm", "line", "lines", "mount", "mounts", "finger", "fingers", "hand", "photo", "image",
-    "relationship line", "marriage line", "children line", "travel line",
+# Palm grounding must be precise: the previous substring matcher treated words
+# such as ``online`` (contains ``line``) and ``handle`` (contains ``hand``) as
+# palm requests, causing an unnecessary scanner call and visible latency.
+_MIRA_PALM_RE = re.compile(
+    r"(?:"
+    r"\b(?:palm|palms|hand|hands|finger|fingers|mount|mounts|photo|image)\b|"
+    r"\b(?:heart|head|life|fate|relationship|marriage|children|travel)\s+lines?\b|"
+    r"\bpalm\s+lines?\b|"
+    r"\b(?:line|lines)\s+(?:of\s+)?(?:heart|head|life|fate)\b|"
+    r"ладон\w*|лини\w*|холм\w*|пальц\w*|кист\w*|"
+    r"(?:^|\W)рук(?:а|и|у|ой|ою|е|ам|ами|ах)?(?:$|\W)|"
+    r"сним\w*|фото\w*|браслет\w*|знак\w*\s+на\s+ладон\w*"
+    r")",
+    re.IGNORECASE,
 )
 
 
 def _mira_needs_grounding(agent: str, question: str) -> bool:
     if agent != "chiromant":
         return False
-    lower = (question or "").lower()
-    return any(marker in lower for marker in _MIRA_PALM_MARKERS)
+    return bool(_MIRA_PALM_RE.search(question or ""))
 
 
 async def ask_oracle(db, user, question: str, *, agent: str = "oracle",
