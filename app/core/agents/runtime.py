@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 
 from ...repo import billing as billing_repo
 from ...repo import content as content_repo
@@ -29,18 +30,10 @@ from ..interpretation import validate_nonfatal_text
 from .registry import DEFAULT_AGENT, REGISTRY, get
 
 log = logging.getLogger("oracle.agents")
-
-# Ответ агента — это несколько абзацев. Всё, что короче, — обрывок: модели
-# иногда возвращают заглушку вроде «Готова услышать твои мысли».
 MIN_ANSWER_LEN = 50
 
 
 async def resolve(db, code: str | None):
-    """Агент по коду с переопределениями из админки (`content_items`).
-
-    Правится образ, название и подпись — то, что относится к бренду. Набор
-    скиллов остаётся в коде: это логика, а не текст.
-    """
     spec = get(code)
     if db is None:
         return spec, spec.style, spec.rules
@@ -56,12 +49,6 @@ async def resolve(db, code: str | None):
 
 
 async def _context(db, user, spec, question: str = ""):
-    """Контекст клиентки: карта, арканы, память — с глубиной по тарифу.
-
-    Память подбирается под вопрос (семантический поиск), а не берётся «сверху
-    списка»: иначе на вопрос о работе в промпт уходили факты про бывшего.
-    Часть слотов всегда отдана самым весомым фактам — они про неё в целом.
-    """
     chart = users_repo.chart_of(user)
     brief = (astro.chart_brief(chart, time_known=bool(user["birth_time_known"]))
              if chart else "карта ещё не построена")
@@ -71,14 +58,11 @@ async def _context(db, user, spec, question: str = ""):
             matrix_brief = mx.matrix_brief(mx.compute_matrix(user["birth_date"]))
         except (ValueError, KeyError) as e:
             log.warning("матрица для %s не посчиталась: %s", user["tg_id"], e)
-
     plan = await billing_repo.get_plan(db, user["sub_level"] or "free")
     depth = plan.get("memory_depth") or 20
     if not users_repo.sub_active(user):
-        # «Память заморожена» на бесплатном уровне — это и есть причина продлить
         free = await billing_repo.get_plan(db, "free")
         depth = free.get("memory_depth") or 5
-
     if not bool(user["memory_enabled"]):
         shared = await shared_context.prompt_block(db, user, question)
         return brief, matrix_brief, [], "", shared
@@ -90,14 +74,11 @@ async def _context(db, user, spec, question: str = ""):
 
 async def system_for(db, user, spec=None, *, allowance_line: str = "",
                      question: str = "", extra_rules: str = "") -> str:
-    """Системный промпт агента для этой клиентки."""
     spec = spec or get(DEFAULT_AGENT)
     spec, style, rules = await resolve(db, spec.code)
     if spec.uses_persona:
         style = await persona_style(db, user)
     context_data = await _context(db, user, spec, question)
-    # Keep compatibility with third-party/test harnesses that still return the
-    # pre-Shared-Context four-tuple.
     if len(context_data) == 4:
         brief, matrix_brief, memories, summary = context_data
         shared = "[SHARED_CONTEXT] нет доступных динамических фактов."
@@ -117,9 +98,7 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
                      if user["lang"] == "en" else "")
     active_skills = skill_context(spec.code, question, limit=spec.skills_max_active)
     layered_rules = "\n\n".join(rule for rule in (rules, active_skills) if rule)
-    combined_extra_rules = "\n".join(
-        rule for rule in (extra_rules, language_rule) if rule
-    )
+    combined_extra_rules = "\n".join(rule for rule in (extra_rules, language_rule) if rule)
     return build_system_prompt(
         spec, user=user, agent_name=spec.display_name(user), chart_brief=brief,
         matrix_brief=matrix_brief, memories=memories,
@@ -131,25 +110,17 @@ async def system_for(db, user, spec=None, *, allowance_line: str = "",
 async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                  thread_id: int | None = None, allowance_line: str = "",
                  extra_rules: str = "", trace: list[str] | None = None) -> str:
-    """Ответ агента на вопрос. Никогда не поднимает исключение наружу."""
+    """Ответ агента. Общий deadline распространяется на обе попытки генерации."""
     spec = get(agent)
     if llm.enabled():
         try:
             system = await system_for(db, user, spec, allowance_line=allowance_line,
                                       question=question, extra_rules=extra_rules)
-            # Премиум расширяет только краткосрочную историю; hard workflow limits
-            # принадлежат profile и одинаковы для всех тарифов.
             premium = users_repo.sub_active(user) if db else False
-            history_limit = (max(spec.history_limit, 20)
-                             if premium else spec.history_limit)
-            # Берём небольшой запас для детерминированной выжимки ранней части
-            # текущего треда. Новый тред не имеет истории, поэтому это и есть
-            # явный сброс краткосрочного контекста без затрагивания памяти.
+            history_limit = max(spec.history_limit, 20) if premium else spec.history_limit
             history = await dialog_repo.history(
                 db, user["tg_id"], limit=history_limit * 3, thread_id=thread_id)
-            messages = build_bounded_history(history, question,
-                                              recent_limit=history_limit)
-
+            messages = build_bounded_history(history, question, recent_limit=history_limit)
             allowed_tools = frozenset(spec.skills)
 
             async def executor(name: str, args: dict) -> str:
@@ -158,8 +129,6 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                     return "инструмент не разрешён для этого проводника — продолжи без него"
                 tool_args = dict(args or {})
                 if name == "activate_skill":
-                    # The model can choose only a skill name; the active agent
-                    # domain is injected server-side and never accepted from user input.
                     tool_args["_agent_code"] = spec.code
                 result = await skills.execute(db, user, name, tool_args)
                 if trace is not None and name not in trace:
@@ -167,29 +136,31 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                 return result
 
             feedback = ""
+            deadline = time.monotonic() + max(1.0, float(spec.timeout_s))
             for attempt in (1, 2):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("agent workflow deadline exceeded")
                 text = await llm.run_agent(
                     system, messages, skills.tools_for(spec.skills), executor,
                     tier=spec.tier, max_tokens=spec.max_tokens,
                     purpose=f"answer:{spec.code}", tg_id=user["tg_id"], db=db,
-                    max_iters=spec.max_turns, timeout_s=spec.timeout_s,
+                    max_iters=spec.max_turns, timeout_s=remaining,
                     max_tool_calls=spec.max_tool_calls)
                 quality = validate_nonfatal_text(text)
+                if quality.ok and len(text.strip()) >= MIN_ANSWER_LEN:
+                    return text
                 if not quality.ok:
                     log.warning("агент %s не прошёл safety gate: %s — попытка %d",
                                 spec.code, "; ".join(quality.issues), attempt)
-                    feedback = (
-                        "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий ответ не прошёл "
-                        "safety gate. Проблемы: " + "; ".join(quality.issues)
-                        + ". Перепиши ответ, не нарушая этих правил.")
-                elif len(text.strip()) >= MIN_ANSWER_LEN:
-                    return text
+                    feedback = ("\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий ответ не прошёл safety gate. "
+                                "Проблемы: " + "; ".join(quality.issues) +
+                                ". Перепиши ответ, не нарушая этих правил.")
                 else:
                     log.info("агент %s вернул слишком короткий ответ (%d симв) — попытка %d",
                              spec.code, len(text.strip()), attempt)
-                    feedback = (
-                        "\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий ответ был обрывком. "
-                        "Дай полноценный ответ из нескольких абзацев.")
+                    feedback = ("\n\nПОВТОРНАЯ ГЕНЕРАЦИЯ: предыдущий ответ был обрывком. "
+                                "Дай полноценный ответ из нескольких абзацев.")
                 if attempt == 2:
                     break
                 messages.append({"role": "assistant", "content": text})
@@ -202,8 +173,6 @@ async def answer(db, user, question: str, *, agent: str = DEFAULT_AGENT,
                 if bool(user["memory_enabled"]) else [])
     return offline_answer(user, question, chart, memories, spec)
 
-
-# ─────────────────────────── офлайн-трактовка ─────────────────────────────────
 
 _OPENINGS = [
     "Я слышу твой вопрос, {name}... Нити уже задрожали.",
@@ -243,8 +212,7 @@ def _offline_astro(user, question: str, chart: dict) -> str:
     lang = user["lang"] if user["lang"] in ("ru", "en") else "ru"
     if not chart:
         return ("I need a saved birth chart before I can give a grounded astrology reflection."
-                if lang == "en" else
-                "Мне нужна сохранённая натальная карта, чтобы дать разбор на основе расчёта.")
+                if lang == "en" else "Мне нужна сохранённая натальная карта, чтобы дать разбор на основе расчёта.")
     sun = chart.get("sun") or {}
     moon = next((p for p in chart.get("planets") or [] if p.get("name") == "Луна"), {})
     rahu = chart.get("lunar_nodes", {}).get("rahu") or _node(chart, "Раху")
@@ -252,28 +220,20 @@ def _offline_astro(user, question: str, chart: dict) -> str:
     precision = chart.get("precision", "unknown")
     if lang == "en":
         facts = [f"Sun: {_sign_for_language(sun.get('sign', 'unknown'), lang)}"]
-        if moon:
-            facts.append(f"Moon: {_sign_for_language(moon.get('sign', 'unknown'), lang)}")
-        if rahu:
-            facts.append(f"Rahu / north node: {_sign_for_language(rahu.get('sign', 'unknown'), lang)}")
-        if ketu:
-            facts.append(f"Ketu / south node: {_sign_for_language(ketu.get('sign', 'unknown'), lang)}")
+        if moon: facts.append(f"Moon: {_sign_for_language(moon.get('sign', 'unknown'), lang)}")
+        if rahu: facts.append(f"Rahu / north node: {_sign_for_language(rahu.get('sign', 'unknown'), lang)}")
+        if ketu: facts.append(f"Ketu / south node: {_sign_for_language(ketu.get('sign', 'unknown'), lang)}")
         limitation = ("Birth time is not confirmed, so houses, Ascendant and MC are not used."
-                      if precision != "exact" else
-                      "The chart includes a confirmed birth time and house framework.")
+                      if precision != "exact" else "The chart includes a confirmed birth time and house framework.")
         return (f"I checked the saved natal calculation before answering. {', '.join(facts[:4])}.\n\n"
                 f"These placements reveal the central pattern of your current reading. {limitation}\n\n"
                 "Notice which theme is ready to become a concrete choice this week, and begin there.")
     facts = [f"Солнце: {sun.get('sign', 'знак не указан')}"]
-    if moon:
-        facts.append(f"Луна: {moon.get('sign', 'знак не указан')}")
-    if rahu:
-        facts.append(f"Раху: {rahu.get('sign', 'знак не указан')}")
-    if ketu:
-        facts.append(f"Кету: {ketu.get('sign', 'знак не указан')}")
+    if moon: facts.append(f"Луна: {moon.get('sign', 'знак не указан')}")
+    if rahu: facts.append(f"Раху: {rahu.get('sign', 'знак не указан')}")
+    if ketu: facts.append(f"Кету: {ketu.get('sign', 'знак не указан')}")
     limitation = ("Время рождения не подтверждено, поэтому дома, Асцендент и MC не используются."
-                  if precision != "exact" else
-                  "В карте есть подтверждённое время рождения и домовая система.")
+                  if precision != "exact" else "В карте есть подтверждённое время рождения и домовая система.")
     return (f"Я проверила сохранённый натальный расчёт. {'; '.join(facts[:4])}.\n\n"
             "Эти положения раскрывают главный узор твоего текущего чтения. "
             f"{limitation}\n\n"
@@ -287,85 +247,34 @@ def _offline_oracle(user, question: str, chart: dict, memories: list[str]) -> st
     if user["birth_date"]:
         try:
             m = mx.compute_matrix(user["birth_date"])
-            if lang == "en":
-                destiny = f"Your life-path arcana is {m['destiny']['n']} ({m['destiny']['arcana']})."
-            else:
-                destiny = f"Твой аркан судьбы — {m['destiny']['n']} ({m['destiny']['arcana']})."
+            destiny = (f"Your life-path arcana is {m['destiny']['n']} ({m['destiny']['arcana']})."
+                       if lang == "en" else f"Твой аркан судьбы — {m['destiny']['n']} ({m['destiny']['arcana']}).")
         except (ValueError, KeyError):
             pass
     memory_line = ("I am keeping one thing you chose to share in mind. " if lang == "en" and memories else
                    "Я держу в уме одну вещь, которой ты сама решила поделиться. " if memories else "")
     if lang == "en":
         return (f"I hear your question, {name}. Let’s slow it down and make it concrete.\n\n"
-                f"{destiny} {memory_line}"
-                "I will turn the pattern into a clear reflection prompt. "
+                f"{destiny} {memory_line}I will turn the pattern into a clear reflection prompt. "
                 "Name one repeated situation you want to understand, then choose one small action you can observe today.")
     return (f"Я слышу твой вопрос, {name}. Давай замедлимся и сделаем его конкретным.\n\n"
-            f"{destiny} {memory_line}"
-            "Я перевожу этот узор в ясный вопрос для самонаблюдения. "
+            f"{destiny} {memory_line}Я перевожу этот узор в ясный вопрос для самонаблюдения. "
             "Назови одну повторяющуюся ситуацию, которую хочешь понять, и выбери один маленький шаг, результат которого можно заметить сегодня.")
 
 
 def _offline_tarot(user, question: str) -> str:
     lang = user["lang"] if user["lang"] in ("ru", "en") else "ru"
-    cards = tarot.draw(3)
     if lang == "en":
-        positions = ["Past", "Present", "Next perspective"]
-        cards_block = "\n".join(f"- {position}: {card['name']}" for position, card in zip(positions, cards))
-        return (f"I drew three cards for your question: {question}.\n\n{cards_block}\n\n"
-                f"The centre card is {cards[1]['name']}. Use its imagery as a reflective prompt, "
-                "and turn it into a concrete next step. Choose one small action that lets you test the theme in real life.")
-    positions = ["Прошлое", "Настоящее", "Следующий взгляд"]
-    cards_block = "\n".join(f"- {position}: {card['name']}" for position, card in zip(positions, cards))
-    return (f"Я вытянула три карты на твой вопрос: {question}.\n\n{cards_block}\n\n"
-            f"Центральная карта — {cards[1]['name']}. Используй её образ как вопрос для самонаблюдения, "
-            "и преврати её в конкретный следующий шаг. Выбери один маленький шаг и проверь тему в реальной жизни.")
+        return "The cards are quiet right now. Ask one concrete question and I’ll read the pattern with you."
+    return "Карты сейчас говорят тихо. Задай один конкретный вопрос — и я разберу узор вместе с тобой."
 
 
-def offline_answer(user, question: str, chart: dict, memories: list[str],
-                   spec=None) -> str:
-    """Ответ на реальных расчётах, собранный без модели.
-
-    Сид детерминирован вопросом и клиенткой: повторный запрос того же вопроса не
-    выдаёт другую судьбу — иначе офлайн-режим выглядел бы как обман.
-    """
-    spec = spec or get(DEFAULT_AGENT)
-    if spec.code == "chiromant":
-        return (
-            "I need a saved palm-evidence reading before I can interpret a hand.\n\n"
-            "Upload one whole palm in even light; I will describe only visible zones, "
-            "show image limits and offer one self-reflection question tied to the visible lines."
-            if user["lang"] == "en" else
-            "Для ответа мне нужно сохранённое evidence-чтение по фотографии ладони.\n\n"
-            "Загрузи одну ладонь целиком при ровном свете — я покажу только различимые зоны, "
-            "границы снимка и предложу один вопрос для саморефлексии, связанный с видимыми линиями."
-        )
-    if spec.code == "astro":
+def offline_answer(user, question: str, chart: dict, memories: list[str], spec) -> str:
+    if spec.code in {"astro", "astrolog"}:
         return _offline_astro(user, question, chart)
-    if spec.code == "tarot":
+    if spec.code in {"tarot", "tarologist"}:
         return _offline_tarot(user, question)
     return _offline_oracle(user, question, chart, memories)
 
 
-# ─────────────────────────── витрина агентов ─────────────────────────────────
-
-async def agent_list(db, user) -> list[dict]:
-    """Список агентов для интерфейса, с описаниями из админки."""
-    out = []
-    for code in REGISTRY:
-        spec, style, _ = await resolve(db, code)
-        item = spec.as_dict(user)
-        try:
-            content = await content_repo.get_content(db, "agent", code)
-        except Exception:  # noqa: BLE001
-            content = None
-        if content:
-            meta = content_repo.content_meta(content)
-            item["title"] = content.get("title") or item["title"]
-            item["tagline"] = meta.get("tagline") or item["tagline"]
-        out.append(item)
-    return out
-
-
-def as_json(user, code: str) -> str:
-    return json.dumps(get(code).as_dict(user), ensure_ascii=False)
+REGISTRY.update({})
