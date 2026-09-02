@@ -15,8 +15,17 @@ class _FakeUser(dict):
 def test_mira_grounding_detects_palm_questions() -> None:
     assert agent_module._mira_needs_grounding("chiromant", "Что видно по линии сердца?")
     assert agent_module._mira_needs_grounding("chiromant", "Прочитай мою ладонь")
+    assert agent_module._mira_needs_grounding("chiromant", "What does my heart line show?")
+    assert agent_module._mira_needs_grounding("chiromant", "Look at this hand photo")
     assert not agent_module._mira_needs_grounding("chiromant", "Что ты умеешь?")
     assert not agent_module._mira_needs_grounding("astro", "Что видно по линии сердца?")
+
+
+def test_mira_grounding_does_not_trigger_on_substring_collisions() -> None:
+    assert not agent_module._mira_needs_grounding("chiromant", "Can we continue online tomorrow?")
+    assert not agent_module._mira_needs_grounding("chiromant", "How do you handle uncertainty?")
+    assert not agent_module._mira_needs_grounding("chiromant", "Расскажи о структуре выбора")
+    assert not agent_module._mira_needs_grounding("chiromant", "Как устроено руководство практикой?")
 
 
 def test_mira_profile_has_expected_tools_and_skill_count() -> None:
@@ -72,6 +81,31 @@ def test_mira_server_grounding_prefetches_scanner(monkeypatch) -> None:
     assert events[0][0] == "palm_scanner"
     assert events[1][0] == "answer"
     assert "SERVER-GROUNDED MIRA PALM EVIDENCE" in str(events[1][1])
+
+
+def test_mira_server_grounding_skips_unrelated_chat(monkeypatch) -> None:
+    events: list[tuple[str, object]] = []
+
+    async def fake_execute(db, user, name, args):
+        events.append((name, args))
+        return "unexpected"
+
+    async def fake_answer(db, user, question, **kwargs):
+        events.append(("answer", kwargs.get("extra_rules", "")))
+        return "normal conversational answer"
+
+    monkeypatch.setattr(agent_module.skills, "execute", fake_execute)
+    monkeypatch.setattr(agent_module.agents, "answer", fake_answer)
+
+    result = asyncio.run(
+        agent_module.ask_oracle(
+            object(), _FakeUser(name="Test"), "Can we continue online tomorrow?",
+            agent="chiromant", trace=[]
+        )
+    )
+
+    assert result == "normal conversational answer"
+    assert [event[0] for event in events] == ["answer"]
 
 
 def test_mira_image_prompt_separates_observation_from_interpretation() -> None:
