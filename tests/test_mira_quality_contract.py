@@ -13,19 +13,35 @@ class _FakeUser(dict):
 
 
 def test_mira_grounding_detects_palm_questions() -> None:
-    assert agent_module._mira_needs_grounding("chiromant", "Что видно по линии сердца?")
+    assert agent_module._mira_needs_grounding(
+        "chiromant", "Что видно по линии сердца?"
+    )
     assert agent_module._mira_needs_grounding("chiromant", "Прочитай мою ладонь")
-    assert agent_module._mira_needs_grounding("chiromant", "What does my heart line show?")
-    assert agent_module._mira_needs_grounding("chiromant", "Look at this hand photo")
+    assert agent_module._mira_needs_grounding(
+        "chiromant", "What does my heart line show?"
+    )
+    assert agent_module._mira_needs_grounding(
+        "chiromant", "Look at this hand photo"
+    )
     assert not agent_module._mira_needs_grounding("chiromant", "Что ты умеешь?")
-    assert not agent_module._mira_needs_grounding("astro", "Что видно по линии сердца?")
+    assert not agent_module._mira_needs_grounding(
+        "astro", "Что видно по линии сердца?"
+    )
 
 
 def test_mira_grounding_does_not_trigger_on_substring_collisions() -> None:
-    assert not agent_module._mira_needs_grounding("chiromant", "Can we continue online tomorrow?")
-    assert not agent_module._mira_needs_grounding("chiromant", "How do you handle uncertainty?")
-    assert not agent_module._mira_needs_grounding("chiromant", "Расскажи о структуре выбора")
-    assert not agent_module._mira_needs_grounding("chiromant", "Как устроено руководство практикой?")
+    assert not agent_module._mira_needs_grounding(
+        "chiromant", "Can we continue online tomorrow?"
+    )
+    assert not agent_module._mira_needs_grounding(
+        "chiromant", "How do you handle uncertainty?"
+    )
+    assert not agent_module._mira_needs_grounding(
+        "chiromant", "Расскажи о структуре выбора"
+    )
+    assert not agent_module._mira_needs_grounding(
+        "chiromant", "Как устроено руководство практикой?"
+    )
 
 
 def test_mira_profile_has_expected_tools_and_skill_count() -> None:
@@ -40,7 +56,9 @@ def test_mira_profile_has_expected_tools_and_skill_count() -> None:
 
 
 def test_mira_skill_context_routes_line_question() -> None:
-    context = skill_context("chiromant", "Что означает моя линия сердца?", limit=3)
+    context = skill_context(
+        "chiromant", "Что означает моя линия сердца?", limit=3
+    )
     assert "heart-line" in context
     assert "anti-barnum-protocol" in context
 
@@ -61,7 +79,7 @@ def test_mira_server_grounding_prefetches_scanner(monkeypatch) -> None:
 
     async def fake_execute(db, user, name, args):
         events.append((name, args))
-        return '[PALM_EVIDENCE] heart visible: clear, confidence 0.84'
+        return "[PALM_EVIDENCE] heart visible: clear, confidence 0.84"
 
     async def fake_answer(db, user, question, **kwargs):
         events.append(("answer", kwargs.get("extra_rules", "")))
@@ -72,8 +90,11 @@ def test_mira_server_grounding_prefetches_scanner(monkeypatch) -> None:
 
     result = asyncio.run(
         agent_module.ask_oracle(
-            object(), _FakeUser(name="Test"), "Что видно по линии сердца?",
-            agent="chiromant", trace=[]
+            object(),
+            _FakeUser(name="Test"),
+            "Что видно по линии сердца?",
+            agent="chiromant",
+            trace=[],
         )
     )
 
@@ -99,8 +120,11 @@ def test_mira_server_grounding_skips_unrelated_chat(monkeypatch) -> None:
 
     result = asyncio.run(
         agent_module.ask_oracle(
-            object(), _FakeUser(name="Test"), "Can we continue online tomorrow?",
-            agent="chiromant", trace=[]
+            object(),
+            _FakeUser(name="Test"),
+            "Can we continue online tomorrow?",
+            agent="chiromant",
+            trace=[],
         )
     )
 
@@ -123,7 +147,9 @@ def test_mira_image_prompt_separates_observation_from_interpretation() -> None:
 def test_comparative_skill_does_not_claim_raw_photo_access() -> None:
     profile = profile_for_legacy("chiromant")
     assert profile is not None
-    skill = next(item for item in profile.skills if item.name == "comparative-reading")
+    skill = next(
+        item for item in profile.skills if item.name == "comparative-reading"
+    )
     assert "не хран" in skill.body.lower()
     assert "pixel" in skill.body.lower()
 
@@ -132,7 +158,9 @@ def test_mira_bot_escapes_untrusted_palm_text() -> None:
     from pathlib import Path
 
     source = Path("app/bot/features.py").read_text(encoding="utf-8")
-    palm_section = source.split("async def palm_photo", 1)[1].split("# ─────────────────────────────── ТАРО", 1)[0]
+    palm_section = source.split("async def palm_photo", 1)[1].split(
+        "# ─────────────────────────────── ТАРО", 1
+    )[0]
     assert "tg_esc(narrative)" in palm_section
     assert "tg_esc(str(prompts[0]))" in palm_section
     assert "tg_esc(str(item))" in palm_section
