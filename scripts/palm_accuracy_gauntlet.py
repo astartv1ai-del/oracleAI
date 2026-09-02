@@ -156,6 +156,11 @@ def main() -> int:
         args.output.write_text(text, encoding="utf-8")
     else:
         print(text, end="")
+    if result["summary"]["failed"]:
+        print("PALM_ACCURACY_GAUNTLET_FAILURES")
+        for row in matrix:
+            if not row["pass"]:
+                print(json.dumps(row, ensure_ascii=False, sort_keys=True))
     return 0 if result["summary"]["failed"] == 0 else 1
 
 
