@@ -577,9 +577,37 @@
         <button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="chat-fn" data-chat="tarot" data-fn="featureTarot">${esc(profileT('firstCard'))}</button>`}</div>`);
   };
 
-  // Полная натальная карта: планеты, узлы (Раху/Кету/Лилит), дома, аспекты, ASC/MC
+  // Полная натальная карта: скачивание красивого PDF-разбора (pdfgen).
+  // Вместо маленького колёсного превью показываем готовый PDF-отчёт.
 
   app.openFullChart = async function() {
+    try {
+      const c = await api('/api/chart');
+      if (!c || !(c.planets || []).length) {
+        // Карты ещё нет — открываем сборщик карты вместо пустого PDF.
+        this.openBuildChart();
+        return;
+      }
+      this.toast('Готовим твой PDF-разбор… ✨');
+      const blob = await apiBlob('/api/chart/pdf');
+      this.downloadPdf(blob, 'oracle-natal-chart.pdf');
+    } catch (e) {
+      this.toast(e && e.message ? e.message : 'PDF сейчас недоступен 🌙');
+    }
+  };
+
+  // Прямое скачивание PDF-файла (не картинки).
+  app.downloadPdf = function(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name || 'oracle-natal-chart.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    this.toast(oracleLang() === 'en' ? 'Your PDF report is saved ✨' : 'Твой PDF-разбор сохранён ✨');
+  };
+
+  // Если карта ещё не собрана — ведём пользователя в сборщик данных.
+  app.openBuildChart = async function() {
     this.showModal(`<h3>${esc(profileT('fullChartTitle'))}</h3><button class="m-close" data-act="modal-close">✕</button>
       <div id="fc-body" style="margin-top:8px"><div class="loader-ring"></div></div>`);
     try {

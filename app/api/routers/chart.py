@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 from ...core import agent as agent_core
 from ...core import product_cost
 from ...core import astro, chart_rendering, geo, memory
+from ...pdfgen import builder, render
+from ...pdfgen.builder import Order
 from ...core.chart_contract import (
     EPHEMERIS_BACKEND,
     EPHEMERIS_NAME,
@@ -391,6 +393,32 @@ async def matrix(user=Depends(confirmed_age_user)):
     if not user["birth_date"]:
         raise HTTPException(400, "нет даты рождения")
     return compute_matrix(user["birth_date"])
+
+
+@router.get("/chart/pdf", dependencies=[Depends(rate_limit("llm"))])
+async def chart_pdf(user=Depends(confirmed_age_user), db=Depends(get_db)):
+    """Полный PDF-разбор натальной карты через pdfgen."""
+    if not user["birth_date"]:
+        raise HTTPException(400, "сначала укажи дату рождения в профиле")
+    order = Order(
+        name=user["name"] or "—",
+        birth_date=user["birth_date"],
+        birth_time=user.get("birth_time") or None,
+        birth_city=user.get("birth_city") or None,
+        lang=user.get("lang") or "ru",
+    )
+    try:
+        html = await builder.generate(db, order, bot_username="oracleAI")
+        pdf = render.to_pdf_bytes(html)
+    except render.PdfUnavailable:
+        raise HTTPException(503, "PDF-генератор временно недоступен: установите WeasyPrint")
+    except Exception as exc:
+        raise HTTPException(500, "не удалось собрать PDF-разбор") from exc
+    filename = f"oracle-natal-{user['tg_id']}.pdf"
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+    return Response(content=pdf, media_type="application/pdf", headers=headers)
 
 
 # ─────────────────────────────── совместимость ────────────────────────────────
