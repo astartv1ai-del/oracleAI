@@ -15,8 +15,9 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps, UnidentifiedImageErr
 
 ADAPTER_VERSION = "palm-evidence-views-v1"
 MAX_VIEWS = 2
-MAX_VIEW_SIDE = 1280
-JPEG_QUALITY = 88
+MAX_VIEW_SIDE = 1568
+JPEG_QUALITY = 92
+MOUNT_CROP_RATIO = 0.60  # upper portion of the hand crop for mount analysis
 
 
 def _empty(reason: str) -> dict[str, Any]:
@@ -126,17 +127,22 @@ def prepare_views(image_bytes: bytes, *, hand_geometry: dict[str, Any] | None = 
                 edge_box = (max(left, right - crop_width), top, right, bottom)
             edge_crop = frame.crop(edge_box)
             # The full enhanced crop supports major lines; the edge crop is
-            # prioritized for folded-edge-only zones. Do not create a crop for
-            # an open palm that could be mistaken as side evidence.
+            # prioritized for folded-edge-only zones. For an open palm, add a
+            # mount-focused crop over the upper palm (finger-base mounts), which
+            # a single whole-hand view renders too small to read relief well.
             candidates = [("hand_roi_enhanced", _enhance(hand_crop))]
             if view_type == "folded_edge":
                 candidates.append(("pinky_edge_enhanced", _enhance(edge_crop)))
+            else:
+                mount_h = max(160, int((bottom - top) * MOUNT_CROP_RATIO))
+                mount_crop = hand_crop.crop((0, 0, hand_crop.width, mount_h))
+                candidates.append(("mounts_focus_enhanced", _enhance(mount_crop)))
             urls = [_encode(image) for _, image in candidates[:MAX_VIEWS]]
             metadata = {
                 "version": ADAPTER_VERSION,
                 "status": "ready",
                 "views": [
-                    {"id": name, "role": "major_lines" if name.startswith("hand_") else "folded_edge_zones", "stored": False}
+                    {"id": name, "role": "mounts" if name.startswith("mounts_") else ("major_lines" if name.startswith("hand_") else "folded_edge_zones"), "stored": False}
                     for name, _ in candidates[:MAX_VIEWS]
                 ],
                 "view_count": len(urls),

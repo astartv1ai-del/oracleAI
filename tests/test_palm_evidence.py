@@ -4,7 +4,6 @@ from pathlib import Path
 
 from app.core import palm_evidence, palm_landmarks
 
-
 FIXTURE = Path(__file__).parent / "fixtures" / "palm" / "palm_hand.jpg"
 
 
@@ -38,4 +37,16 @@ def test_prepare_views_does_not_create_folded_edge_claim_for_open_palm():
     assert metadata["view_count"] == 1
     assert metadata["views"][0]["role"] == "major_lines"
     assert len(urls) == 1
+    assert metadata["raw_views_stored"] is False
+
+
+def test_prepare_views_adds_mounts_focus_for_open_palm_with_hand_box():
+    image = FIXTURE.read_bytes()
+    metadata, urls = palm_evidence.prepare_views(
+        image, hand_geometry=_geometry(), view_type="open_palm"
+    )
+    assert metadata["status"] == "ready"
+    assert metadata["view_count"] == 2
+    assert [v["role"] for v in metadata["views"]] == ["major_lines", "mounts"]
+    assert len(urls) == 2
     assert metadata["raw_views_stored"] is False

@@ -4,8 +4,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from io import BytesIO
 from datetime import datetime
+from io import BytesIO
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -14,14 +14,15 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from ..core import agent as agent_core
-from ..core import astro, cards, chart_rendering, memory, palm as palm_core
+from ..core import astro, cards, chart_rendering, memory
+from ..core import palm as palm_core
 from ..core.matrix import compute_matrix
 from ..repo import users
-from ..services import access, analytics, bot_flows, catalog, chat as chat_svc, referrals
+from ..services import access, analytics, bot_flows, catalog, referrals
+from ..services import chat as chat_svc
 from .chat import _deny, _send_long
 from .formatting import tg_esc, tg_rich
-from .keyboards import (back_menu, main_menu, reading_kb, spread_offer_kb,
-                        spreads_kb)
+from .keyboards import back_menu, main_menu, reading_kb, spread_offer_kb, spreads_kb
 from .ui import BotStage, begin_status
 
 log = logging.getLogger("oracle.bot.features")
@@ -64,10 +65,14 @@ async def palm_entry(cb: CallbackQuery, state: FSMContext, db):
     await state.update_data(agent="chiromant")
     await cb.message.answer(
         "✋ <b>Мира · Проводник ладони</b>\n\n"
-        "Пришли <b>одно фото ладони</b>: она должна быть целиком в кадре, при ровном свете, "
-        "без бликов, фильтров и украшений. Мира сначала проверит качество, затем покажет "
-        "только различимые зоны и границы чтения.\n\n"
-        "<i>Мира читает только различимые линии и зоны: пришли кадр целиком, чтобы получить точный разбор.</i>",
+        "Чтобы разбор был максимально точным, пришли <b>2 фото</b>:\n\n"
+        "📷 <b>① Раскрытая ладонь</b> — целиком, от запястья до кончиков пальцев, ладонью к камере.\n"
+        "   Видны: линии жизни, головы, сердца, судьбы, холмы и пальцы.\n"
+        "📷 <b>② Ладонь ребром</b> — согни пальцы к центру и поверни кисть боком к камере.\n"
+        "   Видны: линии отношений, детей и путешествий.\n\n"
+        "Для обоих: ровный свет, камера сверху, без бликов, фильтров, украшений и воды на руках.\n"
+        "Пришли сначала одно фото — Мира подскажет, если нужен другой ракурс.\n\n"
+        "<i>Мира читает только различимые линии: чем яснее кадр, тем точнее разбор.</i>",
         reply_markup=back_menu())
     await cb.answer()
 
@@ -86,7 +91,7 @@ async def palm_photo(message: Message, state: FSMContext, db):
                          "Try a clearer photo" if user["lang"] == "en"
                          else "Проверь кадр и попробуй снова")
         await message.answer(
-            f"✋ Не получилось подготовить снимок: {str(exc)}\n\n"
+            f"✋ Не получилось подготовить снимок: {exc!s}\n\n"
             "Попробуй фото одной ладони целиком при ровном свете.", reply_markup=back_menu())
         return
     except Exception as exc:  # noqa: BLE001
@@ -98,21 +103,27 @@ async def palm_photo(message: Message, state: FSMContext, db):
     await status.set(BotStage.SUCCESS)
     observations = result.get("observations") or []
     quality = int(round(float((result.get("image_quality") or {}).get("score") or 0) * 100))
+    narrative = (result.get("narrative") or "").strip()
+    prompts = result.get("interpretive_prompts") or []
+    reflection = f"\n\n<b>Вопрос к себе</b>\n{prompts[0]}" if prompts else ""
+    safety = "\n\n<i>Это описание видимого в кадре, не диагноз и не прогноз.</i>"
     if result.get("status") == "needs_photo":
         limits = "\n".join(f"• {item}" for item in (result.get("limitations") or [])[:3])
-        text = (f"✋ <b>Мире нужен более ясный кадр</b>\nКачество: {quality}%\n\n"
-                f"{limits or 'Пересними ладонь целиком при ровном свете.'}")
+        if narrative:
+            text = f"✋ <b>Мира · Чтение ладони</b>\n\n{narrative}\n\n<b>Нужен дополнительный кадр</b>\n{limits}{reflection}{safety}"
+        else:
+            text = f"✋ <b>Мире нужен более ясный кадр</b>\n\n{limits or 'Пересними ладонь целиком при ровном свете.'}{safety}"
     else:
-        rows = []
-        for item in observations[:4]:
-            label = PALM_TOPIC_LABELS.get(str(item.get("topic") or ""), "Наблюдение")
-            confidence = int(round(float(item.get("confidence") or 0) * 100))
-            rows.append(f"• <b>{label}</b> · {confidence}%\n{item.get('summary') or 'без описания'}")
-        prompts = result.get("interpretive_prompts") or []
-        reflection = f"\n\n<b>Вопрос к себе</b>\n{prompts[0]}" if prompts else ""
-        text = (f"✋ <b>Карта видимых зон от Миры</b>\nКачество кадра: {quality}%\n\n" +
-                ("\n\n".join(rows) or "На фото мало различимых зон — лучше переснять кадр.") + reflection +
-                "\n\n<i>Это описание видимого в кадре, не диагноз и не прогноз.</i>")
+        if narrative:
+            text = f"✋ <b>Мира · Чтение ладони</b>\n\n{narrative}{reflection}{safety}"
+        else:
+            rows = []
+            for item in observations[:4]:
+                label = PALM_TOPIC_LABELS.get(str(item.get("topic") or ""), "Наблюдение")
+                confidence = int(round(float(item.get("confidence") or 0) * 100))
+                rows.append(f"• <b>{label}</b> · {confidence}%\n{item.get('summary') or 'без описания'}")
+            text = (f"✋ <b>Карта видимых зон от Миры</b>\n\n" +
+                    "\n\n".join(rows) + reflection + safety)
     await state.clear()
     await message.answer(text, reply_markup=back_menu())
 

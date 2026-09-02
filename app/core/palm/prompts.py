@@ -55,7 +55,9 @@ PALM_USER = """Проанализируй фотографию ладони ка
 
 Для relationship/children/travel используй folded-edge evidence только при реально согнутой ладони. Не считай количество браков или детей.
 
-Верни строго один JSON-объект без Markdown, комментариев и текста до/после JSON."""
+Верни строго один JSON-объект без Markdown, комментариев и текста до/после JSON.
+
+Поле `narrative`: связный текст-рассказ на русском языке — как живой хиромант говорит клиенту. Без шаблонов, без процентов, тепло, по делу. Объедини ВСЕ видимые линии (жизни, головы, сердца, судьбы, Солнца, Меркурия, отношения), холмы (Венеры, Юпитера, Сатурна, Аполлона, Меркурия, Луны, Марса), пальцы (все 5, их пропорции, фаланги, большой палец отдельно), браслеты запястья, знаки и качество линий в единый осмысленный рассказ о человеке. Если зона не видна на этом кадре — скажи об этом и что нужно доснять. Не пропускай ни одну зону — каждая должна быть упомянута."""
 
 PALM_SYSTEM_EN = """You are Mira's visual adjudicator for OracleAI palm reading. Your task is to return strict visual evidence from the palm photo, not the final palmistry interpretation. Traditional symbolism is applied later by Mira after the evidence is stored and grounded.
 
@@ -97,7 +99,9 @@ Do not put traditional symbolism into `observations.summary` or zone details. Th
 
 For broad coverage, populate all schema fields even when many zones are unknown/not_visible. Honest uncertainty is preferred to plausible completion. Use folded-edge evidence for relationship/children/travel only when the hand is actually folded toward the camera. Never count marriages or children.
 
-Return exactly one JSON object, with no Markdown or commentary outside the JSON."""
+Return exactly one JSON object, with no Markdown or commentary outside the JSON.
+
+The `narrative` field: a connected story in English — like a real living palmist speaking to a client. No templates, no percentages, warm and personal. Weave ALL visible zones into a coherent reading: the major lines (life, head, heart, fate, sun, mercury, relationship), the mounts (venus, jupiter, saturn, apollo, mercury, moon, mars), all five fingers with proportions, phalanges and the thumb, the wrist bracelets, markings and line quality. If a zone is not visible in this frame, say so and what to re-shoot. Do not skip any zone — mention every one."""
 
 
 def palm_prompts(lang: str) -> tuple[str, str]:

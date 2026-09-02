@@ -16,10 +16,10 @@
   const PALM_I18N = {
     ru: {
       title: 'Чтение ладони', subtitle: 'Я опишу только видимые зоны на фото и свяжу их с вопросами, важными именно тебе.',
-      guideTitle: 'Снимок, который поможет', guide: 'Одна ладонь целиком · ровный свет · камера сверху · пальцы расслаблены. Без фильтров, бликов и украшений.',
+      guideTitle: 'Как снять ладонь', guide: 'Нужно 2 фото: ① раскрытая ладонь целиком, ② ладонь ребром (согнутая). Камера сверху, ровный свет, без бликов, фильтров и украшений, вся ладонь от запястья до кончиков пальцев в кадре.',
       full: 'целиком', glare: 'без бликов', fingers: 'пальцы свободны', camera: 'Сфотографировать ладонь', cameraSmall: 'Камера · один кадр', gallery: 'Выбрать из галереи', gallerySmall: 'JPEG, PNG или WebP · до 8 МБ',
-      folded: 'Для линий отношений, детей и путешествий нужен отдельный кадр согнутой ладони ребром к камере.', privacy: 'Фото используется для текущего разбора. Сохраняются только структурированные observations и технический fingerprint; исходное изображение не сохраняется. Удалить чтение можно из истории.',
-      disclaimer: 'Мира читает только различимые линии и зоны: чем яснее кадр, тем глубже разбор.', looking: 'Смотрю на линии', checking: 'Проверяю качество кадра и отделяю наблюдаемое от интерпретации…', photo: 'Фото', quality: 'Качество', observations: 'Наблюдения',
+      folded: '② Ладонь ребром: согни пальцы к центру и поверни кисть боком к камере — так видны линии отношений, детей и путешествий.', privacy: 'Фото используется для текущего разбора. Сохраняются только структурированные observations и технический fingerprint; исходное изображение не сохраняется. Удалить чтение можно из истории.',
+      disclaimer: 'Мира читает только различимые линии и зоны: чем яснее кадр, тем глубже разбор. Раскрытая ладонь даёт линии жизни/головы/сердца/судьбы, холмы и пальцы; кадр ребром — линии отношений и путешествий.', looking: 'Смотрю на линии', checking: 'Проверяю качество кадра и отделяю наблюдаемое от интерпретации…', photo: 'Фото', quality: 'Качество', observations: 'Наблюдения',
       result: 'Что видно на ладони', needs: 'Нужен более ясный кадр', qualityLabel: 'Качество кадра', boundaries: 'Границы чтения', prompts: 'Вопросы к себе', more: 'Подробнее с Мирой', newPhoto: 'Новое фото', retry: 'Переснять фото', change: 'Изменить', usable: 'свет/резкость пригодны', checkFrame: 'нужна проверка кадра', precheck: 'детерминированная проверка изображения', viewUnknown: 'ракурс не указан', details: 'Показать карту зон и техник',
       typeError: 'Выбери JPEG, PNG или WebP. Другие форматы не отправляются.', sizeError: 'Выбери изображение до 8 МБ.', failTitle: 'Не получилось прочитать фото', failCopy: 'Проверь кадр и попробуй ещё раз.',
       privacyLabel: 'Приватность изображения', detected: 'ладонь распознана', notDetected: 'ладонь не подтверждена', observed: 'наблюдается', inferred: 'осторожная интерпретация', unknown: 'не подтверждено', notSupported: 'не поддерживается', openPalm: 'раскрытая ладонь', foldedEdge: 'согнутый край',
@@ -27,10 +27,10 @@
     },
     en: {
       title: 'Palm reading', subtitle: 'I will describe only visible zones in the photo and connect them to questions that matter to you.',
-      guideTitle: 'A photo that helps', guide: 'One whole palm · even light · camera above · relaxed fingers. No filters, glare or jewellery.',
+      guideTitle: 'How to photograph your palm', guide: 'Send 2 photos: ① whole open palm, ② palm edge-on (folded). Camera from above, even light, no glare, filters or jewellery, the whole palm from wrist to fingertips in frame.',
       full: 'whole palm', glare: 'no glare', fingers: 'fingers clear', camera: 'Take a palm photo', cameraSmall: 'Camera · one frame', gallery: 'Choose from gallery', gallerySmall: 'JPEG, PNG or WebP · up to 8 MB',
-      folded: 'Relationship, children and travel lines require a separate folded-edge photo with the side of the palm facing the camera.', privacy: 'The photo is used for the current reading. Only structured observations and a technical fingerprint are retained; the original image is not stored. You can delete the reading from history.',
-      disclaimer: 'Mira reads only distinguishable lines and zones: the clearer the frame, the deeper the reflection.', looking: 'Looking at the lines', checking: 'Checking image quality and separating observations from interpretation…', photo: 'Photo', quality: 'Quality', observations: 'Observations',
+      folded: '② Palm edge-on: fold your fingers toward the centre and turn the hand sideways to the camera — this shows relationship, children and travel lines.', privacy: 'The photo is used for the current reading. Only structured observations and a technical fingerprint are retained; the original image is not stored. You can delete the reading from history.',
+      disclaimer: 'Mira reads only distinguishable lines and zones: the clearer the frame, the deeper the reflection. An open palm reveals life/head/heart/fate lines, mounts and fingers; the edge-on shot shows relationship and travel lines.', looking: 'Looking at the lines', checking: 'Checking image quality and separating observations from interpretation…', photo: 'Photo', quality: 'Quality', observations: 'Observations',
       result: 'What is visible on your palm', needs: 'A clearer photo is needed', qualityLabel: 'Image quality', boundaries: 'Reading boundaries', prompts: 'Questions for reflection', more: 'Ask Mira for more', newPhoto: 'New photo', retry: 'Retake photo', change: 'Change', usable: 'light/sharpness are usable', checkFrame: 'frame needs checking', precheck: 'deterministic image check', viewUnknown: 'view not specified', details: 'Show zone and technique map',
       typeError: 'Choose JPEG, PNG or WebP. Other formats are not sent.', sizeError: 'Choose an image up to 8 MB.', failTitle: 'The photo could not be read', failCopy: 'Check the frame and try again.',
       privacyLabel: 'Image privacy', detected: 'palm detected', notDetected: 'palm not confirmed', observed: 'observed', inferred: 'qualified inference', unknown: 'not confirmed', notSupported: 'not supported', openPalm: 'open palm', foldedEdge: 'folded edge',
@@ -91,6 +91,17 @@
   };
 
   function textFromResult(result) {
+    const narrative = (result.narrative || '').trim();
+    if (narrative) {
+      const obs = Array.isArray(result.observations) ? result.observations : [];
+      const topics = obs.length
+        ? `<div class="palm-narrative-topics">${obs.slice(0, 5).map(o => {
+            const topic = (oracleLang() === 'en' ? PALM_TOPICS_EN[o.topic] : PALM_TOPICS[o.topic]) || o.topic || pt('unknown');
+            return `<span>${esc(topic)}</span>`;
+          }).join('')}</div>`
+        : '';
+      return `<p class="palm-narrative">${esc(narrative)}</p>${topics}`;
+    }
     const obs = Array.isArray(result.observations) ? result.observations : [];
     if (!obs.length) return '<p class="palm-muted">На этом кадре пока недостаточно деталей для уверенного чтения.</p>';
     return obs.slice(0, 6).map(item => {
