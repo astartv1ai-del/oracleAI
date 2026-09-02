@@ -82,6 +82,8 @@ def test_mira_image_prompt_separates_observation_from_interpretation() -> None:
     assert "summary" in PALM_SYSTEM
     assert "без традиционной трактовки" in PALM_SYSTEM
     assert "Не пиши традиционное значение линии" in PALM_USER
+    assert "`narrative` — это НЕ интерпретация" in PALM_SYSTEM
+    assert "традиционных значений" in PALM_USER
 
 
 def test_comparative_skill_does_not_claim_raw_photo_access() -> None:
@@ -90,3 +92,13 @@ def test_comparative_skill_does_not_claim_raw_photo_access() -> None:
     skill = next(item for item in profile.skills if item.name == "comparative-reading")
     assert "не хран" in skill.body.lower()
     assert "pixel" in skill.body.lower()
+
+
+def test_mira_bot_escapes_untrusted_palm_text() -> None:
+    from pathlib import Path
+
+    source = Path("app/bot/features.py").read_text(encoding="utf-8")
+    palm_section = source.split("async def palm_photo", 1)[1].split("# ─────────────────────────────── ТАРО", 1)[0]
+    assert "tg_esc(narrative)" in palm_section
+    assert "tg_esc(str(prompts[0]))" in palm_section
+    assert "tg_esc(str(item))" in palm_section
