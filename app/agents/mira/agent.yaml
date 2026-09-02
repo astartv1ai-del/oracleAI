@@ -26,9 +26,9 @@ tools:
 - palm_history
 skills_max_active: 3
 limits:
-  max_turns: 6
-  max_tool_calls: 8
-  timeout_s: 35
+  max_turns: 4
+  max_tool_calls: 6
+  timeout_s: 20
 memory: opt_in
 risk_level: high
 output_contract: agent_response.v1
