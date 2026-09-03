@@ -28,6 +28,17 @@ Before public launch, run the encrypted backup and restore scripts with producti
 
 The supported helpers are [`infra/backup-postgres.sh`](../infra/backup-postgres.sh) and [`infra/restore-postgres.sh`](../infra/restore-postgres.sh). A PostgreSQL restore is performed into an isolated target first; production in-place restore requires both explicit safety flags and an approved incident owner. This drill remains an external P0 launch gate until executed in a production-like environment.
 
+## Executed rehearsal (2026-09-03)
+
+A production-like rehearsal ran on 2026-09-03 against the running PostgreSQL/pgvector database:
+
+- **Backup:** pg_dump (custom format) → `openssl enc -aes-256-cbc -pbkdf2` (key `/etc/oracle/backup.key`, outside the DB/repo) → `sha256sum`; uploaded to the off-site S3-compatible bucket `oracleai-backups/oracleai/` (MinIO). Object `oracle-20260903-032904.dump.enc` + `.sha256` verified present; local copy header starts with openssl `Salted__` (encrypted, not plaintext); checksum `ЦЕЛ`/OK.
+- **Restore:** performed from the **off-site copy** (`mc cp` from MinIO, not the local directory) into an isolated database `oracle_restore`. Schema (extensions `vector 0.8.6`, `plpgsql`; all `public.*` tables) and per-table row counts matched the live database; a functional `vector <->` distance query returned the expected value. The isolated database was dropped afterwards; the live database was not modified.
+- **Fixes found:** PG16 `createdb --if-not-exists` unsupported → psql existence probe; `docker compose exec` runs as root → explicit `PGUSER`/`PGPASSWORD`/`PGHOST=localhost` (commit d48ea7c).
+- **Evidence:** [`infra/restore-rehearsal/2026-09-03-p0-004-backup-restore-rehearsal.md`](../infra/restore-rehearsal/2026-09-03-p0-004-backup-restore-rehearsal.md) (full runbook, dumps, checksums). Static gate `scripts/check_p004_infrastructure.py` passes 40/40.
+
+Scope note: the off-site destination here is local S3-compatible MinIO. Swapping `BACKUP_S3_URL` for a real S3/R2/Backblaze endpoint with real key custody is what remains external before public launch; the encryption/checksum/restore mechanics are unchanged by that swap.
+
 ## References
 
 [1]: ../scripts/check_p004_infrastructure.py "P0-004 static infrastructure gate"
