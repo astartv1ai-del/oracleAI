@@ -68,7 +68,7 @@ def check() -> list[str]:
         'RESTORE_TARGET_DB is required',
         'RESTORE_CONFIRM',
         'I_UNDERSTAND_IN_PLACE_RESTORE',
-        'createdb --if-not-exists',
+        'SELECT 1 FROM pg_database WHERE datname',
         '--dbname="$target_db"',
         'sha256sum --check',
     ):

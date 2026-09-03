@@ -43,10 +43,26 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
 if [[ "$target_db" == "${POSTGRES_DB:-oracle}" ]]; then
   docker compose -f "$compose_file" stop api bot worker beat
 else
-  docker compose -f "$compose_file" exec -T postgres \
-    createdb --if-not-exists --username="${POSTGRES_USER:-oracle}" -- "$target_db"
+  # createdb has no --if-not-exists until PostgreSQL 18; probe first so the
+  # rehearsal stays idempotent and isolated on PG16. docker exec runs as root,
+  # so connect over TCP with the application role instead of a peer socket.
+  if ! docker compose -f "$compose_file" exec -T \
+    -e PGUSER="${POSTGRES_USER:-oracle}" -e PGPASSWORD="${POSTGRES_PASSWORD}" -e PGHOST=localhost \
+    postgres \
+    psql --dbname=postgres --tuples-only --no-align \
+    --command "SELECT 1 FROM pg_database WHERE datname = '$target_db'" \
+    | grep -q '^1$'; then
+    docker compose -f "$compose_file" exec -T \
+      -e PGUSER="${POSTGRES_USER:-oracle}" -e PGPASSWORD="${POSTGRES_PASSWORD}" -e PGHOST=localhost \
+      postgres \
+      createdb --username="${POSTGRES_USER:-oracle}" -- "$target_db"
+  fi
 fi
-cat "$tmp" | docker compose -f "$compose_file" exec -T postgres \
+cat "$tmp" | docker compose -f "$compose_file" exec -T \
+  -e PGUSER="${POSTGRES_USER:-oracle}" \
+  -e PGPASSWORD="${POSTGRES_PASSWORD}" \
+  -e PGHOST=localhost \
+  postgres \
   pg_restore --clean --if-exists --no-owner --no-privileges \
   --dbname="$target_db"
 
