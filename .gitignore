@@ -65,3 +65,6 @@ screenshots/
 
 # Host-mounted encrypted PostgreSQL backup artifacts
 /backups/
+infra/backups/
+infra/restore-rehearsal/oracle-*.dump.enc
+infra/restore-rehearsal/oracle-*.dump.enc.sha256
