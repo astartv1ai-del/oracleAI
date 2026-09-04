@@ -47,7 +47,8 @@ jobs:
       - name: Frontend dependency audit and build required by API tests
         run: |
           npm ci --ignore-scripts
-          npm audit --audit-level=moderate
+          # registry npm-audit отдаёт 400 "Invalid package tree" флейком — ретрай, второй провал валид
+          npm audit --audit-level=moderate || { sleep 15; npm audit --audit-level=moderate; }
           npm run build:frontend
           python scripts/check_frontend_build.py
           python scripts/check_frontend_provenance.py
@@ -121,7 +122,7 @@ jobs:
           python scripts/sql_shim_inventory.py
           cp docs/SQL_SHIM_INVENTORY.md artifacts/SQL_SHIM_INVENTORY.md
       - name: Migration-focused tests
-        run: python -m pytest tests/test_migrations.py tests/test_data.py -q -p no:cacheprovider --timeout=120
+        run: python -m pytest tests/test_data.py -q -p no:cacheprovider --timeout=120
       - name: Full tests
         run: python -m pytest tests/ -q -p no:cacheprovider --timeout=120
       - name: Dependency audit
@@ -179,7 +180,8 @@ jobs:
       - name: Frontend dependencies and audit
         run: |
           npm ci --ignore-scripts
-          npm audit --audit-level=moderate
+          # флейк npm-registry на audit endpoint — ретрай, второй провал валид
+          npm audit --audit-level=moderate || { sleep 15; npm audit --audit-level=moderate; }
       - name: Build and validate frontend
         run: |
           npm run build:frontend
