@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import pytest
+from conftest import TEST_DEV_KEY  # noqa: E402
 from httpx import ASGITransport, AsyncClient
 
 from app.api.deps import get_db
@@ -21,7 +22,8 @@ from app.repo import users
 async def client(db):
     app.dependency_overrides[get_db] = lambda: db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http:
+    async with AsyncClient(transport=transport, base_url="http://test",
+                      headers={"X-Dev-Key": TEST_DEV_KEY}) as http:
         yield http
     app.dependency_overrides.clear()
 
@@ -39,13 +41,13 @@ async def unconfirmed(db):
 def test_dev_mode_fails_closed_at_import_for_non_dev_env():
     from app.config import assert_dev_mode_allowed
     with pytest.raises(RuntimeError):
-        assert_dev_mode_allowed(True, "production")
+        assert_dev_mode_allowed(True, "production", "some-key")
     with pytest.raises(RuntimeError):
-        assert_dev_mode_allowed(True, "staging")
+        assert_dev_mode_allowed(True, "staging", "some-key")
     # dev/test и выключенный режим — легальные комбинации
-    assert_dev_mode_allowed(True, "dev")
-    assert_dev_mode_allowed(True, "test")
-    assert_dev_mode_allowed(False, "production")
+    assert_dev_mode_allowed(True, "dev", "some-key")
+    assert_dev_mode_allowed(True, "test", "some-key")
+    assert_dev_mode_allowed(False, "production", "")
 
 
 def test_dev_key_gate(monkeypatch):

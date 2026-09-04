@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import pytest
+
+from conftest import TEST_DEV_KEY  # noqa: E402
 from httpx import ASGITransport, AsyncClient
 
 from app.api.routers import profile as profile_router
@@ -13,7 +15,8 @@ from app.repo import users
 async def resilience_client(db, user):
     app.dependency_overrides[get_db] = lambda: db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://test",
+                      headers={"X-Dev-Key": TEST_DEV_KEY}) as client:
         yield client
     app.dependency_overrides.clear()
 

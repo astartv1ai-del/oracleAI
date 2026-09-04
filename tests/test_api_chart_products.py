@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 
 import pytest
+
+from conftest import TEST_DEV_KEY  # noqa: E402
 from httpx import ASGITransport, AsyncClient
 
 from app.api.deps import get_db
@@ -15,7 +17,8 @@ from app.repo import readings, users
 async def product_client(db):
     app.dependency_overrides[get_db] = lambda: db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http:
+    async with AsyncClient(transport=transport, base_url="http://test",
+                      headers={"X-Dev-Key": TEST_DEV_KEY}) as http:
         yield http
     app.dependency_overrides.clear()
 

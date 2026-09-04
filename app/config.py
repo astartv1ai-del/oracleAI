@@ -194,15 +194,28 @@ class Settings:
         return problems
 
 
-def assert_dev_mode_allowed(dev_mode: bool, app_env: str) -> None:
-    """Fail-closed при импорте (аудит SEC-001).
+def assert_dev_mode_allowed(dev_mode: bool, app_env: str, dev_key: str) -> None:
+    """Fail-closed при импорте (аудит SEC-001, BUS-90).
 
     DEV_MODE выключает подпись Telegram на всём API. Раньше единственной
     преградой была проверка в lifespan API-процесса — одна опечатка в .env
     (APP_ENV=dev на бою или забытый DEV_MODE=1) открывала полный обход
     авторизации. Теперь недопустимая комбинация роняет ЛЮБОЙ процесс
     (бот, API, воркер, скрипт) ещё при импорте конфигурации.
+
+    Третий аргумент обязателен и не имеет значения по умолчанию: забытый
+    вызов падает TypeError'ом, а не молча пропускает проверку. Пустой
+    DEV_KEY при DEV_MODE=1 недопустим (BUS-90): ветка `if settings.dev_key`
+    в deps._dev_identity_allowed просто не выполнялась, и ?dev_user=<id>
+    входил в API без всякого заголовка — так прод-стек с APP_ENV=test и
+    пустым ключом жил с неаутентифицированным входом.
     """
+    if dev_mode and not dev_key.strip():
+        raise RuntimeError(
+            "DEV_MODE=1 требует непустой DEV_KEY: без него ?dev_user=<id> "
+            "входит в API без заголовка X-Dev-Key, обходя подпись Telegram. "
+            "Задай DEV_KEY или выключи DEV_MODE — процесс остановлен до "
+            "первого запроса.")
     if dev_mode and app_env not in {"dev", "test"}:
         raise RuntimeError(
             "DEV_MODE=1 допустим только при APP_ENV=dev|test: режим выключает "
@@ -211,4 +224,4 @@ def assert_dev_mode_allowed(dev_mode: bool, app_env: str) -> None:
 
 
 settings = Settings()
-assert_dev_mode_allowed(settings.dev_mode, settings.app_env)
+assert_dev_mode_allowed(settings.dev_mode, settings.app_env, settings.dev_key)

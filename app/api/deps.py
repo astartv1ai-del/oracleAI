@@ -35,17 +35,20 @@ async def get_db(request: Request):
 def _dev_identity_allowed(request: Request) -> bool:
     """Право на вход по ?dev_user=<id> в DEV_MODE (аудит SEC-001).
 
-    DEV_MODE сам по себе fail-closed при импорте (см. config). Когда задан
-    DEV_KEY, каждый dev-запрос дополнительно обязан предъявить заголовок
-    X-Dev-Key — так dev-вход становится подписанным короткоживущим ключом,
-    который существует только в локальном docker-compose разработчика.
+    DEV_MODE сам по себе fail-closed при импорте (см. config). Заданный
+    DEV_KEY делает dev-вход подписанным короткоживущим ключом, который
+    существует только в локальном docker-compose разработчика.
     """
     if not settings.dev_mode:
         return False
-    if settings.dev_key:
-        provided = request.headers.get("x-dev-key", "")
-        if not provided or not hmac.compare_digest(provided, settings.dev_key):
-            return False
+    if not settings.dev_key.strip():
+        # Страховка в глубину (BUS-90): guard в config роняет импорт
+        # DEV_MODE=1 с пустым ключом; сюда попадаем, только если настройки
+        # подменены в рантайме поверх невалидной конфигурации.
+        return False
+    provided = request.headers.get("x-dev-key", "")
+    if not provided or not hmac.compare_digest(provided, settings.dev_key):
+        return False
     return True
 
 

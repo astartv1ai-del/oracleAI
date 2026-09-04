@@ -62,6 +62,43 @@ async def test_diary_tool_is_blocked_when_memory_off(db, user):
     assert "выключена" in result
 
 
+def test_dev_mode_requires_non_empty_dev_key():
+    """BUS-90: DEV_MODE=1 с пустым DEV_KEY роняет импорт конфигурации.
+
+    Прод-стек жил с APP_ENV=test + DEV_MODE=1 и пустым ключом: ветка
+    `if settings.dev_key` в deps не выполнялась, и ?dev_user=<id> входил
+    в API без всякого заголовка.
+    """
+    from app.config import assert_dev_mode_allowed
+
+    with pytest.raises(RuntimeError, match="DEV_KEY"):
+        assert_dev_mode_allowed(True, "test", "")
+    with pytest.raises(RuntimeError, match="DEV_KEY"):
+        assert_dev_mode_allowed(True, "dev", "   ")
+    with pytest.raises(RuntimeError, match="DEV_KEY"):
+        assert_dev_mode_allowed(True, "production", "")
+    # Выключенный DEV_MODE с пустым ключом — легален (прод-конфигурация).
+    assert_dev_mode_allowed(False, "production", "")
+
+
+def test_dev_identity_denied_when_dev_key_empty(monkeypatch):
+    """BUS-90 защита в глубину: при пустом dev_key вход по ?dev_user закрыт
+    даже если настройки подменены в рантайме поверх невалидной конфигурации."""
+
+    class FakeRequest:
+        def __init__(self, headers):
+            self.headers = headers
+
+    from app.api import deps
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "dev_mode", True)
+    monkeypatch.setattr(settings, "dev_key", "")
+    assert deps._dev_identity_allowed(FakeRequest({})) is False
+    monkeypatch.setattr(settings, "dev_key", "   ")
+    assert deps._dev_identity_allowed(FakeRequest({"x-dev-key": "   "})) is False
+
+
 def test_production_config_accepts_safe_runtime_configuration(monkeypatch):
     from app.api.main import _validate_production_config
 

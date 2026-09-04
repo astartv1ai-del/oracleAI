@@ -31,7 +31,11 @@ os.environ["ADMIN_ID"] = "1"
 os.environ["WEBAPP_URL"] = ""
 os.environ["PUBLIC_URL"] = ""
 os.environ["DEV_MODE"] = "1"
-# Legacy fixtures intentionally opt into the historical trial; production defaults off.
+# DEV_KEY обязателен при DEV_MODE=1 (BUS-90): guard роняет импорт с пустым
+# ключом. Client-фикстуры тестов добавляют заголовок X-Dev-Key к запросам.
+os.environ["DEV_KEY"] = "test-dev-key"
+#: Эмуляция заголовка X-Dev-Key из локального compose-стека разработчика.
+TEST_DEV_KEY = "test-dev-key"
 os.environ["AUTO_TRIAL"] = "1"
 
 
