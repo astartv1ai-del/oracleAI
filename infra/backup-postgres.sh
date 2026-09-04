@@ -42,12 +42,33 @@ tmp=""
 trap 'rm -f "${tmp:-}"' EXIT
 
 while true; do
-  ts="$(date -u +%Y%m%d-%H%M%S)"
-  iso_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  tmp="/backups/.oracle-${ts}.dump.tmp"
-  encrypted="/backups/oracle-${ts}.dump.enc"
+  # Transient failures (e.g. dump racing postgres readiness after a host
+  # reboot, when restart ignores depends_on healthchecks) must not cost a
+  # full day of backups: retry a few times with short backoff.
+  : "${BACKUP_RETRY_MAX:=3}"
+  : "${BACKUP_RETRY_DELAY_S:=300}"
+  attempt=1
+  dumped=false
+  while [[ "$attempt" -le "$BACKUP_RETRY_MAX" ]]; do
+    ts="$(date -u +%Y%m%d-%H%M%S)"
+    iso_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    tmp="/backups/.oracle-${ts}.dump.tmp"
+    encrypted="/backups/oracle-${ts}.dump.enc"
 
-  if pg_dump --format=custom --no-owner --no-privileges --file="$tmp"; then
+    if pg_dump --format=custom --no-owner --no-privileges --file="$tmp"; then
+      dumped=true
+      break
+    fi
+    echo "pg_dump attempt ${attempt}/${BACKUP_RETRY_MAX} failed; retaining previous backups" >&2
+    write_status "$iso_ts" false "$BACKUP_REQUIRE_OFFSITE" false
+    rm -f "$tmp"
+    if [[ "$attempt" -lt "$BACKUP_RETRY_MAX" ]]; then
+      sleep "$BACKUP_RETRY_DELAY_S"
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  if [[ "$dumped" == "true" ]]; then
     # A custom-format dump can be listed without restoring it. This catches
     # truncated/corrupt output before encryption and retention are applied.
     pg_restore --list "$tmp" >/dev/null
