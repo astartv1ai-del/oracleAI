@@ -10,7 +10,8 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15m не хватает: полный suite на мастере идёт 13-16м, job убивался до вердикта тестов
+    timeout-minutes: 30
     env:
       APP_ENV: dev
       DEV_MODE: "1"
@@ -47,7 +48,13 @@ jobs:
       - name: Frontend dependency audit and build required by API tests
         run: |
           npm ci --ignore-scripts
-          npm audit --audit-level=moderate
+          # registry npm-audit отдаёт флейк 503/400 "Invalid package tree" (endpoint ретирится) — до 3 попыток с бэкоффом
+          ok=0
+          for a in 1 2 3; do
+            npm audit --audit-level=moderate && { ok=1; break; }
+            sleep $((a * 15))
+          done
+          [ "$ok" = 1 ] || { echo "::error::npm audit failed after 3 attempts (registry flake)"; exit 1; }
           npm run build:frontend
           python scripts/check_frontend_build.py
           python scripts/check_frontend_provenance.py
@@ -121,7 +128,7 @@ jobs:
           python scripts/sql_shim_inventory.py
           cp docs/SQL_SHIM_INVENTORY.md artifacts/SQL_SHIM_INVENTORY.md
       - name: Migration-focused tests
-        run: python -m pytest tests/test_migrations.py tests/test_data.py -q -p no:cacheprovider --timeout=120
+        run: python -m pytest tests/test_data.py -q -p no:cacheprovider --timeout=120
       - name: Full tests
         run: python -m pytest tests/ -q -p no:cacheprovider --timeout=120
       - name: Dependency audit
@@ -145,7 +152,8 @@ jobs:
 
   frontend-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 20m впритык: npm ci + audit-ретраи + build съедали бюджет до сборки фронта
+    timeout-minutes: 30
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -179,7 +187,13 @@ jobs:
       - name: Frontend dependencies and audit
         run: |
           npm ci --ignore-scripts
-          npm audit --audit-level=moderate
+          # registry npm-audit отдаёт флейк 503/400 "Invalid package tree" (endpoint ретирится) — до 3 попыток с бэкоффом
+          ok=0
+          for a in 1 2 3; do
+            npm audit --audit-level=moderate && { ok=1; break; }
+            sleep $((a * 15))
+          done
+          [ "$ok" = 1 ] || { echo "::error::npm audit failed after 3 attempts (registry flake)"; exit 1; }
       - name: Build and validate frontend
         run: |
           npm run build:frontend

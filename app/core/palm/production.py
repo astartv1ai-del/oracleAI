@@ -180,7 +180,9 @@ def adaptive_line_ensemble(image_bytes: bytes, *, view_type: str | None = None) 
     )
     if not uncertain:
         return {**fp16, "ensemble": {"status": "fp16_stable", "models": [fp16.get("model")], "disagreements": [], "raw_masks_stored": False}}
-    int8_path = str(palm_lines.Path(__file__).resolve().parents[2] / "models" / "palm_line_student_int8.onnx")
+    # parents[2] от app/core/palm/production.py — это app/, модели живут в корне
+    # репо; resolvable относительно palm_lines.py (на уровень выше) он верен.
+    int8_path = str(palm_lines.Path(palm_lines.__file__).resolve().parents[2] / "models" / "palm_line_student_int8.onnx")
     int8 = analyze(image_bytes, model_path=int8_path)
     if int8.get("status") not in {"detected", "no_lines"}:
         return {**fp16, "ensemble": {"status": "int8_unavailable", "models": [fp16.get("model")], "disagreements": [], "raw_masks_stored": False}}
