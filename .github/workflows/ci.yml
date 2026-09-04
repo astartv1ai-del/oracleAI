@@ -47,8 +47,13 @@ jobs:
       - name: Frontend dependency audit and build required by API tests
         run: |
           npm ci --ignore-scripts
-          # registry npm-audit отдаёт 400 "Invalid package tree" флейком — ретрай, второй провал валид
-          npm audit --audit-level=moderate || { sleep 15; npm audit --audit-level=moderate; }
+          # registry npm-audit отдаёт флейк 503/400 "Invalid package tree" (endpoint ретирится) — до 3 попыток с бэкоффом
+          ok=0
+          for a in 1 2 3; do
+            npm audit --audit-level=moderate && { ok=1; break; }
+            sleep $((a * 15))
+          done
+          [ "$ok" = 1 ] || { echo "::error::npm audit failed after 3 attempts (registry flake)"; exit 1; }
           npm run build:frontend
           python scripts/check_frontend_build.py
           python scripts/check_frontend_provenance.py
@@ -180,8 +185,13 @@ jobs:
       - name: Frontend dependencies and audit
         run: |
           npm ci --ignore-scripts
-          # флейк npm-registry на audit endpoint — ретрай, второй провал валид
-          npm audit --audit-level=moderate || { sleep 15; npm audit --audit-level=moderate; }
+          # registry npm-audit отдаёт флейк 503/400 "Invalid package tree" (endpoint ретирится) — до 3 попыток с бэкоффом
+          ok=0
+          for a in 1 2 3; do
+            npm audit --audit-level=moderate && { ok=1; break; }
+            sleep $((a * 15))
+          done
+          [ "$ok" = 1 ] || { echo "::error::npm audit failed after 3 attempts (registry flake)"; exit 1; }
       - name: Build and validate frontend
         run: |
           npm run build:frontend
