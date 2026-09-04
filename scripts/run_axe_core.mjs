@@ -17,11 +17,16 @@ const STATES = [
   ['profile-history', 'profile', '', 'history'], ['profile-memory', 'profile', '', 'memory'],
 ];
 
+// DEV_KEY обязателен при DEV_MODE=1 (BUS-90): QA-страницы с dev_user ходят в
+// API под X-Dev-Key, который SPA-клиент берёт из URL-параметра dev_key.
+const DEV_KEY = process.env.DEV_KEY || 'ci-dev-key';
+
 function makeUrl(view, agent = '', tab = '') {
   const u = new URL('http://127.0.0.1:8080/');
   u.searchParams.set('dev_user', '10001'); u.searchParams.set('qa', '1'); u.searchParams.set('qa_view', view);
   if (agent) u.searchParams.set('qa_agent', agent);
   if (tab) u.searchParams.set('qa_tab', tab);
+  u.searchParams.set('dev_key', DEV_KEY);
   return u.toString();
 }
 

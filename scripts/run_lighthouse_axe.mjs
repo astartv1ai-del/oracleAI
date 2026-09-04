@@ -14,6 +14,9 @@ const LH_CATEGORIES = (process.env.LH_CATEGORIES || 'performance,accessibility,b
 const BASE = 'http://127.0.0.1:8080/';
 const VIEWPORT = { width: 1440, height: 900 };
 const CHROME_PATH = process.env.CHROME_PATH || execFileSync('sh', ['-c', 'command -v chromium || command -v chromium-browser || command -v google-chrome']).toString().trim();
+// DEV_KEY обязателен при DEV_MODE=1 (BUS-90): SPA-клиент берёт ключ из
+// URL-параметра dev_key и передаёт его в API как X-Dev-Key.
+const DEV_KEY = process.env.DEV_KEY || 'ci-dev-key';
 const STATES = [
   { id: 'home', view: 'home' },
   { id: 'guides', view: 'hub' },
@@ -34,6 +37,7 @@ function stateUrl(state) {
   url.searchParams.set('qa_view', state.view);
   if (state.agent) url.searchParams.set('qa_agent', state.agent);
   if (state.tab) url.searchParams.set('qa_tab', state.tab);
+  url.searchParams.set('dev_key', DEV_KEY);
   return url.toString();
 }
 

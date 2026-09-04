@@ -481,6 +481,7 @@
       const headers = { Accept: 'application/json' };
       const initData = tg() && tg().initData;
       if (initData) headers['X-Init-Data'] = initData;
+      if (DEV_KEY) headers['X-Dev-Key'] = DEV_KEY;
       const response = await fetch(url, { headers });
       if (!response.ok) throw new Error('Не удалось подготовить экспорт');
       const blob = await response.blob();

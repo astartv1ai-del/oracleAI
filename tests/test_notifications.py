@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 
 import pytest
 
+from conftest import TEST_DEV_KEY  # noqa: E402
+
 from app.repo import notifications, readings
 
 
@@ -13,7 +15,8 @@ async def client(db, user):
     from app.api.main import app
     app.dependency_overrides[get_db] = lambda: db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http:
+    async with AsyncClient(transport=transport, base_url="http://test",
+                      headers={"X-Dev-Key": TEST_DEV_KEY}) as http:
         yield http
     app.dependency_overrides.clear()
 

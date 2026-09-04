@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 
 import pytest
 
+from conftest import TEST_DEV_KEY  # noqa: E402
+
 pytest.importorskip("httpx", reason="httpx нужен для тестов API")
 
 from httpx import ASGITransport, AsyncClient  # noqa: E402
@@ -21,7 +23,8 @@ from app.api.main import app  # noqa: E402
 async def client(db, user):
     app.dependency_overrides[get_db] = lambda: db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http:
+    async with AsyncClient(transport=transport, base_url="http://test",
+                      headers={"X-Dev-Key": TEST_DEV_KEY}) as http:
         yield http
     app.dependency_overrides.clear()
 
