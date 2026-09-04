@@ -11,6 +11,13 @@ export class AdminApiClient {
     this.telegram?.ready();
     this.telegram?.expand();
     this.devUser = new URLSearchParams(this.location.search).get('dev_user');
+    // BUS-90: dev-вход требует X-Dev-Key; ключ приезжает рядом с dev_user.
+    this.devKey = new URLSearchParams(this.location.search).get('dev_key') || '';
+  }
+
+  devHeaders(base = {}) {
+    if (!this.devKey) return base;
+    return { ...base, 'X-Dev-Key': this.devKey };
   }
 
   async request(path, options = {}) {
@@ -18,11 +25,11 @@ export class AdminApiClient {
     if (this.devUser) url.searchParams.set('dev_user', this.devUser);
     const response = await fetch(url, {
       ...options,
-      headers: {
+      headers: this.devHeaders({
         'Content-Type': 'application/json',
         'X-Init-Data': this.telegram?.initData || '',
         ...(options.headers || {}),
-      },
+      }),
     });
     if (!response.ok) {
       let detail = `Ошибка ${response.status}`;
@@ -44,14 +51,14 @@ export class AdminApiClient {
     if (this.devUser) url.searchParams.set('dev_user', this.devUser);
     return fetch(url, {
       signal,
-      headers: { 'X-Init-Data': this.telegram?.initData || '' },
+      headers: this.devHeaders({ 'X-Init-Data': this.telegram?.initData || '' }),
     });
   }
 
   async download(path, filename) {
     const url = new URL(path, this.location.origin);
     if (this.devUser) url.searchParams.set('dev_user', this.devUser);
-    const response = await fetch(url, { headers: { 'X-Init-Data': this.telegram?.initData || '' } });
+    const response = await fetch(url, { headers: this.devHeaders({ 'X-Init-Data': this.telegram?.initData || '' }) });
     if (!response.ok) throw new Error(`Ошибка ${response.status}`);
     const blob = await response.blob();
     const link = document.createElement('a');

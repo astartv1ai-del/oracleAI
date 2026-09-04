@@ -46,10 +46,15 @@ function newRequestKey() {
   return 'chat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
 }
 
+/* Dev-вход (BUS-90): при DEV_MODE=1 API требует X-Dev-Key. Ключ приезжает
+   в URL-параметре dev_key рядом с dev_user и живёт только в dev/QA-стеке. */
+const DEV_KEY = new URLSearchParams(location.search).get('dev_key') || '';
+
 async function api(path, opts = {}) {
   const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
   const initData = tg() && tg().initData;
   if (initData) headers['X-Init-Data'] = initData;
+  if (DEV_KEY) headers['X-Dev-Key'] = DEV_KEY;
   let url = path;
   const dev = new URLSearchParams(location.search).get('dev_user');
   if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + dev;
@@ -88,6 +93,7 @@ async function apiBlob(path, opts = {}) {
   const headers = Object.assign({ Accept: 'image/png, image/webp' }, opts.headers || {});
   const initData = tg() && tg().initData;
   if (initData) headers['X-Init-Data'] = initData;
+  if (DEV_KEY) headers['X-Dev-Key'] = DEV_KEY;
   let url = path;
   const dev = new URLSearchParams(location.search).get('dev_user');
   if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + encodeURIComponent(dev);

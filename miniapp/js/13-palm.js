@@ -217,7 +217,10 @@
     try {
       const response = await fetch('/api/palm' + (new URLSearchParams(location.search).get('dev_user') ? '?dev_user=' + new URLSearchParams(location.search).get('dev_user') : ''), {
         method: 'POST',
-        headers: Object.assign({ 'Content-Type': file.type }, (tg() && tg().initData) ? { 'X-Init-Data': tg().initData } : {}),
+        headers: Object.assign(
+          { 'Content-Type': file.type },
+          (tg() && tg().initData) ? { 'X-Init-Data': tg().initData } : {},
+          DEV_KEY ? { 'X-Dev-Key': DEV_KEY } : {}),
         body: file,
       });
       let body = null;

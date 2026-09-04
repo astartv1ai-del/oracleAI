@@ -15,6 +15,9 @@ jobs:
     env:
       APP_ENV: dev
       DEV_MODE: "1"
+      # DEV_KEY обязателен при DEV_MODE=1 (BUS-90): guard роняет импорт конфига
+      # с пустым ключом. QA-сервер и скрипты шлют это же значение в X-Dev-Key.
+      DEV_KEY: ci-dev-key
       LLM_PROVIDER: off
       DATABASE_URL: postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle
       TEST_DATABASE_URL: postgresql+asyncpg://oracle:oracle@127.0.0.1:5432/oracle
@@ -210,9 +213,10 @@ jobs:
       - name: Seed isolated QA user and start server
         env:
           DATABASE_URL: postgresql+asyncpg://oracle:oracle@localhost:5432/oracle
+          DEV_KEY: ci-dev-key
         run: |
           python scripts/seed_visual_user.py
-          APP_ENV=dev DEV_MODE=1 nohup python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8080 >"${RUNNER_TEMP}/oracleai-api.log" 2>&1 &
+          APP_ENV=dev DEV_MODE=1 DEV_KEY=ci-dev-key nohup python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8080 >"${RUNNER_TEMP}/oracleai-api.log" 2>&1 &
           for attempt in $(seq 1 30); do
             curl --fail --silent http://127.0.0.1:8080/api/health >/dev/null && exit 0
             sleep 1
@@ -222,6 +226,8 @@ jobs:
       - name: Full SPA axe and Lighthouse matrix
         env:
           LH_CATEGORIES: performance,accessibility,best-practices,seo
+          # SPA-клиент при dev_user передаёт этот ключ в X-Dev-Key (BUS-90).
+          DEV_KEY: ci-dev-key
         run: |
           QA_OUT_DIR=ci-axe npm run test:axe
           QA_OUT_DIR=ci-lighthouse-axe npm run test:lighthouse
