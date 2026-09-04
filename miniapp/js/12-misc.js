@@ -592,7 +592,7 @@
       const blob = await apiBlob('/api/chart/pdf');
       this.downloadPdf(blob, 'oracle-natal-chart.pdf');
     } catch (e) {
-      this.toast(e && e.message ? e.message : 'PDF сейчас недоступен 🌙');
+      this.toast(friendlyError(e, oracleLang() === 'en' ? 'PDF is unavailable right now 🌙' : 'PDF сейчас недоступен 🌙'));
     }
   };
 
