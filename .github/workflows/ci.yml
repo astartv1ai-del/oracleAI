@@ -10,7 +10,8 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15m не хватает: полный suite на мастере идёт 13-16м, job убивался до вердикта тестов
+    timeout-minutes: 30
     env:
       APP_ENV: dev
       DEV_MODE: "1"
@@ -151,7 +152,8 @@ jobs:
 
   frontend-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 20m впритык: npm ci + audit-ретраи + build съедали бюджет до сборки фронта
+    timeout-minutes: 30
     services:
       postgres:
         image: pgvector/pgvector:pg16
