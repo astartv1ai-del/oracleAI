@@ -59,8 +59,9 @@ async function api(path, opts = {}) {
   const dev = new URLSearchParams(location.search).get('dev_user');
   if (dev) url += (url.includes('?') ? '&' : '?') + 'dev_user=' + dev;
   const doFetch = async () => {
-    const res = await fetch(url, { ...opts, headers: Object.assign(
-      { 'Content-Type': 'application/json' }, opts.headers || {}) });
+    // Заголовки собираются один раз выше (X-Init-Data, X-Dev-Key) — пересборка
+    // из opts.headers здесь теряла их, и QA-клиент уходил в 401 (BUS-90).
+    const res = await fetch(url, { ...opts, headers });
     let body = null;
     try { body = await res.json(); } catch (e) { /* пустое тело */ }
     if (!res.ok) {
