@@ -15,6 +15,7 @@ from __future__ import annotations
 # ── canonical free-form dialog entrypoint ────────────────────────────────
 from . import llm  # noqa: F401  # tests may monkeypatch this attribute
 from . import tool_registry as skills  # noqa: F401  # tests may monkeypatch this attribute
+from . import agents  # noqa: F401  # tests may monkeypatch this attribute
 # ── canonical scenario modules ───────────────────────────────────────────
 from .scenarios import compat as _compat_scn
 from .scenarios import forecast as _forecast_scn
